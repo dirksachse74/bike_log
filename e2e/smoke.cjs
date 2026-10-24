@@ -8,6 +8,7 @@ const BASE = process.argv[2] || 'http://127.0.0.1:8790/'
 const OUT = process.argv[3] || 'e2e-out'
 fs.mkdirSync(OUT, { recursive: true })
 const results = []
+let current = null
 function check(name, ok, info = '') {
   results.push({ name, ok, info })
   console.log(`${ok ? 'PASS' : 'FAIL'}  ${name}${info ? ' — ' + info : ''}`)
@@ -23,6 +24,7 @@ async function sheetButton(page, name) {
   const consoleErrors = []
   desktop.on('pageerror', (e) => consoleErrors.push(e.message))
   const page = desktop
+  current = page
   await page.goto(BASE)
   await page.getByText('Welcome to Bike Log').waitFor()
   check('empty state on a fresh database', true)
@@ -97,14 +99,13 @@ async function sheetButton(page, name) {
   await page.goto(BASE + '#/bikes')
   await page.getByRole('link', { name: /TIME NXR/ }).click()
   await page.locator('.setup li').filter({ hasText: 'Chain A' }).getByRole('button', { name: 'Change' }).click()
-  const sel = page.locator('.sheet').getByLabel(/New part/)
-  await sel.locator('option', { hasText: 'Chain B' }).waitFor({ state: 'attached' })
-  const optB = await sel.locator('option', { hasText: 'Chain B' }).getAttribute('value')
-  await sel.selectOption(optB)
-  await page.locator('.sheet').getByLabel('Effective date').fill('2026-10-03')
-  await sheetButton(page, 'Preview mileage impact')
+  await page.locator('.sheet .pick').filter({ hasText: 'Chain B' }).click()
+  await page.locator('.sheet').getByLabel('Installed on').fill('2026-10-03')
+  const keep = await page.locator('.sheet label.chip-on').innerText()
+  check('chain outcome defaults to stored spare', /Stored as a reusable spare/.test(keep), keep)
+  await page.locator('.sheet .form-actions').getByRole('button', { name: 'Preview' }).click()
   await page.locator('.sheet .notice-preview').waitFor()
-  await sheetButton(page, 'Replace')
+  await page.locator('.sheet .form-actions').getByRole('button', { name: 'Replace' }).click()
   await page.locator('.setup li').filter({ hasText: 'Chain B' }).waitFor()
   check('swap chain via replace', true)
   await page.goto(BASE + '#/rides')
@@ -154,6 +155,47 @@ async function sheetButton(page, name) {
   check('Strava shown as not connected', /Not connected/.test(stravaText))
   await page.screenshot({ path: path.join(OUT, '04-settings.png'), fullPage: true })
 
+  // spare stock: rear pads from stock 3 -> 2, old pads discarded, then undo restores
+  await page.goto(BASE + '#/inventory')
+  await page.getByRole('button', { name: 'Add spare stock' }).click()
+  await page.locator('.sheet').getByLabel('What').selectOption('BRAKE_PADS')
+  await page.locator('.sheet').getByLabel('Model (optional)').fill('L05A-RF')
+  await page.locator('.sheet').getByLabel('In stock now (optional)').fill('3')
+  await page.locator('.sheet').getByLabel('Storage location (optional)').fill('Workshop drawer')
+  await page.locator('.sheet').getByLabel('Minimum stock (optional)').fill('1')
+  await sheetButton(page, 'Add')
+  const padRow = page.locator('.list.rows li').filter({ hasText: 'L05A-RF' })
+  await padRow.filter({ hasText: '3 new sets' }).waitFor()
+  check('stock row reads "3 new sets · Workshop drawer · Minimum: 1"', /3 new sets · Workshop drawer · Minimum: 1/.test(await padRow.innerText()))
+  await page.getByRole('button', { name: 'Add part' }).click()
+  await page.locator('.sheet').getByLabel('Type').selectOption('BRAKE_PADS')
+  await page.locator('.sheet').getByLabel('Name / label').fill('Rear pads')
+  await page.locator('.sheet').getByLabel('Install on (optional)').selectOption({ label: 'TIME NXR' })
+  await page.locator('.sheet').getByLabel('Position').selectOption('REAR_PADS')
+  await page.locator('.sheet').getByLabel('Since').fill('2026-10-01')
+  await sheetButton(page, 'Add part')
+  await page.getByRole('heading', { name: /Rear pads/ }).waitFor()
+  await page.getByRole('button', { name: 'Replace', exact: true }).click()
+  await page.locator('.sheet .pick').filter({ hasText: 'One from stock' }).waitFor()
+  const suggested = await page.locator('.sheet label.chip-on').innerText()
+  check('replace preselects stock and suggests discarding old pads', /Discarded/.test(suggested), suggested)
+  await page.screenshot({ path: path.join(OUT, '07-replace-pads.png'), fullPage: true })
+  await page.locator('.sheet .form-actions').getByRole('button', { name: 'Replace' }).click()
+  await page.locator('.toast').filter({ hasText: 'installed' }).waitFor()
+  await page.goto(BASE + '#/inventory')
+  await padRow.filter({ hasText: '2 new sets' }).waitFor()
+  check('stock goes from 3 to 2 sets after replacement', true)
+  await page.goto(BASE + '#/inventory?tab=history')
+  await page.locator('.list li').filter({ hasText: 'Rear pads' }).filter({ hasText: 'Discarded' }).first().waitFor()
+  check('old pads shown as discarded in history', true)
+  page.once('dialog', (d) => d.accept('test undo'))
+  await page.locator('.list.rows li').filter({ hasText: 'Replace Rear pads' }).getByRole('button', { name: 'Undo' }).click()
+  await page.locator('.toast').filter({ hasText: 'Undone' }).waitFor()
+  await page.goto(BASE + '#/inventory')
+  await padRow.filter({ hasText: '3 new sets' }).waitFor()
+  check('undo restores stock to 3 and reinstalls old pads', true)
+  await page.screenshot({ path: path.join(OUT, '08-inventory.png'), fullPage: true })
+
   // mobile viewport
   const phone = await browser.newPage({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true })
   phone.on('pageerror', (e) => consoleErrors.push(e.message))
@@ -171,7 +213,7 @@ async function sheetButton(page, name) {
   await phone.locator('.sheet').getByRole('button', { name: 'Save', exact: true }).click()
   await phone.locator('.toast').filter({ hasText: 'Measure chain wear logged' }).waitFor()
   check('mobile: log chain wear measurement', true)
-  for (const route of ['#/bikes', '#/rides', '#/inventory', '#/settings']) {
+  for (const route of ['#/bikes', '#/rides', '#/inventory', '#/inventory?tab=history', '#/inventory?tab=shopping', '#/settings']) {
     await phone.goto(BASE + route)
     await phone.waitForTimeout(400)
     const of = await phone.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1)
@@ -183,7 +225,8 @@ async function sheetButton(page, name) {
   fs.writeFileSync(path.join(OUT, 'results.json'), JSON.stringify(results, null, 2))
   console.log(`\n${results.length - failed.length}/${results.length} checks passed`)
   process.exit(failed.length ? 1 : 0)
-})().catch((e) => {
+})().catch(async (e) => {
   console.error('E2E ABORTED:', e.message)
+  if (current) await current.screenshot({ path: path.join(OUT, 'abort.png'), fullPage: true }).catch(() => {})
   process.exit(2)
 })

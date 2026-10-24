@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { api, newOpId } from '../api'
 import LogMaintenance from '../components/LogMaintenance'
+import { DispositionForm, MoveForm, OutcomeChoice, RemoveForm, ReplaceForm } from '../components/PartChange'
 import TaskList from '../components/TaskList'
 import { Card, ChangeNotice, Empty, ErrorBox, Field, FormError, Loading, Sheet, Tag } from '../components/ui'
 import { useApp } from '../context'
@@ -126,38 +127,597 @@ export function ComponentForm({ onSaved, presetType }: { onSaved: (c: ComponentS
   )
 }
 
-export default function InventoryPage() {
-  const [params, setParams] = useSearchParams()
-  const tab = params.get('tab') ?? 'parts'
-  const [state, setState] = useState('')
-  const [adding, setAdding] = useState(false)
-  const nav = useNavigate()
-  const parts = useApi<ComponentSummary[]>(tab === 'parts' ? `/components${state ? `?state=${state}` : ''}` : null)
-  const chains = useApi<ChainRow[]>(tab === 'chains' ? '/chains' : null)
-  const cons = useApi<{ id: number; kind: string; name: string; unit: string; track_stock: boolean; stock: { qty: number; known: boolean } | null; purchases: number; uses: number }[]>(tab === 'consumables' ? '/consumables' : null)
+interface ItemRow {
+  id: number
+  label: string
+  type_name: string
+  component_type: string
+  product: string | null
+  state: string
+  state_text: string
+  readiness: string | null
+  readiness_text: string | null
+  condition: 'NEW' | 'USED'
+  storage_location: string | null
+  location: { text: string }
+  usage: ComponentSummary['usage']
+  compatibility: { bike: string | null; verified: boolean }[]
+}
+
+interface StockLine {
+  id: number
+  name: string
+  kind: string
+  unit: string
+  unit_note: string | null
+  tracking_mode: 'COUNTED' | 'BULK'
+  component_type: string | null
+  product_id: number | null
+  product: string | null
+  storage_location: string | null
+  min_stock: number | null
+  track_stock: boolean
+  stock: { qty: number; known: boolean } | null
+  individual_spares: { id: number; label: string }[]
+  available_total: number | null
+  low: boolean
+  purchases: number
+  uses: number
+  spent_cents: number
+  compatibility: { bike: string | null; verified: boolean }[]
+}
+
+interface WorkSessionRow {
+  id: number
+  performed_at: string
+  title: string | null
+  undone_at: string | null
+  undo_reason: string | null
+  cost_cents: number
+  transactions: { kind: string; text: string; voided?: boolean }[]
+}
+
+interface InventoryView {
+  stock: StockLine[]
+  supplies: StockLine[]
+  available: ItemRow[]
+  needs_service: ItemRow[]
+  installed: ItemRow[]
+  out_of_use: ItemRow[]
+  shopping_list: { consumable_id: number; name: string; unit: string; available: number; min_stock: number; suggested_qty: number; text: string }[]
+  history: { component_id: number; label: string; text: string; on: string; note: string | null; voided: boolean }[]
+  sessions: WorkSessionRow[]
+}
+
+const TABS: [string, string][] = [
+  ['available', 'Available spares'],
+  ['service', 'Needs prep / repair'],
+  ['installed', 'Installed'],
+  ['shopping', 'Shopping list'],
+  ['history', 'History'],
+  ['chains', 'Chains'],
+  ['supplies', 'Supplies'],
+  ['all', 'All parts'],
+]
+
+const euro = (c: number | null | undefined) => (c ? `${(c / 100).toLocaleString(undefined, { style: 'currency', currency: 'EUR' })}` : '')
+const plural = (n: number, unit: string) => {
+  if (n === 1 || /s$/.test(unit)) return `${n.toLocaleString()} ${unit}`
+  return `${n.toLocaleString()} ${unit}${/(ch|sh|x)$/.test(unit) ? 'es' : 's'}`
+}
+
+function Compat({ rows }: { rows: { bike: string | null; verified: boolean }[] }) {
+  if (!rows.length) return null
   return (
-    <Card title="Inventory" actions={<button className="btn btn-primary" onClick={() => setAdding(true)}>Add part</button>}>
-      <div className="tabs" role="tablist">
+    <span className="small">
+      {' · fits '}
+      {rows.map((r, i) => (
+        <span key={i}>
+          {i > 0 && ', '}
+          {r.bike}
+          {!r.verified && <span className="muted"> (unverified)</span>}
+        </span>
+      ))}
+    </span>
+  )
+}
+
+function ItemList({ rows, empty }: { rows: ItemRow[]; empty: string }) {
+  const [type, setType] = useState('')
+  const [q, setQ] = useState('')
+  const types = Array.from(new Set(rows.map((r) => r.type_name))).sort()
+  const shown = rows.filter((r) => (!type || r.type_name === type) && (!q || `${r.label} ${r.product ?? ''} ${r.storage_location ?? ''}`.toLowerCase().includes(q.toLowerCase())))
+  if (!rows.length) return <Empty title={empty} />
+  return (
+    <>
+      <div className="filters">
+        <select value={type} onChange={(e) => setType(e.target.value)} aria-label="Type">
+          <option value="">All types</option>
+          {types.map((t) => (
+            <option key={t}>{t}</option>
+          ))}
+        </select>
+        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search name, model, location" aria-label="Search" />
+      </div>
+      <ul className="list rows">
+        {shown.map((r) => (
+          <li key={r.id}>
+            <span>
+              <Link to={`/inventory/${r.id}`}>
+                <strong>{r.label}</strong>
+              </Link>
+              {r.product && <span className="muted"> — {r.product}</span>}
+              <br />
+              <span className="small">
+                {r.state === 'INSTALLED' ? r.location.text : r.state_text}
+                {r.readiness_text && r.state !== 'INSTALLED' && ` · ${r.readiness_text}`}
+                {` · ${usageText(r.usage)} lifetime`}
+                {r.storage_location && ` · ${r.storage_location}`}
+              </span>
+              <Compat rows={r.compatibility} />
+            </span>
+            {r.readiness === 'READY' && <Tag tone="good">ready</Tag>}
+            {(r.readiness === 'NEEDS_PREPARATION' || r.readiness === 'NEEDS_REPAIR') && <Tag tone="warn">{r.readiness === 'NEEDS_REPAIR' ? 'repair' : 'prepare'}</Tag>}
+            {r.readiness === 'WORN' && <Tag tone="bad">worn</Tag>}
+          </li>
+        ))}
+      </ul>
+    </>
+  )
+}
+
+function StockTxnForm({ line, onDone }: { line: StockLine; onDone: (msg: string) => void }) {
+  const [f, setF] = useState({ kind: 'PURCHASE', qty: '', packages: '', price: '', note: '', on: today() })
+  const [err, setErr] = useState<string | null>(null)
+  const [opId, setOpId] = useState(newOpId)
+  async function save() {
+    setErr(null)
+    try {
+      const qty = f.qty === '' ? null : Number(f.qty.replace(',', '.'))
+      await api.post(`/consumables/${line.id}/txn`, { kind: f.kind, qty, on: f.on, note: f.note || null, packages: f.packages ? Number(f.packages) : null, cost_cents: f.price ? Math.round(Number(f.price.replace(',', '.')) * 100) : null }, opId)
+      setOpId(newOpId())
+      onDone({ PURCHASE: 'Purchase recorded.', RETURN: 'Return recorded.', ADJUST: 'Stock corrected.', USE: 'Use recorded.' }[f.kind] ?? 'Saved.')
+    } catch (e) {
+      setErr((e as Error).message)
+    }
+  }
+  return (
+    <div className="form">
+      <div className="chips">
         {[
-          ['parts', 'Parts'],
-          ['chains', 'Chains'],
-          ['consumables', 'Consumables'],
+          ['PURCHASE', 'Bought'],
+          ['RETURN', 'Returned to shop'],
+          ['ADJUST', 'Correct the count'],
+          ...(line.tracking_mode === 'BULK' ? [['USE', 'Used']] : []),
         ].map(([k, l]) => (
-          <button key={k} role="tab" aria-selected={tab === k} className={`tab ${tab === k ? 'tab-on' : ''}`} onClick={() => setParams({ tab: k })}>
+          <button key={k} className={`chip ${f.kind === k ? 'chip-on' : ''}`} onClick={() => setF({ ...f, kind: k })}>
             {l}
           </button>
         ))}
       </div>
-      {tab === 'parts' && (
-        <>
-          <div className="filters">
-            <select value={state} onChange={(e) => setState(e.target.value)} aria-label="Filter">
-              <option value="">All parts</option>
-              <option value="INSTALLED">Installed</option>
-              <option value="STORED">Spares in storage</option>
-              <option value="RETIRED">Retired</option>
+      <div className="row">
+        <Field label={f.kind === 'ADJUST' ? `Change (+/− ${line.unit}s)` : `Quantity (${line.unit}s)`} hint={line.unit_note ?? undefined}>
+          <input inputMode="decimal" value={f.qty} onChange={(e) => setF({ ...f, qty: e.target.value })} placeholder={line.tracking_mode === 'BULK' ? 'optional' : ''} />
+        </Field>
+        {f.kind === 'PURCHASE' && (
+          <Field label="Packages (optional)" hint="A pack of 2 links = 1 package, 2 links.">
+            <input inputMode="numeric" value={f.packages} onChange={(e) => setF({ ...f, packages: e.target.value })} />
+          </Field>
+        )}
+        {(f.kind === 'PURCHASE' || f.kind === 'RETURN') && (
+          <Field label="Total € (optional)">
+            <input inputMode="decimal" value={f.price} onChange={(e) => setF({ ...f, price: e.target.value })} />
+          </Field>
+        )}
+      </div>
+      <div className="row">
+        <Field label="On">
+          <input type="date" value={f.on} onChange={(e) => setF({ ...f, on: e.target.value })} />
+        </Field>
+        <Field label={f.kind === 'ADJUST' ? 'Why (required)' : 'Note (optional)'}>
+          <input value={f.note} onChange={(e) => setF({ ...f, note: e.target.value })} placeholder={f.kind === 'ADJUST' ? 'counted the drawer' : ''} />
+        </Field>
+      </div>
+      <FormError error={err} />
+      <div className="form-actions">
+        <button className="btn btn-primary" onClick={save}>
+          Save
+        </button>
+      </div>
+    </div>
+  )
+}
+
+function InstallFromStock({ line, onDone }: { line: StockLine; onDone: (msg: string) => void }) {
+  const bikes = useApi<Bike[]>('/bikes')
+  const { meta } = useApp()
+  const ctype = meta.component_types.find((t) => t.code === line.component_type)
+  const [f, setF] = useState({ bike: '', slot: ctype?.slots[0] ?? '', parent: '', at: today() })
+  const setup = useApi<{ setup: { component_id: number; label: string; component_type: string }[] }>(f.bike && ctype?.parent_types.length ? `/bikes/${f.bike}` : null)
+  const [err, setErr] = useState<string | null>(null)
+  const [opId] = useState(newOpId)
+  async function save() {
+    setErr(null)
+    try {
+      const r = await api.post<OpResult<{ label: string }>>(`/consumables/${line.id}/install`, { at: f.at, bike_id: f.parent ? null : Number(f.bike), parent_component_id: f.parent ? Number(f.parent) : null, slot: f.slot || null }, opId)
+      onDone(`${r.result.label} installed from stock. ${r.change.notice}`)
+    } catch (e) {
+      setErr((e as Error).message)
+    }
+  }
+  return (
+    <div className="form">
+      <p className="small muted">One {line.unit} leaves the stock count and becomes an individual part with its own history.</p>
+      <div className="row">
+        <Field label="Bike">
+          <select value={f.bike} onChange={(e) => setF({ ...f, bike: e.target.value, parent: '' })}>
+            <option value="">Pick…</option>
+            {bikes.data?.filter((b) => b.status === 'ACTIVE').map((b) => (
+              <option key={b.id} value={b.id}>
+                {b.name}
+              </option>
+            ))}
+          </select>
+        </Field>
+        {ctype && ctype.parent_types.length > 0 && (
+          <Field label="Mounted on">
+            <select value={f.parent} onChange={(e) => setF({ ...f, parent: e.target.value })}>
+              <option value="">Pick…</option>
+              {setup.data?.setup.filter((r) => ctype.parent_types.includes(r.component_type)).map((r) => (
+                <option key={r.component_id} value={r.component_id}>
+                  {r.label}
+                </option>
+              ))}
             </select>
+          </Field>
+        )}
+        {ctype && ctype.slots.length > 1 && (
+          <Field label="Position">
+            <select value={f.slot} onChange={(e) => setF({ ...f, slot: e.target.value })}>
+              {ctype.slots.map((s) => (
+                <option key={s} value={s}>
+                  {slotName(s)}
+                </option>
+              ))}
+            </select>
+          </Field>
+        )}
+        <Field label="Installed on">
+          <input type="date" value={f.at} onChange={(e) => setF({ ...f, at: e.target.value })} />
+        </Field>
+      </div>
+      <FormError error={err} />
+      <div className="form-actions">
+        <button className="btn btn-primary" disabled={!f.bike} onClick={save}>
+          Install one
+        </button>
+      </div>
+    </div>
+  )
+}
+
+function AddStockForm({ mode, onDone }: { mode: 'COUNTED' | 'BULK'; onDone: (msg: string) => void }) {
+  const { meta } = useApp()
+  const [f, setF] = useState({ component_type: mode === 'COUNTED' ? 'INNER_TUBE' : '', maker: '', model: '', name: '', kind: 'WAX', unit: mode === 'BULK' ? 'ml' : '', qty: '', location: '', min: '', track: true })
+  const [err, setErr] = useState<string | null>(null)
+  const [opId] = useState(newOpId)
+  async function save() {
+    setErr(null)
+    try {
+      let product_id: number | null = null
+      if (f.component_type && f.model.trim()) {
+        const p = await api.post<{ id: number }>('/products', { component_type: f.component_type, maker: f.maker || null, model: f.model })
+        product_id = p.id
+      }
+      const body: Record<string, unknown> = { storage_location: f.location || null, min_stock: f.min ? Number(f.min) : null, name: f.name || null }
+      if (mode === 'COUNTED') Object.assign(body, f.component_type ? { component_type: f.component_type, product_id } : { tracking_mode: 'COUNTED', kind: 'OTHER', unit: f.unit || 'pcs' })
+      else Object.assign(body, { tracking_mode: 'BULK', kind: f.kind, unit: f.unit || 'ml', track_stock: f.track })
+      const line = await api.post<{ id: number }>('/consumables', body, opId)
+      if (f.qty) await api.post(`/consumables/${line.id}/txn`, { kind: 'PURCHASE', qty: Number(f.qty), on: today() })
+      onDone('Stock added.')
+    } catch (e) {
+      setErr((e as Error).message)
+    }
+  }
+  return (
+    <div className="form">
+      {mode === 'COUNTED' ? (
+        <>
+          <Field label="What" hint="Spare parts get their own history when installed. Pick 'Other' for patches or coin cells.">
+            <select value={f.component_type} onChange={(e) => setF({ ...f, component_type: e.target.value })}>
+              {meta.component_types.filter((t) => t.code !== 'OTHER').map((t) => (
+                <option key={t.code} value={t.code}>
+                  {t.name}
+                </option>
+              ))}
+              <option value="">Other counted item (patches, coin cells…)</option>
+            </select>
+          </Field>
+          {f.component_type ? (
+            <div className="row">
+              <Field label="Maker (optional)">
+                <input value={f.maker} onChange={(e) => setF({ ...f, maker: e.target.value })} />
+              </Field>
+              <Field label="Model (optional)">
+                <input value={f.model} onChange={(e) => setF({ ...f, model: e.target.value })} />
+              </Field>
+            </div>
+          ) : (
+            <div className="row">
+              <Field label="Name">
+                <input value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} placeholder="Park GP-2 patches" />
+              </Field>
+              <Field label="Unit">
+                <input value={f.unit} onChange={(e) => setF({ ...f, unit: e.target.value })} placeholder="patch" />
+              </Field>
+            </div>
+          )}
+        </>
+      ) : (
+        <div className="row">
+          <Field label="Kind">
+            <select value={f.kind} onChange={(e) => setF({ ...f, kind: e.target.value })}>
+              {['WAX', 'LUBE', 'SEALANT', 'BRAKE_FLUID', 'GREASE', 'OTHER'].map((k) => (
+                <option key={k}>{k}</option>
+              ))}
+            </select>
+          </Field>
+          <Field label="Product name">
+            <input value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} />
+          </Field>
+          <Field label="Unit">
+            <input value={f.unit} onChange={(e) => setF({ ...f, unit: e.target.value })} />
+          </Field>
+        </div>
+      )}
+      <div className="row">
+        <Field label="In stock now (optional)">
+          <input inputMode="decimal" value={f.qty} onChange={(e) => setF({ ...f, qty: e.target.value })} />
+        </Field>
+        <Field label="Storage location (optional)">
+          <input value={f.location} onChange={(e) => setF({ ...f, location: e.target.value })} placeholder="Workshop drawer" />
+        </Field>
+        <Field label="Minimum stock (optional)">
+          <input inputMode="decimal" value={f.min} onChange={(e) => setF({ ...f, min: e.target.value })} />
+        </Field>
+      </div>
+      {mode === 'BULK' && (
+        <label className="check">
+          <input type="checkbox" checked={f.track} onChange={(e) => setF({ ...f, track: e.target.checked })} /> Track the amount in stock
+        </label>
+      )}
+      <FormError error={err} />
+      <div className="form-actions">
+        <button className="btn btn-primary" disabled={mode === 'BULK' ? !f.name : !f.component_type && !f.name} onClick={save}>
+          Add
+        </button>
+      </div>
+    </div>
+  )
+}
+
+function StockLines({ lines, onChange, empty }: { lines: StockLine[]; onChange: (msg: string) => void; empty: string }) {
+  const [sheet, setSheet] = useState<null | { txn: StockLine } | { install: StockLine }>(null)
+  if (!lines.length) return <Empty title={empty} />
+  return (
+    <>
+      <ul className="list rows">
+        {lines.map((l) => (
+          <li key={l.id}>
+            <span>
+              <strong>{l.name}</strong>
+              <br />
+              <span className="small">
+                {l.stock ? (l.tracking_mode === 'COUNTED' ? plural(l.stock.qty, `new ${l.unit}`) : `${l.stock.qty.toLocaleString()} ${l.unit}${l.stock.known ? '' : ' (some uses not measured)'}`) : 'amount not tracked'}
+                {l.individual_spares.length > 0 && ` + ${l.individual_spares.length} individual spare${l.individual_spares.length === 1 ? '' : 's'}`}
+                {l.storage_location && ` · ${l.storage_location}`}
+                {l.min_stock !== null && ` · Minimum: ${l.min_stock}`}
+                {l.spent_cents ? ` · spent ${euro(l.spent_cents)}` : ''}
+              </span>
+              {l.unit_note && <span className="muted small"> · 1 {l.unit} = {l.unit_note}</span>}
+              <Compat rows={l.compatibility} />
+            </span>
+            {l.low && <Tag tone="warn">below minimum</Tag>}
+            <span className="row-actions">
+              <button className="btn btn-small" onClick={() => setSheet({ txn: l })}>
+                Stock change
+              </button>
+              {l.component_type && (l.stock?.qty ?? 0) >= 1 && (
+                <button className="btn btn-small" onClick={() => setSheet({ install: l })}>
+                  Install one
+                </button>
+              )}
+            </span>
+          </li>
+        ))}
+      </ul>
+      {sheet && 'txn' in sheet && (
+        <Sheet title={sheet.txn.name} onClose={() => setSheet(null)}>
+          <StockTxnForm line={sheet.txn} onDone={(m) => { setSheet(null); onChange(m) }} />
+        </Sheet>
+      )}
+      {sheet && 'install' in sheet && (
+        <Sheet title={`Install from stock · ${sheet.install.name}`} onClose={() => setSheet(null)}>
+          <InstallFromStock line={sheet.install} onDone={(m) => { setSheet(null); onChange(m) }} />
+        </Sheet>
+      )}
+    </>
+  )
+}
+
+function Sessions({ rows, onChange }: { rows: WorkSessionRow[]; onChange: (msg: string) => void }) {
+  const [err, setErr] = useState<string | null>(null)
+  async function undo(id: number) {
+    const reason = window.prompt('Undo this whole entry? Stock, installations and the old part come back. Reason (optional):', '')
+    if (reason === null) return
+    setErr(null)
+    try {
+      const r = await api.post<OpResult<unknown>>(`/work-sessions/${id}/undo`, { reason: reason || null }, newOpId())
+      onChange(`Undone. ${r.change.notice}`)
+    } catch (e) {
+      setErr((e as Error).message)
+    }
+  }
+  const meaningful = rows.filter((r) => r.transactions.length > 0)
+  if (!meaningful.length) return <Empty title="No changes recorded yet" />
+  return (
+    <>
+      <FormError error={err} />
+      <ul className="list rows">
+        {meaningful.map((w) => (
+          <li key={w.id} className={w.undone_at ? 'excluded' : ''}>
+            <span>
+              <strong>{w.title ?? 'Work'}</strong> <span className="muted small">{when(w.performed_at)}</span>
+              {w.cost_cents ? <span className="small"> · {euro(w.cost_cents)}</span> : null}
+              <br />
+              <span className="small">{w.transactions.map((t) => t.text).join(' · ')}</span>
+              {w.undone_at && <span className="small"> · undone{w.undo_reason ? `: ${w.undo_reason}` : ''}</span>}
+            </span>
+            {!w.undone_at && (
+              <button className="btn btn-small" onClick={() => undo(w.id)}>
+                Undo
+              </button>
+            )}
+          </li>
+        ))}
+      </ul>
+    </>
+  )
+}
+
+export default function InventoryPage() {
+  const { toast } = useApp()
+  const [params, setParams] = useSearchParams()
+  const tab = params.get('tab') ?? 'available'
+  const [sheet, setSheet] = useState<null | 'part' | 'stock' | 'supply'>(null)
+  const nav = useNavigate()
+  const view = useApi<InventoryView>(['chains', 'all'].includes(tab) ? null : '/inventory')
+  const parts = useApi<ComponentSummary[]>(tab === 'all' ? '/components' : null)
+  const chains = useApi<ChainRow[]>(tab === 'chains' ? '/chains' : null)
+  const changed = (msg: string) => {
+    setSheet(null)
+    toast(msg)
+    view.reload()
+  }
+  const v = view.data
+  return (
+    <Card
+      title="Inventory"
+      actions={
+        <>
+          <button className="btn btn-primary" onClick={() => setSheet('part')}>
+            Add part
+          </button>
+          <button className="btn" onClick={() => setSheet('stock')}>
+            Add spare stock
+          </button>
+          <button className="btn" onClick={() => setSheet('supply')}>
+            Add supply
+          </button>
+        </>
+      }
+    >
+      <div className="tabs" role="tablist">
+        {TABS.map(([k, l]) => (
+          <button key={k} role="tab" aria-selected={tab === k} className={`tab ${tab === k ? 'tab-on' : ''}`} onClick={() => setParams({ tab: k })}>
+            {l}
+            {k === 'shopping' && v && v.shopping_list.length > 0 && <span className="count">{v.shopping_list.length}</span>}
+            {k === 'service' && v && v.needs_service.length > 0 && <span className="count">{v.needs_service.length}</span>}
+          </button>
+        ))}
+      </div>
+      {!['chains', 'all'].includes(tab) && view.loading && !v && <Loading />}
+      {!['chains', 'all'].includes(tab) && view.error && <ErrorBox error={view.error} onRetry={view.reload} />}
+      {tab === 'available' && v && (
+        <>
+          <h3>Spare stock</h3>
+          <StockLines lines={v.stock} onChange={changed} empty="No spare stock yet. Add tubes, pad sets or quick links as a count." />
+          <h3>Individual spares</h3>
+          <ItemList rows={v.available} empty="No individual spares. Parts you take off and store appear here with their history." />
+        </>
+      )}
+      {tab === 'service' && v && <ItemList rows={v.needs_service} empty="Nothing waits for preparation or repair." />}
+      {tab === 'installed' && v && <ItemList rows={v.installed} empty="Nothing installed yet." />}
+      {tab === 'shopping' && v && (
+        <>
+          <p className="small muted">Suggestions only, from the minimum stock you set. Nothing is ordered.</p>
+          {v.shopping_list.length === 0 ? (
+            <Empty title="Nothing below minimum">Set a minimum on a stock line to get reminders.</Empty>
+          ) : (
+            <ul className="list rows">
+              {v.shopping_list.map((s) => (
+                <li key={s.consumable_id}>
+                  <span>
+                    <strong>{s.name}</strong>
+                    <br />
+                    <span className="small">
+                      Buy {plural(s.suggested_qty, s.unit)} · {s.available} available, minimum {s.min_stock}
+                    </span>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </>
+      )}
+      {tab === 'history' && v && (
+        <>
+          <h3>Changes (can be undone)</h3>
+          <Sessions rows={v.sessions} onChange={changed} />
+          <h3>What happened to parts</h3>
+          {v.history.length === 0 ? (
+            <Empty title="No removed parts yet" />
+          ) : (
+            <ul className="list">
+              {v.history.map((h, i) => (
+                <li key={i} className={h.voided ? 'excluded' : ''}>
+                  <span>{when(h.on)}</span>
+                  <Link to={`/inventory/${h.component_id}`}>{h.label}</Link>
+                  <span className="small">
+                    {h.text}
+                    {h.note ? ` · ${h.note}` : ''}
+                    {h.voided ? ' · undone' : ''}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+          {v.out_of_use.length > 0 && (
+            <>
+              <h3>Out of use (kept for history)</h3>
+              <ItemList rows={v.out_of_use} empty="" />
+            </>
+          )}
+        </>
+      )}
+      {tab === 'supplies' && v && (
+        <>
+          <p className="small muted">Bulk supplies: wax, sealant, fluid, grease. The amount used per job is optional.</p>
+          <StockLines lines={v.supplies} onChange={changed} empty="No supplies yet." />
+        </>
+      )}
+      {tab === 'chains' && (
+        <>
+          {chains.loading && !chains.data && <Loading />}
+          {chains.error && <ErrorBox error={chains.error} onRetry={chains.reload} />}
+          {chains.data?.length === 0 && <Empty title="No chains yet">Add Chain A, B and C to rotate waxed chains.</Empty>}
+          <div className="cards">
+            {chains.data?.map((c) => (
+              <Link to={`/inventory/${c.component_id}`} key={c.component_id} className="tile">
+                <strong>{c.label}</strong>
+                <ChainStateTag state={c.state} />
+                <span className="small">{c.text}</span>
+                <span className="muted small">
+                  Lifetime {km(c.lifetime_km, 0)}
+                  {c.last_wear ? ` · wear ${c.last_wear.value ?? '?'}${c.last_wear.unit ?? ''} on ${when(c.last_wear.date)}` : ' · wear not measured'}
+                </span>
+              </Link>
+            ))}
           </div>
+        </>
+      )}
+      {tab === 'all' && (
+        <>
           {parts.loading && !parts.data && <Loading />}
           {parts.error && <ErrorBox error={parts.error} onRetry={parts.reload} />}
           {parts.data?.length === 0 && <Empty title="No parts here">Add a part with just a type and a name.</Empty>}
@@ -189,134 +749,36 @@ export default function InventoryPage() {
           )}
         </>
       )}
-      {tab === 'chains' && (
-        <>
-          {chains.loading && !chains.data && <Loading />}
-          {chains.error && <ErrorBox error={chains.error} onRetry={chains.reload} />}
-          {chains.data?.length === 0 && <Empty title="No chains yet">Add Chain A, B and C to rotate waxed chains.</Empty>}
-          <div className="cards">
-            {chains.data?.map((c) => (
-              <Link to={`/inventory/${c.component_id}`} key={c.component_id} className="tile">
-                <strong>{c.label}</strong>
-                <ChainStateTag state={c.state} />
-                <span className="small">{c.text}</span>
-                <span className="muted small">
-                  Lifetime {km(c.lifetime_km, 0)}
-                  {c.last_wear ? ` · wear ${c.last_wear.value ?? '?'}${c.last_wear.unit ?? ''} on ${when(c.last_wear.date)}` : ' · wear not measured'}
-                </span>
-              </Link>
-            ))}
-          </div>
-        </>
-      )}
-      {tab === 'consumables' && <Consumables data={cons.data} loading={cons.loading} error={cons.error} reload={cons.reload} />}
-      {adding && (
-        <Sheet title="Add part" onClose={() => setAdding(false)}>
+      {sheet === 'part' && (
+        <Sheet title="Add part" onClose={() => setSheet(null)}>
           <ComponentForm presetType={tab === 'chains' ? 'CHAIN' : undefined} onSaved={(c) => nav(`/inventory/${c.id}`)} />
+        </Sheet>
+      )}
+      {sheet === 'stock' && (
+        <Sheet title="Add spare stock" onClose={() => setSheet(null)}>
+          <AddStockForm mode="COUNTED" onDone={changed} />
+        </Sheet>
+      )}
+      {sheet === 'supply' && (
+        <Sheet title="Add supply" onClose={() => setSheet(null)}>
+          <AddStockForm mode="BULK" onDone={changed} />
         </Sheet>
       )}
     </Card>
   )
 }
 
-function Consumables({ data, loading, error, reload }: { data: { id: number; kind: string; name: string; unit: string; track_stock: boolean; stock: { qty: number; known: boolean } | null; purchases: number; uses: number }[] | null; loading: boolean; error: string | null; reload: () => void }) {
-  const [f, setF] = useState({ kind: 'WAX', name: '', unit: 'ml', track_stock: false })
-  const [buy, setBuy] = useState<{ id: number; qty: string } | null>(null)
-  const [err, setErr] = useState<string | null>(null)
-  async function add() {
-    setErr(null)
-    try {
-      await api.post('/consumables', f)
-      setF({ ...f, name: '' })
-      reload()
-    } catch (e) {
-      setErr((e as Error).message)
-    }
-  }
-  async function purchase() {
-    if (!buy) return
-    setErr(null)
-    try {
-      await api.post(`/consumables/${buy.id}/txn`, { kind: 'PURCHASE', qty: buy.qty ? Number(buy.qty) : null, on: today() })
-      setBuy(null)
-      reload()
-    } catch (e) {
-      setErr((e as Error).message)
-    }
-  }
-  return (
-    <>
-      {loading && !data && <Loading />}
-      {error && <ErrorBox error={error} onRetry={reload} />}
-      {data?.length === 0 && <Empty title="No consumables yet">Wax, lube, sealant and brake fluid are tracked by product; stock is optional.</Empty>}
-      {data && data.length > 0 && (
-        <table className="table">
-          <thead>
-            <tr>
-              <th>Product</th>
-              <th>Kind</th>
-              <th>Stock</th>
-              <th>Bought / used</th>
-              <th />
-            </tr>
-          </thead>
-          <tbody>
-            {data.map((c) => (
-              <tr key={c.id}>
-                <td>{c.name}</td>
-                <td>{c.kind.toLowerCase()}</td>
-                <td>{c.stock ? `${c.stock.qty} ${c.unit}${c.stock.known ? '' : ' (some uses unknown)'}` : 'not tracked'}</td>
-                <td>
-                  {c.purchases} / {c.uses}
-                </td>
-                <td>
-                  {buy?.id === c.id ? (
-                    <span className="row">
-                      <input inputMode="decimal" placeholder={c.unit} value={buy.qty} onChange={(e) => setBuy({ id: c.id, qty: e.target.value })} />
-                      <button className="btn btn-small btn-primary" onClick={purchase}>
-                        Save
-                      </button>
-                    </span>
-                  ) : (
-                    <button className="btn btn-small" onClick={() => setBuy({ id: c.id, qty: '' })}>
-                      Record purchase
-                    </button>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
-      <h3>Add a consumable</h3>
-      <div className="row">
-        <select value={f.kind} onChange={(e) => setF({ ...f, kind: e.target.value })} aria-label="Kind">
-          {['WAX', 'LUBE', 'SEALANT', 'BRAKE_FLUID', 'GREASE', 'OTHER'].map((k) => (
-            <option key={k}>{k}</option>
-          ))}
-        </select>
-        <input value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} placeholder="Product name" aria-label="Product name" />
-        <input value={f.unit} onChange={(e) => setF({ ...f, unit: e.target.value })} aria-label="Unit" style={{ maxWidth: '5rem' }} />
-        <label className="check">
-          <input type="checkbox" checked={f.track_stock} onChange={(e) => setF({ ...f, track_stock: e.target.checked })} /> track stock
-        </label>
-        <button className="btn" disabled={!f.name} onClick={add}>
-          Add
-        </button>
-      </div>
-      <FormError error={err} />
-    </>
-  )
-}
-
 interface ComponentDetail extends ComponentSummary {
   ledger: { kind: string; date: string; km: number; ride_id?: number; ride_name?: string | null; bike?: string; slot?: string; basis?: string; counted: boolean; certain: boolean; is_estimate?: boolean; detail: string | null; running_km: number; state?: string }[]
-  history: { id: number; where: string; slot: string; installed_at: string; removed_at: string | null; removal_reason: string | null; voided: boolean; void_reason: string | null; km: number | null; note: string | null }[]
+  history: { id: number; where: string; slot: string; installed_at: string; removed_at: string | null; removal_reason: string | null; removal_outcome: string | null; voided: boolean; void_reason: string | null; km: number | null; note: string | null }[]
   service_status: Task[]
   rules: Rule[]
   events: EventRow[]
   actions: { code: string; name: string }[]
   specs: Record<string, unknown>
+  dispositions: { id: number; disposition: string; label: string; effective_on: string; note: string | null; voided: boolean }[]
+  inventory: ItemRow
+  suggested_outcome: string
 }
 
 function RuleEditor({ rule, componentId, onDone }: { rule: Rule; componentId: number; onDone: () => void }) {
@@ -391,8 +853,8 @@ export function ComponentDetailPage() {
   const { toast, meta } = useApp()
   const actionName = (code: string | null) => (meta.actions.find((a) => a.code === code)?.name ?? code ?? '').toLowerCase()
   const { data, error, loading, reload } = useApi<ComponentDetail>(`/components/${id}`)
-  const [sheet, setSheet] = useState<null | 'log' | 'start' | 'retire' | 'rule' | { rule: Rule } | { correct: number }>(null)
-  const [f, setF] = useState({ km: '', date: today(), estimate: true, reason: '', installed_at: '', removed_at: '', action_code: 'INSPECT', interval_km: '', interval_months: '' })
+  const [sheet, setSheet] = useState<null | 'log' | 'start' | 'retire' | 'rule' | 'replace' | 'remove' | 'move' | 'disposition' | { rule: Rule } | { correct: number }>(null)
+  const [f, setF] = useState({ km: '', date: today(), estimate: true, reason: '', installed_at: '', removed_at: '', action_code: 'INSPECT', interval_km: '', interval_months: '', retire_as: '' })
   const [preview, setPreview] = useState<Change | null>(null)
   const [err, setErr] = useState<string | null>(null)
   if (loading && !data) return <Loading />
@@ -426,6 +888,15 @@ export function ComponentDetailPage() {
     }
   }
   const u = data.usage
+  const installed = data.location.state === 'INSTALLED'
+  const ctype = meta.component_types.find((t) => t.code === data.component_type)
+  const canMove = !!ctype && (ctype.parent_types.length > 0 || ctype.slots.length > 1)
+  const inv = data.inventory
+  const changed = (c: Change) => {
+    toast(c.notice)
+    close()
+    reload()
+  }
   return (
     <div className="grid">
       <Card
@@ -436,11 +907,31 @@ export function ComponentDetailPage() {
           </>
         }
         actions={
-          data.status !== 'RETIRED' && (
+          data.status !== 'RETIRED' ? (
             <>
-              <button className="btn btn-primary" onClick={() => setSheet('log')}>
+              {installed && (
+                <button className="btn btn-primary" onClick={() => setSheet('replace')}>
+                  Replace
+                </button>
+              )}
+              <button className={installed ? 'btn' : 'btn btn-primary'} onClick={() => setSheet('log')}>
                 Log maintenance
               </button>
+              {installed && (
+                <button className="btn" onClick={() => setSheet('remove')}>
+                  Remove
+                </button>
+              )}
+              {installed && canMove && (
+                <button className="btn" onClick={() => setSheet('move')}>
+                  Move
+                </button>
+              )}
+              {!installed && (
+                <button className="btn" onClick={() => setSheet('disposition')}>
+                  Change status
+                </button>
+              )}
               <button className="btn" onClick={() => setSheet('start')}>
                 Starting km
               </button>
@@ -448,6 +939,12 @@ export function ComponentDetailPage() {
                 Retire
               </button>
             </>
+          ) : (
+            data.disposition !== 'VOIDED' && (
+              <button className="btn" onClick={() => setSheet('disposition')}>
+                Back in stock…
+              </button>
+            )
           )
         }
       >
@@ -461,8 +958,8 @@ export function ComponentDetailPage() {
             <span className="muted small">rides</span>
           </div>
           <div>
-            <span className="stat">{data.location.state === 'INSTALLED' ? 'Installed' : data.location.state === 'STORED' ? 'In storage' : 'Retired'}</span>
-            {data.location.state === 'INSTALLED' && <span className="muted small">{data.location.text}</span>}
+            <span className="stat">{inv.state_text}</span>
+            <span className="muted small">{installed ? data.location.text : [inv.readiness_text, data.storage_location].filter(Boolean).join(' · ')}</span>
           </div>
         </div>
         <p className="small">{u.summary}</p>
@@ -511,7 +1008,11 @@ export function ComponentDetailPage() {
                 <span className="small">
                   {when(h.installed_at)} → {h.removed_at ? when(h.removed_at) : 'now'}
                 </span>
-                <span className="small">{h.voided ? `void: ${h.void_reason}` : km(h.km)}</span>
+                <span className="small">
+                  {h.voided ? `void: ${h.void_reason}` : km(h.km)}
+                  {!h.voided && h.removal_outcome && ` · ${h.removal_outcome === 'MOVED' ? 'moved' : (meta.dispositions.find((d) => d.code === h.removal_outcome)?.label ?? '').toLowerCase()}`}
+                  {!h.voided && h.removal_reason && ` (${h.removal_reason})`}
+                </span>
                 {!h.voided && (
                   <button className="btn btn-small" onClick={() => { setF({ ...f, installed_at: h.installed_at.slice(0, 10), removed_at: h.removed_at?.slice(0, 10) ?? '' }); setSheet({ correct: h.id }) }}>
                     Correct
@@ -522,6 +1023,22 @@ export function ComponentDetailPage() {
           </ul>
         )}
       </Card>
+      {data.dispositions.length > 0 && (
+        <Card title="What happened to it">
+          <ul className="list">
+            {data.dispositions.map((d) => (
+              <li key={d.id} className={d.voided ? 'excluded' : ''}>
+                <span>{when(d.effective_on)}</span>
+                <span>{d.label}</span>
+                <span className="small">
+                  {d.note}
+                  {d.voided ? ' · undone' : ''}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      )}
       <Card title="Where the kilometres come from" className="span-2">
         {data.ledger.length === 0 ? (
           <Empty title="No usage recorded yet" />
@@ -592,6 +1109,26 @@ export function ComponentDetailPage() {
           <LogMaintenance componentId={data.id} onDone={(msg) => { close(); toast(msg); reload() }} />
         </Sheet>
       )}
+      {sheet === 'replace' && (
+        <Sheet title={`Replace ${data.label}`} onClose={close}>
+          <ReplaceForm componentId={data.id} onDone={(c, label) => { changed(c); toast(`${label} installed. ${c.notice}`) }} />
+        </Sheet>
+      )}
+      {sheet === 'remove' && (
+        <Sheet title={`Remove ${data.label}`} onClose={close}>
+          <RemoveForm componentId={data.id} suggested={data.suggested_outcome} onDone={changed} />
+        </Sheet>
+      )}
+      {sheet === 'move' && (
+        <Sheet title={`Move ${data.label}`} onClose={close}>
+          <MoveForm componentId={data.id} onDone={changed} />
+        </Sheet>
+      )}
+      {sheet === 'disposition' && (
+        <Sheet title={`Status of ${data.label}`} onClose={close}>
+          <DispositionForm componentId={data.id} current={data.disposition} onDone={() => { close(); toast('Saved.'); reload() }} />
+        </Sheet>
+      )}
       {sheet === 'start' && (
         <Sheet title="Starting mileage" onClose={close}>
           <div className="form">
@@ -624,6 +1161,7 @@ export function ComponentDetailPage() {
         <Sheet title={`Retire ${data.label}`} onClose={close}>
           <div className="form">
             <p className="small muted">The part and its history are kept. It is removed from its bike on that date.</p>
+            <OutcomeChoice name="retire" outcomes={meta.dispositions.filter((d) => ['RETIRED', 'DISCARDED', 'SOLD'].includes(d.code))} value={f.retire_as || (data.suggested_outcome === 'DISCARDED' ? 'DISCARDED' : 'RETIRED')} suggested={data.suggested_outcome === 'DISCARDED' ? 'DISCARDED' : 'RETIRED'} onChange={(v) => setF({ ...f, retire_as: v })} />
             <Field label="Retired on">
               <input type="date" value={f.date} onChange={(e) => setF({ ...f, date: e.target.value })} />
             </Field>
@@ -632,7 +1170,7 @@ export function ComponentDetailPage() {
             </Field>
             <FormError error={err} />
             <div className="form-actions">
-              <button className="btn btn-danger" onClick={() => plain(`/components/${data.id}/retire`, { on: f.date, reason: f.reason || null })}>
+              <button className="btn btn-danger" onClick={() => plain(`/components/${data.id}/retire`, { on: f.date, reason: f.reason || null, disposition: f.retire_as || (data.suggested_outcome === 'DISCARDED' ? 'DISCARDED' : 'RETIRED') })}>
                 Retire
               </button>
             </div>

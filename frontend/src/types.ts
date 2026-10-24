@@ -29,7 +29,8 @@ export interface Bike {
 }
 
 export interface Location {
-  state: 'INSTALLED' | 'STORED' | 'RETIRED'
+  state: 'INSTALLED' | 'STORED' | 'AWAITING_SERVICE' | 'RETIRED'
+  disposition?: string
   text: string
   bike_id?: number | null
   bike?: string | null
@@ -52,6 +53,8 @@ export interface ComponentSummary {
   purchase_date: string | null
   notes: string | null
   serial_number: string | null
+  disposition: string
+  storage_location: string | null
   location: Location
   usage: Usage
 }
@@ -160,6 +163,7 @@ export interface ComponentType {
   category: string
   slots: string[]
   parent_types: string[]
+  removed_default: string
 }
 
 export interface Profile {
@@ -180,6 +184,8 @@ export interface Meta {
   component_types: ComponentType[]
   actions: ActionDef[]
   profiles: Profile[]
+  dispositions: { code: string; label: string }[]
+  tracking_modes: { code: string; label: string }[]
 }
 
 export interface EventRow {

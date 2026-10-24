@@ -111,3 +111,48 @@ def test_demo_database_gets_sample_data(tmp_path):
         from bikelog.models import Bike
         assert s.scalar(select(func.count()).select_from(Bike)) == 2
     engine.dispose()
+
+
+def test_replacement_from_stock_over_http_with_inventory_tabs_and_undo(client):
+    bike = client.post("/api/bikes", json={"name": "TIME NXR"}).json()
+    prod = client.post("/api/products", json={"component_type": "BRAKE_PADS", "maker": "Shimano",
+                                               "model": "L05A-RF"}).json()
+    old = client.post("/api/components", json={
+        "component_type": "BRAKE_PADS", "label": "Rear pads", "prior_usage": "NEW", "product_id": prod["id"],
+        "install": {"at": "2026-01-01", "bike_id": bike["id"], "slot": "REAR_PADS"}}).json()
+    line = client.post("/api/consumables", json={"product_id": prod["id"], "storage_location": "Workshop drawer",
+                                                 "min_stock": 3}).json()
+    assert line["unit"] == "set"
+    client.post(f"/api/consumables/{line['id']}/txn", json={"kind": "PURCHASE", "qty": 3, "on": "2026-02-01"})
+    client.post(f"/api/products/{prod['id']}/compatibility", json={"bike_id": bike["id"], "verified": True})
+
+    opts = client.get(f"/api/components/{old['id']}/replace-options").json()
+    assert opts["suggested_outcome"] == "DISCARDED" and opts["location"]["slot"] == "REAR_PADS"
+    assert opts["stock"][0]["id"] == line["id"] and opts["stock"][0]["fit"] == "VERIFIED"
+
+    preview = client.post(f"/api/components/{old['id']}/replace?dry_run=true",
+                          json={"at": "2026-03-02", "from_stock_id": line["id"], "old_outcome": "DISCARDED"}).json()
+    assert preview["change"]["preview"]
+    assert client.get("/api/inventory").json()["stock"][0]["stock"]["qty"] == 3   # preview saved nothing
+
+    r = client.post(f"/api/components/{old['id']}/replace",
+                    json={"at": "2026-03-02", "from_stock_id": line["id"], "old_outcome": "DISCARDED",
+                          "reason": "worn"}, headers={"X-Client-Op-Id": "rep-1"}).json()
+    again = client.post(f"/api/components/{old['id']}/replace",
+                        json={"at": "2026-03-02", "from_stock_id": line["id"], "old_outcome": "DISCARDED",
+                              "reason": "worn"}, headers={"X-Client-Op-Id": "rep-1"}).json()
+    assert again["repeated"]                                           # retry does not use a second set
+    view = client.get("/api/inventory").json()
+    assert view["stock"][0]["stock"]["qty"] == 2 and view["stock"][0]["low"]
+    assert view["shopping_list"][0]["suggested_qty"] == 1
+    assert any(i["id"] == r["result"]["new_component_id"] for i in view["installed"])
+    assert any(h["label"] == "Rear pads" and h["disposition"] == "DISCARDED" for h in view["history"])
+    ws = client.get(f"/api/work-sessions/{r['result']['work_session_id']}").json()
+    assert {t["kind"] for t in ws["transactions"]} >= {"STOCK_USE", "REMOVE", "INSTALL", "DISPOSITION"}
+
+    undo = client.post(f"/api/work-sessions/{ws['id']}/undo", json={"reason": "test"})
+    assert undo.status_code == 200
+    view = client.get("/api/inventory").json()
+    assert view["stock"][0]["stock"]["qty"] == 3
+    detail = client.get(f"/api/components/{old['id']}").json()
+    assert detail["location"]["state"] == "INSTALLED" and detail["disposition"] == "STORED"

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { api, newOpId } from '../api'
 import LogMaintenance from '../components/LogMaintenance'
+import { MoveForm, RemoveForm, ReplaceForm } from '../components/PartChange'
 import TaskList from '../components/TaskList'
 import { Card, ChangeNotice, Empty, ErrorBox, Field, FormError, Loading, Sheet, StatusBadge, Tag } from '../components/ui'
 import { useApp } from '../context'
@@ -203,71 +204,29 @@ export function InstallForm({ bikeId, onDone }: { bikeId: number; onDone: (c: Ch
 }
 
 function PartActions({ row, onDone }: { row: SetupRow; onDone: (c: Change) => void }) {
-  const stored = useApi<ComponentSummary[]>(`/components?state=STORED&component_type=${row.component_type}`)
-  const [mode, setMode] = useState<'remove' | 'replace'>('replace')
-  const [f, setF] = useState({ at: today(), reason: '', new_component_id: 'same' })
-  const [preview, setPreview] = useState<Change | null>(null)
-  const [error, setError] = useState<string | null>(null)
-  async function run(dry: boolean) {
-    setError(null)
-    try {
-      const q = dry ? '?dry_run=true' : ''
-      const r =
-        mode === 'remove'
-          ? await api.post<OpResult<unknown>>(`/components/${row.component_id}/remove${q}`, { at: f.at, reason: f.reason || null })
-          : await api.post<OpResult<unknown>>(`/components/${row.component_id}/replace${q}`, {
-              at: f.at,
-              reason: f.reason || 'replaced',
-              ...(f.new_component_id === 'same' ? { same_product: true } : { new_component_id: Number(f.new_component_id) }),
-            })
-      if (dry) setPreview(r.change)
-      else onDone(r.change)
-    } catch (e) {
-      setError((e as Error).message)
-      setPreview(null)
-    }
-  }
+  const { meta } = useApp()
+  const ctype = meta.component_types.find((t) => t.code === row.component_type)
+  const canMove = !!ctype && (ctype.parent_types.length > 0 || ctype.slots.length > 1)
+  const [mode, setMode] = useState<'replace' | 'remove' | 'move'>('replace')
   return (
     <div className="form">
       <div className="chips">
         <button className={`chip ${mode === 'replace' ? 'chip-on' : ''}`} onClick={() => setMode('replace')}>
-          Replace / swap
+          Replace
         </button>
         <button className={`chip ${mode === 'remove' ? 'chip-on' : ''}`} onClick={() => setMode('remove')}>
-          Remove to storage
+          Remove
         </button>
+        {canMove && (
+          <button className={`chip ${mode === 'move' ? 'chip-on' : ''}`} onClick={() => setMode('move')}>
+            Move position
+          </button>
+        )}
       </div>
-      {mode === 'replace' && (
-        <Field label="New part" hint="Swapping chains? Pick the spare. 'Same product' creates a new part with the same product model.">
-          <select value={f.new_component_id} onChange={(e) => setF({ ...f, new_component_id: e.target.value })}>
-            <option value="same">New part, same product</option>
-            {stored.data?.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.label} ({usageText(c.usage)})
-              </option>
-            ))}
-          </select>
-        </Field>
-      )}
-      <div className="row">
-        <Field label="Effective date">
-          <input type="date" value={f.at} onChange={(e) => setF({ ...f, at: e.target.value })} />
-        </Field>
-        <Field label="Reason (optional)">
-          <input value={f.reason} onChange={(e) => setF({ ...f, reason: e.target.value })} placeholder="rotation, worn, crash…" />
-        </Field>
-      </div>
+      {mode === 'replace' && <ReplaceForm componentId={row.component_id} onDone={(c) => onDone(c)} />}
+      {mode === 'remove' && <RemoveForm componentId={row.component_id} suggested={ctype?.removed_default ?? 'STORED'} onDone={onDone} />}
+      {mode === 'move' && <MoveForm componentId={row.component_id} onDone={onDone} />}
       <p className="muted small">This is a real change of parts. If the record itself is wrong, open the part and correct its installation instead.</p>
-      <ChangeNotice change={preview} />
-      <FormError error={error} />
-      <div className="form-actions">
-        <button className="btn" onClick={() => run(true)}>
-          Preview mileage impact
-        </button>
-        <button className="btn btn-primary" onClick={() => run(false)}>
-          {mode === 'remove' ? 'Remove' : 'Replace'}
-        </button>
-      </div>
     </div>
   )
 }

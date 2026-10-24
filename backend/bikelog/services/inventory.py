@@ -98,7 +98,7 @@ def create_component(session: Session, *, component_type: str, label: str, produ
                      purchase_date: str | None = None, price_cents: int | None = None, notes: str | None = None,
                      specs: dict | None = None, starting_km: float | None = None, starting_date: str | None = None,
                      starting_is_estimate: bool = False, work_session_id: int | None = None,
-                     from_stock_txn_id: int | None = None) -> Component:
+                     from_stock_txn_id: int | None = None, storage_location: str | None = None) -> Component:
     """Only type and label are required; everything else (serial number, specs) can be added later.
     With a work session, price_cents is that session's purchase of this item."""
     _check_type(component_type)
@@ -120,7 +120,7 @@ def create_component(session: Session, *, component_type: str, label: str, produ
                      serial_number=serial_number, purchase_date=purchase_date, price_cents=price_cents, notes=notes,
                      specs_json=json.dumps(specs or {}), disposition="STORED",
                      purchase_session_id=work_session_id,
-                     from_stock_txn_id=from_stock_txn_id)
+                     from_stock_txn_id=from_stock_txn_id, storage_location=storage_location)
     session.add(comp)
     session.flush()
     if starting_km is not None:
@@ -131,7 +131,8 @@ def create_component(session: Session, *, component_type: str, label: str, produ
 
 def update_component(session: Session, component_id: int, **fields) -> Component:
     comp = get_component(session, component_id)
-    for k in ("label", "serial_number", "purchase_date", "price_cents", "notes", "product_id", "prior_usage"):
+    for k in ("label", "serial_number", "purchase_date", "price_cents", "notes", "product_id", "prior_usage",
+              "storage_location"):
         if k in fields:
             setattr(comp, k, fields[k])
     if "specs" in fields:

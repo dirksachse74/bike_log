@@ -19,16 +19,17 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ConfigDict
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError, OperationalError
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import Session, object_session, sessionmaker
 
 from bikelog import __version__, backup
 from bikelog.api.security import LocalSecurityMiddleware
-from bikelog.catalog import ACTIONS, COMPONENT_TYPES, action_applies
+from bikelog.catalog import ACTIONS, COMPONENT_TYPES, DISPOSITIONS, TRACKING_MODES, action_applies
 from bikelog.connectors.strava import sync as strava
 from bikelog.migrate import head_revision
 from bikelog.models import Bike, Component, Product, ServiceRule, UsageProfile
 from bikelog.paths import DataPaths, resource_root
-from bikelog.services import demo, imports
+from bikelog.services import demo, imports, spares, stock
+from bikelog.services import worksessions as ws_svc
 from bikelog.services import inventory as inv
 from bikelog.services import maintenance as m
 from bikelog.services import rides as rides_svc
@@ -107,6 +108,7 @@ class ComponentIn(Body):
     starting_km: float | None = None
     starting_date: str | None = None
     starting_is_estimate: bool = False
+    storage_location: str | None = None
     install: InstallIn | None = None
 
 
@@ -119,23 +121,72 @@ class ComponentPatch(Body):
     product_id: int | None = None
     prior_usage: str | None = None
     specs: dict | None = None
+    storage_location: str | None = None
 
 
 class RemoveIn(Body):
     at: str
     reason: str | None = None
+    outcome: str | None = None
+
+
+class NewItemIn(Body):
+    label: str | None = None
+    product_id: int | None = None
+    price_cents: int | None = None
+    purchase_date: str | None = None
+    prior_usage: str | None = None
+    notes: str | None = None
 
 
 class ReplaceIn(Body):
     at: str
     new_component_id: int | None = None
     same_product: bool = False
+    from_stock_id: int | None = None
+    new: NewItemIn | None = None
     new_label: str | None = None
-    reason: str | None = "replaced"
+    reason: str | None = None
+    old_outcome: str | None = None
+    session_notes: str | None = None
+
+
+class MoveIn(Body):
+    at: str
+    bike_id: int | None = None
+    parent_component_id: int | None = None
+    slot: str | None = None
+    swap: bool = False
+    reason: str | None = None
+
+
+class DispositionIn(Body):
+    disposition: str
+    on: str
+    note: str | None = None
 
 
 class RetireIn(Body):
     on: str
+    reason: str | None = None
+    disposition: str = "RETIRED"
+
+
+class StockInstallIn(Body):
+    at: str
+    bike_id: int | None = None
+    parent_component_id: int | None = None
+    slot: str | None = None
+    label: str | None = None
+
+
+class CompatIn(Body):
+    bike_id: int
+    verified: bool = False
+    note: str | None = None
+
+
+class UndoIn(Body):
     reason: str | None = None
 
 
@@ -209,6 +260,7 @@ class EventIn(Body):
     consumable_qty: float | None = None
     cost_cents: int | None = None
     notes: str | None = None
+    disposition_after: str | None = None
 
 
 class SnoozeIn(Body):
@@ -238,11 +290,29 @@ class ComponentRuleIn(RulePatch):
 
 
 class ConsumableIn(Body):
-    kind: str
-    name: str
+    kind: str = "OTHER"
+    name: str | None = None
     maker: str | None = None
-    unit: str = "ml"
+    unit: str | None = None
     track_stock: bool = False
+    notes: str | None = None
+    tracking_mode: str = "BULK"
+    component_type: str | None = None
+    product_id: int | None = None
+    unit_note: str | None = None
+    storage_location: str | None = None
+    min_stock: float | None = None
+    container_size: float | None = None
+
+
+class ConsumablePatch(Body):
+    name: str | None = None
+    maker: str | None = None
+    unit: str | None = None
+    unit_note: str | None = None
+    storage_location: str | None = None
+    min_stock: float | None = None
+    container_size: float | None = None
     notes: str | None = None
 
 
@@ -252,6 +322,7 @@ class TxnIn(Body):
     on: str
     cost_cents: int | None = None
     note: str | None = None
+    packages: int | None = None
 
 
 class SettingsPatch(Body):
@@ -325,7 +396,10 @@ def create_app(factory: sessionmaker[Session], paths: DataPaths, *, token: str |
             "version": __version__, "demo": demo.is_demo(s), "safety_note": m.SAFETY_NOTE,
             "settings": settings_svc.all_settings(s),
             "component_types": [{"code": t.code, "name": t.name, "category": t.category, "slots": list(t.slots),
-                                 "parent_types": list(t.parent_types)} for t in COMPONENT_TYPES.values()],
+                                 "parent_types": list(t.parent_types), "removed_default": t.removed_default}
+                                for t in COMPONENT_TYPES.values()],
+            "dispositions": [{"code": k, "label": v} for k, v in DISPOSITIONS.items()],
+            "tracking_modes": [{"code": k, "label": v} for k, v in TRACKING_MODES.items()],
             "actions": [{"code": a.code, "name": a.name, "kind": a.kind, "targets": list(a.targets),
                          "quick": a.quick, "fields": list(a.fields), "outcomes": list(a.outcomes)}
                         for a in ACTIONS.values()],
@@ -423,7 +497,9 @@ def create_app(factory: sessionmaker[Session], paths: DataPaths, *, token: str |
                 "actions": [{"code": a.code, "name": a.name, "quick": a.quick, "fields": list(a.fields),
                              "outcomes": list(a.outcomes)}
                             for a in ACTIONS.values() if action_applies(a, c.component_type)],
-                "product": _product(c.product) if c.product else None, "specs": json.loads(c.specs_json or "{}")}
+                "product_detail": _product(c.product) if c.product else None, "specs": json.loads(c.specs_json or "{}"),
+                "dispositions": inv.disposition_history(s, c), "inventory": spares.item_row(s, c),
+                "suggested_outcome": COMPONENT_TYPES[c.component_type].removed_default}
 
     @app.patch("/api/components/{component_id}")
     def patch_component(component_id: int, body: ComponentPatch, s: Session = Depends(db)):
@@ -437,23 +513,66 @@ def create_app(factory: sessionmaker[Session], paths: DataPaths, *, token: str |
     @app.post("/api/components/{component_id}/install")
     def install(component_id: int, body: InstallIn, dry_run: bool = False, s: Session = Depends(db),
                 op_id: str | None = OpId):
-        return op(s, op_id, "component.install",
-                  lambda: {"installation_id": inv.install(s, component_id, **body.model_dump()).id}, dry_run)
+        def fn():
+            ws = ws_svc.begin(s, at=body.at, bike_id=body.bike_id, title="Install")
+            inst = inv.install(s, component_id, work_session_id=ws.id, **body.model_dump())
+            return {"installation_id": inst.id, "work_session_id": ws.id}
+        return op(s, op_id, "component.install", fn, dry_run)
 
     @app.post("/api/components/{component_id}/remove")
     def remove(component_id: int, body: RemoveIn, dry_run: bool = False, s: Session = Depends(db),
                op_id: str | None = OpId):
-        return op(s, op_id, "component.remove",
-                  lambda: {"installation_id": inv.remove(s, component_id, **body.model_dump()).id}, dry_run)
+        def fn():
+            loc = inv.location(s, inv.get_component(s, component_id))
+            ws = ws_svc.begin(s, at=body.at, bike_id=loc.get("bike_id"), title="Remove")
+            inst = inv.remove(s, component_id, work_session_id=ws.id, **body.model_dump())
+            return {"installation_id": inst.id, "work_session_id": ws.id}
+        return op(s, op_id, "component.remove", fn, dry_run)
+
+    @app.get("/api/components/{component_id}/replace-options")
+    def replace_options(component_id: int, s: Session = Depends(db)):
+        return spares.replace_options(s, component_id)
 
     @app.post("/api/components/{component_id}/replace")
     def replace(component_id: int, body: ReplaceIn, dry_run: bool = False, s: Session = Depends(db),
                 op_id: str | None = OpId):
-        return op(s, op_id, "component.replace", lambda: inv.replace(s, component_id, **body.model_dump()), dry_run)
+        data = body.model_dump(exclude={"session_notes", "new"})
+        if body.new is not None:
+            data["new"] = body.new.model_dump(exclude_none=True)
+
+        def fn():
+            comp = inv.get_component(s, component_id)
+            loc = inv.location(s, comp)
+            ws = ws_svc.begin(s, at=body.at, bike_id=loc.get("bike_id"), title=f"Replace {comp.label}",
+                              notes=body.session_notes)
+            return {**inv.replace(s, component_id, work_session_id=ws.id, **data), "work_session_id": ws.id}
+        return op(s, op_id, "component.replace", fn, dry_run)
+
+    @app.get("/api/components/{component_id}/move-targets")
+    def move_targets(component_id: int, s: Session = Depends(db)):
+        return spares.move_targets(s, component_id)
+
+    @app.post("/api/components/{component_id}/move")
+    def move(component_id: int, body: MoveIn, dry_run: bool = False, s: Session = Depends(db),
+             op_id: str | None = OpId):
+        def fn():
+            comp = inv.get_component(s, component_id)
+            ws = ws_svc.begin(s, at=body.at, bike_id=inv.location(s, comp).get("bike_id"), title=f"Move {comp.label}")
+            return {**inv.move(s, component_id, work_session_id=ws.id, **body.model_dump()), "work_session_id": ws.id}
+        return op(s, op_id, "component.move", fn, dry_run)
+
+    @app.post("/api/components/{component_id}/disposition")
+    def disposition(component_id: int, body: DispositionIn, s: Session = Depends(db), op_id: str | None = OpId):
+        def fn():
+            ws = ws_svc.begin(s, at=body.on, title="Inventory update")
+            inv.set_disposition(s, component_id, body.disposition, on=body.on, note=body.note, work_session_id=ws.id)
+            return {**_component_summary(s, inv.get_component(s, component_id)), "work_session_id": ws.id}
+        return op(s, op_id, "component.disposition", fn)
 
     @app.post("/api/components/{component_id}/retire")
     def retire(component_id: int, body: RetireIn, s: Session = Depends(db)):
-        return _component_summary(s, inv.retire_component(s, component_id, **body.model_dump()))
+        ws = ws_svc.begin(s, at=body.on, title="Retire")
+        return _component_summary(s, inv.retire_component(s, component_id, work_session_id=ws.id, **body.model_dump()))
 
     @app.post("/api/components/{component_id}/starting-usage")
     def comp_start(component_id: int, body: StartingIn, dry_run: bool = False, s: Session = Depends(db)):
@@ -545,15 +664,18 @@ def create_app(factory: sessionmaker[Session], paths: DataPaths, *, token: str |
         data = body.model_dump(exclude={"component_ids"})
 
         def fn():
+            ws = ws_svc.begin(s, at=body.at, bike_id=body.bike_id, title=ACTIONS.get(body.action_code).name
+                              if body.action_code in ACTIONS else None)
             if body.component_ids:
                 data.pop("component_id")
                 data.pop("bike_id")
-                evs = m.log_batch(s, component_ids=body.component_ids, **data)
+                evs = m.log_batch(s, component_ids=body.component_ids, work_session_id=ws.id, **data)
             else:
-                evs = [m.log_event(s, **data)]
+                evs = [m.log_event(s, work_session_id=ws.id, **data)]
             ids = [e.id for e in evs]
-            return {"event_ids": ids, "status": [m.component_status(s, inv.get_component(s, e.component_id))
-                                                 for e in evs if e.component_id]}
+            return {"event_ids": ids, "work_session_id": ws.id,
+                    "status": [m.component_status(s, inv.get_component(s, e.component_id))
+                               for e in evs if e.component_id]}
         return run_once(s, op_id, "maintenance.log", fn)
 
     @app.post("/api/maintenance/events/{event_id}/void")
@@ -593,14 +715,69 @@ def create_app(factory: sessionmaker[Session], paths: DataPaths, *, token: str |
         return m.consumable_stock(s)
 
     @app.post("/api/consumables", status_code=201)
-    def add_consumable(body: ConsumableIn, s: Session = Depends(db)):
-        c = m.add_consumable(s, **body.model_dump())
+    def add_consumable(body: ConsumableIn, s: Session = Depends(db), op_id: str | None = OpId):
+        def fn():
+            c = stock.add_consumable(s, **body.model_dump())
+            return {"id": c.id, "name": c.name, "unit": c.unit, "unit_note": c.unit_note}
+        return run_once(s, op_id, "stock.create", fn)
+
+    @app.patch("/api/consumables/{consumable_id}")
+    def patch_consumable(consumable_id: int, body: ConsumablePatch, s: Session = Depends(db)):
+        c = stock.update_consumable(s, consumable_id, **body.model_dump(exclude_unset=True))
         return {"id": c.id, "name": c.name}
 
+    @app.get("/api/consumables/{consumable_id}/txns")
+    def consumable_txns(consumable_id: int, s: Session = Depends(db)):
+        return stock.txn_history(s, consumable_id)
+
     @app.post("/api/consumables/{consumable_id}/txn", status_code=201)
-    def consumable_txn(consumable_id: int, body: TxnIn, s: Session = Depends(db)):
-        t = m.consumable_txn(s, consumable_id, **body.model_dump())
-        return {"id": t.id}
+    def consumable_txn(consumable_id: int, body: TxnIn, s: Session = Depends(db), op_id: str | None = OpId):
+        def fn():
+            ws = ws_svc.begin(s, at=body.on, title={"PURCHASE": "Purchase", "RETURN": "Return to shop",
+                                                   "ADJUST": "Stock correction", "USE": "Used supplies"}
+                              .get(body.kind, "Stock"))
+            t = stock.consumable_txn(s, consumable_id, work_session_id=ws.id, **body.model_dump())
+            return {"id": t.id, "work_session_id": ws.id}
+        return run_once(s, op_id, "stock.txn", fn)
+
+    @app.post("/api/consumables/{consumable_id}/install")
+    def install_from_stock(consumable_id: int, body: StockInstallIn, dry_run: bool = False,
+                           s: Session = Depends(db), op_id: str | None = OpId):
+        def fn():
+            ws = ws_svc.begin(s, at=body.at, bike_id=body.bike_id, title="Install from stock")
+            comp = stock.draw_component(s, consumable_id, on=body.at, label=body.label, work_session_id=ws.id)
+            inst = inv.install(s, comp.id, at=body.at, bike_id=body.bike_id,
+                               parent_component_id=body.parent_component_id, slot=body.slot, work_session_id=ws.id)
+            return {"component_id": comp.id, "label": comp.label, "installation_id": inst.id, "work_session_id": ws.id}
+        return op(s, op_id, "stock.install", fn, dry_run)
+
+    @app.get("/api/inventory")
+    def inventory_view(s: Session = Depends(db)):
+        return spares.inventory(s)
+
+    @app.get("/api/shopping-list")
+    def shopping_list(s: Session = Depends(db)):
+        return stock.shopping_list(s)
+
+    @app.post("/api/products/{product_id}/compatibility")
+    def product_compat(product_id: int, body: CompatIn, s: Session = Depends(db)):
+        if not s.get(Product, product_id):
+            raise DomainError("Product not found")
+        inv.get_bike(s, body.bike_id)
+        return spares.set_compatibility(s, product_id, body.bike_id, body.verified, body.note)
+
+    @app.get("/api/work-sessions")
+    def work_sessions(limit: int = 50, s: Session = Depends(db)):
+        return ws_svc.recent(s, limit=limit)
+
+    @app.get("/api/work-sessions/{ws_id}")
+    def work_session(ws_id: int, s: Session = Depends(db)):
+        return ws_svc.summary(s, ws_id)
+
+    @app.post("/api/work-sessions/{ws_id}/undo")
+    def undo_session(ws_id: int, body: UndoIn, dry_run: bool = False, s: Session = Depends(db),
+                     op_id: str | None = OpId):
+        return op(s, op_id, "worksession.undo", lambda: ws_svc.undo(s, ws_id, body.reason), dry_run)
 
     @app.post("/api/profiles", status_code=201)
     def add_profile(body: ProfileIn, s: Session = Depends(db)):
@@ -714,7 +891,7 @@ def _bike_summary(s: Session, b: Bike) -> dict:
 
 
 def _product(p: Product) -> dict:
-    return {"id": p.id, "uuid": p.uuid, "component_type": p.component_type, "maker": p.maker, "model": p.model,
+    return {"compatibility": spares.compatibility(object_session(p), p.id),"id": p.id, "uuid": p.uuid, "component_type": p.component_type, "maker": p.maker, "model": p.model,
             "specs": json.loads(p.specs_json or "{}"), "spec_source": p.spec_source, "spec_version": p.spec_version,
             "notes": p.notes}
 
@@ -727,5 +904,6 @@ def _component_summary(s: Session, c: Component) -> dict:
             "product": f"{c.product.maker or ''} {c.product.model}".strip() if c.product else None,
             "prior_usage": c.prior_usage, "status": c.status, "purchase_date": c.purchase_date,
             "price_cents": c.price_cents, "serial_number": c.serial_number, "notes": c.notes,
-            "retired_on": c.retired_on, "retire_reason": c.retire_reason,
+            "retired_on": c.retired_on, "retire_reason": c.retire_reason, "disposition": c.disposition,
+            "storage_location": c.storage_location,
             "location": inv.location(s, c), "usage": component_usage(s, c)}

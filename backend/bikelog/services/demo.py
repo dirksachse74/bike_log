@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from bikelog.models import Bike, Component, Ride
 from bikelog.services import inventory as inv
 from bikelog.services import maintenance as m
-from bikelog.services import rides, settings
+from bikelog.services import rides, settings, stock
 from bikelog.services.errors import Protected
 
 
@@ -99,5 +99,28 @@ def seed(session: Session, today: date | None = None) -> bool:
     m.consumable_txn(session, wax.id, kind="PURCHASE", qty=500, on=d(70), cost_cents=3999)
     m.add_consumable(session, kind="WAX", name="Silca Super Secret drip", unit="ml")
     m.add_consumable(session, kind="BRAKE_FLUID", name="Shimano mineral oil", unit="ml")
+
+    # spare-parts stock: counted per product; installing one gives it its own identity
+    pads_prod = inv.create_product(session, component_type="BRAKE_PADS", maker="Shimano", model="L05A-RF resin")
+    inv.update_component(session, pads.id, product_id=pads_prod.id)
+    pad_stock = stock.add_consumable(session, product_id=pads_prod.id, storage_location="Workshop drawer", min_stock=1)
+    stock.consumable_txn(session, pad_stock.id, kind="PURCHASE", qty=3, on=d(40), cost_cents=4797)
+    from bikelog.services.spares import set_compatibility
+    set_compatibility(session, pads_prod.id, time_nxr.id, True, "fits the TIME NXR calipers")
+    set_compatibility(session, pads_prod.id, bmc.id, False, "probably, not checked")
+    tube_prod = inv.create_product(session, component_type="INNER_TUBE", maker="Schwalbe", model="SV15 Extralight")
+    tube_stock = stock.add_consumable(session, product_id=tube_prod.id, storage_location="Saddle bag box", min_stock=2)
+    stock.consumable_txn(session, tube_stock.id, kind="PURCHASE", qty=2, packages=2, on=d(40), cost_cents=1598)
+    links = stock.add_consumable(session, component_type="QUICK_LINK", name="KMC 12s quick links",
+                                 storage_location="Workshop drawer", min_stock=2)
+    stock.consumable_txn(session, links.id, kind="PURCHASE", qty=2, packages=1, on=d(40), cost_cents=899)
+    patches = stock.add_consumable(session, name="Park GP-2 patches", tracking_mode="COUNTED", unit="patch",
+                                   storage_location="Saddle bag")
+    stock.consumable_txn(session, patches.id, kind="PURCHASE", qty=6, packages=1, on=d(40), cost_cents=450)
+    old_tube = inv.create_component(session, component_type="INNER_TUBE", label="Rear tube (punctured)",
+                                    prior_usage="NEW", product_id=tube_prod.id)
+    inv.install(session, old_tube.id, parent_component_id=rear.id, at=d(60), reallocate=False)
+    inv.replace(session, old_tube.id, at=d(9), from_stock_id=tube_stock.id, reason="puncture",
+                old_outcome="AWAITING_SERVICE")
     session.flush()
     return True
