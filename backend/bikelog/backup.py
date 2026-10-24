@@ -14,6 +14,7 @@ import shutil
 import sqlite3
 import tempfile
 import zipfile
+from contextlib import closing
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -32,9 +33,11 @@ def _stamp() -> str:
 
 def snapshot_database(src: Path, dest: Path) -> Path:
     dest.parent.mkdir(parents=True, exist_ok=True)
-    with sqlite3.connect(src) as s, sqlite3.connect(dest) as d:
+    # sqlite3's own context manager does not close connections; an open handle would keep -wal/-shm alive
+    with closing(sqlite3.connect(src)) as s, closing(sqlite3.connect(dest)) as d:
         s.backup(d)
-    with sqlite3.connect(dest) as d:
+    with closing(sqlite3.connect(dest)) as d:
+        d.execute("PRAGMA journal_mode = DELETE")  # self-contained single file, no -wal needed to read it
         ok = d.execute("PRAGMA integrity_check").fetchone()[0]
     if ok != "ok":
         raise RuntimeError(f"Backup integrity check failed for {dest}: {ok}")
@@ -101,7 +104,7 @@ def restore_archive(paths: DataPaths, archive: Path) -> dict:
         tmpdir = Path(tmp)
         with zipfile.ZipFile(archive) as z:
             z.extractall(tmpdir)
-        with sqlite3.connect(tmpdir / "bikelog.db") as c:
+        with closing(sqlite3.connect(tmpdir / "bikelog.db")) as c:
             if c.execute("PRAGMA integrity_check").fetchone()[0] != "ok":
                 raise ValueError("Database in archive failed integrity check")
         for suffix in ("-wal", "-shm"):
