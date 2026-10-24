@@ -53,7 +53,7 @@ export function BikeForm({ onSaved }: { onSaved: (b: Bike) => void }) {
         <input type="checkbox" checked={f.starting_is_estimate} onChange={(e) => setF({ ...f, starting_is_estimate: e.target.checked })} /> The odometer value is an estimate
       </label>
       <Field label="Strava gear id (optional)" hint="Only used to match imported rides to this bike.">
-        <input value={f.strava_gear_id} onChange={(e) => setF({ ...f, strava_gear_id: e.target.value })} placeholder="13071041" />
+        <input value={f.strava_gear_id} onChange={(e) => setF({ ...f, strava_gear_id: e.target.value })} placeholder="90000001" />
       </Field>
       <FormError error={error} />
       <div className="form-actions">

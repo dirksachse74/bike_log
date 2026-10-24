@@ -17,6 +17,7 @@ class ComponentType:
     slots: tuple[str, ...] = ()          # allowed slots; first is the default
     parent_types: tuple[str, ...] = ()   # may be mounted on these component types instead of a bike
     tracks_distance: bool = True         # False: calendar-only parts (e.g. brake fluid circuit)
+    removed_default: str = "STORED"      # suggested answer to "What happened to the old item?"
 
 
 @dataclass(frozen=True)
@@ -33,6 +34,7 @@ class Action:
 
 COMPONENT_TYPES: dict[str, ComponentType] = {t.code: t for t in [
     ComponentType("CHAIN", "Chain", "Drivetrain", ("CHAIN",)),
+    ComponentType("QUICK_LINK", "Quick link", "Drivetrain", ("QUICK_LINK",), ("CHAIN",), removed_default="DISCARDED"),
     ComponentType("CASSETTE", "Cassette", "Drivetrain", ("CASSETTE",), ("REAR_WHEEL",)),
     ComponentType("CRANKSET", "Crankset", "Drivetrain", ("CRANKSET",)),
     ComponentType("CHAINRING", "Chainring", "Drivetrain", ("CHAINRING_OUTER", "CHAINRING_INNER"), ("CRANKSET",)),
@@ -42,21 +44,52 @@ COMPONENT_TYPES: dict[str, ComponentType] = {t.code: t for t in [
     ComponentType("FRONT_WHEEL", "Front wheel", "Wheels", ("FRONT_WHEEL",)),
     ComponentType("REAR_WHEEL", "Rear wheel", "Wheels", ("REAR_WHEEL",)),
     ComponentType("TIRE", "Tire", "Wheels", ("TIRE",), ("FRONT_WHEEL", "REAR_WHEEL")),
+    ComponentType("INNER_TUBE", "Inner tube", "Wheels", ("TUBE",), ("FRONT_WHEEL", "REAR_WHEEL"),
+                  removed_default="AWAITING_SERVICE"),
     ComponentType("BRAKE_ROTOR", "Brake rotor", "Brakes", ("ROTOR",), ("FRONT_WHEEL", "REAR_WHEEL")),
     ComponentType("BRAKE_CIRCUIT", "Brake circuit (hydraulic)", "Brakes", ("FRONT_BRAKE", "REAR_BRAKE"),
                   tracks_distance=True),
-    ComponentType("BRAKE_PADS", "Brake pads", "Brakes", ("FRONT_PADS", "REAR_PADS")),
+    ComponentType("BRAKE_PADS", "Brake pads", "Brakes", ("FRONT_PADS", "REAR_PADS"), removed_default="DISCARDED"),
     ComponentType("PEDALS", "Pedals", "Contact points", ("PEDALS",)),
     ComponentType("SADDLE", "Saddle", "Contact points", ("SADDLE",)),
     ComponentType("SEATPOST", "Seatpost", "Contact points", ("SEATPOST",)),
     ComponentType("HANDLEBAR", "Handlebar", "Cockpit", ("HANDLEBAR",)),
-    ComponentType("BAR_TAPE", "Bar tape", "Cockpit", ("BAR_TAPE",)),
+    ComponentType("BAR_TAPE", "Bar tape", "Cockpit", ("BAR_TAPE",), removed_default="DISCARDED"),
     ComponentType("SHIFTERS", "Shifters", "Controls", ("SHIFTERS",)),
     ComponentType("BATTERY", "Battery (Di2/AXS)", "Electronics", ("BATTERY",)),
     ComponentType("OTHER", "Other part", "Other", ()),
 ]}
 
 ALL = ("*",)
+
+# What happened to an item that is no longer installed. RETIRED, DISCARDED and SOLD take it out of
+# use (component.status = RETIRED); its record, mileage and history are always kept.
+DISPOSITIONS: dict[str, str] = {
+    "STORED": "Stored as a reusable spare",
+    "AWAITING_SERVICE": "Awaiting inspection or repair",
+    "RETIRED": "Retired from use",
+    "DISCARDED": "Discarded",
+    "SOLD": "Sold or given away",
+}
+OUT_OF_USE = ("RETIRED", "DISCARDED", "SOLD")
+
+# Stock units for spare parts held as a quantity. One unit is one usable item, never "one package":
+# a pack of two quick links is two units (record packages separately on the purchase).
+STOCK_UNITS: dict[str, tuple[str, str]] = {
+    "INNER_TUBE": ("tube", "one tube"),
+    "BRAKE_PADS": ("set", "one pad set for one caliper"),
+    "BRAKE_ROTOR": ("rotor", "one rotor"),
+    "CHAIN": ("chain", "one complete chain"),
+    "QUICK_LINK": ("link", "one complete connector"),
+    "BAR_TAPE": ("package", "one package; record its coverage (e.g. one handlebar)"),
+    "TIRE": ("tire", "one tire"),
+}
+
+# Consumable tracking modes (individual items are components, see COMPONENT_TYPES).
+TRACKING_MODES: dict[str, str] = {
+    "COUNTED": "Counted stock (patches, quick links, coin cells): whole pieces",
+    "BULK": "Bulk supply (wax, sealant, fluid, grease): container quantity, amount used optional",
+}
 
 ACTIONS: dict[str, Action] = {a.code: a for a in [
     # chain
@@ -94,12 +127,16 @@ ACTIONS: dict[str, Action] = {a.code: a for a in [
     Action("SEALANT_RENEW", "Renew sealant", "SERVICE", ("TIRE",), fields=("consumable",)),
     Action("TIRE_INSPECT", "Inspect tire", "INSPECT", ("TIRE",), quick=True,
            fields=("outcome",), outcomes=("OK", "CUT", "WORN"), attention_outcomes=("CUT", "WORN")),
+    Action("TUBE_PATCH", "Patch tube", "REPAIR", ("INNER_TUBE",), fields=("symptom", "outcome", "consumable"),
+           outcomes=("REPAIRED", "NOT_REPAIRABLE")),
+    # cockpit
+    Action("BAR_TAPE_REWRAP", "Rewrap bar tape (same tape)", "SERVICE", ("BAR_TAPE",), fields=("work_done",)),
     # generic
     Action("INSPECT", "Record inspection", "INSPECT", ALL, quick=True, fields=("outcome",),
            outcomes=("OK", "MONITOR", "WORN", "DAMAGE"), attention_outcomes=("MONITOR", "WORN", "DAMAGE")),
     Action("CLEAN", "Clean", "CLEAN", ALL),
     Action("SERVICE", "General service", "SERVICE", ALL, fields=("work_done",)),
-    Action("REPAIR", "Repair", "REPAIR", ALL, fields=("symptom", "work_done", "outcome")),
+    Action("REPAIR", "Repair", "REPAIR", ALL, fields=("symptom", "work_done", "outcome", "consumable")),
     Action("BATTERY_CHARGE", "Charge battery", "SERVICE", ("BATTERY",), quick=True),
 ]}
 

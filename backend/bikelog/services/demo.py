@@ -37,8 +37,8 @@ def seed(session: Session, today: date | None = None) -> bool:
         return (today - timedelta(days=days_ago)).isoformat()
 
     time_nxr = inv.create_bike(session, name="TIME NXR", maker="TIME", model="NXR", year=2026,
-                               strava_gear_id="18842913", starting_km=0, starting_date=d(60))
-    bmc = inv.create_bike(session, name="BMC Roadmachine", maker="BMC", strava_gear_id="13071041",
+                               strava_gear_id="90000002", starting_km=0, starting_date=d(60))
+    bmc = inv.create_bike(session, name="BMC Roadmachine", maker="BMC", strava_gear_id="90000001",
                           starting_km=17000, starting_date=d(90), starting_is_estimate=True)
     chain_prod = inv.create_product(session, component_type="CHAIN", maker="Shimano", model="CN-M8100 12s",
                                     specs={"speeds": 12, "links": 116}, spec_source="manufacturer datasheet")

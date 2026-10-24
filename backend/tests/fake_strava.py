@@ -10,7 +10,7 @@ from bikelog.connectors.strava.client import HttpResponse, StravaClient, TokenSt
 ATHLETE = 43217313
 
 
-def act(i: int, start: str, km: float = 40.0, sport: str = "Ride", gear: str | None = "b13071041", **kw) -> dict:
+def act(i: int, start: str, km: float = 40.0, sport: str = "Ride", gear: str | None = "b90000001", **kw) -> dict:
     a = {"id": 10_000_000 + i, "athlete": {"id": ATHLETE}, "name": f"Ride {i}", "start_date": start,
          "start_date_local": start.replace("Z", ""), "timezone": "(GMT+01:00) Europe/Berlin",
          "distance": km * 1000, "moving_time": int(km * 120), "elapsed_time": int(km * 140),

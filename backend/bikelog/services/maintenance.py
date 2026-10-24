@@ -16,17 +16,19 @@ from sqlalchemy.orm import Session
 
 from bikelog.catalog import ACTIONS, COMPONENT_TYPES, action_applies
 from bikelog.models import (
-    Bike, Component, Consumable, ConsumableTxn, Installation, MaintenanceEvent, ReminderSnooze, ServiceRule,
+    Bike, Component, Consumable, Installation, MaintenanceEvent, ReminderSnooze, ServiceRule,
     UsageContribution,
 )
-from bikelog.services import settings
+from bikelog.services import settings, stock
+from bikelog.services.stock import add_consumable, consumable_stock, consumable_txn  # noqa: F401 (API)
 from bikelog.services.errors import DomainError, NotFound
-from bikelog.services.inventory import get_component, location
+from bikelog.services.inventory import get_component, location, open_installation, set_disposition
 from bikelog.services.usage import usage_since
 from bikelog.timeutil import add_months, parse_when, today_local, utc_now
 
 SEVERITY = {"OVERDUE": 0, "DUE": 1, "ATTENTION": 1, "DUE_SOON": 2, "INSUFFICIENT_INFO": 3, "SNOOZED": 4,
             "OK": 5, "DONE_THIS_CYCLE": 6, "DISABLED": 7}
+RETURNS_TO_SPARE = ("REPAIRED", "OK", "RESOLVED")
 SAFETY_NOTE = "Reminders follow recorded usage only. They never confirm that a part is safe."
 
 
@@ -36,7 +38,11 @@ def log_event(session: Session, *, action_code: str, at: str, component_id: int 
               bike_id: int | None = None, symptom: str | None = None, work_done: str | None = None,
               outcome: str | None = None, measurement_value: float | None = None, measurement_unit: str | None = None,
               consumable_id: int | None = None, consumable_qty: float | None = None, cost_cents: int | None = None,
-              notes: str | None = None, batch_ref: str | None = None) -> MaintenanceEvent:
+              notes: str | None = None, batch_ref: str | None = None, work_session_id: int | None = None,
+              disposition_after: str | None = None) -> MaintenanceEvent:
+    """Record work on a part. Supplies used become a separate stock USE (no cost: the cost belongs to
+    the purchase). ``cost_cents`` is an extra service cost such as a shop fee. For a part awaiting
+    repair, a successful outcome returns it to the spares (or pass ``disposition_after``)."""
     action = ACTIONS.get(action_code)
     if not action:
         raise DomainError(f"Unknown maintenance action {action_code!r}")
@@ -59,14 +65,21 @@ def log_event(session: Session, *, action_code: str, at: str, component_id: int 
                           performed_on=w.local_date, sort_utc=w.utc, symptom=symptom, work_done=work_done,
                           outcome=outcome, measurement_value=measurement_value, measurement_unit=measurement_unit,
                           consumable_id=consumable_id, consumable_qty=consumable_qty, cost_cents=cost_cents,
-                          notes=notes, batch_ref=batch_ref)
+                          notes=notes, batch_ref=batch_ref, work_session_id=work_session_id)
     session.add(ev)
     session.flush()
     if consumable_id is not None:
-        session.add(ConsumableTxn(consumable_id=consumable_id, kind="USE", qty=consumable_qty,
-                                  occurred_on=w.local_date, maintenance_event_id=ev.id))
+        stock.use(session, consumable_id, qty=consumable_qty, on=w.local_date, work_session_id=work_session_id,
+                  maintenance_event_id=ev.id)
     if comp is not None:
         _clear_obsolete_snoozes(session, comp, action_code)
+        after = disposition_after
+        if after is None and comp.disposition == "AWAITING_SERVICE" and outcome in RETURNS_TO_SPARE \
+                and not open_installation(session, comp.id):
+            after = "STORED"
+        if after is not None:
+            set_disposition(session, comp.id, after, on=w.raw, note=f"after {action.name.lower()}",
+                            work_session_id=work_session_id)
     session.flush()
     return ev
 
@@ -489,11 +502,13 @@ def chain_overview(session: Session) -> list[dict]:
         wear = _last_event(session, comp.id, ["CHAIN_MEASURE_WEAR"])
         worn = bool(wear and wear.outcome == "AT_LIMIT")
         if comp.status == "RETIRED":
-            state, text = "RETIRED", f"Retired {comp.retired_on or ''}".strip()
+            state, text = "RETIRED", loc["text"]
         elif loc["state"] == "INSTALLED":
             state, text = "INSTALLED", f"On {loc['text']}"
         elif worn:
             state, text = "WORN", f"Wear at limit on {wear.performed_on}; do not install"
+        elif comp.disposition == "AWAITING_SERVICE":
+            state, text = "AWAITING_SERVICE", "Awaiting preparation or repair"
         elif hot and since_hot == 0:
             state, text = "READY_TO_INSTALL", f"Hot waxed on {hot.performed_on}, 0 km since"
         elif hot:
@@ -527,47 +542,6 @@ def brake_overview(session: Session, bike_id: int | None = None) -> list[dict]:
                     "last_bleed": {"date": bleed.performed_on, "symptom": bleed.symptom, "work_done": bleed.work_done,
                                    "outcome": bleed.outcome} if bleed else None})
     return out
-
-
-def consumable_stock(session: Session) -> list[dict]:
-    out = []
-    for c in session.scalars(select(Consumable).order_by(Consumable.kind, Consumable.name)):
-        txns = list(session.scalars(select(ConsumableTxn).where(ConsumableTxn.consumable_id == c.id)))
-        stock = None
-        if c.track_stock:
-            known = all(t.qty is not None for t in txns if t.kind == "USE")
-            total = sum((t.qty or 0) * (-1 if t.kind == "USE" else 1) for t in txns)
-            stock = {"qty": round(total, 2), "known": known}
-        out.append({"id": c.id, "kind": c.kind, "name": c.name, "maker": c.maker, "unit": c.unit,
-                    "track_stock": c.track_stock, "stock": stock,
-                    "purchases": sum(1 for t in txns if t.kind == "PURCHASE"),
-                    "uses": sum(1 for t in txns if t.kind == "USE")})
-    return out
-
-
-def add_consumable(session: Session, *, kind: str, name: str, maker: str | None = None, unit: str = "ml",
-                   track_stock: bool = False, notes: str | None = None) -> Consumable:
-    if not name:
-        raise DomainError("Name the product")
-    if session.scalar(select(Consumable).where(Consumable.name == name)):
-        raise DomainError(f"{name!r} already exists")
-    c = Consumable(kind=kind, name=name, maker=maker, unit=unit, track_stock=track_stock, notes=notes)
-    session.add(c)
-    session.flush()
-    return c
-
-
-def consumable_txn(session: Session, consumable_id: int, *, kind: str, qty: float | None, on: str,
-                   cost_cents: int | None = None, note: str | None = None) -> ConsumableTxn:
-    if not session.get(Consumable, consumable_id):
-        raise NotFound("Consumable not found")
-    if kind not in ("PURCHASE", "ADJUST", "USE"):
-        raise DomainError("kind must be PURCHASE, USE or ADJUST")
-    t = ConsumableTxn(consumable_id=consumable_id, kind=kind, qty=qty, occurred_on=on[:10], cost_cents=cost_cents,
-                      note=note)
-    session.add(t)
-    session.flush()
-    return t
 
 
 def installed_parts_for_action(session: Session, bike_id: int, action_code: str) -> list[dict]:

@@ -70,7 +70,7 @@ def _values(session: Session, act: dict) -> dict:
 
 
 def _gear(gear_id: str | None) -> str | None:
-    # Strava bike gear ids look like "b13071041"; bikes store the numeric part (as shown in the Strava UI)
+    # Strava bike gear ids look like "b90000001"; bikes store the numeric part (as shown in the Strava UI)
     if gear_id and gear_id.startswith("b"):
         return gear_id[1:]
     return gear_id

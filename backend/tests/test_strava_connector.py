@@ -16,7 +16,7 @@ from fake_strava import FakeStrava, act, client_for
 
 @pytest.fixture()
 def world(engine, session, tmp_path):
-    b = inv.create_bike(session, name="BMC Roadmachine", strava_gear_id="13071041")
+    b = inv.create_bike(session, name="BMC Roadmachine", strava_gear_id="90000001")
     chain = inv.create_component(session, component_type="CHAIN", label="Chain A", prior_usage="NEW")
     inv.install(session, chain.id, bike_id=b.id, at="2026-01-01")
     settings.set_value(session, "import_start_date", "2026-10-01")
