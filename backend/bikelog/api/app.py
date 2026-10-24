@@ -1,0 +1,731 @@
+"""FastAPI application: JSON under /api, the built frontend at /.
+
+The API only translates HTTP to service calls. Every mutation runs in one short transaction,
+accepts an optional X-Client-Op-Id header (a repeat returns the first result) and, where mileage
+can change, ?dry_run=true to preview the impact without saving.
+"""
+from __future__ import annotations
+
+import json
+import logging
+import secrets
+from collections.abc import Callable, Iterator
+from pathlib import Path
+from typing import Any
+
+from fastapi import Depends, FastAPI, Header, Query, Request
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, PlainTextResponse
+from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel, ConfigDict
+from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError, OperationalError
+from sqlalchemy.orm import Session, sessionmaker
+
+from bikelog import __version__, backup
+from bikelog.api.security import LocalSecurityMiddleware
+from bikelog.catalog import ACTIONS, COMPONENT_TYPES, action_applies
+from bikelog.connectors.strava import sync as strava
+from bikelog.migrate import head_revision
+from bikelog.models import Bike, Component, Product, ServiceRule, UsageProfile
+from bikelog.paths import DataPaths, resource_root
+from bikelog.services import demo, imports
+from bikelog.services import inventory as inv
+from bikelog.services import maintenance as m
+from bikelog.services import rides as rides_svc
+from bikelog.services import settings as settings_svc
+from bikelog.services.errors import DomainError
+from bikelog.services.operations import run_once, with_change
+from bikelog.services.rebuild import rebuild_everything
+from bikelog.services.usage import bike_usage, component_ledger, component_usage
+
+log = logging.getLogger(__name__)
+
+
+class Body(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+
+# ---------------------------------------------------------------- request bodies
+
+class BikeIn(Body):
+    name: str
+    maker: str | None = None
+    model: str | None = None
+    year: int | None = None
+    strava_gear_id: str | None = None
+    notes: str | None = None
+    starting_km: float | None = None
+    starting_date: str | None = None
+    starting_is_estimate: bool = False
+
+
+class BikePatch(Body):
+    name: str | None = None
+    maker: str | None = None
+    model: str | None = None
+    year: int | None = None
+    strava_gear_id: str | None = None
+    notes: str | None = None
+
+
+class StartingIn(Body):
+    km: float
+    effective: str | None = None
+    is_estimate: bool = False
+    note: str | None = None
+
+
+class ProductIn(Body):
+    component_type: str
+    model: str
+    maker: str | None = None
+    specs: dict | None = None
+    spec_source: str | None = None
+    spec_version: str | None = None
+    notes: str | None = None
+
+
+class InstallIn(Body):
+    at: str
+    bike_id: int | None = None
+    parent_component_id: int | None = None
+    slot: str | None = None
+    until: str | None = None
+    note: str | None = None
+
+
+class ComponentIn(Body):
+    component_type: str
+    label: str
+    product_id: int | None = None
+    prior_usage: str = "UNKNOWN"
+    serial_number: str | None = None
+    purchase_date: str | None = None
+    price_cents: int | None = None
+    notes: str | None = None
+    specs: dict | None = None
+    starting_km: float | None = None
+    starting_date: str | None = None
+    starting_is_estimate: bool = False
+    install: InstallIn | None = None
+
+
+class ComponentPatch(Body):
+    label: str | None = None
+    serial_number: str | None = None
+    purchase_date: str | None = None
+    price_cents: int | None = None
+    notes: str | None = None
+    product_id: int | None = None
+    prior_usage: str | None = None
+    specs: dict | None = None
+
+
+class RemoveIn(Body):
+    at: str
+    reason: str | None = None
+
+
+class ReplaceIn(Body):
+    at: str
+    new_component_id: int | None = None
+    same_product: bool = False
+    new_label: str | None = None
+    reason: str | None = "replaced"
+
+
+class RetireIn(Body):
+    on: str
+    reason: str | None = None
+
+
+class CorrectionIn(Body):
+    km: float
+    effective: str
+    note: str
+
+
+class VoidIn(Body):
+    reason: str
+
+
+class InstallCorrectIn(Body):
+    installed_at: str | None = None
+    removed_at: str | None = None
+    clear_removed: bool = False
+    reason: str
+
+
+class RideIn(Body):
+    bike_id: int | None = None
+    when: str
+    distance: float | None = None
+    unit: str = "km"
+    duration_s: int | None = None
+    name: str | None = None
+    sport_type: str = "Ride"
+    usage_profile_code: str | None = None
+    assignment_uncertain: bool = False
+    uncertainty_note: str | None = None
+    notes: str | None = None
+    equipment: dict[str, int | None] | None = None
+
+
+class RidePatch(Body):
+    name: str | None = None
+    when: str | None = None
+    distance_km: float | None = None
+    unit: str | None = None
+    duration_s: int | None = None
+    bike_id: int | None = None
+    sport_type: str | None = None
+    usage_profile_code: str | None = None
+    assignment_uncertain: bool | None = None
+    uncertainty_note: str | None = None
+    notes: str | None = None
+
+
+class ExcludeIn(Body):
+    reason: str | None = None
+
+
+class EquipmentIn(Body):
+    component_id: int | None = None
+    note: str | None = None
+
+
+class EventIn(Body):
+    action_code: str
+    at: str
+    component_id: int | None = None
+    component_ids: list[int] | None = None
+    bike_id: int | None = None
+    symptom: str | None = None
+    work_done: str | None = None
+    outcome: str | None = None
+    measurement_value: float | None = None
+    measurement_unit: str | None = None
+    consumable_id: int | None = None
+    consumable_qty: float | None = None
+    cost_cents: int | None = None
+    notes: str | None = None
+
+
+class SnoozeIn(Body):
+    component_id: int
+    rule_code: str
+    until_date: str | None = None
+    extra_km: float | None = None
+    note: str | None = None
+
+
+class RulePatch(Body):
+    name: str | None = None
+    interval_km: float | None = None
+    interval_months: int | None = None
+    window_min_km: float | None = None
+    window_max_km: float | None = None
+    warn_km: float | None = None
+    warn_days: int | None = None
+    active: bool | None = None
+    origin: str | None = None
+    notes: str | None = None
+
+
+class ComponentRuleIn(RulePatch):
+    rule_code: str | None = None
+    action_code: str | None = None
+
+
+class ConsumableIn(Body):
+    kind: str
+    name: str
+    maker: str | None = None
+    unit: str = "ml"
+    track_stock: bool = False
+    notes: str | None = None
+
+
+class TxnIn(Body):
+    kind: str
+    qty: float | None = None
+    on: str
+    cost_cents: int | None = None
+    note: str | None = None
+
+
+class SettingsPatch(Body):
+    timezone: str | None = None
+    import_start_date: str | None = None
+    trainer_profile_for_virtual: str | None = None
+
+
+class ProfileIn(Body):
+    code: str
+    name: str
+    excluded_slots: list[str] = []
+    excluded_types: list[str] = []
+    notes: str | None = None
+
+
+# ---------------------------------------------------------------- app
+
+def create_app(factory: sessionmaker[Session], paths: DataPaths, *, token: str | None = None,
+               static_dir: Path | None = None, testing: bool = False) -> FastAPI:
+    token = token or secrets.token_urlsafe(32)
+    app = FastAPI(title="Bike Log", version=__version__, docs_url="/api/docs" if testing else None,
+                  redoc_url=None, openapi_url="/api/openapi.json" if testing else None)
+    app.state.token = token
+    app.add_middleware(LocalSecurityMiddleware, token=token, allow_test_host=testing)
+
+    def db() -> Iterator[Session]:
+        s = factory()
+        try:
+            yield s
+            s.commit()
+        except Exception:
+            s.rollback()
+            raise
+        finally:
+            s.close()
+
+    @app.exception_handler(DomainError)
+    async def _domain(_req: Request, exc: DomainError):
+        return JSONResponse({"detail": exc.message, **exc.details}, status_code=exc.status)
+
+    @app.exception_handler(IntegrityError)
+    async def _integrity(_req: Request, exc: IntegrityError):
+        msg = str(exc.orig)
+        status = 409 if ("CONFLICT" in msg or "PROTECTED" in msg or "UNIQUE" in msg) else 400
+        return JSONResponse({"detail": f"Rejected by the database: {msg}"}, status_code=status)
+
+    @app.exception_handler(OperationalError)
+    async def _busy(_req: Request, exc: OperationalError):
+        log.warning("database error: %s", exc)
+        return JSONResponse({"detail": "The database is busy or unavailable. Try again in a moment."},
+                            status_code=503)
+
+    def op(s: Session, op_id: str | None, kind: str, fn: Callable[[], Any], dry_run: bool = False) -> dict:
+        def run() -> dict:
+            result, change = with_change(s, fn, dry_run=dry_run)
+            return {"result": result, "change": change}
+        return run_once(s, op_id, kind, run)
+
+    OpId = Header(default=None, alias="X-Client-Op-Id")
+
+    # ------------------------------------------------------------ meta
+
+    @app.get("/api/health")
+    def health(s: Session = Depends(db)):
+        return {"ok": True, "version": __version__, "schema": head_revision(), "demo": demo.is_demo(s)}
+
+    @app.get("/api/meta")
+    def meta(s: Session = Depends(db)):
+        return {
+            "version": __version__, "demo": demo.is_demo(s), "safety_note": m.SAFETY_NOTE,
+            "settings": settings_svc.all_settings(s),
+            "component_types": [{"code": t.code, "name": t.name, "category": t.category, "slots": list(t.slots),
+                                 "parent_types": list(t.parent_types)} for t in COMPONENT_TYPES.values()],
+            "actions": [{"code": a.code, "name": a.name, "kind": a.kind, "targets": list(a.targets),
+                         "quick": a.quick, "fields": list(a.fields), "outcomes": list(a.outcomes)}
+                        for a in ACTIONS.values()],
+            "profiles": [{"id": p.id, "code": p.code, "name": p.name, "kind": p.kind,
+                          "excluded_slots": json.loads(p.excluded_slots_json),
+                          "excluded_types": json.loads(p.excluded_types_json), "notes": p.notes}
+                         for p in s.scalars(select(UsageProfile).order_by(UsageProfile.id))],
+        }
+
+    # ------------------------------------------------------------ overview
+
+    @app.get("/api/overview")
+    def overview(s: Session = Depends(db)):
+        bikes = [_bike_summary(s, b) for b in s.scalars(select(Bike).order_by(Bike.status, Bike.name))]
+        recent = rides_svc.list_rides(s, limit=8)
+        flagged = [r for r in rides_svc.list_rides(s, limit=500, flagged_only=True) if r["inclusion"] == "INCLUDED"]
+        return {"bikes": bikes, "queue": m.queue(s), "chains": m.chain_overview(s), "brakes": m.brake_overview(s),
+                "recent_rides": recent, "flagged_rides": flagged[:20], "flagged_count": len(flagged),
+                "safety_note": m.SAFETY_NOTE, "demo": demo.is_demo(s)}
+
+    # ------------------------------------------------------------ bikes
+
+    @app.get("/api/bikes")
+    def bikes(s: Session = Depends(db)):
+        return [_bike_summary(s, b) for b in s.scalars(select(Bike).order_by(Bike.status, Bike.name))]
+
+    @app.post("/api/bikes", status_code=201)
+    def create_bike(body: BikeIn, s: Session = Depends(db), op_id: str | None = OpId):
+        return run_once(s, op_id, "bike.create", lambda: _bike_summary(s, inv.create_bike(s, **body.model_dump())))
+
+    @app.get("/api/bikes/{bike_id}")
+    def bike_detail(bike_id: int, s: Session = Depends(db)):
+        b = inv.get_bike(s, bike_id)
+        return {**_bike_summary(s, b), "setup": inv.bike_setup(s, b), "history": inv.bike_installation_history(s, b),
+                "queue": m.queue(s, bike_id=b.id, include_ok=True), "brakes": m.brake_overview(s, bike_id=b.id),
+                "rides": rides_svc.list_rides(s, bike_id=b.id, limit=20),
+                "events": m.events_for(s, bike_id=b.id, limit=20)}
+
+    @app.patch("/api/bikes/{bike_id}")
+    def patch_bike(bike_id: int, body: BikePatch, s: Session = Depends(db)):
+        return _bike_summary(s, inv.update_bike(s, bike_id, **body.model_dump(exclude_unset=True)))
+
+    @app.post("/api/bikes/{bike_id}/retire")
+    def retire_bike(bike_id: int, s: Session = Depends(db)):
+        return _bike_summary(s, inv.retire_bike(s, bike_id))
+
+    @app.post("/api/bikes/{bike_id}/starting-usage")
+    def bike_start(bike_id: int, body: StartingIn, s: Session = Depends(db)):
+        inv.get_bike(s, bike_id)
+        inv.set_starting_usage(s, bike_id=bike_id, km=body.km, effective=body.effective,
+                               is_estimate=body.is_estimate, note=body.note)
+        return _bike_summary(s, inv.get_bike(s, bike_id))
+
+    # ------------------------------------------------------------ products & components
+
+    @app.get("/api/products")
+    def products(component_type: str | None = None, s: Session = Depends(db)):
+        q = select(Product).order_by(Product.maker, Product.model)
+        if component_type:
+            q = q.where(Product.component_type == component_type)
+        return [_product(p) for p in s.scalars(q)]
+
+    @app.post("/api/products", status_code=201)
+    def create_product(body: ProductIn, s: Session = Depends(db)):
+        return _product(inv.create_product(s, **body.model_dump()))
+
+    @app.get("/api/components")
+    def components(state: str | None = None, component_type: str | None = None, s: Session = Depends(db)):
+        q = select(Component).order_by(Component.component_type, Component.label)
+        if component_type:
+            q = q.where(Component.component_type == component_type)
+        rows = [_component_summary(s, c) for c in s.scalars(q)]
+        if state:
+            rows = [r for r in rows if r["location"]["state"] == state]
+        return rows
+
+    @app.post("/api/components", status_code=201)
+    def create_component(body: ComponentIn, s: Session = Depends(db), op_id: str | None = OpId):
+        data = body.model_dump(exclude={"install"})
+
+        def fn():
+            c = inv.create_component(s, **data)
+            if body.install:
+                inv.install(s, c.id, **body.install.model_dump())
+            return _component_summary(s, c)
+        return run_once(s, op_id, "component.create", fn)
+
+    @app.get("/api/components/{component_id}")
+    def component_detail(component_id: int, s: Session = Depends(db)):
+        c = inv.get_component(s, component_id)
+        return {**_component_summary(s, c), "ledger": component_ledger(s, c),
+                "history": inv.installation_history(s, c), "status": m.component_status(s, c),
+                "rules": [m.rule_row(r) for r in m.effective_rules(s, c, include_disabled=True)],
+                "events": m.events_for(s, component_id=c.id),
+                "actions": [{"code": a.code, "name": a.name, "quick": a.quick, "fields": list(a.fields),
+                             "outcomes": list(a.outcomes)}
+                            for a in ACTIONS.values() if action_applies(a, c.component_type)],
+                "product": _product(c.product) if c.product else None, "specs": json.loads(c.specs_json or "{}")}
+
+    @app.patch("/api/components/{component_id}")
+    def patch_component(component_id: int, body: ComponentPatch, s: Session = Depends(db)):
+        return _component_summary(s, inv.update_component(s, component_id, **body.model_dump(exclude_unset=True)))
+
+    @app.delete("/api/components/{component_id}")
+    def delete_component(component_id: int, s: Session = Depends(db)):
+        inv.delete_component(s, component_id)
+        return {"deleted": component_id}
+
+    @app.post("/api/components/{component_id}/install")
+    def install(component_id: int, body: InstallIn, dry_run: bool = False, s: Session = Depends(db),
+                op_id: str | None = OpId):
+        return op(s, op_id, "component.install",
+                  lambda: {"installation_id": inv.install(s, component_id, **body.model_dump()).id}, dry_run)
+
+    @app.post("/api/components/{component_id}/remove")
+    def remove(component_id: int, body: RemoveIn, dry_run: bool = False, s: Session = Depends(db),
+               op_id: str | None = OpId):
+        return op(s, op_id, "component.remove",
+                  lambda: {"installation_id": inv.remove(s, component_id, **body.model_dump()).id}, dry_run)
+
+    @app.post("/api/components/{component_id}/replace")
+    def replace(component_id: int, body: ReplaceIn, dry_run: bool = False, s: Session = Depends(db),
+                op_id: str | None = OpId):
+        return op(s, op_id, "component.replace", lambda: inv.replace(s, component_id, **body.model_dump()), dry_run)
+
+    @app.post("/api/components/{component_id}/retire")
+    def retire(component_id: int, body: RetireIn, s: Session = Depends(db)):
+        return _component_summary(s, inv.retire_component(s, component_id, **body.model_dump()))
+
+    @app.post("/api/components/{component_id}/starting-usage")
+    def comp_start(component_id: int, body: StartingIn, dry_run: bool = False, s: Session = Depends(db)):
+        return op(s, None, "component.starting", lambda: {"id": inv.set_starting_usage(
+            s, component_id=component_id, km=body.km, effective=body.effective, is_estimate=body.is_estimate,
+            note=body.note).id}, dry_run)
+
+    @app.post("/api/components/{component_id}/correction")
+    def comp_correction(component_id: int, body: CorrectionIn, dry_run: bool = False, s: Session = Depends(db)):
+        inv.get_component(s, component_id)
+        return op(s, None, "component.correction",
+                  lambda: {"id": inv.add_correction(s, component_id, **body.model_dump()).id}, dry_run)
+
+    @app.post("/api/components/{component_id}/rules", status_code=201)
+    def comp_rule(component_id: int, body: ComponentRuleIn, s: Session = Depends(db)):
+        data = body.model_dump(exclude_unset=True)
+        return m.rule_row(m.set_component_rule(s, component_id, **data))
+
+    @app.post("/api/installations/{installation_id}/void")
+    def void_installation(installation_id: int, body: VoidIn, dry_run: bool = False, s: Session = Depends(db)):
+        return op(s, None, "installation.void",
+                  lambda: {"id": inv.void_installation(s, installation_id, body.reason).id}, dry_run)
+
+    @app.post("/api/installations/{installation_id}/correct")
+    def correct_installation(installation_id: int, body: InstallCorrectIn, dry_run: bool = False,
+                             s: Session = Depends(db)):
+        return op(s, None, "installation.correct",
+                  lambda: {"id": inv.correct_installation(s, installation_id, **body.model_dump()).id}, dry_run)
+
+    # ------------------------------------------------------------ rides
+
+    @app.get("/api/rides")
+    def list_rides(bike_id: int | None = None, flagged: bool = False, include_excluded: bool = True,
+                   limit: int = Query(200, le=1000), offset: int = 0, s: Session = Depends(db)):
+        return rides_svc.list_rides(s, bike_id=bike_id, flagged_only=flagged, include_excluded=include_excluded,
+                                    limit=limit, offset=offset)
+
+    @app.post("/api/rides", status_code=201)
+    def add_ride(body: RideIn, s: Session = Depends(db), op_id: str | None = OpId):
+        return op(s, op_id, "ride.add", lambda: rides_svc.ride_row(s, rides_svc.add_manual_ride(s, **body.model_dump())))
+
+    @app.get("/api/rides/{ride_id}")
+    def ride_detail(ride_id: int, s: Session = Depends(db)):
+        return rides_svc.ride_detail(s, rides_svc.get_ride(s, ride_id))
+
+    @app.patch("/api/rides/{ride_id}")
+    def edit_ride(ride_id: int, body: RidePatch, dry_run: bool = False, s: Session = Depends(db),
+                  op_id: str | None = OpId):
+        changes = body.model_dump(exclude_unset=True)
+        return op(s, op_id, "ride.edit", lambda: rides_svc.ride_row(s, rides_svc.edit_ride(s, ride_id, changes)), dry_run)
+
+    @app.post("/api/rides/{ride_id}/exclude")
+    def exclude(ride_id: int, body: ExcludeIn, dry_run: bool = False, s: Session = Depends(db),
+                op_id: str | None = OpId):
+        return op(s, op_id, "ride.exclude",
+                  lambda: rides_svc.ride_row(s, rides_svc.exclude_ride(s, ride_id, body.reason)), dry_run)
+
+    @app.post("/api/rides/{ride_id}/restore")
+    def restore(ride_id: int, dry_run: bool = False, s: Session = Depends(db), op_id: str | None = OpId):
+        return op(s, op_id, "ride.restore", lambda: rides_svc.ride_row(s, rides_svc.restore_ride(s, ride_id)), dry_run)
+
+    @app.put("/api/rides/{ride_id}/equipment/{slot}")
+    def set_equipment(ride_id: int, slot: str, body: EquipmentIn, dry_run: bool = False, s: Session = Depends(db)):
+        return op(s, None, "ride.equipment", lambda: rides_svc.ride_detail(
+            s, rides_svc.set_equipment(s, ride_id, slot, body.component_id, body.note)), dry_run)
+
+    @app.delete("/api/rides/{ride_id}/equipment/{slot}")
+    def clear_equipment(ride_id: int, slot: str, dry_run: bool = False, s: Session = Depends(db)):
+        return op(s, None, "ride.equipment.clear",
+                  lambda: rides_svc.ride_detail(s, rides_svc.clear_equipment(s, ride_id, slot)), dry_run)
+
+    # ------------------------------------------------------------ maintenance
+
+    @app.get("/api/maintenance/queue")
+    def queue(bike_id: int | None = None, include_ok: bool = False, s: Session = Depends(db)):
+        return m.queue(s, bike_id=bike_id, include_ok=include_ok)
+
+    @app.get("/api/maintenance/events")
+    def events(component_id: int | None = None, bike_id: int | None = None, limit: int = 200,
+               s: Session = Depends(db)):
+        return m.events_for(s, component_id=component_id, bike_id=bike_id, limit=limit)
+
+    @app.get("/api/maintenance/candidates")
+    def candidates(bike_id: int, action_code: str, s: Session = Depends(db)):
+        return m.installed_parts_for_action(s, bike_id, action_code)
+
+    @app.post("/api/maintenance/events", status_code=201)
+    def log_event(body: EventIn, s: Session = Depends(db), op_id: str | None = OpId):
+        data = body.model_dump(exclude={"component_ids"})
+
+        def fn():
+            if body.component_ids:
+                data.pop("component_id")
+                data.pop("bike_id")
+                evs = m.log_batch(s, component_ids=body.component_ids, **data)
+            else:
+                evs = [m.log_event(s, **data)]
+            ids = [e.id for e in evs]
+            return {"event_ids": ids, "status": [m.component_status(s, inv.get_component(s, e.component_id))
+                                                 for e in evs if e.component_id]}
+        return run_once(s, op_id, "maintenance.log", fn)
+
+    @app.post("/api/maintenance/events/{event_id}/void")
+    def void_event(event_id: int, body: VoidIn, s: Session = Depends(db)):
+        e = m.void_event(s, event_id, body.reason)
+        return {"id": e.id, "voided": True}
+
+    @app.post("/api/maintenance/snooze", status_code=201)
+    def snooze(body: SnoozeIn, s: Session = Depends(db)):
+        sn = m.snooze(s, **body.model_dump())
+        return {"id": sn.id, "until_date": sn.until_date, "until_km": sn.until_km}
+
+    @app.delete("/api/maintenance/snooze/{snooze_id}")
+    def unsnooze(snooze_id: int, s: Session = Depends(db)):
+        m.unsnooze(s, snooze_id)
+        return {"id": snooze_id, "cleared": True}
+
+    @app.get("/api/rules")
+    def rules(s: Session = Depends(db)):
+        return [m.rule_row(r) for r in s.scalars(select(ServiceRule).where(ServiceRule.component_type.is_not(None))
+                                                 .order_by(ServiceRule.component_type, ServiceRule.rule_code))]
+
+    @app.patch("/api/rules/{rule_id}")
+    def patch_rule(rule_id: int, body: RulePatch, s: Session = Depends(db)):
+        return m.rule_row(m.update_rule(s, rule_id, **body.model_dump(exclude_unset=True)))
+
+    @app.get("/api/chains")
+    def chains(s: Session = Depends(db)):
+        return m.chain_overview(s)
+
+    @app.get("/api/brakes")
+    def brakes(bike_id: int | None = None, s: Session = Depends(db)):
+        return m.brake_overview(s, bike_id=bike_id)
+
+    @app.get("/api/consumables")
+    def consumables(s: Session = Depends(db)):
+        return m.consumable_stock(s)
+
+    @app.post("/api/consumables", status_code=201)
+    def add_consumable(body: ConsumableIn, s: Session = Depends(db)):
+        c = m.add_consumable(s, **body.model_dump())
+        return {"id": c.id, "name": c.name}
+
+    @app.post("/api/consumables/{consumable_id}/txn", status_code=201)
+    def consumable_txn(consumable_id: int, body: TxnIn, s: Session = Depends(db)):
+        t = m.consumable_txn(s, consumable_id, **body.model_dump())
+        return {"id": t.id}
+
+    @app.post("/api/profiles", status_code=201)
+    def add_profile(body: ProfileIn, s: Session = Depends(db)):
+        if s.scalar(select(UsageProfile).where(UsageProfile.code == body.code)):
+            raise DomainError(f"Profile {body.code} exists")
+        p = UsageProfile(code=body.code, name=body.name, kind="TRAINER",
+                         excluded_slots_json=json.dumps(body.excluded_slots),
+                         excluded_types_json=json.dumps(body.excluded_types), notes=body.notes)
+        s.add(p)
+        s.flush()
+        return {"id": p.id, "code": p.code}
+
+    # ------------------------------------------------------------ imports, settings, data
+
+    @app.post("/api/imports/csv")
+    async def import_csv(request: Request, file_name: str | None = None):
+        content = await request.body()
+        if not content:
+            raise DomainError("Empty upload")
+        if len(content) > 20_000_000:
+            raise DomainError("File too large (max 20 MB)")
+        from starlette.concurrency import run_in_threadpool
+        return await run_in_threadpool(imports.run_csv_import, factory, content, file_name=file_name)
+
+    @app.get("/api/imports")
+    def import_batches(s: Session = Depends(db)):
+        return imports.list_batches(s)
+
+    @app.get("/api/imports/template", response_class=PlainTextResponse)
+    def import_template():
+        return PlainTextResponse(imports.CSV_TEMPLATE, media_type="text/csv",
+                                 headers={"Content-Disposition": 'attachment; filename="bikelog-rides-template.csv"'})
+
+    @app.get("/api/strava/status")
+    def strava_status(s: Session = Depends(db)):
+        return strava.status(s)
+
+    @app.get("/api/settings")
+    def get_settings(s: Session = Depends(db)):
+        return settings_svc.all_settings(s)
+
+    @app.patch("/api/settings")
+    def patch_settings(body: SettingsPatch, s: Session = Depends(db)):
+        data = body.model_dump(exclude_unset=True)
+        for k, v in data.items():
+            settings_svc.set_value(s, k, v or "")
+        if "timezone" in data:
+            rebuild_everything(s)
+        return settings_svc.all_settings(s)
+
+    @app.post("/api/admin/rebuild")
+    def rebuild(s: Session = Depends(db)):
+        return {"rides": rebuild_everything(s)}
+
+    @app.get("/api/backups")
+    def list_backups():
+        files = sorted(paths.backups.glob("bikelog-*.db"), key=lambda p: p.name, reverse=True)
+        return {"directory": str(paths.root), "backups": [{"name": f.name, "size": f.stat().st_size} for f in files],
+                "exports": [{"name": f.name, "size": f.stat().st_size}
+                            for f in sorted(paths.exports.glob("*.zip"), reverse=True)]}
+
+    @app.post("/api/backups", status_code=201)
+    def create_backup():
+        dest = backup.backup_database(paths, "manual")
+        return {"name": dest.name if dest else None}
+
+    @app.post("/api/exports", status_code=201)
+    def create_export():
+        dest = backup.export_archive(paths, head_revision())
+        return {"name": dest.name}
+
+    @app.get("/api/exports/{name}")
+    def download_export(name: str):
+        f = (paths.exports / name).resolve()
+        if f.parent != paths.exports.resolve() or not f.exists():
+            raise DomainError("No such export")
+        return FileResponse(f, filename=name, media_type="application/zip")
+
+    # ------------------------------------------------------------ frontend
+
+    static = static_dir if static_dir is not None else _find_static()
+    if static and (static / "index.html").exists():
+        index_html = (static / "index.html").read_text(encoding="utf-8").replace("%BIKELOG_TOKEN%", token)
+
+        @app.get("/", response_class=HTMLResponse, include_in_schema=False)
+        def index():
+            return HTMLResponse(index_html, headers={"Cache-Control": "no-store"})
+
+        app.mount("/", StaticFiles(directory=static), name="static")
+    else:
+        @app.get("/", response_class=HTMLResponse, include_in_schema=False)
+        def no_frontend():
+            return HTMLResponse("<h1>Bike Log</h1><p>The frontend is not built. Run <code>npm run build</code> in "
+                                "frontend/ (see HANDOVER.md). The API is available under /api.</p>")
+    return app
+
+
+def _find_static() -> Path | None:
+    for cand in (resource_root() / "static", Path(__file__).resolve().parents[3] / "frontend" / "dist"):
+        if (cand / "index.html").exists():
+            return cand
+    return None
+
+
+# ---------------------------------------------------------------- serializers
+
+def _bike_summary(s: Session, b: Bike) -> dict:
+    return {"id": b.id, "uuid": b.uuid, "name": b.name, "maker": b.maker, "model": b.model, "year": b.year,
+            "status": b.status, "strava_gear_id": b.strava_gear_id, "notes": b.notes, "usage": bike_usage(s, b),
+            "open_tasks": sum(1 for t in m.queue(s, bike_id=b.id) if t["status"] in ("DUE", "OVERDUE", "ATTENTION"))}
+
+
+def _product(p: Product) -> dict:
+    return {"id": p.id, "uuid": p.uuid, "component_type": p.component_type, "maker": p.maker, "model": p.model,
+            "specs": json.loads(p.specs_json or "{}"), "spec_source": p.spec_source, "spec_version": p.spec_version,
+            "notes": p.notes}
+
+
+def _component_summary(s: Session, c: Component) -> dict:
+    t = COMPONENT_TYPES.get(c.component_type)
+    return {"id": c.id, "uuid": c.uuid, "label": c.label, "component_type": c.component_type,
+            "type_name": t.name if t else c.component_type, "category": t.category if t else None,
+            "product_id": c.product_id,
+            "product": f"{c.product.maker or ''} {c.product.model}".strip() if c.product else None,
+            "prior_usage": c.prior_usage, "status": c.status, "purchase_date": c.purchase_date,
+            "price_cents": c.price_cents, "serial_number": c.serial_number, "notes": c.notes,
+            "retired_on": c.retired_on, "retire_reason": c.retire_reason,
+            "location": inv.location(s, c), "usage": component_usage(s, c)}
