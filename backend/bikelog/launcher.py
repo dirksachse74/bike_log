@@ -33,6 +33,8 @@ DAILY_BACKUP_S = 24 * 3600
 def _free_port(preferred: int) -> int:
     for port in (preferred, 0):
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            if sys.platform != "win32":  # like uvicorn; otherwise a restart finds the port in TIME_WAIT
+                s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             try:
                 s.bind(("127.0.0.1", port))
                 return s.getsockname()[1]

@@ -51,7 +51,7 @@ def test_main_workflow_over_http(client):
     assert prev["change"]["preview"] and prev["change"]["deltas"][0]["delta_km"] == -60
     detail = client.get(f"/api/components/{chain['id']}").json()
     assert detail["usage"]["total_km"] == 260 and detail["ledger"][0]["km"] == 260
-    assert any(s["rule_code"] == "CHAIN_HOT_WAX" for s in detail["status"])
+    assert any(s["rule_code"] == "CHAIN_HOT_WAX" for s in detail["service_status"])
     client.post(f"/api/rides/{ride_id}/exclude", json={"reason": "test"})
     assert client.get(f"/api/components/{chain['id']}").json()["usage"]["total_km"] == 0
     client.post(f"/api/rides/{ride_id}/restore")

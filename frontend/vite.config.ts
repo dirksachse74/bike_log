@@ -5,7 +5,7 @@ import react from '@vitejs/plugin-react'
 // In dev, /api is proxied to a locally running backend (BIKELOG_DEV_TOKEN=dev).
 export default defineConfig({
   plugins: [react()],
-  base: process.env.BIKELOG_BASE ?? '/',
+  base: '/',
   server: {
     proxy: {
       '/api': 'http://127.0.0.1:8765',
