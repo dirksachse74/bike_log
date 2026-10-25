@@ -1,8 +1,8 @@
 # Strava connector status
 
-**Status: implemented and tested against a fake Strava server; never connected live.**
-The connector is isolated in `backend/bikelog/connectors/strava/` and disabled unless the
-environment variable `BIKELOG_ENABLE_STRAVA=1` is set. The app works fully without it
+**Status: implemented and tested against a fake Strava server; first live run pending on Dirk's PC.**
+The connector is isolated in `backend/bikelog/connectors/strava/` and runs only through the explicit
+commands below (or with `BIKELOG_ENABLE_STRAVA=1` for developers). The app works fully without it
 (manual rides and CSV import, including your Strava `activities.csv` export).
 
 ## Exact blockers (as of 2026-10-24)
@@ -29,11 +29,22 @@ environment variable `BIKELOG_ENABLE_STRAVA=1` is set. The app works fully witho
 * Gear ids (`b12345`) mapped to bikes by their Strava gear id; trainer/VirtualRide uses the trainer profile.
 * Local corrections and exclusions preserved; rate limits, retries and token refresh in `client.py`.
 
-## To try it on your machine later
+## How to connect (Windows)
 
-1. Reset the client secret on strava.com, create `strava.env` in the data folder with
-   `STRAVA_CLIENT_ID=...` and `STRAVA_CLIENT_SECRET=...`.
-2. There is no button or command for the live connection yet. The building blocks exist
-   (`StravaClient.authorize_via_localhost()` and `sync.sync()`); a small command around them is the
-   first Strava task in TASKS.md. It needs `BIKELOG_ENABLE_STRAVA=1`.
-3. Check the result against your Strava totals before relying on it.
+Bike Log must be closed while these commands run. In PowerShell, go to the program folder
+(`dist\BikeLog` after a build, or `%LOCALAPPDATA%\Programs\BikeLog` after installing).
+
+1. On https://www.strava.com/settings/api: reset the Client Secret (the old one was shared in chat), and
+   set **Authorization Callback Domain** to `localhost`.
+2. `.\BikeLog.exe --strava-connect` asks once for Client ID and Client Secret (saved only in
+   `%LOCALAPPDATA%\BikeLog\strava.env`), opens Strava in the browser; click **Authorize**.
+3. Optional: in Bike Log, Settings → Import start date, to limit how far back rides are imported.
+   Optional: give your existing bikes their Strava gear id (number from the bike's Strava URL), otherwise
+   Bike Log creates or links bikes by the Strava gear name.
+4. `.\BikeLog.exe --strava-sync` writes a backup, then imports rides page by page. Run it again whenever
+   you want new rides; it continues where it stopped. `--strava-rescan` re-reads everything since the
+   start date (no duplicates).
+5. `.\BikeLog.exe --strava-disconnect` revokes access and deletes rides imported from the API.
+
+From a source checkout use `python -m bikelog --strava-connect` (in `backend/`) instead of `BikeLog.exe`.
+These commands are tested against a fake Strava only; the first real run is on your machine.

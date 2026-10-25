@@ -32,7 +32,7 @@ export default function SettingsPage() {
   const [err, setErr] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const batches = useApi<Batch[]>('/imports')
-  const strava = useApi<{ enabled: boolean; connected: boolean; live_connection_verified: boolean; blockers: string[]; alternative: string; last_error: string | null }>('/strava/status')
+  const strava = useApi<{ enabled: boolean; connected: boolean; live_connection_verified: boolean; blockers: string[]; alternative: string; last_error: string | null; last_success_at: string | null; how_to_sync: string }>('/strava/status')
   const backups = useApi<{ directory: string; backups: { name: string; size: number }[]; exports: { name: string; size: number }[] }>('/backups')
   const fileRef = useRef<HTMLInputElement>(null)
   const [importing, setImporting] = useState(false)
@@ -161,16 +161,24 @@ export default function SettingsPage() {
       <Card title="Strava">
         {strava.loading && <Loading />}
         {strava.error && <ErrorBox error={strava.error} onRetry={strava.reload} />}
-        {strava.data && (
+        {strava.data && strava.data.live_connection_verified && (
           <>
             <p>
-              <Tag tone="warn">Not connected</Tag> A live Strava connection has not been verified and is switched off.
+              <Tag tone="good">Connected</Tag> Last successful sync: {when(strava.data.last_success_at)}.
             </p>
-            <ul className="small">
-              {strava.data.blockers.map((b) => (
-                <li key={b}>{b}</li>
-              ))}
-            </ul>
+            {strava.data.last_error && <p className="small form-error">Last attempt failed: {strava.data.last_error}</p>}
+            <p className="small">To import new rides: {strava.data.how_to_sync}</p>
+          </>
+        )}
+        {strava.data && !strava.data.live_connection_verified && (
+          <>
+            <p>
+              <Tag tone="warn">Not connected</Tag> No successful sync with Strava yet.
+            </p>
+            <p className="small">
+              To connect: close Bike Log, then run <code>BikeLog.exe --strava-connect</code> and <code>BikeLog.exe --strava-sync</code> (see docs/strava.md).
+            </p>
+            {strava.data.last_error && <p className="small form-error">Last attempt failed: {strava.data.last_error}</p>}
             <p className="small">{strava.data.alternative}</p>
             <p className="small muted">The app works fully without Strava: add rides by hand or import CSV.</p>
           </>

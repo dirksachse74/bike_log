@@ -54,7 +54,8 @@ def test_sync_imports_pages_and_is_idempotent(session, world):
 
 def test_interrupted_sync_resumes(session, world):
     factory, fake, client, chain = world
-    fake.fail_plan = {3: "net", 4: "net", 5: "net", 6: "net"}   # second page fails beyond retries
+    # calls: page 1, page 2, gear lookup for the unknown bike, then page 3 fails beyond retries
+    fake.fail_plan = {4: "net", 5: "net", 6: "net", 7: "net"}
     with pytest.raises(StravaTemporaryError):
         strava.sync(factory, client, per_page=2, force=True)
     first = n_rides(session)
@@ -87,3 +88,34 @@ def test_disconnect_deletes_imported_data_but_keeps_exclusions(session, world):
 def test_status_never_claims_a_live_connection(session):
     st = strava.status(session)
     assert st["live_connection_verified"] is False and st["blockers"]
+
+
+def test_unknown_gear_creates_or_links_bike_once(session, engine, tmp_path):
+    from bikelog.models import Bike
+    inv.create_bike(session, name="Cube SL Road SL")                    # same name, no gear id yet
+    session.commit()
+    fake = FakeStrava([act(1, "2026-10-02T08:00:00Z", 40, gear="b7001"), act(2, "2026-10-03T08:00:00Z", 30, gear="b7001"),
+                       act(3, "2026-10-04T08:00:00Z", 20, gear="b7002")],
+                      gear={"b7001": {"id": "b7001", "name": "Cannondale Synapse Di2"},
+                            "b7002": {"id": "b7002", "name": "Cube SL Road SL"}})
+    factory = make_session_factory(engine)
+    res = strava.sync(factory, client_for(fake, tmp_path), force=True)
+    assert res["counts"]["BIKES_CREATED"] == 1 and res["counts"]["BIKES_LINKED"] == 1
+    session.expire_all()
+    syn = session.scalar(select(Bike).where(Bike.name == "Cannondale Synapse Di2"))
+    cube = session.scalar(select(Bike).where(Bike.name == "Cube SL Road SL"))
+    assert syn.strava_gear_id == "7001" and cube.strava_gear_id == "7002"
+    assert {r.bike_id for r in session.scalars(select(Ride))} == {syn.id, cube.id}
+    st = strava.status(session)
+    assert st["live_connection_verified"] is True and st["blockers"] == []   # only after a successful sync
+    session.commit()
+    again = strava.sync(factory, client_for(fake, tmp_path), force=True, rescan=True)
+    assert "BIKES_CREATED" not in again["counts"]
+    assert session.scalar(select(func.count()).select_from(Bike)) == 2
+
+
+def test_sync_command_without_connection_explains_next_step(tmp_path, capsys):
+    from bikelog.launcher import main
+    assert main(["--data-dir", str(tmp_path / "d"), "--strava-sync", "--no-browser"]) == 2
+    assert "--strava-connect" in capsys.readouterr().err
+    assert not (tmp_path / "d" / "strava.env").exists()

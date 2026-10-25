@@ -44,12 +44,15 @@ def enabled() -> bool:
 
 
 def status(session: Session) -> dict:
+    """``live_connection_verified`` is True only after a sync against the real Strava succeeded."""
     conn = session.get(StravaConnection, SOURCE_ACCOUNT)
-    return {"enabled": enabled(), "connected": bool(conn and conn.status == "ACTIVE"),
+    live = bool(conn and conn.last_success_at and conn.status == "ACTIVE")
+    return {"enabled": enabled() or live, "connected": bool(conn and conn.status == "ACTIVE"),
             "status": conn.status if conn else "NOT_CONNECTED", "last_success_at": conn.last_success_at if conn else None,
             "last_error": conn.last_error if conn else None,
             "retention_mode": conn.retention_mode if conn else "PROVISIONAL",
-            "live_connection_verified": False, "blockers": BLOCKERS,
+            "live_connection_verified": live, "blockers": [] if live else BLOCKERS,
+            "how_to_sync": "Close Bike Log, then run:  BikeLog.exe --strava-sync   (see docs/strava.md)",
             "alternative": "Import your Strava 'Download your data' activities.csv under Settings → Import (CSV)."}
 
 
@@ -60,13 +63,50 @@ def _start_epoch(session: Session) -> int:
     return int(d.timestamp()) - 1
 
 
-def _values(session: Session, act: dict) -> dict:
+def _values(session: Session, act: dict, bike_for_gear=None) -> dict:
     sport = act.get("sport_type") or act.get("type") or "Ride"
     trainer = bool(act.get("trainer")) or sport == "VirtualRide"
+    gear = _gear(act.get("gear_id"))
+    bike_id = imports.resolve_bike(session, gear_id=gear)
+    if bike_id is None and gear and bike_for_gear is not None:
+        bike_id = bike_for_gear(session, act.get("gear_id"))
     return {"when": act["start_date"], "distance_km": (act["distance"] / 1000) if act.get("distance") is not None else None,
             "duration_s": act.get("elapsed_time"), "name": act.get("name"), "sport_type": sport,
-            "bike_id": imports.resolve_bike(session, gear_id=_gear(act.get("gear_id"))),
+            "bike_id": bike_id,
             "usage_profile_code": (settings.get(session, "trainer_profile_for_virtual") or None) if trainer else None}
+
+
+def _gear_mapper(client: StravaClient, counts: dict):
+    """Unknown Strava bike: link it to the bike with the same name, or create that bike once."""
+    from sqlalchemy import func
+
+    from bikelog.models import Bike
+    seen: dict[str, dict | None] = {}
+
+    def bike_for_gear(session: Session, strava_gear_id: str) -> int | None:
+        if strava_gear_id not in seen:
+            try:
+                seen[strava_gear_id] = client.get_gear(strava_gear_id)
+            except Exception:  # gear lookup is a convenience; the ride is still imported (flagged: no bike)
+                seen[strava_gear_id] = None
+        g = seen[strava_gear_id]
+        name = (g or {}).get("name") or " ".join(x for x in ((g or {}).get("brand_name"), (g or {}).get("model_name")) if x)
+        if not name:
+            return None
+        bike = session.scalar(select(Bike).where(func.lower(Bike.name) == name.strip().lower()))
+        if bike is None:
+            bike = Bike(name=name.strip(), strava_gear_id=_gear(strava_gear_id),
+                        notes="Created from Strava gear during sync")
+            session.add(bike)
+            counts["BIKES_CREATED"] = counts.get("BIKES_CREATED", 0) + 1
+        elif not bike.strava_gear_id:
+            bike.strava_gear_id = _gear(strava_gear_id)
+            counts["BIKES_LINKED"] = counts.get("BIKES_LINKED", 0) + 1
+        else:
+            return None  # same name but another gear id: leave it for the user to decide
+        session.flush()
+        return bike.id
+    return bike_for_gear
 
 
 def _gear(gear_id: str | None) -> str | None:
@@ -77,10 +117,11 @@ def _gear(gear_id: str | None) -> str | None:
 
 
 def sync(factory: sessionmaker[Session], client: StravaClient, *, rescan: bool = False, per_page: int = 100,
-         force: bool = False) -> dict:
+         force: bool = False, progress=None) -> dict:
     if not (enabled() or force):
         raise RuntimeError("Strava connector is disabled (set BIKELOG_ENABLE_STRAVA=1). See DECISIONS.md.")
     counts: dict[str, int] = {}
+    bike_for_gear = _gear_mapper(client, counts)
     with factory() as s, s.begin():
         conn = s.get(StravaConnection, SOURCE_ACCOUNT)
         if conn is None:
@@ -102,13 +143,15 @@ def sync(factory: sessionmaker[Session], client: StravaClient, *, rescan: bool =
                         counts["SKIPPED_NOT_CYCLING"] = counts.get("SKIPPED_NOT_CYCLING", 0) + 1
                         continue
                     res = imports.upsert_record(s, source_kind=SOURCE_KIND, source_account=SOURCE_ACCOUNT,
-                                                source_ref=str(act["id"]), values=_values(s, act))
+                                                source_ref=str(act["id"]), values=_values(s, act, bike_for_gear))
                     counts[res] = counts.get(res, 0) + 1
                     newest = act["start_date"]
                 conn = s.get(StravaConnection, SOURCE_ACCOUNT)
                 if newest:
                     epoch = int(datetime.fromisoformat(newest.replace("Z", "+00:00")).timestamp())
                     conn.cursor_epoch = max(conn.cursor_epoch or 0, epoch)
+            if progress:
+                progress(_page, counts)
     except Exception as e:
         with factory() as s, s.begin():
             conn = s.get(StravaConnection, SOURCE_ACCOUNT)

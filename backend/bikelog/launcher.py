@@ -28,6 +28,7 @@ from bikelog.single_instance import AlreadyRunning, InstanceLock
 log = logging.getLogger("bikelog")
 DEFAULT_PORT = 8765
 DAILY_BACKUP_S = 24 * 3600
+STRAVA_OAUTH_PORT = 8766  # Strava app setting "Authorization Callback Domain" must be: localhost
 
 
 def _free_port(preferred: int) -> int:
@@ -87,6 +88,12 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--backup", action="store_true", help="write a database backup and exit")
     ap.add_argument("--export", type=Path, nargs="?", const=Path(), help="write a full export (zip) and exit")
     ap.add_argument("--restore", type=Path, help="restore a full export (zip) and exit (app must be closed)")
+    ap.add_argument("--strava-connect", action="store_true",
+                    help="connect your Strava account (asks for the API app id/secret once) and exit")
+    ap.add_argument("--strava-sync", action="store_true", help="import rides from Strava and exit")
+    ap.add_argument("--strava-rescan", action="store_true", help="with --strava-sync: re-read all rides since the start date")
+    ap.add_argument("--strava-disconnect", action="store_true",
+                    help="revoke Strava access and delete rides imported from the Strava API, then exit")
     ap.add_argument("--version", action="version", version=f"Bike Log {__version__} (schema {head_revision()})")
     args = ap.parse_args(argv)
 
@@ -102,7 +109,7 @@ def main(argv: list[str] | None = None) -> int:
         lock.acquire()
     except AlreadyRunning as e:
         url = e.info.get("url")
-        if args.backup or args.export is not None or args.restore:
+        if args.backup or args.export is not None or args.restore or _strava_cmd(args):
             print("Bike Log is running; close it first.", file=sys.stderr)
             return 2
         print(f"Bike Log is already running{' at ' + url if url else ''}.")
@@ -126,6 +133,8 @@ def main(argv: list[str] | None = None) -> int:
             dest = export_archive(paths, head_revision(), (args.export if str(args.export) not in ("", ".") else None))
             print(f"Export written: {dest}")
             return 0
+        if _strava_cmd(args):
+            return _strava(args, paths, factory)
         _daily_backup(paths)
 
         import uvicorn
@@ -144,6 +153,65 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     finally:
         lock.release()
+
+
+def _strava_cmd(args) -> bool:
+    return bool(args.strava_connect or args.strava_sync or args.strava_disconnect)
+
+
+def _strava(args, paths: DataPaths, factory) -> int:
+    """Strava commands run with the app closed (they hold the single-instance lock).
+    Credentials and tokens live only in <data dir>/strava.env, never in the database."""
+    import getpass
+
+    from bikelog.connectors.strava import client as sc
+    from bikelog.connectors.strava import sync as strava
+    env_file = paths.root / "strava.env"
+    os.environ["BIKELOG_STRAVA_ENV"] = str(env_file)
+    try:
+        if args.strava_connect:
+            env = sc.read_env(env_file)
+            if not (env.get("STRAVA_CLIENT_ID") and env.get("STRAVA_CLIENT_SECRET")):
+                print("Enter your Strava API application details (strava.com/settings/api).")
+                cid = input("Client ID: ").strip()
+                secret = getpass.getpass("Client Secret (not shown while typing): ").strip()
+                if not cid.isdigit() or not secret:
+                    print("Client ID must be a number and the secret must not be empty.", file=sys.stderr)
+                    return 2
+                sc.update_env(env_file, {"STRAVA_CLIENT_ID": cid, "STRAVA_CLIENT_SECRET": secret})
+                print(f"Saved to {env_file} (only on this computer).")
+            client = sc.StravaClient(token_store=sc.EnvTokenStore(env_file))
+            print("Your browser opens Strava. Click 'Authorize'. Waiting up to 5 minutes...")
+            tok = client.authorize_via_localhost(port=STRAVA_OAUTH_PORT, open_browser=not args.no_browser)
+            print(f"Strava connected (athlete {tok['athlete_id']}, scope {tok.get('scope')}).")
+            print("Next: BikeLog.exe --strava-sync")
+            return 0
+        client = sc.StravaClient(token_store=sc.EnvTokenStore(env_file))
+        if args.strava_disconnect:
+            client.deauthorize()
+            res = strava.delete_imported(factory)
+            print(f"Strava disconnected. Deleted {res['deleted_rides']} imported rides; "
+                  f"{res['kept_exclusion_identities']} excluded rides keep only their id so they stay excluded.")
+            return 0
+        if client.tokens.load() is None:
+            print("Strava is not connected yet. Run: BikeLog.exe --strava-connect", file=sys.stderr)
+            return 2
+        backup_database(paths, "pre-strava-sync")
+        print("Importing rides from Strava (a backup was written first). This can take a few minutes...")
+
+        def progress(page, counts):
+            print(f"  page {page}: " + ", ".join(f"{k.lower()} {v}" for k, v in sorted(counts.items())), flush=True)
+        res = strava.sync(factory, client, rescan=args.strava_rescan, force=True, progress=progress)
+        c = res.get("counts", {})
+        print("Done: " + (", ".join(f"{k.lower().replace('_', ' ')} {v}" for k, v in sorted(c.items())) or "nothing new"))
+        print("Open Bike Log to see the rides. Rides without a matching bike are listed under Rides → flagged.")
+        return 0
+    except sc.StravaError as e:
+        print(f"Strava: {e}", file=sys.stderr)
+        return 1
+    except sc.StravaTemporaryError as e:
+        print(f"Strava: {e} Run the same command again later; it continues where it stopped.", file=sys.stderr)
+        return 1
 
 
 if __name__ == "__main__":
