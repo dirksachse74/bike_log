@@ -266,7 +266,7 @@ def ride_row(session: Session, ride: Ride, bikes: dict[int, str] | None = None,
         "removed": ride.inclusion == "EXCLUDED" or ride.status != "ACTIVE",
         "bike_overridden": "bike_id" in overridden,
         "source_bike_id": source_bike_id if src else None,
-        "source_bike": bikes.get(source_bike_id) if source_bike_id else None,
+        "source_bike": bikes.get(source_bike_id) if source_bike_id else (src or {}).get("unmatched_bike"),
     }
 
 
@@ -281,7 +281,25 @@ def ride_detail(session: Session, ride: Ride) -> dict:
     row["explicit_equipment"] = [{"slot": e.slot, "component_id": e.component_id, "note": e.note}
                                  for e in session.scalars(select(RideEquipment).where(RideEquipment.ride_id == ride.id))]
     row["source_values"] = source_values(session, ride)
+    row["counting_note"] = _counting_note(session, ride, row["equipment"])
     return row
+
+
+def _counting_note(session: Session, ride: Ride, equipment: list[dict]) -> str | None:
+    """Why a counted ride gives the bike or its parts no km (UAT B3)."""
+    if not ride.bike_id or ride.inclusion != "INCLUDED" or ride.status != "ACTIVE":
+        return None
+    from bikelog.services.usage import starting_value
+    start = starting_value(session, bike_id=ride.bike_id)
+    if start and ride.sort_utc < start.effective_utc:
+        b = session.get(Bike, ride.bike_id)
+        return (f"Before tracking started: {b.name}'s starting value ({'≈' if start.is_estimate else ''}"
+                f"{start.km:,.0f} km on {start.effective_at[:10]}) already includes this ride, so it adds no km.")
+    if equipment and all(e["state"] == "IN_BASELINE" for e in equipment):
+        return "Every part on the bike has a 'km from before' value dated after this ride, which already includes it."
+    if not equipment:
+        return "No parts were on the bike on this day, so only the bike's own total counts it."
+    return None
 
 
 def list_rides(session: Session, *, bike_id: int | None = None, include_excluded: bool = True,

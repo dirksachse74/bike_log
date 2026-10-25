@@ -392,6 +392,7 @@ function RideDetailView({
         }}
       />
       <h3>Mileage given to parts</h3>
+      {data.counting_note && <p className="notice">{data.counting_note}</p>}
       {data.equipment.length === 0 ? (
         <p className="muted">No parts received mileage from this ride.</p>
       ) : (
@@ -781,6 +782,9 @@ export default function RidesPage() {
                           changed by you · {r.source_kind.toLowerCase()}:{" "}
                           {r.source_bike ?? "no bike"}
                         </span>
+                      )}
+                      {!r.bike_id && !r.bike_overridden && r.uncertainty_note && (
+                        <span className="small muted"> {r.uncertainty_note}</span>
                       )}
                     </td>
                     <td className="num">{km(r.distance_km)}</td>

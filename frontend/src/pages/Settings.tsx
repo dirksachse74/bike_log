@@ -16,6 +16,7 @@ interface ImportResult {
   rows: number
   counts: Record<string, number>
   errors: { row: number; error: string }[]
+  unknown_bikes?: Record<string, number>
 }
 
 interface Batch {
@@ -155,6 +156,15 @@ export default function SettingsPage() {
             {Object.entries(result.counts)
               .map(([k, v]) => `${v} ${k.replace(/_/g, ' ').toLowerCase()}`)
               .join(', ') || 'Nothing to import.'}
+            {Object.keys(result.unknown_bikes ?? {}).length > 0 && (
+              <p>
+                No bike with this name, so these rides have no bike yet (the name is kept on each ride; add the
+                bike or assign the rides on the Rides page):{' '}
+                {Object.entries(result.unknown_bikes ?? {})
+                  .map(([name, n]) => `${name} (${n} ${n === 1 ? 'ride' : 'rides'})`)
+                  .join(', ')}
+              </p>
+            )}
             {result.errors.length > 0 && (
               <ul>
                 {result.errors.slice(0, 10).map((e) => (

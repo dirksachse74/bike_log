@@ -863,6 +863,8 @@ label.chip {
 }
 
 .brand-version {
+  flex-basis: 100%;
+  padding-left: 2.5rem;
   font-size: 0.7rem;
   font-weight: 400;
   color: var(--muted);

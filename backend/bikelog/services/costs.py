@@ -128,13 +128,12 @@ def bike_costs(session: Session, bike: Bike, *, attribution: dict[int, int | Non
         "services_cents": total("SERVICE"), "unpriced_bundles": unpriced_bundles,
         "running_cents": running, "total_cents": (initial or 0) + running,
         "estimated": any(i["estimated"] for i in items),
-        "unpriced_parts": len(unpriced), "unvalued_stock_uses": unvalued,
+        "unpriced_parts": len(unpriced), "unpriced_labels": sorted(unpriced), "unvalued_stock_uses": unvalued,
         "initial_known": initial is not None,
     }
     if with_items:
         items.sort(key=lambda i: (i["date"] or ""), reverse=True)
         out["items"] = items
-        out["unpriced_labels"] = sorted(unpriced)
     return out
 
 

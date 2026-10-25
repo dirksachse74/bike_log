@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api } from '../api'
 import { useApp } from '../context'
+import { today } from '../format'
 import type { Task } from '../types'
 import LogMaintenance from './LogMaintenance'
 import { Empty, Sheet, StatusBadge } from './ui'
@@ -27,7 +28,8 @@ export default function TaskList({ tasks, onChange, emptyText = 'Nothing due by 
     await api.del(`/maintenance/snooze/${t.snooze_id}`)
     onChange()
   }
-  const inDays = (n: number) => new Date(Date.now() + n * 864e5).toISOString().slice(0, 10)
+  // from the local "today" (the app's timezone), not the UTC date
+  const inDays = (n: number) => new Date(Date.parse(`${today()}T12:00:00Z`) + n * 864e5).toISOString().slice(0, 10)
 
   return (
     <>

@@ -14,6 +14,10 @@ import { centsInput, certaintyLabel, euro, km, setupLabel, slotName, toCents, to
 import { useApi } from '../hooks'
 import type { Bike, Change, ChainRow, ComponentSummary, EventRow, OpResult, Rule, Task } from '../types'
 
+const SUPPLY_KINDS: Record<string, string> = { WAX: 'Chain wax', LUBE: 'Chain lube', SEALANT: 'Tubeless sealant', BRAKE_FLUID: 'Brake fluid', GREASE: 'Grease', OTHER: 'Other' }
+// "g" and "ml" stay as they are; "tube" becomes "tubes"
+const unitPlural = (u: string) => (u.length <= 2 || u.endsWith('s') ? u : `${u}s`)
+
 const CHAIN_TONE: Record<string, 'good' | 'warn' | 'info' | 'bad' | 'neutral'> = {
   READY_TO_INSTALL: 'good',
   INSTALLED: 'info',
@@ -311,10 +315,10 @@ function StockTxnForm({ line, onDone }: { line: StockLine; onDone: (msg: string)
         ))}
       </div>
       <div className="row">
-        <Field label={f.kind === 'ADJUST' ? `Change (+/− ${line.unit}s)` : `Quantity (${line.unit}s)`} hint={line.unit_note ?? undefined}>
+        <Field label={f.kind === 'ADJUST' ? `Change (+/− ${unitPlural(line.unit)})` : `Quantity (${unitPlural(line.unit)})`} hint={line.unit_note ?? undefined}>
           <input inputMode="decimal" value={f.qty} onChange={(e) => setF({ ...f, qty: e.target.value })} placeholder={line.tracking_mode === 'BULK' ? 'optional' : ''} />
         </Field>
-        {f.kind === 'PURCHASE' && (
+        {f.kind === 'PURCHASE' && line.tracking_mode === 'COUNTED' && (
           <Field label="Packages (optional)" hint="A pack of 2 links = 1 package, 2 links.">
             <input inputMode="numeric" value={f.packages} onChange={(e) => setF({ ...f, packages: e.target.value })} />
           </Field>
@@ -428,7 +432,8 @@ function AddStockForm({ mode, onDone }: { mode: 'COUNTED' | 'BULK'; onDone: (msg
       if (mode === 'COUNTED') Object.assign(body, f.component_type ? { component_type: f.component_type, product_id } : { tracking_mode: 'COUNTED', kind: 'OTHER', unit: f.unit || 'pcs' })
       else Object.assign(body, { tracking_mode: 'BULK', kind: f.kind, unit: f.unit || 'ml', track_stock: f.track })
       const line = await api.post<{ id: number }>('/consumables', body, opId)
-      if (f.qty) await api.post(`/consumables/${line.id}/txn`, { kind: 'PURCHASE', qty: Number(f.qty), on: today() })
+      // what is already on the shelf is a starting count, not a purchase (no price, no date of buying)
+      if (f.qty) await api.post(`/consumables/${line.id}/txn`, { kind: 'ADJUST', qty: Number(f.qty.replace(',', '.')), on: today(), note: 'Starting stock' })
       onDone('Stock added.')
     } catch (e) {
       setErr((e as Error).message)
@@ -472,8 +477,10 @@ function AddStockForm({ mode, onDone }: { mode: 'COUNTED' | 'BULK'; onDone: (msg
         <div className="row">
           <Field label="Kind">
             <select value={f.kind} onChange={(e) => setF({ ...f, kind: e.target.value })}>
-              {['WAX', 'LUBE', 'SEALANT', 'BRAKE_FLUID', 'GREASE', 'OTHER'].map((k) => (
-                <option key={k}>{k}</option>
+              {Object.entries(SUPPLY_KINDS).map(([k, label]) => (
+                <option key={k} value={k}>
+                  {label}
+                </option>
               ))}
             </select>
           </Field>
@@ -577,7 +584,7 @@ function Sessions({ rows, onChange }: { rows: WorkSessionRow[]; onChange: (msg: 
   if (!meaningful.length) return <Empty title="No changes recorded yet" />
   return (
     <>
-      <FormError error={err} />
+      <FormError error={err} form={false} />
       <ul className="list rows">
         {meaningful.map((w) => (
           <li key={w.id} className={w.undone_at ? 'excluded' : ''}>

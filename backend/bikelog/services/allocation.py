@@ -25,8 +25,8 @@ from sqlalchemy.orm import Session
 
 from bikelog.catalog import RIDER_GEAR_TYPES
 from bikelog.models import (
-    Component, ComponentDisposition, Installation, Ride, RideEquipment, RideFlag, UsageAdjustment, UsageContribution,
-    UsageProfile,
+    Bike, Component, ComponentDisposition, Installation, Ride, RideEquipment, RideFlag, UsageAdjustment,
+    UsageContribution, UsageProfile,
 )
 from bikelog.timeutil import FAR_FUTURE, local_date_of, parse_when
 
@@ -125,6 +125,9 @@ class _Use:
     path: tuple[str, ...] = ()      # slots of the parent parts between the bike and this part
 
 
+WHEEL_SLOTS = ("WHEELSET", "FRONT_WHEEL", "REAR_WHEEL")
+
+
 def _plan(index: AllocationIndex, ride: Ride, explicit: dict[str, int | None]) -> tuple[list[_Use], list[tuple[str, str | None, str]]]:
     flags: list[tuple[str, str | None, str]] = []
     if ride.bike_id is None:
@@ -162,6 +165,11 @@ def _plan(index: AllocationIndex, ride: Ride, explicit: dict[str, int | None]) -
         uses.append(_Use(comp_id, slot, slot, "EXPLICIT", False))
         for child, path in index.subtree_paths(comp_id, t):
             uses.append(_Use(child.component_id, slot, child.slot, "EXPLICIT", False, path))
+    on_trainer = ride.usage_profile_id is not None or ride.sport_type == "VirtualRide"
+    if bike_insts and not on_trainer and not any(u.slot in WHEEL_SLOTS for u in uses):
+        flags.append(("NO_WHEELS", None,
+                      "No wheels on this bike on the ride day, so no wheel, tire or rotor gets these km. "
+                      "Install the wheels with the day they were fitted, or set them on this ride."))
     if ride.usage_profile_id and ride.usage_profile_id in index.profiles:
         ex_slots, ex_types = index.profiles[ride.usage_profile_id]
         uses = [u for u in uses if u.root_slot not in ex_slots and u.slot not in ex_slots
@@ -185,6 +193,10 @@ def allocate_ride(session: Session, ride: Ride, index: AllocationIndex) -> None:
     uses, flags = _plan(index, ride, explicit)
     if ride.distance_km is None:
         flags.append(("MISSING_DISTANCE", None, "Distance is missing: 0 km counted; time still counts."))
+    b = session.get(Bike, ride.bike_id) if ride.bike_id else None
+    if b and b.purchase_date and ride.ride_date < b.purchase_date:
+        flags.append(("BEFORE_PURCHASE", None,
+                      f"This ride is dated before {b.name} was bought ({b.purchase_date}). Check the date or the bike."))
     if ride.assignment_uncertain:
         flags.append(("UNCERTAIN_ASSIGNMENT", None,
                       ride.uncertainty_note or "Marked as uncertain: bike or equipment may be wrong."))

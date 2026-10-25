@@ -223,3 +223,14 @@ def test_invalid_disposition_rejected_by_database(session):
         session.execute(text("UPDATE component SET disposition = 'LOST' WHERE id = :i"), {"i": c.id})
     session.rollback()
     assert session.scalar(select(func.count()).select_from(ComponentDisposition)) == 0
+
+
+def test_replace_with_same_product_takes_a_price(session):
+    """UAT B7: 'New item, same product' records what the new one cost."""
+    b = bike(session)
+    product = inv.create_product(session, component_type="CHAIN", model="CN-M8100")
+    old = part(session, "CHAIN", "Chain A", product_id=product.id)
+    inv.install(session, old.id, bike_id=b.id, at="2026-09-01")
+    res = inv.replace(session, old.id, at="2026-10-05", same_product=True, new={"price_cents": 3499})
+    new = session.get(Component, res["new_component_id"])
+    assert new.product_id == product.id and new.price_cents == 3499

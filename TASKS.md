@@ -30,7 +30,9 @@ Status key: ✅ done and tested · 🟡 done, not verified where it matters · �
   hoses, bed-in, worn chain → cassette, wet ride, tire age, stem, cables (mechanical only), chargers).
 - ⏳ Editing a bike-level rule for one bike in the UI (API exists: PATCH /api/bikes/{id}/rules/{code}).
 - ⏳ Review items 23 (annual full-service checklist) and 24 (tire pressure note): waiting for Dirk.
-- ⏳ Bugs B1–B15 from the imaginary-bike test run (2026-10-25).
+- ✅ Bugs B1–B15 from the imaginary-bike test run (B5 was fixed with the quick-link carry-over).
+- ⏳ Bike installation history and a tire's change log could also list the bikes a wheel took its
+  mounted parts to (UAT B6 second half; the km table already shows them).
 - ⏳ Sample database as the first-start default (wiped by Fresh start).
 
 ## P5 Chain rotation and brakes

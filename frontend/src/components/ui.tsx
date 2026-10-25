@@ -89,11 +89,11 @@ export function Sheet({ title, onClose, children }: { title: string; onClose: ()
   )
 }
 
-export function FormError({ error }: { error: string | null }) {
+export function FormError({ error, form = true }: { error: string | null; form?: boolean }) {
   if (!error) return null
   return (
     <div className="form-error" role="alert">
-      {error} <span className="muted">Your entries are kept; fix and save again.</span>
+      {error} {form && <span className="muted">Your entries are kept; fix and save again.</span>}
     </div>
   )
 }

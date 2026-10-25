@@ -268,7 +268,17 @@ Rides and the bike: the user's bike choice (or "no bike") is a `ride_override` o
 over source values in `apply_effective`, so sync, Re-read and CSV re-import keep them; `ride_row` reports
 `bike_overridden` and the source's bike. "Remove ride" = `/exclude`: `inclusion` EXCLUDED, the source
 identity stays, so imports skip it; `/restore` brings it back. `GET /api/rides?view=active|removed|all`
-and `unassigned=true` drive the three tabs. **Only ever tested against `tests/fake_strava.py`; no live Strava call has been made.**
+and `unassigned=true` drive the three tabs.
+
+Ride flags (`allocation._plan` / `allocate_ride`, table `ride_flag`, rebuilt on every allocation): NO_BIKE,
+AMBIGUOUS_CHANGE_DATE, NO_WHEELS (road ride, bike has parts but no wheel at that moment), BEFORE_PURCHASE
+(ride date < bike.purchase_date; `update_bike` re-allocates when the purchase date changes),
+MISSING_DISTANCE, UNCERTAIN_ASSIGNMENT. `ride_detail.counting_note` explains a ride that adds no km
+(inside the bike's starting km, or inside every part's km from before). `bike_usage.ride_count` leaves out
+rides before the bike's starting value (`rides_before_start`). A CSV bike name with no match goes into
+the source values as `unmatched_bike`, sets the ride uncertain with a note, and is counted in the import
+result's `unknown_bikes`. Interval reminders report `km_at_least` when the last service is older than the
+part's "km from before" date. **Only ever tested against `tests/fake_strava.py`; no live Strava call has been made.**
 
 Groupset template data for Ultegra R8100 came from retailer listings (shimano.com was unreachable from the
 cloud environment) and is marked unverified in the app.
@@ -290,7 +300,7 @@ cd backend && ../.venv/bin/python -m bikelog            # http://127.0.0.1:8765/
 Checks that must pass before every push:
 
 ```bash
-.venv/bin/python -m pytest -q backend/tests             # currently 140 passed
+.venv/bin/python -m pytest -q backend/tests             # currently 149 passed
 cd frontend && npx tsc -b && npx eslint . && npx vite build
 # browser test: start the app on a fresh data dir, then
 node e2e/smoke.cjs http://127.0.0.1:8790/ <screenshot-dir>   # currently 73/73 (the ride-form step can flake once; rerun)

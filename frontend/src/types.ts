@@ -8,6 +8,7 @@ export interface Usage {
   starting_is_estimate: boolean
   starting_effective: string | null
   ride_count: number
+  rides_before_start?: number
   hours: number
   certainty: 'KNOWN' | 'ESTIMATED' | 'INCOMPLETE' | 'PARTLY_UNCERTAIN'
   is_minimum?: boolean
@@ -217,6 +218,7 @@ export interface RideDetail extends RideRow {
   equipment: { component_id: number; label: string; component_type: string; slot: string; km: number; basis: string; certain: boolean; state: string; note: string | null }[]
   explicit_equipment: { slot: string; component_id: number | null; note: string | null }[]
   source_values: Record<string, unknown> | null
+  counting_note: string | null
 }
 
 export interface Change {

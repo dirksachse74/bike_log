@@ -21,7 +21,7 @@ from bikelog.catalog import (
 )
 from bikelog.models import (
     Bike, Component, Consumable, Installation, JournalEntry, MaintenanceEvent, Product, ReminderSnooze, Ride,
-    ServiceRule, UsageContribution,
+    ServiceRule, UsageAdjustment, UsageContribution,
 )
 from bikelog.services import settings, stock
 from bikelog.services.stock import add_consumable, consumable_stock, consumable_txn  # noqa: F401 (API)
@@ -363,8 +363,15 @@ def _tracking_start(session: Session, comp: Component) -> tuple[str | None, str 
     first = session.scalar(select(Installation).where(Installation.component_id == comp.id,
                                                       Installation.voided_at.is_(None))
                            .order_by(Installation.installed_utc))
-    d = comp.purchase_date or (first.installed_at[:10] if first else comp.created_at[:10])
+    # in use from the first install (UAT B4); a part never installed counts from when it was bought
+    d = first.installed_at[:10] if first else (comp.purchase_date or comp.created_at[:10])
     return (None, d)
+
+
+def _starting(session: Session, comp_id: int) -> UsageAdjustment | None:
+    return session.scalar(select(UsageAdjustment).where(
+        UsageAdjustment.component_id == comp_id, UsageAdjustment.kind == "STARTING",
+        UsageAdjustment.voided_at.is_(None)).order_by(UsageAdjustment.id.desc()))
 
 
 def _uncertain_since(session: Session, comp_id: int, since_utc: str | None) -> float:
@@ -505,6 +512,13 @@ def _interval_status(subj: _Subject, rule: ServiceRule, act_name: str, today: da
         basis = f"new part, no {act_name} recorded yet"
     else:
         lifetime = usage_since(session, comp.id, None)
+        start = _starting(session, comp.id)
+        if start:
+            return {"status": "INSUFFICIENT_INFO", "used_km": None, "last_done": None,
+                    "explanation": f"Insufficient information: no {act_name} on record; {comp.label} has "
+                                   f"{'≈' if start.is_estimate else ''}{start.km:,.0f} km from before "
+                                   f"{start.effective_at[:10]} and {lifetime:,.0f} km tracked since. Log the last "
+                                   f"{act_name} (a date is enough) to start this reminder."}
         return {"status": "INSUFFICIENT_INFO", "used_km": None, "last_done": None,
                 "explanation": f"Insufficient information: no {act_name} recorded for {comp.label} and its earlier "
                                f"history is unknown ({lifetime:,.0f} km tracked so far). Log the last {act_name} "
@@ -517,7 +531,11 @@ def _interval_status(subj: _Subject, rule: ServiceRule, act_name: str, today: da
         st = _km_status(used, rule.interval_km, rule.warn_km)
         statuses.append(st)
         remaining = rule.interval_km - used
-        txt = f"{used:,.0f} km since {basis} (interval {rule.interval_km:,.0f} km): "
+        # done before the "km from before" date: the km between then and that date are inside the
+        # starting value and not known, so the count is a lower bound
+        start = _starting(session, comp.id) if comp is not None and last else None
+        at_least = bool(start and since_utc < start.effective_utc)
+        txt = f"{'at least ' if at_least else ''}{used:,.0f} km since {basis} (interval {rule.interval_km:,.0f} km): "
         if remaining > 0:
             txt += f"{remaining:,.0f} km left"
         elif remaining < 0:
@@ -526,8 +544,12 @@ def _interval_status(subj: _Subject, rule: ServiceRule, act_name: str, today: da
             txt += f"due now at {rule.interval_km:,.0f} km"
         if unc:
             txt += f" (includes {unc:,.0f} km with uncertain assignment)"
+        if at_least:
+            txt += (f"; the km between {last.performed_on} and {start.effective_at[:10]} are inside the "
+                    f"{'≈' if start.is_estimate else ''}{start.km:,.0f} km from before")
         parts.append(txt)
-        out.update(used_km=used, interval_km=rule.interval_km, remaining_km=round(remaining, 3), uncertain_km=unc)
+        out.update(used_km=used, interval_km=rule.interval_km, remaining_km=round(remaining, 3), uncertain_km=unc,
+                   km_at_least=at_least)
     if rule.interval_hours is not None:
         hours, no_time = subj.hours_since(since_utc)
         left = rule.interval_hours - hours

@@ -52,6 +52,23 @@ UPDATING.md → "Making a release". New entries go under "Unreleased" as work is
 - A quick link on a chain in storage reads "on Chain A (not on a bike)" instead of "unmounted parent".
 - Ultegra R8100 groupset import adds upper and lower pulley wheels.
 
+### Fixed (imaginary-bike test run, B1–B15)
+- A road ride on a bike with no wheels is flagged ("No wheels on this bike on the ride day").
+- A service logged before a part's "km from before" date reads "at least N km since …"; a part with km
+  from before but no service says so instead of "earlier history is unknown".
+- Rides before tracking started explain why they add no km; rides dated before the bike's purchase date
+  are flagged; the bike's ride count leaves out rides inside the starting km (shown as "+N before tracking").
+- Time reminders of a new part count from the day it was installed, not the day it was bought.
+- Groupset parts are named without the bike (the bike is added only when the name is taken); parts on a
+  wheel show "since" the day they arrived on this bike.
+- Replace → "New item, same product" takes a price; the cost card names the parts without a price.
+- Starting stock of a supply is recorded as "Starting stock", not a purchase dated today.
+- CSV import keeps an unknown bike name on the ride ("csv: Aurora (no bike with this name)") and lists it in
+  the import summary; number errors read "distance_km 'abc' is not a number".
+- Snooze counts days from the local date; readable supply kinds, units and slot names; "1 ride";
+  the refused-undo message no longer says "fix and save again"; the sidebar shows the full version.
+- The message after saving a ride is short ("+80.0 km on 20 parts"); the preview still lists each part.
+
 ## 0.2.0 (2026-10-25)
 
 ### Added

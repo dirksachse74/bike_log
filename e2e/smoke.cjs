@@ -255,8 +255,8 @@ async function sheetButton(page, name) {
   await page.locator('.sheet').getByText('€450.00 entered').waitFor()
   await page.locator('.sheet').getByRole('button', { name: /^Add \d+ parts$/ }).click()
   await page.locator('.toast').filter({ hasText: 'parts added' }).waitFor()
-  await page.locator('.list.setup').getByRole('link', { name: 'Ultegra crankset (TIME NXR)' }).waitFor()
-  await page.locator('.list.setup').getByRole('link', { name: 'Ultegra outer chainring 50T (TIME NXR)' }).waitFor()
+  await page.locator('.list.setup').getByRole('link', { name: 'Ultegra crankset' }).waitFor()
+  await page.locator('.list.setup').getByRole('link', { name: 'Ultegra outer chainring 50T' }).waitFor()
   check('groupset import installs crankset and chainrings', true)
   const costText = await page.locator('.card').filter({ hasText: 'running cost' }).innerText()
   check('groupset price counts as running cost of the bike', /parts €450\.00/.test(costText), costText.replace(/\s+/g, ' ').slice(0, 160))
@@ -269,7 +269,7 @@ async function sheetButton(page, name) {
   await page.getByRole('heading', { name: 'TIME NXR' }).waitFor()
   const costAfter = await page.locator('.card').filter({ hasText: 'running cost' }).innerText()
   check('undo takes the groupset price out of the running cost', /parts €0\.00/.test(costAfter))
-  check('undo removes the whole groupset again', (await page.locator('.list.setup').getByRole('link', { name: 'Ultegra crankset (TIME NXR)' }).count()) === 0)
+  check('undo removes the whole groupset again', (await page.locator('.list.setup').getByRole('link', { name: 'Ultegra crankset' }).count()) === 0)
 
   // groupset bought as one bundle; the BSA bottom bracket goes to storage; km from before on a part
   await page.getByRole('button', { name: 'Add groupset' }).click()
@@ -279,7 +279,7 @@ async function sheetButton(page, name) {
   await page.locator('.sheet .groupset-items li').filter({ hasText: 'Kept as a spare' }).waitFor()
   await page.locator('.sheet').getByRole('button', { name: /^Add \d+ parts$/ }).click()
   await page.locator('.toast').filter({ hasText: 'recorded as the bundle' }).waitFor()
-  await page.locator('.list.setup').getByRole('link', { name: 'Ultegra crankset (TIME NXR)' }).waitFor()
+  await page.locator('.list.setup').getByRole('link', { name: 'Ultegra crankset' }).waitFor()
   const bundleCost = await page.locator('.card').filter({ hasText: 'running cost' }).innerText()
   check('bundle price counts once as running cost', /bundles €1,899\.00/.test(bundleCost) && /parts €0\.00/.test(bundleCost), bundleCost.replace(/\s+/g, ' ').slice(0, 200))
   check('bottom bracket kept as spare is not installed', (await page.locator('.list.setup').getByText(/bottom bracket/i).count()) === 0)

@@ -23,7 +23,7 @@ Comma or semicolon separated (semicolon files may use a decimal comma). UTF‑8,
 | `distance_km` or `distance_mi` | one of them | Distance. Empty means unknown (the ride is kept and flagged). |
 | `duration_min` or `duration_s` | no | Moving/elapsed time. |
 | `name` | no | Ride name. |
-| `bike` | no | Bike name exactly as in Bike Log. Unknown or empty: the ride has no bike and is flagged. |
+| `bike` | no | Bike name exactly as in Bike Log (case does not matter). Unknown or empty: the ride has no bike and is flagged; an unknown name is kept on the ride ("csv: Aurora (no bike with this name)") and listed in the import summary. Add the bike and import again, or assign the rides on the Rides page. |
 | `sport_type` | no | Default `Ride`. `VirtualRide` uses the trainer profile. |
 | `trainer` | no | `yes/true/1` uses the trainer profile (removed wheels/tires/pads get no km). |
 

@@ -111,7 +111,7 @@ export function BikesPage() {
               <strong>{b.name}</strong>
               <span title={certaintyLabel(b.usage)}>{usageText(b.usage)}</span>
               <span className="muted small">
-                {b.usage.ride_count} rides · {certaintyLabel(b.usage)}
+                {b.usage.ride_count} {b.usage.ride_count === 1 ? 'ride' : 'rides'} · {certaintyLabel(b.usage)}
               </span>
               <span className="small">
                 Initial {b.costs.initial_known ? euro(b.costs.initial_cents) : 'not entered'} · running {b.costs.estimated ? '≈' : ''}
@@ -304,7 +304,11 @@ export function BikeDetailPage() {
           </div>
           <div>
             <span className="stat">{data.usage.ride_count}</span>
-            <span className="muted small">rides</span>
+            <span className="muted small">
+              {data.usage.ride_count === 1 ? 'ride' : 'rides'}
+              {(data.usage.rides_before_start ?? 0) > 0 &&
+                ` (+${data.usage.rides_before_start} before tracking, inside the starting km)`}
+            </span>
           </div>
           <div>
             <span className="stat">{data.usage.hours.toFixed(0)} h</span>
@@ -532,7 +536,10 @@ function CostCard({ bike, onEdit }: { bike: BikeDetail; onEdit: () => void }) {
       {(c.unpriced_parts > 0 || c.estimated || c.unpriced_bundles > 0) && (
         <p className="small muted">
           {c.unpriced_bundles > 0 && `${c.unpriced_bundles} bundle${c.unpriced_bundles === 1 ? ' has' : 's have'} no price yet. `}
-          {c.unpriced_parts > 0 && `${c.unpriced_parts} installed part${c.unpriced_parts === 1 ? ' has' : 's have'} no price (fine for parts that came with the bike). `}
+          {c.unpriced_parts > 0 &&
+            `${c.unpriced_parts} installed part${c.unpriced_parts === 1 ? ' has' : 's have'} no price${
+              c.unpriced_labels?.length ? ` (${c.unpriced_labels.slice(0, 5).join(', ')}${c.unpriced_labels.length > 5 ? ', …' : ''})` : ''
+            }; fine for parts that came with the bike. `}
           {c.estimated && '≈: parts taken from stock are valued at the average price paid for that stock.'}
         </p>
       )}

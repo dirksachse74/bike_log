@@ -186,3 +186,29 @@ def test_setup_dependent_rules_follow_shifting_and_default_tire_setup(session):
     assert status(session, tire, "TIRE_SEALANT_RENEW")["status"] == "OK"
     with pytest.raises(DomainError):
         settings.set_value(session, "default_tire_setup", "SLIME")
+
+
+def test_service_before_km_from_before_date_reads_as_at_least(session):
+    """UAT B2: km between the service and the starting-value date are inside the estimate."""
+    b = bike(session)
+    wheel = part(session, "REAR_WHEEL", "Used rear", prior_usage="UNKNOWN")
+    inv.install(session, wheel.id, bike_id=b.id, at="2026-09-01")
+    inv.set_starting_usage(session, component_id=wheel.id, km=1200, effective="2026-09-01", is_estimate=True)
+    no_log = status(session, wheel, "FREEHUB", date(2026, 10, 20))
+    assert no_log["status"] == "INSUFFICIENT_INFO" and "≈1,200 km from before 2026-09-01" in no_log["explanation"]
+    m.log_event(session, action_code="FREEHUB_SERVICE", at="2026-08-15", component_id=wheel.id)
+    ride(session, b, "2026-09-10", 795)
+    st = status(session, wheel, "FREEHUB", date(2026, 10, 20))
+    assert st["km_at_least"] and st["explanation"].startswith("at least 795 km since last service freehub")
+    assert "inside the ≈1,200 km from before" in st["explanation"]
+    m.log_event(session, action_code="FREEHUB_SERVICE", at="2026-09-20", component_id=wheel.id)
+    assert not status(session, wheel, "FREEHUB", date(2026, 10, 20))["km_at_least"]
+
+
+def test_time_reminders_count_from_install_not_purchase(session):
+    """UAT B4: a new part bought before it was fitted is 'in use since' the install day."""
+    b = bike(session)
+    wheel = part(session, "FRONT_WHEEL", "New front", prior_usage="NEW", purchase_date="2026-08-20")
+    inv.install(session, wheel.id, bike_id=b.id, at="2026-09-01")
+    st = status(session, wheel, "FRONT_WHEEL_INSPECTION", date(2026, 10, 20))
+    assert "in use since 2026-09-01" in st["explanation"]

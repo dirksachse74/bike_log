@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 
 from bikelog.catalog import COMPONENT_TYPES, DISPOSITIONS, OUT_OF_USE, SHIFTING_TYPES, TIRE_SETUPS, WHEEL_TYPES
 from bikelog.models import (
-    Bike, Component, ComponentDisposition, Installation, Product, UsageAdjustment, UsageContribution,
+    Bike, Component, ComponentDisposition, Installation, Product, Ride, UsageAdjustment, UsageContribution,
 )
 from bikelog.services import allocation, settings
 from bikelog.services.errors import Conflict, DomainError, NotFound, Protected
@@ -67,6 +67,7 @@ def update_bike(session: Session, bike_id: int, **fields) -> Bike:
     _check_price(fields.get("purchase_price_cents"))
     if fields.get("shifting") and fields["shifting"] not in SHIFTING_TYPES:
         raise DomainError(f"Shifting must be one of {', '.join(SHIFTING_TYPES)} (or not set)")
+    old_purchase = bike.purchase_date
     for k in ("name", "maker", "model", "year", "strava_gear_id", "notes", "purchase_price_cents", "purchase_date",
               "shifting"):
         if k in fields:
@@ -76,6 +77,9 @@ def update_bike(session: Session, bike_id: int, **fields) -> Bike:
         session.flush()
     except IntegrityError as e:
         raise Conflict("Name or Strava gear id already used by another bike") from e
+    if bike.purchase_date != old_purchase:   # rides dated before it are flagged
+        allocation.allocate_rides(session, list(session.scalars(select(Ride).where(Ride.bike_id == bike.id))),
+                                  settings.tz(session))
     return bike
 
 
@@ -746,30 +750,33 @@ def installation_history(session: Session, comp: Component) -> list[dict]:
 
 def bike_setup(session: Session, bike: Bike) -> list[dict]:
     """Current setup as a tree: bike slots, and parts mounted on parts."""
-    def children(component_id: int, depth: int) -> list[dict]:
+    def children(component_id: int, depth: int, root: Installation) -> list[dict]:
         rows = []
         for i in session.scalars(select(Installation).where(
                 Installation.parent_component_id == component_id, Installation.removed_utc.is_(None),
                 Installation.voided_at.is_(None)).order_by(Installation.slot)):
             c = session.get(Component, i.component_id)
-            rows.append(_setup_row(c, i, depth))
-            rows.extend(children(c.id, depth + 1))
+            rows.append(_setup_row(c, i, depth, root))
+            rows.extend(children(c.id, depth + 1, root))
         return rows
     rows = []
     for i in session.scalars(select(Installation).where(
             Installation.bike_id == bike.id, Installation.removed_utc.is_(None),
             Installation.voided_at.is_(None)).order_by(Installation.slot)):
         c = session.get(Component, i.component_id)
-        rows.append(_setup_row(c, i, 0))
-        rows.extend(children(c.id, 1))
+        rows.append(_setup_row(c, i, 0, i))
+        rows.extend(children(c.id, 1, i))
     return rows
 
 
-def _setup_row(c: Component, i: Installation, depth: int) -> dict:
+def _setup_row(c: Component, i: Installation, depth: int, root: Installation) -> dict:
+    """since = on this bike since: a part mounted on a wheel arrived with the wheel (UAT B6);
+    mounted_since = on its parent since."""
+    since = i.installed_at if i.installed_utc >= root.installed_utc else root.installed_at
     return {"component_id": c.id, "label": c.label, "component_type": c.component_type,
-            "type_name": COMPONENT_TYPES[c.component_type].name, "slot": i.slot, "since": i.installed_at,
-            "installation_id": i.id, "depth": depth, "parent_component_id": i.parent_component_id,
-            "tire_setup": c.tire_setup}
+            "type_name": COMPONENT_TYPES[c.component_type].name, "slot": i.slot, "since": since,
+            "mounted_since": i.installed_at, "installation_id": i.id, "depth": depth,
+            "parent_component_id": i.parent_component_id, "tire_setup": c.tire_setup}
 
 
 def bike_installation_history(session: Session, bike: Bike) -> list[dict]:

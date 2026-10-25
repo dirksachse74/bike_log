@@ -121,3 +121,16 @@ def test_pulley_wheels_on_the_rear_derailleur(session):
     ride(session, b, "2026-09-07", 20)
     assert km(session, up) == 100 and km(session, lo) == 80 and km(session, new_lo) == 20 and km(session, rd) == 100
     assert status(session, up, "PULLEY_CHECK")["status"] == "OK"
+
+
+def test_mounted_parts_show_when_they_arrived_on_the_bike(session):
+    """UAT B6: a tire on a wheel moved to another bike is on that bike since the move, not since it was fitted."""
+    from helpers import bike, part
+    a, b = bike(session, "Aurora SL"), bike(session, "Winter Allroad")
+    wheel = part(session, "REAR_WHEEL", "Rear wheel")
+    tire = part(session, "TIRE", "GP5000 rear")
+    inv.install(session, wheel.id, bike_id=a.id, at="2026-09-01")
+    inv.install(session, tire.id, parent_component_id=wheel.id, at="2026-09-01")
+    inv.move(session, wheel.id, bike_id=b.id, at="2026-10-10")
+    rows = {r["label"]: r for r in inv.bike_setup(session, b)}
+    assert rows["GP5000 rear"]["since"] == "2026-10-10" and rows["GP5000 rear"]["mounted_since"] == "2026-09-01"

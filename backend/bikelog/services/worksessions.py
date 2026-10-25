@@ -56,6 +56,8 @@ def summary(session: Session, ws_id: int) -> dict:
         line = session.get(Consumable, t.consumable_id)
         text = {"PURCHASE": "Bought", "RETURN": "Returned to shop", "ADJUST": "Stock corrected",
                 "USE": "Used from stock"}[t.kind]
+        if t.kind == "ADJUST" and (t.note or "").lower() == "starting stock":
+            text = "Starting stock"
         qty = "" if t.qty is None else f"{t.qty:g} {line.unit} "
         extra = f" → {_label(session, t.component_id)}" if t.component_id else ""
         rows.append({"kind": f"STOCK_{t.kind}", "text": f"{text}: {qty}{line.name}{extra}", "txn_id": t.id,
@@ -64,10 +66,10 @@ def summary(session: Session, ws_id: int) -> dict:
             cost += t.cost_cents * (1 if t.kind == "PURCHASE" else -1)
     for i in session.scalars(select(Installation).where(Installation.removal_session_id == ws.id)):
         out = "moved" if i.removal_outcome == "MOVED" else DISPOSITIONS.get(i.removal_outcome or "", "")
-        rows.append({"kind": "REMOVE", "text": f"Removed {_label(session, i.component_id)} ({i.slot}): {out.lower()}",
+        rows.append({"kind": "REMOVE", "text": f"Removed {_label(session, i.component_id)} ({i.slot.replace('_', ' ').lower()}): {out.lower()}",
                      "installation_id": i.id, "reason": i.removal_reason})
     for i in session.scalars(select(Installation).where(Installation.install_session_id == ws.id)):
-        rows.append({"kind": "INSTALL", "text": f"Installed {_label(session, i.component_id)} ({i.slot})",
+        rows.append({"kind": "INSTALL", "text": f"Installed {_label(session, i.component_id)} ({i.slot.replace('_', ' ').lower()})",
                      "installation_id": i.id, "voided": bool(i.voided_at)})
     for d in session.scalars(select(ComponentDisposition).where(ComponentDisposition.work_session_id == ws.id)):
         rows.append({"kind": "DISPOSITION", "text": f"{_label(session, d.component_id)}: "

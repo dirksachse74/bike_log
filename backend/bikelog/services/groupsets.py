@@ -105,10 +105,18 @@ def _find_product(session: Session, maker: str, model: str, component_type: str)
         func.lower(Product.model) == model.lower()).order_by(Product.id))
 
 
-def _unique_label(session: Session, component_type: str, base: str, taken: set[str]) -> str:
-    label, n = base, 2
-    while label.lower() in taken or session.scalar(select(Component.id).where(
-            Component.component_type == component_type, func.lower(Component.label) == label.lower())):
+def _unique_label(session: Session, component_type: str, base: str, taken: set[str],
+                  suffix: str | None = None) -> str:
+    """The plain name; the bike's name is added only when another part already has it (UAT B6),
+    since parts move between bikes; then a number."""
+    def used(label: str) -> bool:
+        return label.lower() in taken or session.scalar(select(Component.id).where(
+            Component.component_type == component_type, func.lower(Component.label) == label.lower())) is not None
+    label = base
+    if used(label) and suffix:
+        label = base = f"{base} ({suffix})"
+    n = 2
+    while used(label):
         label, n = f"{base} ({n})", n + 1
     taken.add(label.lower())
     return label
@@ -146,11 +154,11 @@ def plan(session: Session, code: str, *, bike_id: int | None = None, options: di
     rows = []
     for it in selected:
         mount = it["mount"]
-        base = f"{prefix} {it['name']}" + (f" ({bike.name})" if bike else "")
+        base = f"{prefix} {it['name']}"
         product = _find_product(session, template["maker"], it["model"], it["type"])
         row = {"key": it["key"], "type": it["type"], "type_name": COMPONENT_TYPES[it["type"]].name,
                "model": it["model"], "specs": it["specs"],
-               "label": _unique_label(session, it["type"], base, taken),
+               "label": _unique_label(session, it["type"], base, taken, bike.name if bike else None),
                "product_id": product.id if product else None, "product_exists": product is not None,
                "list_price_cents": product.list_price_cents if product else None,
                "action": "SPARE", "slot": mount["slot"], "bike_id": None, "parent_key": None,

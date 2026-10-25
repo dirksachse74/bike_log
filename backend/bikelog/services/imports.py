@@ -69,12 +69,14 @@ def upsert_record(session: Session, *, source_kind: str, source_account: str, so
         src.import_batch_id = batch_id or src.import_batch_id
         ride.status = "ACTIVE"
         rides.apply_effective(session, ride, values)
+        _note_unmatched_bike(ride, source_kind, values)
         session.flush()
         allocation.allocate_rides(session, [ride], tz)
         return "UPDATED"
     ride = Ride(source_kind=source_kind if source_kind in ("CSV", "STRAVA") else "CSV",
                 sport_type=values.get("sport_type") or "Ride")
     rides.apply_effective(session, ride, values)
+    _note_unmatched_bike(ride, source_kind, values)
     session.add(ride)
     session.flush()
     session.add(RideSource(ride_id=ride.id, source_kind=source_kind, source_account=source_account,
@@ -83,6 +85,16 @@ def upsert_record(session: Session, *, source_kind: str, source_account: str, so
     session.flush()
     allocation.allocate_rides(session, [ride], tz)
     return "CREATED"
+
+
+def _note_unmatched_bike(ride: Ride, source_kind: str, values: dict) -> None:
+    """The file named a bike that does not exist: keep the name on the ride so it can be assigned later."""
+    name = values.get("unmatched_bike")
+    if name and ride.bike_id is None:
+        ride.assignment_uncertain = True
+        ride.uncertainty_note = f"{source_kind.lower()}: {name} (no bike with this name)"
+    elif ride.bike_id is not None and (ride.uncertainty_note or "").endswith("(no bike with this name)"):
+        ride.assignment_uncertain, ride.uncertainty_note = False, None   # the bike exists now
 
 
 def mark_source_deleted(session: Session, source_kind: str, source_account: str, source_ref: str) -> bool:
@@ -104,17 +116,20 @@ class CsvFormatError(DomainError):
     pass
 
 
-def _num(s: str | None, decimal_comma: bool) -> float | None:
+def _num(s: str | None, decimal_comma: bool, field: str = "value") -> float | None:
     if s is None:
         return None
-    s = s.strip()
+    raw = s = s.strip()
     if not s:
         return None
     if decimal_comma:
         s = s.replace(".", "").replace(",", ".")
     else:
         s = s.replace(",", "")
-    return float(s)
+    try:
+        return float(s)
+    except ValueError:
+        raise ValueError(f"{field} '{raw}' is not a number") from None
 
 
 def _parse_strava_date(s: str) -> str:
@@ -161,14 +176,14 @@ def _generic_rows(lower: list[str], reader: Iterable[list[str]], decimal_comma: 
             when = get(row, "date")
             if not when:
                 raise ValueError("date is empty")
-            km = _num(get(row, "distance_km"), decimal_comma)
+            km = _num(get(row, "distance_km"), decimal_comma, "distance_km")
             if km is None and get(row, "distance_mi") is not None:
-                km = _num(get(row, "distance_mi"), decimal_comma) * rides.KM_PER_MILE
+                km = _num(get(row, "distance_mi"), decimal_comma, "distance_mi") * rides.KM_PER_MILE
             dur = None
             if get(row, "duration_s") is not None:
-                dur = int(_num(get(row, "duration_s"), decimal_comma))
+                dur = int(_num(get(row, "duration_s"), decimal_comma, "duration_s"))
             elif get(row, "duration_min") is not None:
-                dur = int(round(_num(get(row, "duration_min"), decimal_comma) * 60))
+                dur = int(round(_num(get(row, "duration_min"), decimal_comma, "duration_min") * 60))
             sport = get(row, "sport_type") or "Ride"
             trainer = (get(row, "trainer") or "").lower() in TRUE
             values = {"when": when, "distance_km": km, "duration_s": dur, "name": get(row, "name"),
@@ -197,10 +212,10 @@ def _strava_export_rows(header: list[str], reader: Iterable[list[str]]):
             if sport_norm not in RIDE_SPORT_TYPES:
                 yield {"row": n, "ref": get(row, "activity id"), "skip": "NOT_CYCLING"}
                 continue
-            km = _num(get(row, "distance"), False)
+            km = _num(get(row, "distance"), False, "Distance")
             elapsed = get(row, "elapsed time")
             values = {"when": _parse_strava_date(get(row, "activity date")), "distance_km": km,
-                      "duration_s": int(float(elapsed)) if elapsed else None, "name": get(row, "activity name"),
+                      "duration_s": int(_num(elapsed, False, "Elapsed Time")) if elapsed else None, "name": get(row, "activity name"),
                       "sport_type": sport_norm, "bike_name": get(row, "activity gear"),
                       "trainer": sport_norm == "VirtualRide"}
             yield {"row": n, "ref": get(row, "activity id"), "values": values}
@@ -211,6 +226,8 @@ def _strava_export_rows(header: list[str], reader: Iterable[list[str]]):
 def _to_ride_values(session: Session, v: dict) -> dict:
     out = {k: v[k] for k in ("when", "distance_km", "duration_s", "name", "sport_type")}
     out["bike_id"] = resolve_bike(session, gear_id=v.get("gear_id"), name=v.get("bike_name"))
+    if out["bike_id"] is None and v.get("bike_name"):
+        out["unmatched_bike"] = v["bike_name"]   # kept on the ride and listed in the import summary
     out["usage_profile_code"] = (settings.get(session, "trainer_profile_for_virtual") or None) if v.get("trainer") else None
     return out
 
@@ -235,6 +252,7 @@ def run_csv_import(factory: sessionmaker[Session], content: bytes, *, file_name:
         batch_id, cursor = batch.id, batch.cursor_row
         counts = json.loads(batch.counts_json or "{}")
     errors: list[dict] = counts.pop("errors", []) if isinstance(counts.get("errors"), list) else []
+    unknown: dict[str, int] = counts.pop("unknown_bikes", {}) if isinstance(counts.get("unknown_bikes"), dict) else {}
     try:
         for start in range(cursor, len(rows), chunk_size):
             chunk = rows[start:start + chunk_size]
@@ -249,16 +267,18 @@ def run_csv_import(factory: sessionmaker[Session], content: bytes, *, file_name:
                         continue
                     try:
                         with s.begin_nested():
+                            values = _to_ride_values(s, r["values"])
                             res = upsert_record(s, source_kind=source_kind, source_account=account,
-                                                source_ref=r["ref"], values=_to_ride_values(s, r["values"]),
-                                                batch_id=batch_id)
+                                                source_ref=r["ref"], values=values, batch_id=batch_id)
+                        if values.get("unmatched_bike") and res != "SKIPPED_BEFORE_START":
+                            unknown[values["unmatched_bike"]] = unknown.get(values["unmatched_bike"], 0) + 1
                     except (ValueError, DomainError) as e:
                         res = "ERROR"
                         errors.append({"row": r["row"], "error": getattr(e, "message", str(e))})
                     counts[res] = counts.get(res, 0) + 1
                 b = s.get(ImportBatch, batch_id)
                 b.cursor_row = start + len(chunk)
-                b.counts_json = json.dumps({**counts, "errors": errors[-50:]})
+                b.counts_json = json.dumps({**counts, "errors": errors[-50:], "unknown_bikes": unknown})
             if on_chunk_committed:
                 on_chunk_committed(start + len(chunk))
     except Exception as e:
@@ -269,9 +289,9 @@ def run_csv_import(factory: sessionmaker[Session], content: bytes, *, file_name:
     with factory() as s, s.begin():
         b = s.get(ImportBatch, batch_id)
         b.status, b.finished_at = "COMPLETED", utc_now()
-        b.counts_json = json.dumps({**counts, "errors": errors[-50:]})
+        b.counts_json = json.dumps({**counts, "errors": errors[-50:], "unknown_bikes": unknown})
     return {"batch_id": batch_id, "source_kind": source_kind, "resumed": resumed, "rows": len(rows),
-            "counts": counts, "errors": errors[-50:]}
+            "counts": counts, "errors": errors[-50:], "unknown_bikes": unknown}
 
 
 def list_batches(session: Session, limit: int = 20) -> list[dict]:

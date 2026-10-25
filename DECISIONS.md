@@ -219,6 +219,15 @@ you disagree. Dates are 2026-10-24 unless noted.
 67. **Event-based checks** (crash → frame/hanger, worn chain → cassette/chainrings, wet ride → re-wax,
     bed-in after fitting) are computed from the history on read, like every other reminder, and clear
     when the matching check is logged after the event.
+68. **Unknown CSV bike names are kept, not guessed**: the ride gets no bike, is marked uncertain with
+    "csv: NAME (no bike with this name)", and the import summary lists the names. Adding a bike with that
+    name and importing again assigns the rides and clears the note. No fuzzy matching.
+69. **"At least" instead of a guess**: km since a service done before a "km from before" date are a lower
+    bound, because the km between the service and that date are inside the starting value.
+70. **Rides inside a bike's starting km are not counted as rides** in the bike's ride count (shown apart),
+    so rides and km agree. A ride before the purchase date is flagged, never moved or dropped.
+71. **Part names carry no bike name** unless the plain name is taken (parts move between bikes; the
+    database keeps labels unique per type, including records of undone imports).
 
 ## Repository
 27. Pushed only to the feature branch `claude/project-thread-6y3mmh` of the private repository. Demo

@@ -103,7 +103,10 @@ export function ReplaceForm({ componentId, onDone }: { componentId: number; onDo
     const b: Record<string, unknown> = { at: f.at, reason: f.reason || null, old_outcome: f.outcome, carry_over: [...(carry ?? [])] }
     if (source.kind === 'spare') b.new_component_id = source.id
     if (source.kind === 'stock') b.from_stock_id = source.id
-    if (source.kind === 'same') b.same_product = true
+    if (source.kind === 'same') {
+      b.same_product = true
+      if (f.price) b.new = { price_cents: Math.round(Number(f.price.replace(',', '.')) * 100) }
+    }
     if (source.kind === 'new') b.new = { label: f.label || null, product_id: f.product_id ? Number(f.product_id) : null, price_cents: f.price ? Math.round(Number(f.price.replace(',', '.')) * 100) : null }
     return b
   }
@@ -175,6 +178,13 @@ export function ReplaceForm({ componentId, onDone }: { componentId: number; onDo
           </label>
         </div>
       </fieldset>
+      {source.kind === 'same' && (
+        <div className="row">
+          <Field label="Price € (optional)">
+            <input inputMode="decimal" value={f.price} onChange={(e) => setF({ ...f, price: e.target.value })} />
+          </Field>
+        </div>
+      )}
       {source.kind === 'new' && (
         <div className="row">
           <Field label="Name (optional)">

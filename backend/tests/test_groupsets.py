@@ -47,9 +47,9 @@ def test_whole_groupset_installed_on_bike_with_wheels(session):
     assert res["counts"] == {"INSTALL": 19, "REPLACE": 0, "SPARE": 0}   # every default part (incl. 2 pulley wheels), wires left out
     assert "wires" not in rows
     setup = {(r["slot"], r["label"]) for r in inv.bike_setup(session, b)}
-    assert ("CRANKSET", "Ultegra crankset (TIME NXR)") in setup
-    assert ("CHAINRING_OUTER", "Ultegra outer chainring 50T (TIME NXR)") in setup
-    assert ("QUICK_LINK", "Ultegra quick link (TIME NXR)") in setup
+    assert ("CRANKSET", "Ultegra crankset") in setup
+    assert ("CHAINRING_OUTER", "Ultegra outer chainring 50T") in setup
+    assert ("QUICK_LINK", "Ultegra quick link") in setup
     # mounted on the right parents
     cassette = inv.get_component(session, rows["cassette"]["component_id"])
     assert inv.open_installation(session, cassette.id).parent_component_id == rear.id

@@ -153,3 +153,33 @@ def test_semicolon_and_decimal_comma(session, world):
     run(session, factory, "source_id;date;distance_km;bike\nx-1;2026-10-05;1.234,5;TIME NXR\n".encode())
     session.expire_all()
     assert component_usage(session, chain)["total_km"] == pytest.approx(1234.5)
+
+
+def test_unknown_bike_name_is_kept_and_reported(session, world):
+    """UAT B9: a bike name that matches no bike is not lost; adding the bike later picks the rides up."""
+    factory, b, chain, _ = world
+    content = (b"source_id,date,distance_km,bike\n"
+               b"a-1,2026-10-05,20,Aurora\na-2,2026-10-06,30,Aurora\nn-1,2026-10-07,10,TIME NXR\n")
+    res = run(session, factory, content)
+    assert res["counts"] == {"CREATED": 3}
+    assert res["unknown_bikes"] == {"Aurora": 2}
+    session.expire_all()
+    r = session.scalar(select(Ride).where(Ride.distance_km == 20))
+    assert r.bike_id is None and r.assignment_uncertain
+    assert r.uncertainty_note == "csv: Aurora (no bike with this name)"
+    assert rides.ride_row(session, r)["source_bike"] == "Aurora"
+    aurora = inv.create_bike(session, name="Aurora")
+    res = run(session, factory, content)
+    assert res["unknown_bikes"] == {} and res["counts"]["UPDATED"] == 2
+    session.expire_all()
+    r = session.get(Ride, r.id)
+    assert r.bike_id == aurora.id and not r.assignment_uncertain and r.uncertainty_note is None
+
+
+def test_number_errors_name_the_field(session, world):
+    """UAT B11: a readable message instead of Python's 'could not convert string to float'."""
+    factory, *_ = world
+    res = run(session, factory, b"source_id,date,distance_km,duration_min\nx-1,2026-10-05,abc,60\n"
+                                b"x-2,2026-10-05,20,1h\n")
+    assert [e["error"] for e in res["errors"]] == ["distance_km 'abc' is not a number",
+                                                    "duration_min '1h' is not a number"]
