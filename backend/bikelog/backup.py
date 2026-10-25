@@ -25,6 +25,7 @@ log = logging.getLogger(__name__)
 
 EXPORT_FORMAT = 1
 KEEP_AUTO_BACKUPS = 10
+KEPT_MARK = "kept-before-"   # backups with this in the name (fresh start, restore) are never pruned
 
 
 def _stamp() -> str:
@@ -56,7 +57,8 @@ def backup_database(paths: DataPaths, reason: str) -> Path | None:
 
 
 def prune_backups(paths: DataPaths, keep: int = KEEP_AUTO_BACKUPS) -> None:
-    files = sorted(paths.backups.glob("bikelog-*.db"), key=lambda p: p.name, reverse=True)
+    files = sorted((p for p in paths.backups.glob("bikelog-*.db") if KEPT_MARK not in p.name),
+                   key=lambda p: p.name, reverse=True)
     for old in files[keep:]:
         old.unlink(missing_ok=True)
 

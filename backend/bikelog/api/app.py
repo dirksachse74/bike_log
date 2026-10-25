@@ -290,6 +290,11 @@ class CorrectionIn(Body):
     note: str
 
 
+class ResetIn(Body):
+    confirm: str
+    clear_strava: bool = False
+
+
 class VoidIn(Body):
     reason: str
 
@@ -1122,7 +1127,8 @@ def create_app(factory: sessionmaker[Session], paths: DataPaths, *, token: str |
     @app.get("/api/backups")
     def list_backups():
         files = sorted(paths.backups.glob("bikelog-*.db"), key=lambda p: p.name, reverse=True)
-        return {"directory": str(paths.root), "backups": [{"name": f.name, "size": f.stat().st_size} for f in files],
+        return {"directory": str(paths.root), "backup_dir": str(paths.backups),
+                "backups": [{"name": f.name, "size": f.stat().st_size, "kept": backup.KEPT_MARK in f.name} for f in files],
                 "exports": [{"name": f.name, "size": f.stat().st_size}
                             for f in sorted(paths.exports.glob("*.zip"), reverse=True)]}
 
@@ -1130,6 +1136,17 @@ def create_app(factory: sessionmaker[Session], paths: DataPaths, *, token: str |
     def create_backup():
         dest = backup.backup_database(paths, "manual")
         return {"name": dest.name if dest else None}
+
+    @app.post("/api/admin/reset")
+    def admin_reset(body: ResetIn):
+        from bikelog import reset
+        return reset.reset_database(factory, paths, confirm=body.confirm, clear_strava=body.clear_strava,
+                                    strava_web=strava_web)
+
+    @app.post("/api/backups/{name}/restore")
+    def backup_restore(name: str):
+        from bikelog import reset
+        return reset.restore_backup(factory, paths, name, strava_web=strava_web)
 
     @app.post("/api/exports", status_code=201)
     def create_export():

@@ -207,6 +207,7 @@ maintenance notes (symptom, work done, notes) appear in the same list read-only.
 | CSV ride import (generic + Strava export), resumable | imports.py | pages/Settings.tsx | docs/csv-import.md |
 | Strava API sync | connectors/strava/ | components/StravaSettings.tsx (Settings → Strava) | docs/strava.md, DECISIONS 26, 39, 42 |
 | Backups, export/restore, demo mode | backup.py, services/demo.py | Settings | DECISIONS 4–5 |
+| Fresh start (reset database) and restore of any backup while the app runs | reset.py, backup.KEPT_MARK | components/FreshStart.tsx, Settings → Backups "Restore" | DECISIONS 54 |
 
 Strava details: full API sync with permanent storage (Dirk's choice). Credentials and tokens live only in
 `<data dir>/strava.env`; the secret is write-only in the UI and never logged. OAuth callback
@@ -243,10 +244,10 @@ cd backend && ../.venv/bin/python -m bikelog            # http://127.0.0.1:8765/
 Checks that must pass before every push:
 
 ```bash
-.venv/bin/python -m pytest -q backend/tests             # currently 122 passed
+.venv/bin/python -m pytest -q backend/tests             # currently 124 passed
 cd frontend && npx tsc -b && npx eslint . && npx vite build
 # browser test: start the app on a fresh data dir, then
-node e2e/smoke.cjs http://127.0.0.1:8790/ <screenshot-dir>   # currently 61/61 (the ride-form step can flake once; rerun)
+node e2e/smoke.cjs http://127.0.0.1:8790/ <screenshot-dir>   # currently 65/65 (the ride-form step can flake once; rerun)
 #   (cd backend && ../.venv/bin/python -m bikelog --no-browser --port 8790 --data-dir <fresh dir>)
 ```
 
@@ -301,7 +302,8 @@ Work sessions: `work-sessions`, `/{id}`, `/{id}/undo`. Journal: `journal` (GET/P
 `imports`, `imports/template`, `imports/products`, `product-templates`, `product-templates/{type}/schema|example`,
 `product-templates/instructions.md`. Strava: `strava/status`, `credentials` (PUT/DELETE), `connect`,
 `callback`, `sync`, `disconnect`. History/diagnostics: `changes?bike_id=|component_id=`, `logs?lines=&level=`,
-`logs/download`. Data: `backups` (GET/POST), `exports` (POST, GET file), `admin/rebuild`.
+`logs/download`. Data: `backups` (GET/POST; rows carry `kept`), `backups/{name}/restore` (POST), `exports` (POST, GET file),
+`admin/rebuild`, `admin/reset` (POST `{confirm: "RESET", clear_strava}`).
 (*DELETE of a component is refused once it has installations, usage or maintenance; such parts are retired instead.)
 
 ---

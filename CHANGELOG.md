@@ -13,6 +13,9 @@ UPDATING.md → "Making a release". New entries go under "Unreleased" as work is
   in use and in storage, with an estimated share per part; existing parts can be grouped later.
 - Groupset import: tick "spare" to keep a part in storage instead of installing it (e.g. a bottom
   bracket that does not fit); it stays part of the bundle.
+- Settings → Fresh start: empty the database after typing RESET; a full backup is made first and kept;
+  Strava stays connected unless you tick "Also clear the Strava connection". Every backup in Settings
+  now has a Restore button (the current data is backed up first).
 - Part page: "Add km from before" for parts that were ridden on other bikes; the date defaults to the
   day the part was first installed.
 

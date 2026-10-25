@@ -140,6 +140,15 @@ The script raises the number, dates the "Unreleased" part of CHANGELOG.md, commi
 tags it `v0.3.0` and (with `--push`) pushes the branch and the tag. It refuses on `main`, with uncommitted
 changes, or when CHANGELOG.md lists nothing new. The build then makes `BikeLog-0.3.0-setup.exe`.
 
+## Starting over with an empty database
+
+Settings → **Fresh start**: type `RESET` and press **Reset database**. Bike Log first writes a full backup
+(its path is shown; the name ends in `kept-before-reset.db`, and it is never deleted automatically), then
+starts with an empty database. Strava stays connected unless you tick "Also clear the Strava connection";
+press **Sync** in the Strava section to import your rides again. Changed your mind? Press **Undo** right
+there, or **Restore** next to that backup under "Backups and export". Updating or reinstalling the app
+never resets your data; only this button does.
+
 ## If you downloaded a ZIP instead of cloning
 
 A ZIP from GitHub cannot be updated with `git pull`. Either download the new ZIP for the branch and

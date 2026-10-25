@@ -42,6 +42,7 @@ Status key: ✅ done and tested · 🟡 done, not verified where it matters · �
 - ✅ Journal with notes and issues on bikes and parts, maintenance notes included.
 - ✅ Purchase bundles (groupset at one price, counted once), parts kept as spares at import, grouping existing parts later.
 - ✅ Km from before on a part (starting mileage, date defaults to first install).
+- ✅ Fresh start (reset database) with a kept backup, and Restore for every backup in Settings.
 - 💡 Costs report across bikes per year; editing product reference prices in the UI (API exists).
 
 ## P6d History and diagnostics

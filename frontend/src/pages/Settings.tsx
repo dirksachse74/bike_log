@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react'
 import { api } from '../api'
 import Diagnostics from '../components/Diagnostics'
+import FreshStart from '../components/FreshStart'
 import StravaSettings from '../components/StravaSettings'
 import VersionInfo from '../components/VersionInfo'
 import { Card, Field, FormError, Tag } from '../components/ui'
@@ -35,7 +36,7 @@ export default function SettingsPage() {
   const [err, setErr] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const batches = useApi<Batch[]>('/imports')
-  const backups = useApi<{ directory: string; backups: { name: string; size: number }[]; exports: { name: string; size: number }[] }>('/backups')
+  const backups = useApi<{ directory: string; backup_dir: string; backups: { name: string; size: number; kept: boolean }[]; exports: { name: string; size: number }[] }>('/backups')
   const fileRef = useRef<HTMLInputElement>(null)
   const [importing, setImporting] = useState(false)
   const [result, setResult] = useState<ImportResult | null>(null)
@@ -68,6 +69,17 @@ export default function SettingsPage() {
       batches.reload()
     } finally {
       setImporting(false)
+    }
+  }
+  async function restore(name: string) {
+    if (!window.confirm(`Replace all current data with the backup ${name}? A backup of the current data is made first, so this can be undone.`)) return
+    try {
+      await api.post(`/backups/${encodeURIComponent(name)}/restore`)
+      toast(`Restored ${name}.`)
+      reloadMeta()
+      backups.reload()
+    } catch (e) {
+      toast((e as Error).message)
     }
   }
   async function backupNow(kind: 'backups' | 'exports') {
@@ -181,16 +193,22 @@ export default function SettingsPage() {
                   <a href={`./api/exports/${e.name}`}>{e.name}</a>
                 </li>
               ))}
-              {backups.data.backups.slice(0, 5).map((b) => (
-                <li key={b.name}>
-                  {b.name} <span className="muted">({Math.round(b.size / 1024)} KB)</span>
-                </li>
-              ))}
+              {backups.data.backups
+                .filter((b, i) => i < 5 || b.kept)
+                .map((b) => (
+                  <li key={b.name}>
+                    {b.name} <span className="muted">({Math.round(b.size / 1024)} KB{b.kept ? ', kept' : ''})</span>
+                    <button className="btn btn-small" aria-label={`Restore ${b.name}`} onClick={() => restore(b.name)}>
+                      Restore
+                    </button>
+                  </li>
+                ))}
             </ul>
           </>
         )}
         <VersionInfo />
       </Card>
+      <FreshStart onChanged={backups.reload} />
       <Diagnostics />
     </div>
   )

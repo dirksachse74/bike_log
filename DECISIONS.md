@@ -171,6 +171,12 @@ you disagree. Dates are 2026-10-24 unless noted.
 53. **Km from before** is the part's starting mileage (value, "as of" date, estimate flag). The part
     page offers it when none is set and defaults the date to the day the part was first installed, so
     rides from then on count on top (e.g. wheels with a few thousand km on a bike with 150 km).
+54. **Fresh start without losing anything**: Settings → Fresh start needs the typed word RESET, writes a
+    backup named `…-kept-before-reset.db` that is never pruned, then empties the database in place (drop
+    all tables/views/triggers in one exclusive transaction, migrate again, default rules) so it works
+    while the app runs and on Windows (no rename of an open file). Strava app details and login
+    (`strava.env`) are kept by default, with a tick box to clear them too. Any backup can be restored
+    from Settings; a restore first writes a `…-kept-before-restore.db` backup. (Dirk 2026-10-25.)
 
 ## Repository
 27. Pushed only to the feature branch `claude/project-thread-6y3mmh` of the private repository. Demo
