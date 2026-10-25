@@ -10,6 +10,7 @@
     "steerer": "1-1/8\" to 1.5\" tapered",
     "bearings": "cartridge 41.8 mm 45x45",
     "integrated_cables": false,
+    "torque_nm": "5",
     "weight_g": 250
   },
   "source": {

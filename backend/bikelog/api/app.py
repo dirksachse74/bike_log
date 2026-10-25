@@ -23,7 +23,10 @@ from sqlalchemy.orm import Session, object_session, sessionmaker
 
 from bikelog import __version__, backup, buildinfo, changelog
 from bikelog.api.security import LocalSecurityMiddleware
-from bikelog.catalog import ACTIONS, COMPONENT_TYPES, DISPOSITIONS, INCIDENT_TYPES, RIDE_CONDITIONS, TIRE_SETUPS, TRACKING_MODES, action_applies
+from bikelog.catalog import (
+    ACTIONS, COMPONENT_TYPES, DISPOSITIONS, INCIDENT_TYPES, RIDE_CONDITIONS, SHIFTING_TYPES, TIRE_SETUPS, TRACKING_MODES,
+    action_applies,
+)
 from bikelog.connectors.strava import sync as strava
 from bikelog.migrate import head_revision
 from bikelog.models import Bike, Component, Product, ServiceRule, UsageProfile
@@ -62,6 +65,7 @@ class BikeIn(Body):
     starting_is_estimate: bool = False
     purchase_price_cents: int | None = None
     purchase_date: str | None = None
+    shifting: str | None = None
 
 
 class BikePatch(Body):
@@ -73,6 +77,7 @@ class BikePatch(Body):
     notes: str | None = None
     purchase_price_cents: int | None = None
     purchase_date: str | None = None
+    shifting: str | None = None
 
 
 class StartingIn(Body):
@@ -375,7 +380,8 @@ class EventIn(Body):
 
 
 class SnoozeIn(Body):
-    component_id: int
+    component_id: int | None = None
+    bike_id: int | None = None          # bike-level reminder (component_id empty)
     rule_code: str
     until_date: str | None = None
     extra_km: float | None = None
@@ -443,6 +449,7 @@ class SettingsPatch(Body):
     timezone: str | None = None
     import_start_date: str | None = None
     trainer_profile_for_virtual: str | None = None
+    default_tire_setup: str | None = None
 
 
 class ProfileIn(Body):
@@ -534,15 +541,19 @@ def create_app(factory: sessionmaker[Session], paths: DataPaths, *, token: str |
             "ui_version": buildinfo.ui_version(static),
             "settings": settings_svc.all_settings(s),
             "component_types": [{"code": t.code, "name": t.name, "category": t.category, "slots": list(t.slots),
-                                 "parent_types": list(t.parent_types), "removed_default": t.removed_default}
+                                 "parent_types": list(t.parent_types), "removed_default": t.removed_default,
+                                 "rider_gear": t.rider_gear, "torque": t.torque}
                                 for t in COMPONENT_TYPES.values()],
             "dispositions": [{"code": k, "label": v} for k, v in DISPOSITIONS.items()],
             "tracking_modes": [{"code": k, "label": v} for k, v in TRACKING_MODES.items()],
             "tire_setups": [{"code": k, "label": v} for k, v in TIRE_SETUPS.items()],
+            "shifting_types": [{"code": k, "label": v} for k, v in SHIFTING_TYPES.items()],
             "incident_types": [{"code": k, "label": v} for k, v in INCIDENT_TYPES.items()],
             "ride_conditions": [{"code": k, "label": v} for k, v in RIDE_CONDITIONS.items()],
             "actions": [{"code": a.code, "name": a.name, "kind": a.kind, "targets": list(a.targets),
-                         "quick": a.quick, "fields": list(a.fields), "outcomes": list(a.outcomes)}
+                         "quick": a.quick, "fields": list(a.fields), "outcomes": list(a.outcomes),
+                         "unit": a.unit, "limits_source": a.limits_source,
+                         "limits": [{"value": x.value, "outcome": x.outcome, "below": x.below} for x in a.limits]}
                         for a in ACTIONS.values()],
             "profiles": [{"id": p.id, "code": p.code, "name": p.name, "kind": p.kind,
                           "excluded_slots": json.loads(p.excluded_slots_json),
@@ -651,7 +662,7 @@ def create_app(factory: sessionmaker[Session], paths: DataPaths, *, token: str |
                 "rules": [m.rule_row(r) for r in m.effective_rules(s, c, include_disabled=True)],
                 "events": m.events_for(s, component_id=c.id),
                 "actions": [{"code": a.code, "name": a.name, "quick": a.quick, "fields": list(a.fields),
-                             "outcomes": list(a.outcomes)}
+                             "outcomes": list(a.outcomes), "unit": a.unit, "limits_source": a.limits_source}
                             for a in ACTIONS.values() if action_applies(a, c.component_type)],
                 "product_detail": _product(c.product) if c.product else None, "specs": json.loads(c.specs_json or "{}"),
                 "dispositions": inv.disposition_history(s, c), "inventory": spares.item_row(s, c),
@@ -861,6 +872,16 @@ def create_app(factory: sessionmaker[Session], paths: DataPaths, *, token: str |
     def rules(s: Session = Depends(db)):
         return [m.rule_row(r) for r in s.scalars(select(ServiceRule).where(ServiceRule.component_type.is_not(None))
                                                  .order_by(ServiceRule.component_type, ServiceRule.rule_code))]
+
+    @app.get("/api/bikes/{bike_id}/rules")
+    def bike_rules(bike_id: int, s: Session = Depends(db)):
+        b = inv.get_bike(s, bike_id)
+        return [{**m.rule_row(r), "status": m.bike_rule_status(s, b, r)}
+                for r in m.effective_bike_rules(s, b, include_disabled=True)]
+
+    @app.patch("/api/bikes/{bike_id}/rules/{rule_code}")
+    def patch_bike_rule(bike_id: int, rule_code: str, body: RulePatch, s: Session = Depends(db)):
+        return m.rule_row(m.set_bike_rule(s, bike_id, rule_code, **body.model_dump(exclude_unset=True)))
 
     @app.patch("/api/rules/{rule_id}")
     def patch_rule(rule_id: int, body: RulePatch, s: Session = Depends(db)):
@@ -1227,6 +1248,7 @@ def _bike_summary(s: Session, b: Bike, attribution: dict | None = None) -> dict:
     return {"id": b.id, "uuid": b.uuid, "name": b.name, "maker": b.maker, "model": b.model, "year": b.year,
             "status": b.status, "strava_gear_id": b.strava_gear_id, "notes": b.notes, "usage": usage,
             "purchase_price_cents": b.purchase_price_cents, "purchase_date": b.purchase_date, "costs": cost,
+            "shifting": b.shifting, "shifting_effective": inv.shifting_of(s, b),
             "open_tasks": sum(1 for t in m.queue(s, bike_id=b.id) if t["status"] in ("DUE", "OVERDUE", "ATTENTION"))}
 
 

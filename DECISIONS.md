@@ -199,6 +199,26 @@ you disagree. Dates are 2026-10-24 unless noted.
 61. **Charge rules start as "insufficient information"** until the first Charged is logged, because the
     state of charge at install is unknown. Lever coin-cell rule exists but is off by default (Dirk's
     the rule only matters for wireless levers such as ST-R8170; switch it on per part).
+62. **Bike-level rules** live in `service_rule` with component_type "BIKE" (default) or `bike_id` (per
+    bike), and maintenance events with a bike and no part. Reason: torque check, frame inspection and
+    Di2 system checks concern the whole bike, not one part (coverage review 2026-10-25). Without a logged
+    check they show "not enough info" instead of guessing from the purchase date.
+63. **Torque re-check is part of the bike's torque check**, not one reminder per part: parts with a
+    torque spec fitted after the last torque check and ridden since make it due, listed by name. Reason:
+    a groupset import would otherwise raise 20 reminders at once.
+64. **Measurements set the outcome only when none is picked**; a typed outcome wins. Limits are per action
+    (Shimano pads/rotors MANUFACTURER, chain 0.5 % shop guidance; 0.4 % warning personal) and only apply
+    when the unit matches.
+65. **Setup-dependent rules** (tubeless, mechanical shifting, electronic shifting) stay in the catalog for
+    other users and are NOT_APPLICABLE (hidden) where the setup does not match. Dirk: Di2 only, discs only,
+    never tubeless. Wheels without a setting use the default tire setup (TUBE); bikes without a shifting
+    setting count as electronic once a battery is fitted.
+66. **Shoes are rider gear, not mounted parts**: put "in use" with a date (disposition IN_USE, history
+    kept), they and their cleats count every ride that has a bike while in use, whatever the bike. Two
+    pairs in use at once both count; store one to stop it.
+67. **Event-based checks** (crash → frame/hanger, worn chain → cassette/chainrings, wet ride → re-wax,
+    bed-in after fitting) are computed from the history on read, like every other reminder, and clear
+    when the matching check is logged after the event.
 
 ## Repository
 27. Pushed only to the feature branch `claude/project-thread-6y3mmh` of the private repository. Demo

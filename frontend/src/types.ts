@@ -29,6 +29,8 @@ export interface Bike {
   purchase_price_cents: number | null
   purchase_date: string | null
   costs: BikeCosts
+  shifting: string | null
+  shifting_effective: string | null
 }
 
 export interface BikeCosts {
@@ -161,8 +163,8 @@ export interface Task {
   rule_id?: number
   name: string
   action_code: string
-  component_id: number
-  component: string
+  component_id: number | null   // null: a bike-level reminder (torque check, frame inspection)
+  component: string | null
   component_type: string
   status: Status
   underlying_status?: Status
@@ -258,6 +260,9 @@ export interface ActionDef {
   quick: boolean
   fields: string[]
   outcomes: string[]
+  unit?: string | null
+  limits_source?: string | null
+  limits?: { value: number; outcome: string; below: boolean }[]
 }
 
 export interface ComponentType {
@@ -267,6 +272,8 @@ export interface ComponentType {
   slots: string[]
   parent_types: string[]
   removed_default: string
+  rider_gear?: boolean
+  torque?: boolean
 }
 
 export interface Profile {
@@ -298,6 +305,7 @@ export interface Meta {
   dispositions: { code: string; label: string }[]
   tracking_modes: { code: string; label: string }[]
   tire_setups: { code: TireSetup; label: string }[]
+  shifting_types: { code: string; label: string }[]
   incident_types: { code: string; label: string }[]
   ride_conditions: { code: string; label: string }[]
 }
@@ -331,7 +339,7 @@ export interface Rule {
   component_id: number | null
   action_code: string
   action: string
-  trigger: 'INTERVAL' | 'CYCLE_WINDOW' | 'PARENT_COUNT'
+  trigger: 'INTERVAL' | 'CYCLE_WINDOW' | 'PARENT_COUNT' | 'ONCE_AFTER_INSTALL'
   interval_km: number | null
   interval_hours: number | null
   warn_hours: number | null
@@ -346,7 +354,7 @@ export interface Rule {
   warn_days: number | null
   origin: string
   active: boolean
-  requires_setup: TireSetup | null
+  requires_setup: string | null   // a tire setup (TUBELESS) or a shifting type (MECHANICAL)
 }
 
 export interface ChangeRow {

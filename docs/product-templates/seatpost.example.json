@@ -9,6 +9,7 @@
     "diameter_mm": 27.2,
     "length_mm": 350,
     "offset_mm": 15,
+    "torque_nm": "5",
     "weight_g": 250
   },
   "source": {

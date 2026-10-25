@@ -58,6 +58,10 @@
           "type": "string",
           "description": "Power source"
         },
+        "torque_nm": {
+          "type": "string",
+          "description": "Tightening torque (bolts, clamps, axle) as printed by the maker (Nm)"
+        },
         "weight_g": {
           "type": "number",
           "description": "Weight (g)"

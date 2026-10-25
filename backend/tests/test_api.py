@@ -156,3 +156,25 @@ def test_replacement_from_stock_over_http_with_inventory_tabs_and_undo(client):
     assert view["stock"][0]["stock"]["qty"] == 3
     detail = client.get(f"/api/components/{old['id']}").json()
     assert detail["location"]["state"] == "INSTALLED" and detail["disposition"] == "STORED"
+
+
+def test_bike_level_reminders_over_http(client):
+    bike = client.post("/api/bikes", json={"name": "TIME NXR", "shifting": "ELECTRONIC"}).json()
+    assert bike["shifting_effective"] == "ELECTRONIC"
+    assert client.patch(f"/api/bikes/{bike['id']}", json={"shifting": "PNEUMATIC"}).status_code == 400
+    ev = client.post("/api/maintenance/events", json={"action_code": "TORQUE_CHECK", "bike_id": bike["id"],
+                                                      "at": "2026-01-01"})
+    assert ev.status_code == 201
+    torque = next(t for t in client.get("/api/maintenance/queue").json() if t["rule_code"] == "BIKE_TORQUE_CHECK")
+    assert torque["component_id"] is None and torque["bike"] == "TIME NXR" and torque["status"] == "OVERDUE"
+    sn = client.post("/api/maintenance/snooze", json={"bike_id": bike["id"], "rule_code": "BIKE_TORQUE_CHECK",
+                                                      "until_date": "2099-01-01"})
+    assert sn.status_code == 201
+    rules = client.get(f"/api/bikes/{bike['id']}/rules").json()
+    assert {r["rule_code"] for r in rules} >= {"BIKE_TORQUE_CHECK", "BIKE_DI2_CHECK", "BIKE_DI2_WIRES"}
+    off = client.patch(f"/api/bikes/{bike['id']}/rules/BIKE_DI2_WIRES", json={"active": False}).json()
+    assert off["bike_id"] == bike["id"] and off["active"] is False
+    meta = client.get("/api/meta").json()
+    pad = next(a for a in meta["actions"] if a["code"] == "PAD_MEASURE")
+    assert pad["unit"] == "mm" and pad["limits"][0] == {"value": 0.5, "outcome": "AT_LIMIT", "below": True}
+    assert meta["settings"]["default_tire_setup"] == "TUBE"

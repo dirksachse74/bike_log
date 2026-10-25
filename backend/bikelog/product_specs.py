@@ -164,9 +164,34 @@ SPEC_FIELDS: dict[str, list[SpecField]] = {
                F("battery", "string", "Battery", example="CR2032"),
                F("battery_life_h", "number", "Claimed battery life", "h", example=500),
                F("protocols", "string", "Wireless protocols", example="ANT+, Bluetooth")],
+    "DERAILLEUR_HANGER": [F("frame", "string", "Frames it fits", example="TIME NXR"),
+                          F("hanger_code", "string", "Maker's hanger code", example="UDH")],
+    "STEM": [F("length_mm", "number", "Length", "mm", example=100),
+             F("angle_deg", "number", "Angle", "°", example=-6),
+             F("clamp_mm", "number", "Handlebar clamp", "mm", example=31.8),
+             F("steerer_mm", "number", "Steerer clamp", "mm", example=28.6)],
+    "SHIFT_CABLE": [F("diameter_mm", "number", "Inner cable diameter", "mm", example=1.2),
+                    F("coating", "string", "Coating", example="polymer")],
+    "SHIFT_HOUSING": [F("diameter_mm", "number", "Outer diameter", "mm", example=4),
+                      F("length_mm", "number", "Length as sold", "mm", example=2000)],
+    "TUBELESS_VALVE": [F("length_mm", "number", "Valve length", "mm", example=44),
+                       F("type", "enum", "Valve type", values=("presta", "schrader"), example="presta")],
+    "SHOES": [F("size_eu", "number", "Size (EU)", example=43),
+              F("cleat_system", "string", "Cleat system", example="Shimano SPD-SL 3-bolt")],
+    "CLEATS": [F("system", "string", "Cleat system", example="Shimano SPD-SL"),
+               F("float_deg", "number", "Float", "°", example=6)],
+    "BIKE_COMPUTER": [F("battery_life_h", "number", "Claimed battery life", "h", example=26)],
+    "LIGHT": [F("lumen", "number", "Light output", "lm", example=800),
+              F("battery_life_h", "number", "Claimed run time in your mode", "h", example=4)],
+    "RADAR": [F("battery_life_h", "number", "Claimed run time", "h", example=8)],
     "OTHER": [],
 }
 
+TORQUE = F("torque_nm", "string", "Tightening torque (bolts, clamps, axle) as printed by the maker", "Nm",
+           example="5")
+
 
 def fields_for(component_type: str) -> list[SpecField]:
-    return SPEC_FIELDS.get(component_type, []) + COMMON
+    from bikelog.catalog import COMPONENT_TYPES
+    torque = [TORQUE] if component_type in COMPONENT_TYPES and COMPONENT_TYPES[component_type].torque else []
+    return SPEC_FIELDS.get(component_type, []) + torque + COMMON

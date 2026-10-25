@@ -155,3 +155,20 @@ def usage_since(session: Session, component_id: int, since_utc: str | None) -> f
     if since_utc:
         q = q.where(UsageContribution.sort_utc >= since_utc)
     return _round(float(session.scalar(q) or 0))
+
+
+def bike_km_since(session: Session, bike_id: int, since_utc: str | None) -> float:
+    """Ride km on a bike since an instant (bike-level reminders such as a torque check)."""
+    q = select(func.sum(Ride.distance_km)).where(Ride.bike_id == bike_id, Ride.status == "ACTIVE",
+                                                 Ride.inclusion == "INCLUDED")
+    if since_utc:
+        q = q.where(Ride.sort_utc >= since_utc)
+    return _round(float(session.scalar(q) or 0))
+
+
+def bike_hours_since(session: Session, bike_id: int, since_utc: str | None) -> tuple[float, int]:
+    q = select(Ride.duration_s).where(Ride.bike_id == bike_id, Ride.status == "ACTIVE", Ride.inclusion == "INCLUDED")
+    if since_utc:
+        q = q.where(Ride.sort_utc >= since_utc)
+    durations = list(session.scalars(q))
+    return round(sum(d for d in durations if d) / 3600, 2), sum(1 for d in durations if not d)

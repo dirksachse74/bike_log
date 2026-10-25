@@ -53,7 +53,7 @@ def test_sealant_reminder_only_for_tubeless_and_setup_moves_with_the_wheel(sessi
     inv.install(session, tire.id, parent_component_id=wheel.id, at="2026-05-01")
     today = date(2026, 8, 25)
     st = status(session, tire, "TIRE_SEALANT", today)
-    assert st["status"] == "NOT_APPLICABLE" and "not set on Zipp 303 rear" in st["explanation"]
+    assert st["status"] == "NOT_APPLICABLE" and "no setup of its own, so the default (inner tube" in st["explanation"]
     assert not in_queue(session, tire, "TIRE_SEALANT", today)
     with pytest.raises(DomainError):
         inv.update_component(session, tire.id, tire_setup="TUBELESS")   # set on the wheel, not the tire

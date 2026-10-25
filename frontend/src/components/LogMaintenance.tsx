@@ -18,6 +18,16 @@ interface BikeDetail extends Bike {
 }
 
 const applies = (a: ActionDef, type: string) => a.targets.includes('*') || a.targets.includes(type)
+const onBike = (a: ActionDef) => a.targets.includes('BIKE')
+
+/** The outcome a measurement implies, as the server will set it when no outcome is picked. */
+function implied(a: ActionDef, raw: string, unit: string): string | null {
+  const v = Number(raw.replace(',', '.'))
+  if (!a.limits?.length || !raw || Number.isNaN(v)) return null
+  if (unit && a.unit && unit.trim().toLowerCase() !== a.unit.toLowerCase()) return null
+  const hit = a.limits.find((l) => (l.below ? v <= l.value : v >= l.value))
+  return hit ? hit.outcome : 'OK'
+}
 
 /** Short, contextual maintenance entry: bike → action → installed parts preselected → date → save. */
 export default function LogMaintenance({ bikeId, componentId, actionCode, onDone }: Props) {
@@ -43,10 +53,12 @@ export default function LogMaintenance({ bikeId, componentId, actionCode, onDone
     if (componentId && comp.data) return meta.actions.filter((a) => applies(a, comp.data!.component_type))
     const types = new Set(setup.map((s) => s.component_type))
     return meta.actions.filter((a) => [...types].some((t) => applies(a, t)) && !a.targets.includes('*'))
+      .concat(meta.actions.filter(onBike))
       .concat(meta.actions.filter((a) => a.targets.includes('*')))
   }, [meta.actions, setup, componentId, comp.data])
   const act = meta.actions.find((a) => a.code === action) ?? null
-  const candidates = act && !componentId ? setup.filter((s) => applies(act, s.component_type)) : []
+  const bikeLevel = !!act && !componentId && onBike(act)
+  const candidates = act && !componentId && !bikeLevel ? setup.filter((s) => applies(act, s.component_type)) : []
 
   useEffect(() => {
     // preselect every installed part the action applies to (e.g. both tires for "top up sealant")
@@ -57,7 +69,7 @@ export default function LogMaintenance({ bikeId, componentId, actionCode, onDone
 
   async function save() {
     if (!act) return setError('Pick what you did.')
-    if (!selected.length) return setError('Pick at least one part.')
+    if (!bikeLevel && !selected.length) return setError('Pick at least one part.')
     setBusy(true)
     setError(null)
     try {
@@ -69,6 +81,11 @@ export default function LogMaintenance({ bikeId, componentId, actionCode, onDone
       const cost = toCents(form.cost)
       if (Number.isNaN(cost)) throw new Error('Cost: enter an amount such as 25,00')
       if (cost !== null) body.cost_cents = cost
+      if (bikeLevel) {
+        body.bike_id = bike
+        await api.post('/maintenance/events', body, opId)
+        return onDone(`${act.name} logged for ${bikes.data?.find((b) => b.id === bike)?.name ?? 'the bike'}.`)
+      }
       if (selected.length === 1) body.component_id = selected[0]
       else body.component_ids = selected
       await api.post('/maintenance/events', body, opId)
@@ -121,7 +138,8 @@ export default function LogMaintenance({ bikeId, componentId, actionCode, onDone
           </select>
         )}
       </div>
-      {act && !componentId && (
+      {bikeLevel && <p className="muted small">Logged for the whole bike.</p>}
+      {act && !componentId && !bikeLevel && (
         <div className="field">
           <span className="field-label">On which installed parts?</span>
           {candidates.length === 0 && <span className="muted">No installed part on this bike takes this action.</span>}
@@ -166,11 +184,18 @@ export default function LogMaintenance({ bikeId, componentId, actionCode, onDone
           )}
           {act.fields.includes('measurement') && (
             <div className="row">
-              <Field label="Measurement">
-                <input inputMode="decimal" value={form.measurement_value} onChange={set('measurement_value')} placeholder="0.3" />
+              <Field
+                label="Measurement"
+                hint={
+                  implied(act, form.measurement_value, form.measurement_unit) && !form.outcome
+                    ? `Outcome will be: ${implied(act, form.measurement_value, form.measurement_unit)!.replace(/_/g, ' ').toLowerCase()}`
+                    : act.limits_source ?? undefined
+                }
+              >
+                <input inputMode="decimal" aria-label="Measurement" value={form.measurement_value} onChange={set('measurement_value')} placeholder="0.3" />
               </Field>
               <Field label="Unit">
-                <input value={form.measurement_unit} onChange={set('measurement_unit')} placeholder="% / mm" />
+                <input value={form.measurement_unit} onChange={set('measurement_unit')} placeholder={act.unit ?? '% / mm'} />
               </Field>
             </div>
           )}

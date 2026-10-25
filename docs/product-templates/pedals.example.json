@@ -9,6 +9,7 @@
     "system": "SPD-SL",
     "q_factor_mm": 53,
     "power_meter": false,
+    "torque_nm": "5",
     "weight_g": 250
   },
   "source": {

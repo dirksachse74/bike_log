@@ -101,7 +101,7 @@ Then close Bike Log, run the newest installer in `dist\installer\` (named after 
 & "$env:LOCALAPPDATA\Programs\BikeLog\BikeLog.exe" --version     # installed copy
 dist\BikeLog\BikeLog.exe --version                               # freshly built copy
 ```
-It prints e.g. `Bike Log 0.2.0 (schema 0008, commit 1a2b3c4)`. The commit must match what
+It prints e.g. `Bike Log 0.2.0 (schema 0009, commit 1a2b3c4)`. The commit must match what
 `git log -1 --oneline` shows in the code folder (the first 7 characters).
 
 Inside the app: the version is next to the logo (`v0.2.0`, with a `+` for a build between releases), and

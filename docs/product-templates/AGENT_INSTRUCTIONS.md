@@ -63,6 +63,7 @@ error; put extra data under `specs`.
 | code | name | group |
 |---|---|---|
 | `CHAIN` | Chain | Drivetrain |
+| `DERAILLEUR_HANGER` | Derailleur hanger | Frame |
 | `QUICK_LINK` | Quick link | Drivetrain |
 | `CASSETTE` | Cassette | Drivetrain |
 | `CRANKSET` | Crankset | Drivetrain |
@@ -71,6 +72,8 @@ error; put extra data under `specs`.
 | `REAR_DERAILLEUR` | Rear derailleur | Drivetrain |
 | `PULLEY_WHEEL` | Pulley wheel | Drivetrain |
 | `FRONT_DERAILLEUR` | Front derailleur | Drivetrain |
+| `SHIFT_CABLE` | Shift cable | Drivetrain |
+| `SHIFT_HOUSING` | Shift housing | Drivetrain |
 | `WHEELSET` | Wheelset | Wheels |
 | `FRONT_WHEEL` | Front wheel | Wheels |
 | `REAR_WHEEL` | Rear wheel | Wheels |
@@ -78,6 +81,7 @@ error; put extra data under `specs`.
 | `HUB_BEARINGS` | Hub bearings (set) | Wheels |
 | `SPOKES` | Spokes (set) | Wheels |
 | `RIM_TAPE` | Rim tape | Wheels |
+| `TUBELESS_VALVE` | Tubeless valve | Wheels |
 | `TIRE` | Tire | Wheels |
 | `INNER_TUBE` | Inner tube | Wheels |
 | `BRAKE_ROTOR` | Brake rotor | Brakes |
@@ -87,13 +91,19 @@ error; put extra data under `specs`.
 | `HEADSET` | Headset | Frame |
 | `PEDALS` | Pedals | Contact points |
 | `POWER_METER_PEDALS` | Power-meter pedals | Contact points |
+| `SHOES` | Cycling shoes | Contact points |
+| `CLEATS` | Cleats | Contact points |
 | `SADDLE` | Saddle | Contact points |
 | `SEATPOST` | Seatpost | Contact points |
+| `STEM` | Stem | Cockpit |
 | `HANDLEBAR` | Handlebar | Cockpit |
 | `BAR_TAPE` | Bar tape | Cockpit |
 | `SHIFTERS` | Shifters | Controls |
 | `BATTERY` | Battery (Di2/AXS) | Electronics |
 | `SENSOR` | Sensor (speed/cadence) | Electronics |
+| `BIKE_COMPUTER` | Bike computer | Electronics |
+| `LIGHT` | Light | Electronics |
+| `RADAR` | Radar | Electronics |
 | `OTHER` | Other part | Other |
 
 Every type also accepts `weight_g`, `color`, `material`.
@@ -110,6 +120,18 @@ Template: `chain.schema.json`, example: `chain.example.json`
 | `links` | integer |  | Links as sold |
 | `joining` | string |  | Joining method |
 | `compatibility` | string |  | Drivetrain standard |
+| `weight_g` | number | g | Weight |
+| `color` | string |  | Colour / finish |
+| `material` | string |  | Main material |
+### Derailleur hanger (`DERAILLEUR_HANGER`)
+
+Template: `derailleur_hanger.schema.json`, example: `derailleur_hanger.example.json`
+
+| key | type | unit | meaning |
+|---|---|---|---|
+| `frame` | string |  | Frames it fits |
+| `hanger_code` | string |  | Maker's hanger code |
+| `torque_nm` | string | Nm | Tightening torque (bolts, clamps, axle) as printed by the maker |
 | `weight_g` | number | g | Weight |
 | `color` | string |  | Colour / finish |
 | `material` | string |  | Main material |
@@ -135,6 +157,7 @@ Template: `cassette.schema.json`, example: `cassette.example.json`
 | `range` | string |  | Smallest-largest sprocket |
 | `sprockets` | string |  | All sprockets |
 | `freehub` | string |  | Freehub standard |
+| `torque_nm` | string | Nm | Tightening torque (bolts, clamps, axle) as printed by the maker |
 | `weight_g` | number | g | Weight |
 | `color` | string |  | Colour / finish |
 | `material` | string |  | Main material |
@@ -150,6 +173,7 @@ Template: `crankset.schema.json`, example: `crankset.example.json`
 | `bcd_mm` | number | mm | Bolt circle diameter |
 | `spindle` | string |  | Spindle standard |
 | `power_meter` | boolean |  | Has a built-in power meter |
+| `torque_nm` | string | Nm | Tightening torque (bolts, clamps, axle) as printed by the maker |
 | `weight_g` | number | g | Weight |
 | `color` | string |  | Colour / finish |
 | `material` | string |  | Main material |
@@ -174,6 +198,7 @@ Template: `bottom_bracket.schema.json`, example: `bottom_bracket.example.json`
 |---|---|---|---|
 | `standard` | string |  | Shell standard |
 | `spindle_mm` | number | mm | Spindle diameter |
+| `torque_nm` | string | Nm | Tightening torque (bolts, clamps, axle) as printed by the maker |
 | `weight_g` | number | g | Weight |
 | `color` | string |  | Colour / finish |
 | `material` | string |  | Main material |
@@ -188,6 +213,7 @@ Template: `rear_derailleur.schema.json`, example: `rear_derailleur.example.json`
 | `capacity` | integer | T | Total capacity |
 | `electronic` | boolean |  | Electronic shifting |
 | `mount` | string |  | Mount |
+| `torque_nm` | string | Nm | Tightening torque (bolts, clamps, axle) as printed by the maker |
 | `weight_g` | number | g | Weight |
 | `color` | string |  | Colour / finish |
 | `material` | string |  | Main material |
@@ -214,6 +240,29 @@ Template: `front_derailleur.schema.json`, example: `front_derailleur.example.jso
 | `capacity` | integer | T | Front capacity |
 | `electronic` | boolean |  | Electronic shifting |
 | `mount` | one of `braze-on`, `clamp` |  | Mount |
+| `torque_nm` | string | Nm | Tightening torque (bolts, clamps, axle) as printed by the maker |
+| `weight_g` | number | g | Weight |
+| `color` | string |  | Colour / finish |
+| `material` | string |  | Main material |
+### Shift cable (`SHIFT_CABLE`)
+
+Template: `shift_cable.schema.json`, example: `shift_cable.example.json`
+
+| key | type | unit | meaning |
+|---|---|---|---|
+| `diameter_mm` | number | mm | Inner cable diameter |
+| `coating` | string |  | Coating |
+| `weight_g` | number | g | Weight |
+| `color` | string |  | Colour / finish |
+| `material` | string |  | Main material |
+### Shift housing (`SHIFT_HOUSING`)
+
+Template: `shift_housing.schema.json`, example: `shift_housing.example.json`
+
+| key | type | unit | meaning |
+|---|---|---|---|
+| `diameter_mm` | number | mm | Outer diameter |
+| `length_mm` | number | mm | Length as sold |
 | `weight_g` | number | g | Weight |
 | `color` | string |  | Colour / finish |
 | `material` | string |  | Main material |
@@ -244,6 +293,7 @@ Template: `front_wheel.schema.json`, example: `front_wheel.example.json`
 | `brake` | one of `disc`, `rim` |  | Brake type |
 | `rotor_mount` | one of `centerlock`, `6-bolt`, `none` |  | Rotor mount |
 | `spokes` | integer |  | Spoke count |
+| `torque_nm` | string | Nm | Tightening torque (bolts, clamps, axle) as printed by the maker |
 | `weight_g` | number | g | Weight |
 | `color` | string |  | Colour / finish |
 | `material` | string |  | Main material |
@@ -261,6 +311,7 @@ Template: `rear_wheel.schema.json`, example: `rear_wheel.example.json`
 | `rotor_mount` | one of `centerlock`, `6-bolt`, `none` |  | Rotor mount |
 | `freehub` | string |  | Freehub body |
 | `spokes` | integer |  | Spoke count |
+| `torque_nm` | string | Nm | Tightening torque (bolts, clamps, axle) as printed by the maker |
 | `weight_g` | number | g | Weight |
 | `color` | string |  | Colour / finish |
 | `material` | string |  | Main material |
@@ -310,6 +361,17 @@ Template: `rim_tape.schema.json`, example: `rim_tape.example.json`
 | `weight_g` | number | g | Weight |
 | `color` | string |  | Colour / finish |
 | `material` | string |  | Main material |
+### Tubeless valve (`TUBELESS_VALVE`)
+
+Template: `tubeless_valve.schema.json`, example: `tubeless_valve.example.json`
+
+| key | type | unit | meaning |
+|---|---|---|---|
+| `length_mm` | number | mm | Valve length |
+| `type` | one of `presta`, `schrader` |  | Valve type |
+| `weight_g` | number | g | Weight |
+| `color` | string |  | Colour / finish |
+| `material` | string |  | Main material |
 ### Tire (`TIRE`)
 
 Template: `tire.schema.json`, example: `tire.example.json`
@@ -347,6 +409,7 @@ Template: `brake_rotor.schema.json`, example: `brake_rotor.example.json`
 | `mount` | one of `centerlock`, `6-bolt` |  | Mount |
 | `thickness_mm` | number | mm | Thickness when new |
 | `min_thickness_mm` | number | mm | Minimum thickness (replace below) |
+| `torque_nm` | string | Nm | Tightening torque (bolts, clamps, axle) as printed by the maker |
 | `weight_g` | number | g | Weight |
 | `color` | string |  | Colour / finish |
 | `material` | string |  | Main material |
@@ -361,6 +424,7 @@ Template: `brake_circuit.schema.json`, example: `brake_circuit.example.json`
 | `hose` | string |  | Hose model |
 | `fluid` | one of `mineral oil`, `DOT 4`, `DOT 5.1` |  | Brake fluid |
 | `mount` | one of `flat mount`, `post mount`, `rim` |  | Caliper mount |
+| `torque_nm` | string | Nm | Tightening torque (bolts, clamps, axle) as printed by the maker |
 | `weight_g` | number | g | Weight |
 | `color` | string |  | Colour / finish |
 | `material` | string |  | Main material |
@@ -404,6 +468,7 @@ Template: `headset.schema.json`, example: `headset.example.json`
 | `steerer` | string |  | Steerer tube |
 | `bearings` | string |  | Bearing type and size |
 | `integrated_cables` | boolean |  | Routes hoses/cables through the headset |
+| `torque_nm` | string | Nm | Tightening torque (bolts, clamps, axle) as printed by the maker |
 | `weight_g` | number | g | Weight |
 | `color` | string |  | Colour / finish |
 | `material` | string |  | Main material |
@@ -416,6 +481,7 @@ Template: `pedals.schema.json`, example: `pedals.example.json`
 | `system` | string |  | Cleat system |
 | `q_factor_mm` | number | mm | Q-factor |
 | `power_meter` | boolean |  | Has a built-in power meter |
+| `torque_nm` | string | Nm | Tightening torque (bolts, clamps, axle) as printed by the maker |
 | `weight_g` | number | g | Weight |
 | `color` | string |  | Colour / finish |
 | `material` | string |  | Main material |
@@ -430,6 +496,29 @@ Template: `power_meter_pedals.schema.json`, example: `power_meter_pedals.example
 | `battery` | string |  | Battery |
 | `battery_life_h` | number | h | Claimed battery life |
 | `protocols` | string |  | Wireless protocols |
+| `torque_nm` | string | Nm | Tightening torque (bolts, clamps, axle) as printed by the maker |
+| `weight_g` | number | g | Weight |
+| `color` | string |  | Colour / finish |
+| `material` | string |  | Main material |
+### Cycling shoes (`SHOES`)
+
+Template: `shoes.schema.json`, example: `shoes.example.json`
+
+| key | type | unit | meaning |
+|---|---|---|---|
+| `size_eu` | number |  | Size (EU) |
+| `cleat_system` | string |  | Cleat system |
+| `weight_g` | number | g | Weight |
+| `color` | string |  | Colour / finish |
+| `material` | string |  | Main material |
+### Cleats (`CLEATS`)
+
+Template: `cleats.schema.json`, example: `cleats.example.json`
+
+| key | type | unit | meaning |
+|---|---|---|---|
+| `system` | string |  | Cleat system |
+| `float_deg` | number | ° | Float |
 | `weight_g` | number | g | Weight |
 | `color` | string |  | Colour / finish |
 | `material` | string |  | Main material |
@@ -442,6 +531,7 @@ Template: `saddle.schema.json`, example: `saddle.example.json`
 | `width_mm` | number | mm | Width |
 | `length_mm` | number | mm | Length |
 | `rails` | string |  | Rail material / shape |
+| `torque_nm` | string | Nm | Tightening torque (bolts, clamps, axle) as printed by the maker |
 | `weight_g` | number | g | Weight |
 | `color` | string |  | Colour / finish |
 | `material` | string |  | Main material |
@@ -454,6 +544,21 @@ Template: `seatpost.schema.json`, example: `seatpost.example.json`
 | `diameter_mm` | number | mm | Diameter |
 | `length_mm` | number | mm | Length |
 | `offset_mm` | number | mm | Setback |
+| `torque_nm` | string | Nm | Tightening torque (bolts, clamps, axle) as printed by the maker |
+| `weight_g` | number | g | Weight |
+| `color` | string |  | Colour / finish |
+| `material` | string |  | Main material |
+### Stem (`STEM`)
+
+Template: `stem.schema.json`, example: `stem.example.json`
+
+| key | type | unit | meaning |
+|---|---|---|---|
+| `length_mm` | number | mm | Length |
+| `angle_deg` | number | ° | Angle |
+| `clamp_mm` | number | mm | Handlebar clamp |
+| `steerer_mm` | number | mm | Steerer clamp |
+| `torque_nm` | string | Nm | Tightening torque (bolts, clamps, axle) as printed by the maker |
 | `weight_g` | number | g | Weight |
 | `color` | string |  | Colour / finish |
 | `material` | string |  | Main material |
@@ -468,6 +573,7 @@ Template: `handlebar.schema.json`, example: `handlebar.example.json`
 | `drop_mm` | number | mm | Drop |
 | `clamp_mm` | number | mm | Stem clamp diameter |
 | `integrated` | boolean |  | One-piece bar and stem |
+| `torque_nm` | string | Nm | Tightening torque (bolts, clamps, axle) as printed by the maker |
 | `weight_g` | number | g | Weight |
 | `color` | string |  | Colour / finish |
 | `material` | string |  | Main material |
@@ -492,6 +598,7 @@ Template: `shifters.schema.json`, example: `shifters.example.json`
 | `electronic` | boolean |  | Electronic shifting |
 | `brake_type` | one of `hydraulic disc`, `mechanical disc`, `rim` |  | Brake type |
 | `power` | string |  | Power source |
+| `torque_nm` | string | Nm | Tightening torque (bolts, clamps, axle) as printed by the maker |
 | `weight_g` | number | g | Weight |
 | `color` | string |  | Colour / finish |
 | `material` | string |  | Main material |
@@ -517,6 +624,37 @@ Template: `sensor.schema.json`, example: `sensor.example.json`
 | `battery` | string |  | Battery |
 | `battery_life_h` | number | h | Claimed battery life |
 | `protocols` | string |  | Wireless protocols |
+| `weight_g` | number | g | Weight |
+| `color` | string |  | Colour / finish |
+| `material` | string |  | Main material |
+### Bike computer (`BIKE_COMPUTER`)
+
+Template: `bike_computer.schema.json`, example: `bike_computer.example.json`
+
+| key | type | unit | meaning |
+|---|---|---|---|
+| `battery_life_h` | number | h | Claimed battery life |
+| `weight_g` | number | g | Weight |
+| `color` | string |  | Colour / finish |
+| `material` | string |  | Main material |
+### Light (`LIGHT`)
+
+Template: `light.schema.json`, example: `light.example.json`
+
+| key | type | unit | meaning |
+|---|---|---|---|
+| `lumen` | number | lm | Light output |
+| `battery_life_h` | number | h | Claimed run time in your mode |
+| `weight_g` | number | g | Weight |
+| `color` | string |  | Colour / finish |
+| `material` | string |  | Main material |
+### Radar (`RADAR`)
+
+Template: `radar.schema.json`, example: `radar.example.json`
+
+| key | type | unit | meaning |
+|---|---|---|---|
+| `battery_life_h` | number | h | Claimed run time |
 | `weight_g` | number | g | Weight |
 | `color` | string |  | Colour / finish |
 | `material` | string |  | Main material |
@@ -562,6 +700,7 @@ the data for the user's own use.
     "range": "11-34",
     "sprockets": "11-12-13-14-15-17-19-21-24-27-30-34",
     "freehub": "Shimano HG 11-speed road",
+    "torque_nm": "5",
     "weight_g": 250
   },
   "source": {

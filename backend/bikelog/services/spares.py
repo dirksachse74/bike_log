@@ -51,8 +51,8 @@ def item_row(session: Session, comp: Component, chains: dict[int, dict] | None =
     used = _ever_used(session, comp, usage)
     if comp.status == "RETIRED":
         state = comp.disposition if comp.disposition in OUT_OF_USE else "RETIRED"
-    elif loc["state"] == "INSTALLED":
-        state = "INSTALLED"
+    elif loc["state"] in ("INSTALLED", "IN_USE"):
+        state = "INSTALLED"        # shoes in use are listed with the parts in use
     elif comp.disposition == "AWAITING_SERVICE":
         state = "AWAITING_SERVICE"
     else:
@@ -69,7 +69,8 @@ def item_row(session: Session, comp: Component, chains: dict[int, dict] | None =
         readiness, readiness_text = "NEEDS_REPAIR", "Awaiting preparation or repair"
     t = COMPONENT_TYPES[comp.component_type]
     product = f"{comp.product.maker or ''} {comp.product.model}".strip() if comp.product else None
-    state_text = {"NEW_SPARE": "New spare", "USED_SPARE": "Used spare", "INSTALLED": "Installed",
+    state_text = {"NEW_SPARE": "New spare", "USED_SPARE": "Used spare",
+                  "INSTALLED": "In use (worn)" if loc["state"] == "IN_USE" else "Installed",
                   "AWAITING_SERVICE": "Awaiting preparation or repair"}.get(state, DISPOSITIONS.get(state, state))
     return {"id": comp.id, "label": comp.label, "component_type": comp.component_type, "type_name": t.name,
             "product_id": comp.product_id, "product": product, "state": state, "state_text": state_text,

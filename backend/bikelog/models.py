@@ -66,6 +66,8 @@ class Bike(Base):
     purchase_date: Mapped[str | None] = mapped_column(String(10))
     created_at: Mapped[str] = mapped_column(String(20), default=utc_now)
     updated_at: Mapped[str] = mapped_column(String(20), default=utc_now, onupdate=utc_now)
+    # ELECTRONIC / MECHANICAL (catalog.SHIFTING_TYPES); NULL = electronic if a battery is fitted, else unknown
+    shifting: Mapped[str | None] = mapped_column(String(12))
 
 
 class PurchaseBundle(Base):
@@ -412,12 +414,15 @@ class MaintenanceEvent(Base):
 
 
 class ServiceRule(Base):
-    """Type-level default or component-level rule. A component rule with the same rule_code replaces
-    the type rule for that component (active=False disables it)."""
+    """Type-level default (component_type; "BIKE" for bike-level rules), component-level or bike-level rule.
+    A component (bike) rule with the same rule_code replaces the type rule for that part (bike);
+    active=False disables it."""
     __tablename__ = "service_rule"
     __table_args__ = (
-        CheckConstraint("(component_type IS NULL) <> (component_id IS NULL)", name="ck_rule_target"),
-        CheckConstraint("trigger IN ('INTERVAL','CYCLE_WINDOW','PARENT_COUNT')", name="ck_rule_trigger"),
+        CheckConstraint("(component_type IS NOT NULL) + (component_id IS NOT NULL) + (bike_id IS NOT NULL) = 1",
+                        name="ck_rule_target"),
+        CheckConstraint("trigger IN ('INTERVAL','CYCLE_WINDOW','PARENT_COUNT','ONCE_AFTER_INSTALL')",
+                        name="ck_rule_trigger"),
         CheckConstraint("origin IN ('DEFAULT','MANUFACTURER','PERSONAL')", name="ck_rule_origin"),
         CheckConstraint("trigger <> 'INTERVAL' OR interval_km IS NOT NULL OR interval_months IS NOT NULL "
                         "OR interval_hours IS NOT NULL", name="ck_rule_interval"),
@@ -428,6 +433,7 @@ class ServiceRule(Base):
               sqlite_where=text("component_type IS NOT NULL")),
         Index("uq_rule_component_code", "component_id", "rule_code", unique=True,
               sqlite_where=text("component_id IS NOT NULL")),
+        Index("uq_rule_bike_code", "bike_id", "rule_code", unique=True, sqlite_where=text("bike_id IS NOT NULL")),
     )
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     uuid: Mapped[str] = mapped_column(String(36), unique=True, default=new_uuid)
@@ -435,8 +441,9 @@ class ServiceRule(Base):
     name: Mapped[str] = mapped_column(Text)
     component_type: Mapped[str | None] = mapped_column(String(32))
     component_id: Mapped[int | None] = mapped_column(ForeignKey("component.id"))
+    bike_id: Mapped[int | None] = mapped_column(ForeignKey("bike.id"))
     action_code: Mapped[str] = mapped_column(String(32))
-    trigger: Mapped[str] = mapped_column(String(16), default="INTERVAL")
+    trigger: Mapped[str] = mapped_column(String(20), default="INTERVAL")
     interval_km: Mapped[float | None] = mapped_column(Float)
     interval_months: Mapped[int | None] = mapped_column(Integer)
     window_min_km: Mapped[float | None] = mapped_column(Float)
@@ -458,10 +465,11 @@ class ServiceRule(Base):
 
 
 class ReminderSnooze(Base):
-    """Hide a reminder until a date and/or extra km. Records no maintenance."""
+    """Hide a reminder of a part (or of a bike) until a date and/or extra km. Records no maintenance."""
     __tablename__ = "reminder_snooze"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    component_id: Mapped[int] = mapped_column(ForeignKey("component.id"), index=True)
+    component_id: Mapped[int | None] = mapped_column(ForeignKey("component.id"), index=True)
+    bike_id: Mapped[int | None] = mapped_column(ForeignKey("bike.id"), index=True)
     rule_code: Mapped[str] = mapped_column(String(48))
     until_date: Mapped[str | None] = mapped_column(String(10))
     until_km: Mapped[float | None] = mapped_column(Float)  # usage-since-reset at which it shows again

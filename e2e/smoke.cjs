@@ -439,6 +439,41 @@ async function sheetButton(page, name) {
     check('wheels grouped into a wheelset', false, 'button not shown')
   }
 
+  // whole-bike reminders: shifting set on the bike page, torque check logged for the whole bike
+  await page.goto(BASE + '#/bikes')
+  await page.getByRole('link', { name: /TIME NXR/ }).click()
+  await page.getByRole('combobox', { name: 'Shifting' }).first().selectOption('ELECTRONIC')
+  await page.locator('.toast').filter({ hasText: 'Shifting set to electronic' }).waitFor()
+  const torqueTask = page.locator('.task').filter({ hasText: 'Torque check' }).filter({ hasText: 'whole bike' })
+  await torqueTask.first().waitFor()
+  const di2 = await page.locator('.task').filter({ hasText: 'Di2 check' }).first().waitFor({ timeout: 8000 }).then(() => 1, () => 0)
+  check('bike page lists whole-bike reminders (torque check, Di2 check once shifting is electronic)', di2 >= 1)
+  await torqueTask.first().getByRole('button', { name: 'Log done' }).click()
+  await page.locator('.sheet').getByText('Logged for the whole bike.').waitFor()
+  await sheetButton(page, 'Save')
+  await page.locator('.toast').filter({ hasText: 'logged for TIME NXR' }).waitFor()
+  check('torque check logged for the whole bike', true)
+  // a measurement says which outcome it gives (Shimano pad limits)
+  await page.getByRole('button', { name: 'Log maintenance' }).first().click()
+  await page.locator('.sheet').getByRole('button', { name: 'Measure pad material' }).click()
+  await page.locator('.sheet').getByLabel('Measurement').fill('0.8')
+  const hint = await page.locator('.sheet').getByText('Outcome will be: low').count()
+  check('pad measurement of 0.8 mm is shown as low', hint === 1)
+  await page.locator('.sheet').getByRole('button', { name: 'Close' }).click().catch(() => page.keyboard.press('Escape'))
+
+  // shoes count every ride once in use
+  await page.goto(BASE + '#/inventory')
+  await page.getByRole('button', { name: 'Add part' }).click()
+  await page.locator('.sheet').getByLabel('Type').selectOption('SHOES')
+  await page.locator('.sheet').getByLabel('Name / label').fill('Test shoes')
+  await sheetButton(page, 'Add part')
+  await page.getByRole('heading', { name: /Test shoes/ }).waitFor()
+  await page.getByRole('button', { name: 'Start using' }).click()
+  await page.locator('.sheet').getByRole('button', { name: 'Start using' }).click()
+  await page.locator('.toast').filter({ hasText: 'In use' }).waitFor()
+  await page.getByRole('button', { name: 'Stop using' }).waitFor()
+  check('shoes can be put in use (they count every ride)', true)
+
   // headset and power meter exist as part types
   await page.goto(BASE + '#/inventory')
   await page.getByRole('button', { name: 'Add part' }).click()

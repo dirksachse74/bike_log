@@ -11,6 +11,7 @@
     "capacity": 16,
     "electronic": true,
     "mount": "braze-on",
+    "torque_nm": "5",
     "weight_g": 250
   },
   "source": {

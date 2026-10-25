@@ -10,6 +10,7 @@
     "mount": "centerlock",
     "thickness_mm": 1.8,
     "min_thickness_mm": 1.5,
+    "torque_nm": "5",
     "weight_g": 250
   },
   "source": {

@@ -868,3 +868,11 @@ label.chip {
   color: var(--muted);
   align-self: flex-end;
 }
+
+.inline-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+  flex-wrap: wrap;
+}

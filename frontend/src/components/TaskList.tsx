@@ -15,8 +15,9 @@ export default function TaskList({ tasks, onChange, emptyText = 'Nothing due by 
 
   async function snooze(t: Task, body: { until_date?: string; extra_km?: number }) {
     try {
-      await api.post('/maintenance/snooze', { component_id: t.component_id, rule_code: t.rule_code, ...body })
-      toast(`Snoozed "${t.name}" for ${t.component}. No maintenance recorded.`)
+      const who = t.component_id ? { component_id: t.component_id } : { bike_id: t.bike_id }
+      await api.post('/maintenance/snooze', { ...who, rule_code: t.rule_code, ...body })
+      toast(`Snoozed "${t.name}" for ${t.component ?? t.bike}. No maintenance recorded.`)
       onChange()
     } catch (e) {
       setError((e as Error).message)
@@ -33,19 +34,27 @@ export default function TaskList({ tasks, onChange, emptyText = 'Nothing due by 
       {error && <div className="form-error">{error}</div>}
       <ul className="tasks">
         {tasks.map((t) => (
-          <li key={`${t.component_id}-${t.rule_code}`} className={`task task-${t.status.toLowerCase()}`}>
+          <li key={`${t.component_id ?? 'bike' + t.bike_id}-${t.rule_code}`} className={`task task-${t.status.toLowerCase()}`}>
             <div className="task-main">
               <StatusBadge status={t.status} />
               <div>
                 <div className="task-title">
-                  {t.name} · <Link to={`/inventory/${t.component_id}`}>{t.component}</Link>
-                  {t.bike && <span className="muted"> on {t.bike}</span>}
+                  {t.component_id ? (
+                    <>
+                      {t.name} · <Link to={`/inventory/${t.component_id}`}>{t.component}</Link>
+                      {t.bike && <span className="muted"> on {t.bike}</span>}
+                    </>
+                  ) : (
+                    <>
+                      {t.name} · <Link to={`/bikes/${t.bike_id}`}>{t.bike}</Link> <span className="muted">(whole bike)</span>
+                    </>
+                  )}
                 </div>
                 <div className="task-why">{t.explanation}</div>
               </div>
             </div>
             <div className="task-actions">
-              {t.status !== 'ATTENTION' && t.status !== 'NOT_APPLICABLE' && (
+              {(t.status !== 'ATTENTION' || !t.component_id) && t.status !== 'NOT_APPLICABLE' && (
                 <button className="btn btn-small btn-primary" onClick={() => setLogging(t)}>
                   Log done
                 </button>
@@ -76,6 +85,7 @@ export default function TaskList({ tasks, onChange, emptyText = 'Nothing due by 
         <Sheet title={`Log: ${logging.name}`} onClose={() => setLogging(null)}>
           <LogMaintenance
             componentId={logging.component_id}
+            bikeId={logging.component_id ? null : logging.bike_id}
             actionCode={logging.action_code}
             onDone={(msg) => {
               setLogging(null)

@@ -92,12 +92,13 @@ packaging/               bikelog.spec (PyInstaller), entry.py, bikelog.iss (Inno
 ## 4. Data model (tables in `models.py`)
 
 - **bike**: name (unique), maker, model, status ACTIVE/RETIRED, `strava_gear_id`, `purchase_price_cents`,
-  `purchase_date`.
+  `purchase_date`, `shifting` (ELECTRONIC/MECHANICAL/NULL; `inventory.shifting_of`: NULL = electronic when a
+  BATTERY is fitted, else unknown).
 - **product**: what you can buy: `component_type`, maker, model, `specs_json`, `spec_source` (URL),
   `spec_version` (e.g. "JSON import ...; unverified"), `list_price_cents` (reference only).
 - **component**: one physical part: type, label (unique per type), product, `prior_usage`
   (NEW/UNKNOWN/RECORDED), purchase date, `price_cents`, serial, status ACTIVE/RETIRED, `disposition`
-  (STORED, AWAITING_SERVICE, RETIRED, DISCARDED, SOLD, VOIDED), storage location,
+  (STORED, AWAITING_SERVICE, RETIRED, DISCARDED, SOLD, VOIDED, IN_USE = rider gear such as shoes being worn), storage location,
   `purchase_session_id`, `from_stock_txn_id`.
 - **installation**: a part on a bike slot or on a parent part (wheels on a wheelset; tire/tube/rotor/
   cassette/hub/spokes/rim tape/speed sensor on a wheel; bearings on a hub; chainrings on a crankset; quick
@@ -116,8 +117,11 @@ packaging/               bikelog.spec (PyInstaller), entry.py, bikelog.iss (Inno
 - **maintenance_event**: action on a part/bike: symptom, work done, outcome, measurement, consumable
   used, `cost_cents` (service fee), `work_session_id`; voidable.
 - **service_rule** (trigger INTERVAL with km / months / ride hours (`interval_hours`, `warn_hours`), CYCLE
-  window, or PARENT_COUNT = number of parents served, `interval_count`, e.g. a quick link on its 2nd
-  chain), **reminder_snooze**.
+  window, PARENT_COUNT = number of parents served, `interval_count`, e.g. a quick link on its 2nd chain,
+  or ONCE_AFTER_INSTALL = once after fitting, taken as done after `window_max_km`). Target: exactly one
+  of `component_type` (type default; "BIKE" = bike-level default), `component_id` (one part) or `bike_id`
+  (one bike). `requires_setup`: a tire setup (TUBE/TUBELESS/TUBULAR) or a shifting type
+  (ELECTRONIC/MECHANICAL). **reminder_snooze** (on a part, or `bike_id` with no part).
 - **consumable** (stock line: COUNTED stock of parts or BULK supplies, min stock, location) and
   **consumable_txn** (PURCHASE/USE/RETURN/ADJUST; only PURCHASE/RETURN carry money).
 - **work_session**: groups the transactions of one action (replace, groupset import, maintenance,
@@ -140,7 +144,7 @@ packaging/               bikelog.spec (PyInstaller), entry.py, bikelog.iss (Inno
 Migrations: plain `ADD COLUMN` / `CREATE TABLE` where possible; tables with protection triggers are not
 rebuilt. Every schema upgrade writes a backup first; a database newer than the app is refused. A test
 compares `models.py` with the migrated schema, so **every model change needs a new migration**
-(never edit a released one; 0008 is the newest).
+(never edit a released one; 0009 is the newest).
 
 ---
 
@@ -166,7 +170,24 @@ POWER_METER (on the bike or on a crankset; actions zero offset, battery, firmwar
 charge 50 h (warn 10 h), Magene-type speed sensor battery 400 h or 12 months. Di2 battery charge 800 km.
 Charge rules (CHARGE_ACTIONS) say INSUFFICIENT_INFO until the first "Charged" is logged. Lever coin
 cells (CR1632) 24 months, switched off by default (on only for wireless levers). Pulley wheels and
-chainrings checked every 5000 km; quick link: PARENT_COUNT 2 chains; rim tape check 12 months (tubeless).
+chainrings checked every 5000 km; quick link: PARENT_COUNT 2 chains; rim tape check 12 months.
+**Coverage additions (migration 0009):** bike-level rules (`effective_bike_rules`, `bike_rule_status`,
+`bike_status`, `set_bike_rule`; events with `bike_id` and no part): torque check every 3 months plus a
+re-check after the first ride on any newly fitted `torque=True` part (specs from the product's
+`torque_nm`), Di2 check 6 months and wire inspection 12 months (ELECTRONIC only). Attention items: a CRASH
+incident until a FRAME_INSPECT is logged on or after its day; the hanger after a crash; cassette and
+chainrings after a chain measured AT_LIMIT or taken off as discarded/retired (`_event_based_items`).
+Measurements set the outcome from `Action.limits` when no outcome is picked
+(`catalog.outcome_from_measurement`: pads 1.0 mm LOW / 0.5 AT_LIMIT and rotors 1.6/1.5 mm from Shimano;
+chain 0.4 %/0.5 %). A wet ride since the last lube/wax makes a chain LUBRICATE rule DUE. Tire and bar-tape
+rows show the age from the purchase date. Bed-in once after fitting pads/rotors (ONCE_AFTER_INSTALL, taken
+as done after 100 km). Also: thru-axles 6 months, sealant renew 12 months (tubeless, Stan's), valve core
+(tubeless), pedal bearings, BB check, bar tape, seatpost re-paste, hanger, hoses, cleats 2000 km, shift
+cable/housing (MECHANICAL only), computer/light/radar charging by hours, lever coin cells 18 months (off).
+Wheels without their own tube/tubeless setting use the setting `default_tire_setup` (TUBE).
+**Rider gear** (`ComponentType.rider_gear`, SHOES): not installed; `set_disposition(IN_USE)` starts it and
+STORED ends it; `AllocationIndex.rider` gives it (and the cleats mounted on it, slot path "RIDER") every
+ride that has a bike while in use. Location text "worn → shoes".
 Each due task
 has a plain-language explanation. Snooze records no maintenance. Outcomes like AT_LIMIT/SPONGY/LEAK
 raise attention until a later event.
@@ -221,6 +242,8 @@ bike and default text from the ride; `entries(ride_id=)`, `incidents(bike_id, in
 | Ride incidents (flat/crash/defect on a ride, linked to the part), dry/wet per ride | journal.py, rides.py | components/Incidents.tsx (ride detail; Rides → Incidents tab) | DECISIONS 55–56 |
 | Parts inside parts: wheelset → wheels → tire/hub/bearings/spokes/sensor; pulleys on the rear derailleur; carry-over at replace | inventory.py (group_wheels, replace carry_over), allocation.py, spares.py | Bikes.tsx ("Group wheels into a wheelset"), PartChange.tsx | DECISIONS 57–58 |
 | Ride-hour, number-of-chains and charging reminders | maintenance.py, usage.hours_since, catalog.py | Inventory.tsx RuleEditor (hours/count fields) | DECISIONS 59–61 |
+| Whole-bike reminders (torque, Di2, crash → frame inspection), measurement limits, bed-in, wet ride, worn chain → cassette, shifting type, default tire setup | maintenance.py (bike_status, _event_based_items), catalog.py (Limit) | TaskList.tsx (whole-bike rows), LogMaintenance.tsx (bike-level actions, outcome hint), Bikes.tsx (Shifting), Settings.tsx (Default tire setup) | DECISIONS 62–67 |
+| Shoes and cleats (count every ride while in use) | allocation.py (rider periods), inventory.set_disposition IN_USE | Inventory.tsx part page "Start using / Stop using" | DECISIONS 66 |
 | Change log | changelog.py | components/ChangeLog.tsx (bike and part pages) | DECISIONS 45 |
 | Tube/tubeless on wheels, sealant reminder | inventory.tire_setup_of, maintenance.py, catalog.py | components/TireSetup.tsx (bike setup rows, wheel page) | DECISIONS 43–44 |
 | Diagnostics log | logging_setup.py, services/diagnostics.py | components/Diagnostics.tsx (Settings) | DECISIONS 46 |
@@ -267,10 +290,10 @@ cd backend && ../.venv/bin/python -m bikelog            # http://127.0.0.1:8765/
 Checks that must pass before every push:
 
 ```bash
-.venv/bin/python -m pytest -q backend/tests             # currently 131 passed
+.venv/bin/python -m pytest -q backend/tests             # currently 140 passed
 cd frontend && npx tsc -b && npx eslint . && npx vite build
 # browser test: start the app on a fresh data dir, then
-node e2e/smoke.cjs http://127.0.0.1:8790/ <screenshot-dir>   # currently 69/69 (the ride-form step can flake once; rerun)
+node e2e/smoke.cjs http://127.0.0.1:8790/ <screenshot-dir>   # currently 73/73 (the ride-form step can flake once; rerun)
 #   (cd backend && ../.venv/bin/python -m bikelog --no-browser --port 8790 --data-dir <fresh dir>)
 ```
 
@@ -320,7 +343,9 @@ Meta/overview: `health`, `meta`, `overview`, `settings` (GET/PATCH). Bikes: `bik
 `maintenance/queue|events|candidates`, `events` POST, `/void`, `snooze`; `rules`; `chains`; `brakes`.
 Stock: `consumables` (GET/POST/PATCH), `/txns`, `/txn`, `/install`; `inventory`; `shopping-list`.
 Work sessions: `work-sessions`, `/{id}`, `/{id}/undo`. Journal: `journal` (GET/POST), `/{id}` PATCH,
-`/{id}/void`; `journal?ride_id=`; `incidents` (GET `bike_id`, `incident_type`, `open_only`); `bikes/{id}/group-wheels` (POST). Groupsets: `groupsets`, `/{code}/plan`, `/{code}/import`. Bundles: `bundles` (GET `bike_id`, `include_voided`; POST),
+`/{id}/void`; `journal?ride_id=`; `incidents` (GET `bike_id`, `incident_type`, `open_only`); `bikes/{id}/group-wheels` (POST);
+`bikes/{id}/rules` (GET, bike-level rules with status), `bikes/{id}/rules/{rule_code}` (PATCH, per bike);
+`maintenance/snooze` takes `bike_id` for a bike-level reminder; bikes take `shifting`. Groupsets: `groupsets`, `/{code}/plan`, `/{code}/import`. Bundles: `bundles` (GET `bike_id`, `include_voided`; POST),
 `bundles/candidates`, `bundles/{id}` (GET/PATCH), `/members` (POST), `/members/{cid}` (DELETE), `/void`. Imports: `imports/csv`,
 `imports`, `imports/template`, `imports/products`, `product-templates`, `product-templates/{type}/schema|example`,
 `product-templates/instructions.md`. Strava: `strava/status`, `credentials` (PUT/DELETE), `connect`,

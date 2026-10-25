@@ -25,8 +25,12 @@ Status key: ✅ done and tested · 🟡 done, not verified where it matters · �
 - ✅ Ride-hour and number-of-chains rules; charging reminders (Di2, power meter, sensor, coin cells).
 - ✅ Ride incidents (flat/crash/defect) linked to ride and part; dry/wet per ride.
 - ✅ Wheelset assemblies (wheels, tires, hub, bearings, spokes, rim tape, sensor), pulley wheels, carry-over.
-- ⏳ Maintenance coverage review items (bike-level rules, measurement limits, torque checks, crash
-  inspection, hanger, cleats, thru-axles, mechanical-only cable rules, …).
+- ✅ Maintenance coverage review items 1–22 (bike-level rules, measurement limits, torque checks, crash
+  inspection, hanger, cleats/shoes, thru-axles, sealant clean-out, valves, Di2 checks, bearings, bar tape,
+  hoses, bed-in, worn chain → cassette, wet ride, tire age, stem, cables (mechanical only), chargers).
+- ⏳ Editing a bike-level rule for one bike in the UI (API exists: PATCH /api/bikes/{id}/rules/{code}).
+- ⏳ Review items 23 (annual full-service checklist) and 24 (tire pressure note): waiting for Dirk.
+- ⏳ Bugs B1–B15 from the imaginary-bike test run (2026-10-25).
 - ⏳ Sample database as the first-start default (wiped by Fresh start).
 
 ## P5 Chain rotation and brakes

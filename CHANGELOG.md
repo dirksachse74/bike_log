@@ -31,8 +31,25 @@ UPDATING.md → "Making a release". New entries go under "Unreleased" as work is
   hours, speed sensor battery 400 h or 12 months; lever coin cells 24 months (off by default).
 - Reminder rules can count ride hours or the number of parts served (rule editor).
 
+- Whole-bike reminders: torque check every 3 months and once after the first ride on newly fitted parts
+  (with the torque from the product spec), Di2 check and wire inspection (electronic shifting only). A
+  crash asks for a frame and fork inspection (and a hanger check) until it is logged.
+- Measurements set the result: pads 1.0 mm low / 0.5 mm at limit, rotors 1.6 / 1.5 mm (Shimano), chain
+  0.4 % / 0.5 %. The form shows the result before saving.
+- New reminders: bed in new pads and rotors, thru-axles every 6 months, yearly sealant clean-out and valve
+  cores (tubeless only), pedal bearings, bottom bracket, bar tape, seatpost re-paste, derailleur hanger,
+  brake hoses, cassette and chainring check after a worn chain, re-wax after a wet ride, tire check also
+  yearly (age shown), charging for bike computer, lights and radar.
+- New part types: stem, derailleur hanger, cycling shoes and cleats (count every ride on any bike while
+  the shoes are in use), shift cable and housing (mechanical shifting only), tubeless valve, bike computer,
+  light, radar.
+- Shifting per bike (electronic / mechanical; not set = electronic when a Di2 battery is fitted) and a
+  default tire setup in Settings (inner tube), so tubeless and cable reminders stay off where they don't apply.
+
 ### Changed
-- Database schema 0005 → 0008 (upgraded automatically with a backup first).
+- Database schema 0005 → 0009 (upgraded automatically with a backup first).
+- Lever coin-cell reminder 18 months (still off by default); rim-tape check for every tire setup.
+- A quick link on a chain in storage reads "on Chain A (not on a bike)" instead of "unmounted parent".
 - Ultegra R8100 groupset import adds upper and lower pulley wheels.
 
 ## 0.2.0 (2026-10-25)

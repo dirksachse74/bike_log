@@ -8,6 +8,8 @@ Which parts a ride used, in priority order:
 2. otherwise installation history at the ride's instant (start-inclusive, end-exclusive),
    resolved as a tree (bike → wheel → tire),
 3. then the ride's usage profile removes excluded slots / types (e.g. direct-drive trainer).
+Rider gear (shoes) is not mounted: while "in use" (disposition history) it counts every ride that has a
+bike, and the parts on it (cleats) follow it.
 
 Contributions before a component's starting-mileage date are kept as IN_BASELINE (already inside
 the starting value) and do not count.
@@ -21,10 +23,12 @@ from dataclasses import dataclass
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
+from bikelog.catalog import RIDER_GEAR_TYPES
 from bikelog.models import (
-    Component, Installation, Ride, RideEquipment, RideFlag, UsageAdjustment, UsageContribution, UsageProfile,
+    Component, ComponentDisposition, Installation, Ride, RideEquipment, RideFlag, UsageAdjustment, UsageContribution,
+    UsageProfile,
 )
-from bikelog.timeutil import FAR_FUTURE, local_date_of
+from bikelog.timeutil import FAR_FUTURE, local_date_of, parse_when
 
 
 @dataclass
@@ -62,6 +66,23 @@ class AllocationIndex:
                 UsageAdjustment.component_id.is_not(None))):
             self.baseline[a.component_id] = a.effective_utc
         self.types = dict(session.execute(select(Component.id, Component.component_type)).all())
+        # rider gear: (component, from, until) periods in which it was in use
+        self.rider: list[tuple[int, str, str]] = []
+        rows = session.execute(select(ComponentDisposition.component_id, ComponentDisposition.disposition,
+                                      ComponentDisposition.effective_on).join(
+            Component, Component.id == ComponentDisposition.component_id).where(
+            Component.component_type.in_(RIDER_GEAR_TYPES), ComponentDisposition.voided_at.is_(None))
+            .order_by(ComponentDisposition.component_id, ComponentDisposition.effective_on, ComponentDisposition.id))
+        hist: dict[int, list[tuple[str, str]]] = defaultdict(list)
+        for cid, disp, on in rows:
+            hist[cid].append((disp, parse_when(on, tz).utc))
+        for cid, items in hist.items():
+            for n, (disp, start) in enumerate(items):
+                if disp == "IN_USE":
+                    end = next((u for _, u in items[n + 1:] if u > start), FAR_FUTURE)
+                    if n + 1 < len(items) and items[n + 1][1] == start:
+                        continue          # replaced the same day
+                    self.rider.append((cid, start, end))
         self.profiles: dict[int, tuple[set[str], set[str]]] = {}
         for p in session.scalars(select(UsageProfile)):
             self.profiles[p.id] = (set(json.loads(p.excluded_slots_json)), set(json.loads(p.excluded_types_json)))
@@ -130,6 +151,11 @@ def _plan(index: AllocationIndex, ride: Ride, explicit: dict[str, int | None]) -
         uses.append(_Use(inst.component_id, inst.slot, inst.slot, "HISTORY", amb))
         for child, path in index.subtree_paths(inst.component_id, t):
             uses.append(_Use(child.component_id, inst.slot, child.slot, "HISTORY", amb, path))
+    for comp_id, start, end in index.rider:
+        if start <= t < end:
+            uses.append(_Use(comp_id, "RIDER", "RIDER", "HISTORY", False))
+            for child, path in index.subtree_paths(comp_id, t, ("RIDER",)):
+                uses.append(_Use(child.component_id, "RIDER", child.slot, "HISTORY", False, path))
     for slot, comp_id in explicit.items():
         if comp_id is None:
             continue

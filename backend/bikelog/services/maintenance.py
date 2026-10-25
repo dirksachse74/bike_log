@@ -9,21 +9,27 @@ from __future__ import annotations
 
 import json
 import uuid
+from dataclasses import dataclass
 from datetime import date
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from bikelog.catalog import ACTIONS, CHARGE_ACTIONS, COMPONENT_TYPES, TIRE_SETUPS, action_applies
+from bikelog.catalog import (
+    ACTIONS, BIKE, CHARGE_ACTIONS, COMPONENT_TYPES, OUT_OF_USE, SHIFTING_TYPES, TIRE_SETUPS, TORQUE_TYPES,
+    action_applies, outcome_from_measurement,
+)
 from bikelog.models import (
-    Bike, Component, Consumable, Installation, MaintenanceEvent, ReminderSnooze, ServiceRule,
-    UsageContribution,
+    Bike, Component, Consumable, Installation, JournalEntry, MaintenanceEvent, Product, ReminderSnooze, Ride,
+    ServiceRule, UsageContribution,
 )
 from bikelog.services import settings, stock
 from bikelog.services.stock import add_consumable, consumable_stock, consumable_txn  # noqa: F401 (API)
 from bikelog.services.errors import DomainError, NotFound
-from bikelog.services.inventory import get_component, location, open_installation, set_disposition, tire_setup_of
-from bikelog.services.usage import hours_since, usage_since
+from bikelog.services.inventory import (
+    get_bike, get_component, location, open_installation, set_disposition, shifting_of, tire_setup_of,
+)
+from bikelog.services.usage import bike_hours_since, bike_km_since, hours_since, usage_since
 from bikelog.timeutil import add_months, parse_when, today_local, utc_now
 
 SEVERITY = {"OVERDUE": 0, "DUE": 1, "ATTENTION": 1, "DUE_SOON": 2, "INSUFFICIENT_INFO": 3, "SNOOZED": 4,
@@ -56,6 +62,14 @@ def log_event(session: Session, *, action_code: str, at: str, component_id: int 
             bike_id = loc.get("bike_id")
     elif bike_id is None:
         raise DomainError("Pick the component (or at least the bike) the work was done on")
+    else:
+        get_bike(session, bike_id)
+        if not action_applies(action, BIKE):
+            raise DomainError(f"'{action.name}' is done on a part: pick the part")
+    if measurement_value is not None and action.unit and not measurement_unit:
+        measurement_unit = action.unit
+    if not outcome:   # a measurement sets the outcome from the limits (e.g. pads at 0.8 mm: LOW)
+        outcome = outcome_from_measurement(action, measurement_value, measurement_unit)
     if action.outcomes and outcome and outcome not in action.outcomes:
         raise DomainError(f"Outcome must be one of {', '.join(action.outcomes)}")
     if consumable_id is not None and not session.get(Consumable, consumable_id):
@@ -71,6 +85,8 @@ def log_event(session: Session, *, action_code: str, at: str, component_id: int 
     if consumable_id is not None:
         stock.use(session, consumable_id, qty=consumable_qty, on=w.local_date, work_session_id=work_session_id,
                   maintenance_event_id=ev.id)
+    if comp is None:
+        _clear_obsolete_bike_snoozes(session, get_bike(session, bike_id), action_code)
     if comp is not None:
         _clear_obsolete_snoozes(session, comp, action_code)
         after = disposition_after
@@ -121,6 +137,16 @@ def _clear_obsolete_snoozes(session: Session, comp: Component, action_code: str)
         s.cleared_at = utc_now()
 
 
+def _clear_obsolete_bike_snoozes(session: Session, bike: Bike, action_code: str) -> None:
+    codes = {r.rule_code for r in effective_bike_rules(session, bike) if action_code in _reset_actions(r)}
+    if not codes:
+        return
+    for s in session.scalars(select(ReminderSnooze).where(
+            ReminderSnooze.bike_id == bike.id, ReminderSnooze.rule_code.in_(codes),
+            ReminderSnooze.cleared_at.is_(None))):
+        s.cleared_at = utc_now()
+
+
 def events_for(session: Session, *, component_id: int | None = None, bike_id: int | None = None,
                limit: int = 200) -> list[dict]:
     q = select(MaintenanceEvent)
@@ -163,6 +189,17 @@ def effective_rules(session: Session, comp: Component, include_disabled: bool = 
     return rules if include_disabled else [r for r in rules if r.active]
 
 
+def effective_bike_rules(session: Session, bike: Bike, include_disabled: bool = False) -> list[ServiceRule]:
+    """Bike-level rules (torque check, Di2 check): type defaults for "BIKE", replaced per bike."""
+    by_code: dict[str, ServiceRule] = {}
+    for r in session.scalars(select(ServiceRule).where(ServiceRule.component_type == BIKE)):
+        by_code[r.rule_code] = r
+    for r in session.scalars(select(ServiceRule).where(ServiceRule.bike_id == bike.id)):
+        by_code[r.rule_code] = r
+    rules = sorted(by_code.values(), key=lambda r: r.rule_code)
+    return rules if include_disabled else [r for r in rules if r.active]
+
+
 RULE_FIELDS = ("name", "interval_km", "interval_months", "window_min_km", "window_max_km", "warn_km", "warn_days",
                "active", "origin", "notes", "interval_hours", "warn_hours", "interval_count")
 
@@ -173,6 +210,8 @@ def _validate_rule(r: ServiceRule) -> None:
     if r.trigger == "PARENT_COUNT" and (r.interval_count is None or r.interval_count < 1):
         raise DomainError("Give the number (at least 1), e.g. replace the quick link after 2 chains")
     if r.interval_hours is not None and r.interval_hours <= 0:
+        raise DomainError("Intervals must be positive")
+    if r.trigger == "ONCE_AFTER_INSTALL" and r.window_max_km is not None and r.window_max_km <= 0:
         raise DomainError("Intervals must be positive")
     if r.trigger == "CYCLE_WINDOW":
         if r.window_min_km is None or r.window_max_km is None or r.window_max_km < r.window_min_km:
@@ -244,9 +283,33 @@ def set_component_rule(session: Session, component_id: int, *, rule_code: str | 
     return rule
 
 
+def set_bike_rule(session: Session, bike_id: int, rule_code: str, **fields) -> ServiceRule:
+    """Change a bike-level rule for one bike (e.g. switch the Di2 check off, torque check every 6 months)."""
+    bike = get_bike(session, bike_id)
+    existing = session.scalar(select(ServiceRule).where(ServiceRule.bike_id == bike.id,
+                                                        ServiceRule.rule_code == rule_code))
+    if existing:
+        return update_rule(session, existing.id, **fields)
+    t = session.scalar(select(ServiceRule).where(ServiceRule.component_type == BIKE, ServiceRule.rule_code == rule_code))
+    if t is None:
+        raise NotFound("No such bike reminder")
+    rule = ServiceRule(rule_code=rule_code, bike_id=bike.id, name=t.name, action_code=t.action_code, trigger=t.trigger,
+                       interval_km=t.interval_km, interval_months=t.interval_months, interval_hours=t.interval_hours,
+                       reset_actions_json=t.reset_actions_json, warn_km=t.warn_km, warn_days=t.warn_days,
+                       warn_hours=t.warn_hours, requires_setup=t.requires_setup, notes=t.notes, origin="PERSONAL",
+                       active=True)
+    for k, v in fields.items():
+        if k in RULE_FIELDS:
+            setattr(rule, k, v)
+    _validate_rule(rule)
+    session.add(rule)
+    session.flush()
+    return rule
+
+
 def rule_row(r: ServiceRule) -> dict:
     return {"id": r.id, "rule_code": r.rule_code, "name": r.name, "component_type": r.component_type,
-            "component_id": r.component_id, "action_code": r.action_code,
+            "component_id": r.component_id, "bike_id": r.bike_id, "action_code": r.action_code,
             "action": ACTIONS[r.action_code].name if r.action_code in ACTIONS else r.action_code,
             "trigger": r.trigger, "interval_km": r.interval_km, "interval_months": r.interval_months,
             "window_min_km": r.window_min_km, "window_max_km": r.window_max_km,
@@ -257,6 +320,37 @@ def rule_row(r: ServiceRule) -> dict:
 
 
 # ---------------------------------------------------------------- status
+
+@dataclass
+class _Subject:
+    """What a rule is about: one part, or a whole bike (bike-level rules such as the torque check)."""
+    session: Session
+    comp: Component | None = None
+    bike: Bike | None = None
+
+    @property
+    def label(self) -> str:
+        return self.comp.label if self.comp else self.bike.name
+
+    def last_event(self, actions: list[str]) -> MaintenanceEvent | None:
+        if self.comp:
+            return _last_event(self.session, self.comp.id, actions)
+        return self.session.scalar(select(MaintenanceEvent).where(
+            MaintenanceEvent.bike_id == self.bike.id, MaintenanceEvent.component_id.is_(None),
+            MaintenanceEvent.action_code.in_(actions), MaintenanceEvent.voided_at.is_(None))
+            .order_by(MaintenanceEvent.sort_utc.desc(), MaintenanceEvent.id.desc()))
+
+    def km_since(self, since_utc: str | None) -> float:
+        return usage_since(self.session, self.comp.id, since_utc) if self.comp else \
+            bike_km_since(self.session, self.bike.id, since_utc)
+
+    def uncertain_since(self, since_utc: str | None) -> float:
+        return _uncertain_since(self.session, self.comp.id, since_utc) if self.comp else 0.0
+
+    def hours_since(self, since_utc: str | None) -> tuple[float, int]:
+        return hours_since(self.session, self.comp.id, since_utc) if self.comp else \
+            bike_hours_since(self.session, self.bike.id, since_utc)
+
 
 def _last_event(session: Session, comp_id: int, actions: list[str]) -> MaintenanceEvent | None:
     return session.scalar(select(MaintenanceEvent).where(
@@ -313,34 +407,93 @@ def rule_status(session: Session, comp: Component, rule: ServiceRule, today: dat
             "origin": rule.origin, "trigger": rule.trigger}
     if not rule.active:
         return {**base, "status": "DISABLED", "explanation": "Rule disabled for this part."}
-    if rule.requires_setup:
-        setup, wheel = tire_setup_of(session, comp)
-        if setup != rule.requires_setup:
-            need = TIRE_SETUPS.get(rule.requires_setup, rule.requires_setup).lower()
-            if wheel is None:
-                why = "it is not on a wheel"
-            elif setup is None:
-                why = f"tube or tubeless is not set on {wheel.label}; set it on the wheel to use this reminder"
-            else:
-                why = f"{wheel.label} is set to {TIRE_SETUPS.get(setup, setup).lower()}"
-            return {**base, "status": "NOT_APPLICABLE", "requires_setup": rule.requires_setup,
-                    "explanation": f"Only for a {need} setup; {why}."}
+    why_not = _setup_mismatch(session, rule, comp=comp)
+    if why_not:
+        return {**base, "status": "NOT_APPLICABLE", "requires_setup": rule.requires_setup, "explanation": why_not}
     if rule.trigger == "CYCLE_WINDOW":
         res = _cycle_status(session, comp, rule, act_name)
     elif rule.trigger == "PARENT_COUNT":
         res = _parent_count_status(session, comp, rule)
+    elif rule.trigger == "ONCE_AFTER_INSTALL":
+        res = _once_status(session, comp, rule, act_name)
     else:
-        res = _interval_status(session, comp, rule, act_name, today)
+        res = _interval_status(_Subject(session, comp=comp), rule, act_name, today)
+        if res["status"] not in ("INSUFFICIENT_INFO",):
+            _add_wet_ride(session, comp, rule, res)
+        _add_age(comp, res, today)
     res = {**base, **res}
-    _apply_snooze(session, comp, rule, res, today)
+    _apply_snooze(session, rule, res, today, component_id=comp.id)
     return res
 
 
-def _interval_status(session: Session, comp: Component, rule: ServiceRule, act_name: str, today: date) -> dict:
-    last = _last_event(session, comp.id, _reset_actions(rule))
+def bike_rule_status(session: Session, bike: Bike, rule: ServiceRule, today: date | None = None) -> dict:
+    """Status of a bike-level rule; the torque check also asks for a re-check after newly fitted parts."""
+    today = today or today_local(settings.tz(session))
+    act_name = ACTIONS[rule.action_code].name.lower() if rule.action_code in ACTIONS else rule.action_code
+    base = {"rule_id": rule.id, "rule_code": rule.rule_code, "name": rule.name, "action_code": rule.action_code,
+            "component_id": None, "component": None, "component_type": BIKE, "bike_id": bike.id, "bike": bike.name,
+            "origin": rule.origin, "trigger": rule.trigger}
+    if not rule.active:
+        return {**base, "status": "DISABLED", "explanation": f"Rule switched off for {bike.name}."}
+    why_not = _setup_mismatch(session, rule, bike=bike)
+    if why_not:
+        return {**base, "status": "NOT_APPLICABLE", "requires_setup": rule.requires_setup, "explanation": why_not}
+    subj = _Subject(session, bike=bike)
+    res = _interval_status(subj, rule, act_name, today)
+    if rule.action_code == "TORQUE_CHECK":
+        _add_torque_recheck(session, bike, subj, res)
+    res = {**base, **res}
+    _apply_snooze(session, rule, res, today, bike_id=bike.id)
+    return res
+
+
+def _setup_mismatch(session: Session, rule: ServiceRule, *, comp: Component | None = None,
+                    bike: Bike | None = None) -> str | None:
+    """Why a setup-dependent rule (tubeless only, mechanical shifting only, …) does not apply, or None."""
+    need_code = rule.requires_setup
+    if not need_code:
+        return None
+    if need_code in SHIFTING_TYPES:
+        if bike is None:
+            loc = location(session, comp)
+            bike = session.get(Bike, loc["bike_id"]) if loc.get("bike_id") else None
+        need = SHIFTING_TYPES[need_code].lower()
+        if bike is None:
+            return f"Only for {need} shifting; this part is not on a bike."
+        have = shifting_of(session, bike)
+        if have == need_code:
+            return None
+        if have is None:
+            return f"Only for {need} shifting; set the shifting on {bike.name} (bike page → Edit) to use this reminder."
+        return f"Only for {need} shifting; {bike.name} is set to {SHIFTING_TYPES[have].lower()}."
+    setup, wheel = tire_setup_of(session, comp)
+    need = TIRE_SETUPS.get(need_code, need_code).lower()
+    if wheel is None:
+        return f"Only for a {need} setup; it is not on a wheel."
+    default_used = setup is None
+    if default_used:
+        setup = settings.get(session, "default_tire_setup") or None
+    if setup == need_code:
+        return None
+    if setup is None:
+        return f"Only for a {need} setup; tube or tubeless is not set on {wheel.label}; set it on the wheel to use this reminder."
+    have = TIRE_SETUPS.get(setup, setup).lower()
+    if default_used:
+        return (f"Only for a {need} setup; {wheel.label} has no setup of its own, so the default "
+                f"({have}, Settings) applies.")
+    return f"Only for a {need} setup; {wheel.label} is set to {have}."
+
+
+def _interval_status(subj: _Subject, rule: ServiceRule, act_name: str, today: date) -> dict:
+    session, comp = subj.session, subj.comp
+    last = subj.last_event(_reset_actions(rule))
     if last:
         since_utc, since_date = last.sort_utc, date.fromisoformat(last.performed_on)
         basis = f"last {act_name} on {last.performed_on}"
+    elif comp is None:
+        return {"status": "INSUFFICIENT_INFO", "used_km": None, "last_done": None,
+                "explanation": f"Insufficient information: no '{rule.name}' recorded for {subj.label} yet. Log "
+                               f"the last one (a date is enough) to start this reminder."}
     elif rule.action_code in CHARGE_ACTIONS:
         return {"status": "INSUFFICIENT_INFO", "used_km": None, "last_done": None,
                 "explanation": f"Insufficient information: no charge recorded for {comp.label} yet. Tap "
@@ -359,8 +512,8 @@ def _interval_status(session: Session, comp: Component, rule: ServiceRule, act_n
     parts, statuses = [], []
     out: dict = {"last_done": last.performed_on if last else None, "since": basis}
     if rule.interval_km is not None:
-        used = usage_since(session, comp.id, since_utc)
-        unc = _uncertain_since(session, comp.id, since_utc)
+        used = subj.km_since(since_utc)
+        unc = subj.uncertain_since(since_utc)
         st = _km_status(used, rule.interval_km, rule.warn_km)
         statuses.append(st)
         remaining = rule.interval_km - used
@@ -376,7 +529,7 @@ def _interval_status(session: Session, comp: Component, rule: ServiceRule, act_n
         parts.append(txt)
         out.update(used_km=used, interval_km=rule.interval_km, remaining_km=round(remaining, 3), uncertain_km=unc)
     if rule.interval_hours is not None:
-        hours, no_time = hours_since(session, comp.id, since_utc)
+        hours, no_time = subj.hours_since(since_utc)
         left = rule.interval_hours - hours
         st = _km_status(hours, rule.interval_hours, rule.warn_hours)
         statuses.append(st)
@@ -399,12 +552,99 @@ def _interval_status(session: Session, comp: Component, rule: ServiceRule, act_n
         parts.append(txt)
         out.update(due_date=due.isoformat(), days_left=days_left, interval_months=rule.interval_months)
     # actions that look related but do not reset this rule (e.g. a bleed vs. full fluid replacement)
-    if rule.action_code == "BRAKE_FLUID_REPLACE":
+    if rule.action_code == "BRAKE_FLUID_REPLACE" and comp is not None:
         bleed = _last_event(session, comp.id, ["BRAKE_BLEED"])
         if bleed and (not last or bleed.sort_utc >= last.sort_utc):
             parts.append(f"bleed on {bleed.performed_on} does not reset the fluid-replacement interval")
     out["status"] = _worst(*statuses)
     out["explanation"] = "; ".join(parts) + "."
+    out["since_utc"] = since_utc
+    return out
+
+
+def _add_wet_ride(session: Session, comp: Component, rule: ServiceRule, res: dict) -> None:
+    """A wet ride since the last lube/wax makes a chain-lube rule due (ride conditions set per ride)."""
+    action = ACTIONS.get(rule.action_code)
+    if comp.component_type != "CHAIN" or not action or action.kind != "LUBRICATE":
+        return
+    q = select(Ride.ride_date).join(UsageContribution, UsageContribution.ride_id == Ride.id).where(
+        UsageContribution.component_id == comp.id, UsageContribution.state == "COUNTED", Ride.conditions == "WET")
+    if res.get("since_utc"):
+        q = q.where(UsageContribution.sort_utc > res["since_utc"])
+    wet = list(session.scalars(q.order_by(Ride.sort_utc)))
+    if not wet:
+        return
+    res["status"] = _worst(res["status"], "DUE")
+    n = len(wet)
+    res["wet_rides"] = n
+    res["explanation"] += (f" {n} wet ride{'s' if n != 1 else ''} since then (last {wet[-1]}): "
+                           f"{action.name.lower()} after riding in the wet.")
+
+
+def _add_age(comp: Component, res: dict, today: date) -> None:
+    """Tires and bar tape age with time: show how old the part is when its purchase date is known."""
+    if comp.component_type not in ("TIRE", "BAR_TAPE") or not comp.purchase_date:
+        return
+    months = (today.year - int(comp.purchase_date[:4])) * 12 + today.month - int(comp.purchase_date[5:7])
+    res["age_months"] = months
+    res["explanation"] += f" Bought {comp.purchase_date} ({months} month{'s' if months != 1 else ''} ago)."
+
+
+def _torque_spec(session: Session, comp: Component) -> str | None:
+    p = session.get(Product, comp.product_id) if comp.product_id else None
+    if not p or not p.specs_json:
+        return None
+    v = json.loads(p.specs_json).get("torque_nm")
+    return f"{v} Nm" if v not in (None, "") else None
+
+
+def _add_torque_recheck(session: Session, bike: Bike, subj: _Subject, res: dict) -> None:
+    """Parts fitted after the last torque check that have been ridden since: re-check them once."""
+    from bikelog.services.inventory import bike_setup
+    last = subj.last_event(["TORQUE_CHECK"])
+    rows = [r for r in bike_setup(session, bike) if r["component_type"] in TORQUE_TYPES]
+    recheck, specs = [], []
+    for r in rows:
+        comp = session.get(Component, r["component_id"])
+        spec = _torque_spec(session, comp)
+        if spec:
+            specs.append(f"{comp.label} {spec}")
+        inst = session.get(Installation, r["installation_id"])
+        # without any torque check logged the reminder already asks for one; nothing extra to list
+        if last and inst.installed_utc > last.sort_utc and usage_since(session, comp.id, inst.installed_utc) > 0:
+            recheck.append(comp.label)
+    if recheck:
+        names = ", ".join(recheck[:6]) + (f" and {len(recheck) - 6} more" if len(recheck) > 6 else "")
+        res["status"] = _worst(res["status"], "DUE")
+        res["recheck"] = recheck
+        res["explanation"] += f" Re-check after the first ride on newly fitted parts: {names}."
+    if specs:
+        res["torque_specs"] = specs
+        res["explanation"] += " Torque: " + "; ".join(specs) + "."
+
+
+def _once_status(session: Session, comp: Component, rule: ServiceRule, act_name: str) -> dict:
+    """Once after fitting (e.g. bed in new pads): due from fitting until done, or until it has run
+    window_max_km without it (then it is taken as done)."""
+    inst = open_installation(session, comp.id)
+    if inst is None:
+        return {"status": "OK", "last_done": None, "explanation": f"Asked for once after {comp.label} is fitted."}
+    done = session.scalar(select(MaintenanceEvent).where(
+        MaintenanceEvent.component_id == comp.id, MaintenanceEvent.action_code.in_(_reset_actions(rule)),
+        MaintenanceEvent.voided_at.is_(None), MaintenanceEvent.sort_utc >= inst.installed_utc)
+        .order_by(MaintenanceEvent.sort_utc.desc()))
+    used = usage_since(session, comp.id, inst.installed_utc)
+    out = {"used_km": used, "last_done": done.performed_on if done else None, "since": inst.installed_at}
+    if done:
+        out.update(status="DONE_THIS_CYCLE", explanation=f"{act_name.capitalize()} done on {done.performed_on} "
+                                                          f"after fitting on {inst.installed_at[:10]}.")
+    elif rule.window_max_km is not None and used > rule.window_max_km:
+        out.update(status="DONE_THIS_CYCLE",
+                   explanation=f"Fitted on {inst.installed_at[:10]}, {used:,.0f} km since: taken as done "
+                               f"(asked for up to {rule.window_max_km:,.0f} km after fitting).")
+    else:
+        out.update(status="DUE", explanation=f"Fitted on {inst.installed_at[:10]} ({used:,.0f} km since): "
+                                             f"{act_name} once before riding hard. " + (rule.notes or ""))
     return out
 
 
@@ -477,9 +717,12 @@ def _cycle_status(session: Session, comp: Component, rule: ServiceRule, act_name
     return out
 
 
-def _apply_snooze(session: Session, comp: Component, rule: ServiceRule, res: dict, today: date) -> None:
+def _apply_snooze(session: Session, rule: ServiceRule, res: dict, today: date, *, component_id: int | None = None,
+                  bike_id: int | None = None) -> None:
+    who = ReminderSnooze.component_id == component_id if component_id is not None else \
+        (ReminderSnooze.bike_id == bike_id) & ReminderSnooze.component_id.is_(None)
     snooze = session.scalar(select(ReminderSnooze).where(
-        ReminderSnooze.component_id == comp.id, ReminderSnooze.rule_code == rule.rule_code,
+        who, ReminderSnooze.rule_code == rule.rule_code,
         ReminderSnooze.cleared_at.is_(None)).order_by(ReminderSnooze.id.desc()))
     if not snooze or res["status"] not in ("DUE_SOON", "DUE", "OVERDUE"):
         return
@@ -495,23 +738,33 @@ def _apply_snooze(session: Session, comp: Component, rule: ServiceRule, res: dic
         res["explanation"] = f"Snoozed {until} (no maintenance recorded). " + res["explanation"]
 
 
-def snooze(session: Session, component_id: int, rule_code: str, *, until_date: str | None = None,
-           extra_km: float | None = None, note: str | None = None) -> ReminderSnooze:
-    comp = get_component(session, component_id)
-    rule = next((r for r in effective_rules(session, comp) if r.rule_code == rule_code), None)
+def snooze(session: Session, component_id: int | None, rule_code: str, *, until_date: str | None = None,
+           extra_km: float | None = None, note: str | None = None, bike_id: int | None = None) -> ReminderSnooze:
+    """Snooze a part's reminder, or (component_id None, bike_id set) a bike-level reminder."""
+    if component_id is not None:
+        comp = get_component(session, component_id)
+        rule = next((r for r in effective_rules(session, comp) if r.rule_code == rule_code), None)
+        bike = None
+    elif bike_id is not None:
+        comp, bike = None, get_bike(session, bike_id)
+        rule = next((r for r in effective_bike_rules(session, bike) if r.rule_code == rule_code), None)
+    else:
+        raise DomainError("Pick the part or the bike")
     if not rule:
         raise NotFound("No such reminder for this component")
     if not until_date and not extra_km:
         raise DomainError("Snooze until a date or for some kilometres")
     until_km = None
     if extra_km:
-        st = rule_status(session, comp, rule)
+        st = rule_status(session, comp, rule) if comp else bike_rule_status(session, bike, rule)
         until_km = (st.get("used_km") or 0) + extra_km
+    who = ReminderSnooze.component_id == comp.id if comp else \
+        (ReminderSnooze.bike_id == bike.id) & ReminderSnooze.component_id.is_(None)
     for old in session.scalars(select(ReminderSnooze).where(
-            ReminderSnooze.component_id == comp.id, ReminderSnooze.rule_code == rule_code,
-            ReminderSnooze.cleared_at.is_(None))):
+            who, ReminderSnooze.rule_code == rule_code, ReminderSnooze.cleared_at.is_(None))):
         old.cleared_at = utc_now()
-    s = ReminderSnooze(component_id=comp.id, rule_code=rule_code, until_date=until_date, until_km=until_km, note=note)
+    s = ReminderSnooze(component_id=comp.id if comp else None, bike_id=None if comp else bike.id, rule_code=rule_code,
+                       until_date=until_date, until_km=until_km, note=note)
     session.add(s)
     session.flush()
     return s
@@ -542,9 +795,100 @@ def attention_items(session: Session, comp: Component) -> list[dict]:
     return out
 
 
+def _last_crash(session: Session, bike_id: int | None, after_utc: str | None = None) -> JournalEntry | None:
+    if bike_id is None:
+        return None
+    q = select(JournalEntry).where(JournalEntry.bike_id == bike_id, JournalEntry.incident_type == "CRASH",
+                                   JournalEntry.voided_at.is_(None))
+    if after_utc:
+        q = q.where(JournalEntry.entry_on >= after_utc[:10])
+    return session.scalar(q.order_by(JournalEntry.entry_on.desc(), JournalEntry.id.desc()))
+
+
+def _event_based_items(session: Session, comp: Component) -> list[dict]:
+    """Attention raised by something that happened elsewhere: a crash (hanger), a worn chain (cassette,
+    chainrings). Each stays until the part's own check is logged after it."""
+    out: list[dict] = []
+    t = comp.component_type
+    if t not in ("DERAILLEUR_HANGER", "CASSETTE", "CHAINRING"):
+        return out
+    loc = location(session, comp)
+    bike_id = loc.get("bike_id")
+    inst = open_installation(session, comp.id)
+    if bike_id is None or inst is None:
+        return out
+    check = {"DERAILLEUR_HANGER": "HANGER_ALIGN", "CASSETTE": "CASSETTE_INSPECT", "CHAINRING": "CHAINRING_INSPECT"}[t]
+    last = _last_event(session, comp.id, [check])
+    cutoff = max(inst.installed_utc, last.sort_utc if last else "")
+    name = ACTIONS[check].name
+    row = {"rule_code": f"ATTENTION_AFTER_{check}", "name": name, "action_code": check, "component_id": comp.id,
+           "component": comp.label, "component_type": t, "status": "ATTENTION"}
+    if t == "DERAILLEUR_HANGER":
+        crash = _last_crash(session, bike_id, cutoff)
+        if crash and (not last or last.performed_on < crash.entry_on):
+            out.append({**row, "explanation": f"Crash on {crash.entry_on}: check the hanger alignment before the "
+                                              f"next ride (a bent hanger shifts badly and can put the derailleur "
+                                              f"into the spokes)."})
+        return out
+    worn = session.scalar(select(MaintenanceEvent).join(Component, Component.id == MaintenanceEvent.component_id).where(
+        MaintenanceEvent.bike_id == bike_id, MaintenanceEvent.action_code == "CHAIN_MEASURE_WEAR",
+        MaintenanceEvent.outcome == "AT_LIMIT", MaintenanceEvent.voided_at.is_(None),
+        MaintenanceEvent.sort_utc > cutoff).order_by(MaintenanceEvent.sort_utc.desc()))
+    replaced = session.scalar(select(Installation).join(Component, Component.id == Installation.component_id).where(
+        Installation.bike_id == bike_id, Component.component_type == "CHAIN", Installation.voided_at.is_(None),
+        Installation.removed_utc > cutoff, Installation.removal_outcome.in_(OUT_OF_USE))
+        .order_by(Installation.removed_utc.desc()))
+    what = t.lower().replace("_", " ")
+    if replaced:
+        old = session.get(Component, replaced.component_id)
+        out.append({**row, "explanation": f"Worn chain {old.label} taken off on {replaced.removed_at[:10]}: check "
+                                          f"the {what} for wear (a worn {what} skips with a new chain)."})
+    elif worn:
+        out.append({**row, "explanation": f"Chain measured at its wear limit on {worn.performed_on}: check the {what} "
+                                          f"too when you replace the chain."})
+    return out
+
+
 def component_status(session: Session, comp: Component, today: date | None = None) -> list[dict]:
     rows = [rule_status(session, comp, r, today) for r in effective_rules(session, comp, include_disabled=True)]
     rows += attention_items(session, comp)
+    rows += _event_based_items(session, comp)
+    return sorted(rows, key=lambda r: SEVERITY[r["status"]])
+
+
+def bike_attention_items(session: Session, bike: Bike) -> list[dict]:
+    """Bike-level findings that need attention: a crash without a frame inspection since, or a bike
+    check whose latest result says something is wrong (frame damage, Di2 error)."""
+    out = []
+    base = {"component_id": None, "component": None, "component_type": BIKE, "bike_id": bike.id, "bike": bike.name,
+            "status": "ATTENTION"}
+    sub = _Subject(session, bike=bike)
+    for code, action in ACTIONS.items():
+        if not action.attention_outcomes or BIKE not in action.targets:
+            continue
+        last = sub.last_event([code])
+        if last and last.outcome in action.attention_outcomes:
+            out.append({**base, "rule_code": f"ATTENTION_{code}", "name": action.name, "action_code": code,
+                        "event_id": last.id,
+                        "explanation": f"{action.name} on {last.performed_on}: {last.outcome.replace('_', ' ').lower()}"
+                                       f"{' — ' + last.symptom if last.symptom else ''}. Stays until a newer "
+                                       f"{action.name.lower()} records a different result."})
+    crash = _last_crash(session, bike.id)
+    if crash:
+        insp = sub.last_event(["FRAME_INSPECT"])
+        if not insp or insp.performed_on < crash.entry_on:
+            out.append({**base, "rule_code": "ATTENTION_CRASH", "name": "Frame and fork inspection after a crash",
+                        "action_code": "FRAME_INSPECT", "journal_id": crash.id,
+                        "explanation": f"Crash on {crash.entry_on}: inspect frame and fork before riding hard "
+                                       "(cracks, splinters, milky patches on carbon: do not ride). Check the bars, "
+                                       "levers, hanger and wheels too. Stays until a frame and fork inspection "
+                                       "is logged."})
+    return out
+
+
+def bike_status(session: Session, bike: Bike, today: date | None = None) -> list[dict]:
+    rows = [bike_rule_status(session, bike, r, today) for r in effective_bike_rules(session, bike, include_disabled=True)]
+    rows += bike_attention_items(session, bike)
     return sorted(rows, key=lambda r: SEVERITY[r["status"]])
 
 
@@ -552,15 +896,24 @@ def queue(session: Session, *, bike_id: int | None = None, include_ok: bool = Fa
           today: date | None = None) -> list[dict]:
     """What needs attention next and why, for installed parts."""
     out = []
+    hidden = ("DISABLED", "DONE_THIS_CYCLE", "NOT_APPLICABLE")
     for comp in session.scalars(select(Component).where(Component.status == "ACTIVE").order_by(Component.label)):
         loc = location(session, comp)
-        if loc["state"] != "INSTALLED" or (bike_id is not None and loc.get("bike_id") != bike_id):
+        if loc["state"] not in ("INSTALLED", "IN_USE") or (bike_id is not None and loc.get("bike_id") != bike_id):
             continue
         for row in component_status(session, comp, today):
-            if row["status"] in ("DISABLED", "DONE_THIS_CYCLE", "NOT_APPLICABLE") or (row["status"] == "OK" and not include_ok):
+            if row["status"] in hidden or (row["status"] == "OK" and not include_ok):
                 continue
             out.append({**row, "bike_id": loc.get("bike_id"), "bike": loc.get("bike"), "slot": loc.get("slot")})
-    return sorted(out, key=lambda r: (SEVERITY[r["status"]], r.get("bike") or "", r["component"]))
+    bikes = select(Bike).where(Bike.status == "ACTIVE")
+    if bike_id is not None:
+        bikes = select(Bike).where(Bike.id == bike_id)
+    for bike in session.scalars(bikes):
+        for row in bike_status(session, bike, today):
+            if row["status"] in hidden or (row["status"] == "OK" and not include_ok):
+                continue
+            out.append({**row, "slot": None})
+    return sorted(out, key=lambda r: (SEVERITY[r["status"]], r.get("bike") or "", r["component"] or ""))
 
 
 # ---------------------------------------------------------------- chains & brakes

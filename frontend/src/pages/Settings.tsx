@@ -32,7 +32,7 @@ interface Batch {
 
 export default function SettingsPage() {
   const { meta, reloadMeta, toast } = useApp()
-  const [f, setF] = useState({ timezone: meta.settings.timezone, import_start_date: meta.settings.import_start_date, trainer_profile_for_virtual: meta.settings.trainer_profile_for_virtual })
+  const [f, setF] = useState({ timezone: meta.settings.timezone, import_start_date: meta.settings.import_start_date, trainer_profile_for_virtual: meta.settings.trainer_profile_for_virtual, default_tire_setup: meta.settings.default_tire_setup ?? 'TUBE' })
   const [err, setErr] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const batches = useApi<Batch[]>('/imports')
@@ -100,6 +100,15 @@ export default function SettingsPage() {
           </Field>
           <Field label="Import start date" hint="Imported rides before this local date are skipped. Empty = import everything.">
             <input type="date" value={f.import_start_date} onChange={(e) => setF({ ...f, import_start_date: e.target.value })} />
+          </Field>
+          <Field label="Default tire setup" hint="Used for wheels where tube or tubeless is not set, so tubeless reminders (sealant, valves) stay off for tubes.">
+            <select aria-label="Default tire setup" value={f.default_tire_setup} onChange={(e) => setF({ ...f, default_tire_setup: e.target.value })}>
+              {meta.tire_setups.map((t) => (
+                <option key={t.code} value={t.code}>
+                  {t.label}
+                </option>
+              ))}
+            </select>
           </Field>
           <Field label="Setup for indoor (Virtual) rides">
             <select value={f.trainer_profile_for_virtual} onChange={(e) => setF({ ...f, trainer_profile_for_virtual: e.target.value })}>

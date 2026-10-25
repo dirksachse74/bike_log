@@ -7,7 +7,7 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from bikelog.catalog import COMPONENT_TYPES, DISPOSITIONS, OUT_OF_USE, TIRE_SETUPS, WHEEL_TYPES
+from bikelog.catalog import COMPONENT_TYPES, DISPOSITIONS, OUT_OF_USE, SHIFTING_TYPES, TIRE_SETUPS, WHEEL_TYPES
 from bikelog.models import (
     Bike, Component, ComponentDisposition, Installation, Product, UsageAdjustment, UsageContribution,
 )
@@ -42,15 +42,18 @@ def create_bike(session: Session, *, name: str, maker: str | None = None, model:
                 year: int | None = None, strava_gear_id: str | None = None, notes: str | None = None,
                 starting_km: float | None = None, starting_date: str | None = None,
                 starting_is_estimate: bool = False, purchase_price_cents: int | None = None,
-                purchase_date: str | None = None) -> Bike:
+                purchase_date: str | None = None, shifting: str | None = None) -> Bike:
     name = (name or "").strip()
     if not name:
         raise DomainError("A bike needs a name")
     if session.scalar(select(Bike).where(func.lower(Bike.name) == name.lower())):
         raise Conflict(f"A bike called {name!r} already exists")
     _check_price(purchase_price_cents)
+    if shifting and shifting not in SHIFTING_TYPES:
+        raise DomainError(f"Shifting must be one of {', '.join(SHIFTING_TYPES)} (or not set)")
     bike = Bike(name=name, maker=maker, model=model, year=year, strava_gear_id=strava_gear_id or None, notes=notes,
-                purchase_price_cents=purchase_price_cents, purchase_date=purchase_date or None)
+                purchase_price_cents=purchase_price_cents, purchase_date=purchase_date or None,
+                shifting=shifting or None)
     session.add(bike)
     session.flush()
     if starting_km is not None:
@@ -62,7 +65,10 @@ def create_bike(session: Session, *, name: str, maker: str | None = None, model:
 def update_bike(session: Session, bike_id: int, **fields) -> Bike:
     bike = get_bike(session, bike_id)
     _check_price(fields.get("purchase_price_cents"))
-    for k in ("name", "maker", "model", "year", "strava_gear_id", "notes", "purchase_price_cents", "purchase_date"):
+    if fields.get("shifting") and fields["shifting"] not in SHIFTING_TYPES:
+        raise DomainError(f"Shifting must be one of {', '.join(SHIFTING_TYPES)} (or not set)")
+    for k in ("name", "maker", "model", "year", "strava_gear_id", "notes", "purchase_price_cents", "purchase_date",
+              "shifting"):
         if k in fields:
             v = fields[k]
             setattr(bike, k, v if k in ("name", "purchase_price_cents") else (v or None))
@@ -179,6 +185,17 @@ def tire_setup_of(session: Session, comp: Component) -> tuple[str | None, Compon
     return None, None
 
 
+def shifting_of(session: Session, bike: Bike | None) -> str | None:
+    """How a bike shifts: its own setting, else ELECTRONIC when a Di2/AXS battery is fitted, else unknown."""
+    if bike is None:
+        return None
+    if bike.shifting:
+        return bike.shifting
+    if any(r["component_type"] == "BATTERY" for r in bike_setup(session, bike)):
+        return "ELECTRONIC"
+    return None
+
+
 def update_component(session: Session, component_id: int, **fields) -> Component:
     comp = get_component(session, component_id)
     _check_price(fields.get("price_cents"))
@@ -243,6 +260,9 @@ def set_disposition(session: Session, component_id: int, disposition: str, *, on
     if disposition not in DISPOSITIONS:
         raise DomainError(f"Choose one of: {', '.join(DISPOSITIONS)}")
     comp = get_component(session, component_id)
+    rider = COMPONENT_TYPES[comp.component_type].rider_gear
+    if disposition == "IN_USE" and not rider:
+        raise DomainError("Only shoes and other rider gear are put in use this way; parts are installed on a bike")
     on_date = parse_when(on, settings.tz(session)).local_date
     if open_installation(session, component_id):
         remove(session, component_id, at=on, reason=note or DISPOSITIONS[disposition].lower(), outcome=disposition,
@@ -254,6 +274,8 @@ def set_disposition(session: Session, component_id: int, disposition: str, *, on
                                      work_session_id=work_session_id, previous_disposition=comp.disposition))
     _apply_disposition(comp, disposition, on_date, note)
     session.flush()
+    if rider:   # shoes count every ride while in use: their usage (and the cleats') changes
+        _reallocate(session)
     return comp
 
 
@@ -276,6 +298,8 @@ def refresh_disposition(session: Session, comp: Component) -> None:
     else:
         _apply_disposition(comp, "STORED", None, None)
     session.flush()
+    if COMPONENT_TYPES[comp.component_type].rider_gear:
+        _reallocate(session)
 
 
 def disposition_history(session: Session, comp: Component) -> list[dict]:
@@ -670,25 +694,34 @@ def correct_installation(session: Session, installation_id: int, *, installed_at
 # ---------------------------------------------------------------- views
 
 def location(session: Session, comp: Component) -> dict:
-    if comp.status == "RETIRED":
+    if comp.status == "RETIRED" and comp.disposition != "IN_USE":
         word = {"DISCARDED": "Discarded", "SOLD": "Sold / given away",
                 "VOIDED": "Record of an undone operation"}.get(comp.disposition, "Retired")
         return {"state": "RETIRED", "disposition": comp.disposition,
                 "text": f"{word} {comp.retired_on or ''}".strip()}
     inst = open_installation(session, comp.id)
     if not inst:
+        if comp.disposition == "IN_USE":
+            return {"state": "IN_USE", "disposition": comp.disposition, "bike_id": None, "bike": None,
+                    "text": f"In use since {comp.disposition_on} (counts every ride)"}
         if comp.disposition == "AWAITING_SERVICE":
             return {"state": "AWAITING_SERVICE", "disposition": comp.disposition,
                     "text": "Awaiting inspection or repair"}
         return {"state": "STORED", "disposition": comp.disposition, "text": "In storage (spare)"}
     path = []
-    cur = inst
+    cur, top = inst, None
     while cur is not None and cur.parent_component_id is not None:
-        parent = session.get(Component, cur.parent_component_id)
-        path.append(parent.label)
-        cur = open_installation(session, parent.id)
+        top = session.get(Component, cur.parent_component_id)
+        path.append(top.label)
+        cur = open_installation(session, top.id)
     bike = session.get(Bike, cur.bike_id) if cur is not None and cur.bike_id else None
-    text = (bike.name if bike else "unmounted parent") + (" → " + " → ".join(reversed(path)) if path else "")
+    chain = " → ".join(reversed(path))
+    if bike:
+        text = bike.name + (" → " + chain if chain else "")
+    elif top is not None and top.disposition == "IN_USE" and top.status == "ACTIVE":
+        text = f"worn → {chain}"          # cleats on shoes that are in use
+    else:
+        text = f"on {chain} (not on a bike)"
     return {"state": "INSTALLED", "bike_id": bike.id if bike else None, "bike": bike.name if bike else None,
             "slot": inst.slot, "parent_component_id": inst.parent_component_id, "since": inst.installed_at,
             "installation_id": inst.id, "text": f"{text} ({inst.slot.replace('_', ' ').lower()})"}

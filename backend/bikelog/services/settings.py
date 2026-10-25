@@ -12,9 +12,10 @@ DEFAULTS = {
     "trainer_profile_for_virtual": "DIRECT_DRIVE_TRAINER",
     "duplicate_window_km_pct": "5",
     "demo_mode": "0",                 # set only in databases created by the demo launcher
+    "default_tire_setup": "TUBE",     # used by reminders for wheels whose tube/tubeless is not set
 }
 
-EDITABLE = {"timezone", "import_start_date", "trainer_profile_for_virtual"}
+EDITABLE = {"timezone", "import_start_date", "trainer_profile_for_virtual", "default_tire_setup"}
 
 
 def get(session: Session, key: str) -> str:
@@ -41,6 +42,10 @@ def set_value(session: Session, key: str, value: str, *, internal: bool = False)
             date.fromisoformat(value)
         except ValueError as e:
             raise DomainError("Import start date must be YYYY-MM-DD") from e
+    if key == "default_tire_setup":
+        from bikelog.catalog import TIRE_SETUPS
+        if value not in TIRE_SETUPS:
+            raise DomainError(f"Default tire setup must be one of {', '.join(TIRE_SETUPS)}")
     row = session.get(AppSetting, key)
     if row:
         row.value = value

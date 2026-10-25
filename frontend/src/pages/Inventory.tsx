@@ -887,7 +887,7 @@ export function ComponentDetailPage() {
   const { toast, meta } = useApp()
   const actionName = (code: string | null) => (meta.actions.find((a) => a.code === code)?.name ?? code ?? '').toLowerCase()
   const { data, error, loading, reload } = useApi<ComponentDetail>(`/components/${id}`)
-  const [sheet, setSheet] = useState<null | 'log' | 'details' | 'start' | 'retire' | 'rule' | 'replace' | 'remove' | 'move' | 'disposition' | { rule: Rule } | { correct: number }>(null)
+  const [sheet, setSheet] = useState<null | 'log' | 'details' | 'start' | 'retire' | 'rule' | 'replace' | 'remove' | 'move' | 'disposition' | 'inuse' | { rule: Rule } | { correct: number }>(null)
   const [f, setF] = useState({ km: '', date: today(), estimate: true, reason: '', installed_at: '', removed_at: '', action_code: 'INSPECT', interval_km: '', interval_months: '', interval_hours: '', retire_as: '' })
   const [preview, setPreview] = useState<Change | null>(null)
   const [err, setErr] = useState<string | null>(null)
@@ -968,7 +968,12 @@ export function ComponentDetailPage() {
                   Move
                 </button>
               )}
-              {!installed && (
+              {ctype?.rider_gear && (
+                <button className={data.disposition === 'IN_USE' ? 'btn' : 'btn btn-primary'} onClick={() => setSheet('inuse')}>
+                  {data.disposition === 'IN_USE' ? 'Stop using' : 'Start using'}
+                </button>
+              )}
+              {!installed && !ctype?.rider_gear && (
                 <button className="btn" onClick={() => setSheet('disposition')}>
                   Change status
                 </button>
@@ -1207,6 +1212,11 @@ export function ComponentDetailPage() {
           <MoveForm componentId={data.id} onDone={changed} />
         </Sheet>
       )}
+      {sheet === 'inuse' && (
+        <Sheet title={data.disposition === 'IN_USE' ? `Stop using ${data.label}` : `Start using ${data.label}`} onClose={close}>
+          <InUseForm componentId={data.id} inUse={data.disposition === 'IN_USE'} onDone={(msg) => { close(); toast(msg); reload() }} />
+        </Sheet>
+      )}
       {sheet === 'disposition' && (
         <Sheet title={`Status of ${data.label}`} onClose={close}>
           <DispositionForm componentId={data.id} current={data.disposition} onDone={() => { close(); toast('Saved.'); reload() }} />
@@ -1393,6 +1403,40 @@ function DetailsForm({ comp, onDone }: { comp: ComponentSummary; onDone: () => v
       <div className="form-actions">
         <button className="btn btn-primary" disabled={!f.label.trim()} onClick={save}>
           Save
+        </button>
+      </div>
+    </div>
+  )
+}
+
+// Shoes are worn, not mounted: while in use they (and the cleats on them) count every ride on any bike.
+function InUseForm({ componentId, inUse, onDone }: { componentId: number; inUse: boolean; onDone: (msg: string) => void }) {
+  const [on, setOn] = useState(today())
+  const [error, setError] = useState<string | null>(null)
+  const [opId] = useState(newOpId)
+  async function run() {
+    setError(null)
+    try {
+      await api.post(`/components/${componentId}/disposition`, { disposition: inUse ? 'STORED' : 'IN_USE', on, note: null }, opId)
+      onDone(inUse ? 'Stored: rides no longer count on these.' : 'In use: every ride from that day counts on these and the cleats on them.')
+    } catch (e) {
+      setError((e as Error).message)
+    }
+  }
+  return (
+    <div className="form">
+      <p className="muted">
+        {inUse
+          ? 'Rides after this day no longer count on these shoes and their cleats.'
+          : 'From this day every ride with a bike counts on these shoes and the cleats mounted on them, whichever bike you ride.'}
+      </p>
+      <Field label={inUse ? 'Stopped on' : 'In use since'}>
+        <input type="date" value={on} onChange={(e) => setOn(e.target.value)} />
+      </Field>
+      <FormError error={error} />
+      <div className="form-actions">
+        <button className="btn btn-primary" onClick={run}>
+          {inUse ? 'Stop using' : 'Start using'}
         </button>
       </div>
     </div>

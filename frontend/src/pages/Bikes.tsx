@@ -16,7 +16,8 @@ import { useApi } from '../hooks'
 import type { Bike, BikeCosts, BrakeRow, Change, ComponentSummary, EventRow, OpResult, RideRow, SetupRow, Task } from '../types'
 
 export function BikeForm({ onSaved }: { onSaved: (b: Bike) => void }) {
-  const [f, setF] = useState({ name: '', maker: '', model: '', strava_gear_id: '', starting_km: '', starting_date: today(), starting_is_estimate: true, price: '', purchase_date: '' })
+  const { meta } = useApp()
+  const [f, setF] = useState({ name: '', maker: '', model: '', strava_gear_id: '', starting_km: '', starting_date: today(), starting_is_estimate: true, price: '', purchase_date: '', shifting: '' })
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [opId] = useState(newOpId)
@@ -32,6 +33,7 @@ export function BikeForm({ onSaved }: { onSaved: (b: Bike) => void }) {
       if (Number.isNaN(price)) throw new Error('Price: enter an amount such as 3.499,00 or 3499')
       if (price !== null) body.purchase_price_cents = price
       if (f.purchase_date) body.purchase_date = f.purchase_date
+      if (f.shifting) body.shifting = f.shifting
       if (f.starting_km) Object.assign(body, { starting_km: Number(f.starting_km), starting_date: f.starting_date, starting_is_estimate: f.starting_is_estimate })
       onSaved(await api.post<Bike>('/bikes', body, opId))
     } catch (e) {
@@ -61,6 +63,16 @@ export function BikeForm({ onSaved }: { onSaved: (b: Bike) => void }) {
           <input type="date" value={f.purchase_date} onChange={(e) => setF({ ...f, purchase_date: e.target.value })} />
         </Field>
       </div>
+      <Field label="Shifting" hint="Decides which reminders apply (Di2 checks or cable checks). Not set: electronic once a Di2/AXS battery is fitted.">
+        <select aria-label="Shifting" value={f.shifting} onChange={(e) => setF({ ...f, shifting: e.target.value })}>
+          <option value="">Not set</option>
+          {meta.shifting_types.map((t) => (
+            <option key={t.code} value={t.code}>
+              {t.label}
+            </option>
+          ))}
+        </select>
+      </Field>
       <Field label="Odometer when you start tracking (optional)" hint="Leave empty if unknown. Rides before this date are inside this value.">
         <div className="row">
           <input inputMode="decimal" value={f.starting_km} onChange={(e) => setF({ ...f, starting_km: e.target.value })} placeholder="km" />
@@ -306,6 +318,7 @@ export function BikeDetailPage() {
             {data.usage.starting_is_estimate ? ' (estimate)' : ''}, plus {km(data.usage.ride_km)} from rides since.
           </p>
         )}
+        <ShiftingSelect bike={data} onSaved={reload} />
       </Card>
       <CostCard bike={data} onEdit={() => setSheet({ kind: 'costs' })} />
       <Card
@@ -454,6 +467,34 @@ export function BikeDetailPage() {
 }
 
 const COST_KIND: Record<string, string> = { PART: 'part', BUNDLE: 'bundle', STOCK: 'from stock', SERVICE: 'service' }
+
+// Electronic or mechanical shifting: decides whether Di2 checks or cable checks apply to this bike.
+function ShiftingSelect({ bike, onSaved }: { bike: BikeDetail; onSaved: () => void }) {
+  const { meta, toast } = useApp()
+  const label = (code: string | null) => meta.shifting_types.find((t) => t.code === code)?.label.toLowerCase()
+  async function save(v: string) {
+    try {
+      await api.patch(`/bikes/${bike.id}`, { shifting: v || null })
+      toast(v ? `Shifting set to ${label(v)}.` : 'Shifting not set.')
+      onSaved()
+    } catch (e) {
+      toast((e as Error).message)
+    }
+  }
+  return (
+    <label className="inline-field small">
+      Shifting{' '}
+      <select aria-label="Shifting" value={bike.shifting ?? ''} onChange={(e) => save(e.target.value)}>
+        <option value="">{bike.shifting_effective ? `Not set (${label(bike.shifting_effective)}: battery fitted)` : 'Not set'}</option>
+        {meta.shifting_types.map((t) => (
+          <option key={t.code} value={t.code}>
+            {t.label}
+          </option>
+        ))}
+      </select>
+    </label>
+  )
+}
 
 function CostCard({ bike, onEdit }: { bike: BikeDetail; onEdit: () => void }) {
   const c = bike.cost_detail

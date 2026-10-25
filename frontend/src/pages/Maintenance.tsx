@@ -21,7 +21,7 @@ export default function MaintenancePage() {
     q.reload()
     events.reload()
   }
-  const typeName = (c: string | null) => meta.component_types.find((t) => t.code === c)?.name ?? c
+  const typeName = (c: string | null) => (c === 'BIKE' ? 'Whole bike' : meta.component_types.find((t) => t.code === c)?.name ?? c)
   return (
     <div className="grid">
       <Card
@@ -76,9 +76,17 @@ export default function MaintenancePage() {
                 {typeName(r.component_type)}: {r.name}
               </span>
               <span className="muted small">
-                {r.trigger === 'CYCLE_WINDOW' ? `once at ${r.window_min_km}–${r.window_max_km} km per hot-wax cycle` : [r.interval_km && `${r.interval_km} km`, r.interval_months && `${r.interval_months} months`].filter(Boolean).join(' or ')}
+                {r.trigger === 'CYCLE_WINDOW'
+                  ? `once at ${r.window_min_km}–${r.window_max_km} km per hot-wax cycle`
+                  : r.trigger === 'PARENT_COUNT'
+                    ? `after ${r.interval_count} parents (e.g. chains)`
+                    : r.trigger === 'ONCE_AFTER_INSTALL'
+                      ? 'once after fitting'
+                      : [r.interval_km && `${r.interval_km} km`, r.interval_hours && `${r.interval_hours} h of riding`, r.interval_months && `${r.interval_months} months`].filter(Boolean).join(' or ')}
                 {' · '}
                 {r.origin.toLowerCase()}
+                {r.requires_setup ? ` · only ${r.requires_setup.toLowerCase()}` : ''}
+                {!r.active ? ' · off' : ''}
               </span>
             </li>
           ))}

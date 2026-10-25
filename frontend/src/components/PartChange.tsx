@@ -350,7 +350,7 @@ export function DispositionForm({ componentId, current, onDone }: { componentId:
   }
   return (
     <div className="form">
-      <OutcomeChoice name="disp" outcomes={meta.dispositions} value={f.disposition} suggested={current} onChange={(v) => setF({ ...f, disposition: v })} />
+      <OutcomeChoice name="disp" outcomes={meta.dispositions.filter((d) => d.code !== 'IN_USE')} value={f.disposition} suggested={current} onChange={(v) => setF({ ...f, disposition: v })} />
       <div className="row">
         <Field label="On">
           <input type="date" value={f.on} onChange={(e) => setF({ ...f, on: e.target.value })} />
