@@ -108,6 +108,12 @@ you disagree. Dates are 2026-10-24 unless noted.
     matched by label. Only euro prices; scraped data is unverified unless the file says `verified: true`.
 38. The command-line import writes a backup first and needs the app closed, like the other commands.
 
+## Strava in Settings (2026-10-25)
+39. Strava is set up entirely from Settings: app details (secret write-only, stored only in `strava.env`),
+    browser OAuth with the callback on this app (`http://localhost:<port>/api/strava/callback`, single-use
+    `state`, 15 min), sync in a background thread after a backup, disconnect deletes API-imported rides
+    after a backup. The command-line commands stay. Changing the Client ID drops the old tokens.
+
 ## Repository
 27. Pushed only to the feature branch `claude/project-thread-6y3mmh` of the private repository. Demo
     data uses fictional Strava gear ids.

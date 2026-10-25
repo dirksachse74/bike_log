@@ -52,7 +52,7 @@ def status(session: Session) -> dict:
             "last_error": conn.last_error if conn else None,
             "retention_mode": conn.retention_mode if conn else "PROVISIONAL",
             "live_connection_verified": live, "blockers": [] if live else BLOCKERS,
-            "how_to_sync": "Close Bike Log, then run:  BikeLog.exe --strava-sync   (see docs/strava.md)",
+            "how_to_sync": "Settings → Strava → Sync now (or, with Bike Log closed: BikeLog.exe --strava-sync)",
             "alternative": "Import your Strava 'Download your data' activities.csv under Settings → Import (CSV)."}
 
 

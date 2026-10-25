@@ -29,22 +29,20 @@ commands below (or with `BIKELOG_ENABLE_STRAVA=1` for developers). The app works
 * Gear ids (`b12345`) mapped to bikes by their Strava gear id; trainer/VirtualRide uses the trainer profile.
 * Local corrections and exclusions preserved; rate limits, retries and token refresh in `client.py`.
 
-## How to connect (Windows)
-
-Bike Log must be closed while these commands run. In PowerShell, go to the program folder
-(`dist\BikeLog` after a build, or `%LOCALAPPDATA%\Programs\BikeLog` after installing).
+## How to connect (in the app, no command line)
 
 1. On https://www.strava.com/settings/api: reset the Client Secret (the old one was shared in chat), and
    set **Authorization Callback Domain** to `localhost`.
-2. `.\BikeLog.exe --strava-connect` asks once for Client ID and Client Secret (saved only in
-   `%LOCALAPPDATA%\BikeLog\strava.env`), opens Strava in the browser; click **Authorize**.
-3. Optional: in Bike Log, Settings → Import start date, to limit how far back rides are imported.
-   Optional: give your existing bikes their Strava gear id (number from the bike's Strava URL), otherwise
-   Bike Log creates or links bikes by the Strava gear name.
-4. `.\BikeLog.exe --strava-sync` writes a backup, then imports rides page by page. Run it again whenever
-   you want new rides; it continues where it stopped. `--strava-rescan` re-reads everything since the
-   start date (no duplicates).
-5. `.\BikeLog.exe --strava-disconnect` revokes access and deletes rides imported from the API.
+2. Bike Log → **Settings → Strava**: enter Client ID and Client Secret → **Save app details**. They are
+   stored only in `strava.env` in your data folder (`%LOCALAPPDATA%\BikeLog`); the secret is never shown
+   again, logged or sent anywhere except to Strava.
+3. **Connect with Strava** → Strava opens → **Authorize** → you come back to Settings ("Strava connected").
+4. Optional: Settings → Import start date, to limit how far back rides are imported. Bikes are matched by
+   Strava gear id, otherwise by gear name (or a bike with that name is created).
+5. **Sync now** (a backup is written first; progress shows on the page). Run it whenever you want new
+   rides. **Re-read all since start date** re-reads everything (no duplicates).
+6. **Disconnect** revokes access and deletes rides imported from the Strava API (backup first).
 
-From a source checkout use `python -m bikelog --strava-connect` (in `backend/`) instead of `BikeLog.exe`.
-These commands are tested against a fake Strava only; the first real run is on your machine.
+The command-line versions still work with Bike Log closed: `BikeLog.exe --strava-connect`,
+`--strava-sync`, `--strava-rescan`, `--strava-disconnect`.
+Tested against a simulated Strava only; the first real connection happens on your machine.

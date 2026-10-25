@@ -247,6 +247,32 @@ async function sheetButton(page, name) {
   await page.getByRole('link', { name: /TIME NXR/ }).click()
   await page.getByRole('heading', { name: 'TIME NXR' }).waitFor()
 
+  // Strava from Settings (no command line). Strava itself is intercepted: no network, fake app details.
+  await page.goto(BASE + '#/settings')
+  const stravaCard = page.locator('.card').filter({ has: page.getByRole('heading', { name: 'Strava' }) })
+  await stravaCard.getByLabel('Client ID').fill('12345')
+  await stravaCard.getByLabel('Client Secret').fill('0123456789abcdef0123456789abcdef01234567')
+  await stravaCard.getByRole('button', { name: 'Save app details' }).click()
+  await stravaCard.getByText('Saved. Now connect with Strava.').waitFor()
+  const secretShown = (await page.content()).includes('0123456789abcdef0123456789abcdef01234567')
+  check('Strava app details saved from Settings, secret not shown again', !secretShown)
+  let authorizeUrl = ''
+  await page.route('https://www.strava.com/**', (route) => {
+    authorizeUrl = route.request().url()
+    return route.fulfill({ status: 200, contentType: 'text/html', body: '<h1>fake Strava</h1>' })
+  })
+  await stravaCard.getByRole('button', { name: 'Connect with Strava' }).click()
+  await page.getByText('fake Strava').waitFor()
+  const au = new URL(authorizeUrl)
+  check('Connect opens Strava with this app as callback', au.searchParams.get('client_id') === '12345' && /^http:\/\/localhost:\d+\/api\/strava\/callback$/.test(au.searchParams.get('redirect_uri') || ''), authorizeUrl.slice(0, 120))
+  await page.unroute('https://www.strava.com/**')
+  await page.goto(au.searchParams.get('redirect_uri') + '?state=forged&code=x')
+  await page.getByText('does not belong to a connect request').waitFor()
+  check('a forged Strava answer is refused and explained on the Settings page', true)
+  await page.goto(BASE + '#/bikes')
+  await page.getByRole('link', { name: /TIME NXR/ }).click()
+  await page.getByRole('heading', { name: 'TIME NXR' }).waitFor()
+
   // purchase price and journal
   await page.locator('.card').filter({ hasText: 'running cost' }).getByRole('button', { name: 'Purchase price' }).click()
   await page.locator('.sheet').getByLabel('Purchase price').fill('3499')

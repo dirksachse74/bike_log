@@ -44,8 +44,8 @@ Status key: ✅ done and tested · 🟡 done, not verified where it matters · �
 
 ## P7 Imports and Strava
 - ✅ CSV import (generic + Strava export), resumable, start date, corrections and exclusions kept.
-- 🟡 Strava: `--strava-connect` / `--strava-sync` commands done and tested against a fake Strava;
-  first live run on Dirk's machine pending (docs/strava.md).
+- 🟡 Strava: set up, connect, sync and disconnect from Settings (and command line); tested against a
+  fake Strava; first live run on Dirk's machine pending (docs/strava.md).
 - ⏳ Confirm the Strava API terms from the full text.
 
 ## P8 Packaging and verification

@@ -216,6 +216,15 @@ class GroupsetImportIn(GroupsetPlanIn):
     notes: str | None = None
 
 
+class StravaCredentialsIn(Body):
+    client_id: str
+    client_secret: str | None = None
+
+
+class StravaSyncIn(Body):
+    rescan: bool = False
+
+
 class JournalIn(Body):
     text: str
     on: str
@@ -388,12 +397,16 @@ class ProfileIn(Body):
 # ---------------------------------------------------------------- app
 
 def create_app(factory: sessionmaker[Session], paths: DataPaths, *, token: str | None = None,
-               static_dir: Path | None = None, testing: bool = False) -> FastAPI:
+               static_dir: Path | None = None, testing: bool = False, strava_transport=None) -> FastAPI:
     token = token or secrets.token_urlsafe(32)
     app = FastAPI(title="Bike Log", version=__version__, docs_url="/api/docs" if testing else None,
                   redoc_url=None, openapi_url="/api/openapi.json" if testing else None)
     app.state.token = token
     app.add_middleware(LocalSecurityMiddleware, token=token, allow_test_host=testing)
+    from bikelog.connectors.strava.client import urllib_transport
+    from bikelog.connectors.strava.web import StravaWeb
+    strava_web = StravaWeb(paths, factory, transport=strava_transport or urllib_transport)
+    app.state.strava = strava_web
 
     def db() -> Iterator[Session]:
         s = factory()
@@ -926,7 +939,44 @@ def create_app(factory: sessionmaker[Session], paths: DataPaths, *, token: str |
 
     @app.get("/api/strava/status")
     def strava_status(s: Session = Depends(db)):
-        return strava.status(s)
+        return strava_web.status(s)
+
+    @app.put("/api/strava/credentials")
+    def strava_credentials(body: StravaCredentialsIn):
+        return strava_web.save_credentials(body.client_id, body.client_secret)
+
+    @app.delete("/api/strava/credentials")
+    def strava_forget_credentials():
+        return strava_web.forget_credentials()
+
+    @app.post("/api/strava/connect")
+    def strava_connect(request: Request):
+        port = request.url.port or 80
+        return {"authorize_url": strava_web.start_connect(port), "redirect_uri": strava_web.redirect_uri(port)}
+
+    @app.get("/api/strava/callback")
+    def strava_callback(request: Request, state: str | None = None, code: str | None = None,
+                        scope: str | None = None, error: str | None = None):
+        import urllib.parse
+
+        from fastapi.responses import RedirectResponse
+
+        from bikelog.connectors.strava.client import StravaError
+        back = f"http://127.0.0.1:{request.url.port or 80}/#/settings"
+        try:
+            res = strava_web.finish_connect(state=state, code=code, scope=scope, error=error)
+            q = {"strava": "connected", "private": "1" if res["private_rides"] else "0"}
+        except (DomainError, StravaError) as e:
+            q = {"strava": "error", "message": str(e)[:300]}
+        return RedirectResponse(back + "?" + urllib.parse.urlencode(q), status_code=303)
+
+    @app.post("/api/strava/sync")
+    def strava_sync_start(body: StravaSyncIn):
+        return strava_web.start_sync(rescan=body.rescan)
+
+    @app.post("/api/strava/disconnect")
+    def strava_disconnect():
+        return strava_web.disconnect()
 
     @app.get("/api/settings")
     def get_settings(s: Session = Depends(db)):
