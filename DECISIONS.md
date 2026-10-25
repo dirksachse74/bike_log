@@ -151,6 +151,9 @@ you disagree. Dates are 2026-10-24 unless noted.
     in Settings and by `--version`. A mismatch shows a red bar; the spec refuses to bundle a stale
     `frontend/dist`; a second start warns when an older copy is still running. Reason: Dirk saw the old
     Strava panel after updating (2026-10-25).
+49. **One build script and commit-named installers**: `packaging/build.ps1` does pull → packages →
+    tests → screens → exe → installer and stops at the first failure; installers are named
+    `BikeLog-<version>-<commit>-setup.exe` (the version number stays 0.1.0 until a real release).
 
 ## Repository
 27. Pushed only to the feature branch `claude/project-thread-6y3mmh` of the private repository. Demo

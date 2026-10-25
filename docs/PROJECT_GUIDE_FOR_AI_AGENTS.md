@@ -246,10 +246,11 @@ py -3.13 -m venv .venv
 .venv\Scripts\python -m pip install -r requirements-dev.txt
 cd frontend; npm ci; npm run build; cd ..
 .venv\Scripts\pyinstaller --noconfirm --clean packaging\bikelog.spec     # → dist\BikeLog\BikeLog.exe
-& "$env:LOCALAPPDATA\Programs\Inno Setup 6\ISCC.exe" packaging\bikelog.iss  # → dist\installer\BikeLog-0.1.0-setup.exe
+& "$env:LOCALAPPDATA\Programs\Inno Setup 6\ISCC.exe" packaging\bikelog.iss  # → dist\installer\BikeLog-0.1.0-<commit>-setup.exe
 ```
 
-PowerShell needs `&` before a quoted exe path. Inno Setup installed via winget lands in
+`packaging/build.ps1` runs all of this (plus git pull and tests) and stops at the first error; the
+installer file name carries the git commit. PowerShell needs `&` before a quoted exe path. Inno Setup installed via winget lands in
 `%LOCALAPPDATA%\Programs\Inno Setup 6`. Dirk has compiled the exe and installer on 2026-10-25; the
 install/launch checklist in `packaging/README.md` is still pending, and nothing was tested on a clean
 Windows machine without Python. The app is unsigned (SmartScreen warns).

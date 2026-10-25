@@ -30,7 +30,8 @@ cd frontend; npm ci; npm run build; cd ..
 # install once: winget install JRSoftware.InnoSetup  (often lands in your user folder)
 & "$env:LOCALAPPDATA\Programs\Inno Setup 6\ISCC.exe" packaging\bikelog.iss   # the & is needed in PowerShell
 # or, for a machine-wide install: & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" packaging\bikelog.iss
-# result: dist\installer\BikeLog-0.1.0-setup.exe
+# result: dist\installer\BikeLog-0.1.0-<commit>-setup.exe
+# or all steps at once, stopping on the first error: powershell -ExecutionPolicy Bypass -File packaging\build.ps1
 ```
 
 ## Windows verification checklist (all pending)

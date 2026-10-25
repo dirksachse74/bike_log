@@ -5,7 +5,24 @@ It assumes you already built Bike Log once on this PC (see `packaging/README.md`
 `D:\Ablage\Coding\bike_log`. All commands are for **PowerShell**. Your data is never touched by
 these steps: it lives in `%LOCALAPPDATA%\BikeLog`, not in the code folder or the install folder.
 
-## Short version
+## Easiest: one command
+
+Close Bike Log first, then in PowerShell:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File D:\Ablage\Coding\bike_log\packaging\build.ps1
+```
+
+It pulls the newest code, installs packages, runs the tests, builds the screens, BikeLog.exe and the
+installer, and **stops at the first error** with the step that failed. At the end it prints the
+installer's full path, e.g. `dist\installer\BikeLog-0.1.0-0fc3f6e-setup.exe`. The part after the version
+is the commit, so every build has its own name and an old installer can no longer be mistaken for a new
+one. Options: `-Install` (runs the installer at the end), `-SkipTests`, `-NoPull`.
+(`-ExecutionPolicy Bypass` only applies to this one run; Windows blocks unsigned scripts otherwise.)
+
+The script was checked for syntax but not yet run on Windows; if a step fails, send the red line.
+
+## Short version (by hand)
 
 ```powershell
 cd D:\Ablage\Coding\bike_log
@@ -18,7 +35,9 @@ cd frontend; npm ci; npm run build; cd ..
 & "$env:LOCALAPPDATA\Programs\Inno Setup 6\ISCC.exe" packaging\bikelog.iss
 ```
 
-Then close Bike Log, run `dist\installer\BikeLog-0.1.0-setup.exe`, and start Bike Log again.
+Then close Bike Log, run the newest `dist\installer\BikeLog-0.1.0-<commit>-setup.exe` (the commit
+matches `git log -1 --oneline`), and start Bike Log again. Old installers named
+`BikeLog-0.1.0-setup.exe` are from before this change and can be deleted.
 
 ## Step by step
 
@@ -71,7 +90,7 @@ Then close Bike Log, run `dist\installer\BikeLog-0.1.0-setup.exe`, and start Bik
    & "$env:LOCALAPPDATA\Programs\Inno Setup 6\ISCC.exe" packaging\bikelog.iss
    ```
    The `&` is needed in PowerShell before a quoted program path. Then run
-   `dist\installer\BikeLog-0.1.0-setup.exe` and install over the old version. No uninstall is needed.
+   `dist\installer\BikeLog-0.1.0-<commit>-setup.exe` and install over the old version. No uninstall is needed.
 
 8. **Start Bike Log** from the Start menu. If the new version changes the database, it first writes a
    backup (`%LOCALAPPDATA%\BikeLog\backups\...pre-upgrade...`) and then upgrades. Nothing is deleted.
