@@ -2,17 +2,18 @@ import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { api, newOpId } from '../api'
 import GroupsetImport from '../components/GroupsetImport'
+import Journal from '../components/Journal'
 import LogMaintenance from '../components/LogMaintenance'
 import { MoveForm, RemoveForm, ReplaceForm } from '../components/PartChange'
 import TaskList from '../components/TaskList'
 import { Card, ChangeNotice, Empty, ErrorBox, Field, FormError, Loading, Sheet, StatusBadge, Tag } from '../components/ui'
 import { useApp } from '../context'
-import { certaintyLabel, km, slotName, today, usageText, when } from '../format'
+import { centsInput, certaintyLabel, euro, km, slotName, toCents, today, usageText, when } from '../format'
 import { useApi } from '../hooks'
-import type { Bike, BrakeRow, Change, ComponentSummary, EventRow, OpResult, RideRow, SetupRow, Task } from '../types'
+import type { Bike, BikeCosts, BrakeRow, Change, ComponentSummary, EventRow, OpResult, RideRow, SetupRow, Task } from '../types'
 
 export function BikeForm({ onSaved }: { onSaved: (b: Bike) => void }) {
-  const [f, setF] = useState({ name: '', maker: '', model: '', strava_gear_id: '', starting_km: '', starting_date: today(), starting_is_estimate: true })
+  const [f, setF] = useState({ name: '', maker: '', model: '', strava_gear_id: '', starting_km: '', starting_date: today(), starting_is_estimate: true, price: '', purchase_date: '' })
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [opId] = useState(newOpId)
@@ -24,6 +25,10 @@ export function BikeForm({ onSaved }: { onSaved: (b: Bike) => void }) {
       if (f.maker) body.maker = f.maker
       if (f.model) body.model = f.model
       if (f.strava_gear_id) body.strava_gear_id = f.strava_gear_id
+      const price = toCents(f.price)
+      if (Number.isNaN(price)) throw new Error('Price: enter an amount such as 3.499,00 or 3499')
+      if (price !== null) body.purchase_price_cents = price
+      if (f.purchase_date) body.purchase_date = f.purchase_date
       if (f.starting_km) Object.assign(body, { starting_km: Number(f.starting_km), starting_date: f.starting_date, starting_is_estimate: f.starting_is_estimate })
       onSaved(await api.post<Bike>('/bikes', body, opId))
     } catch (e) {
@@ -43,6 +48,14 @@ export function BikeForm({ onSaved }: { onSaved: (b: Bike) => void }) {
         </Field>
         <Field label="Model (optional)">
           <input value={f.model} onChange={(e) => setF({ ...f, model: e.target.value })} />
+        </Field>
+      </div>
+      <div className="row">
+        <Field label="Purchase price (optional)" hint="Initial cost of the bike.">
+          <input inputMode="decimal" value={f.price} onChange={(e) => setF({ ...f, price: e.target.value })} placeholder="€" />
+        </Field>
+        <Field label="Bought on (optional)">
+          <input type="date" value={f.purchase_date} onChange={(e) => setF({ ...f, purchase_date: e.target.value })} />
         </Field>
       </div>
       <Field label="Odometer when you start tracking (optional)" hint="Leave empty if unknown. Rides before this date are inside this value.">
@@ -85,6 +98,10 @@ export function BikesPage() {
               <span className="muted small">
                 {b.usage.ride_count} rides · {certaintyLabel(b.usage)}
               </span>
+              <span className="small">
+                Initial {b.costs.initial_known ? euro(b.costs.initial_cents) : 'not entered'} · running {b.costs.estimated ? '≈' : ''}
+                {euro(b.costs.running_cents)}
+              </span>
               {b.open_tasks > 0 && <Tag tone="warn">{b.open_tasks} due</Tag>}
               {b.status === 'RETIRED' && <Tag>retired</Tag>}
             </Link>
@@ -101,6 +118,7 @@ export function BikesPage() {
 }
 
 interface BikeDetail extends Bike {
+  cost_detail: BikeCosts
   setup: SetupRow[]
   history: { id: number; component_id: number; label: string; slot: string; installed_at: string; removed_at: string | null; removal_reason: string | null; voided: boolean }[]
   queue: Task[]
@@ -236,7 +254,7 @@ export function BikeDetailPage() {
   const { id } = useParams()
   const { toast } = useApp()
   const { data, error, loading, reload } = useApi<BikeDetail>(`/bikes/${id}`)
-  const [sheet, setSheet] = useState<null | { kind: 'install' } | { kind: 'groupset' } | { kind: 'part'; row: SetupRow } | { kind: 'log' }>(null)
+  const [sheet, setSheet] = useState<null | { kind: 'install' } | { kind: 'groupset' } | { kind: 'costs' } | { kind: 'part'; row: SetupRow } | { kind: 'log' }>(null)
   if (loading && !data) return <Loading />
   if (error && !data) return <ErrorBox error={error} onRetry={reload} />
   if (!data) return null
@@ -286,6 +304,7 @@ export function BikeDetailPage() {
           </p>
         )}
       </Card>
+      <CostCard bike={data} onEdit={() => setSheet({ kind: 'costs' })} />
       <Card title="Installed now">
         {data.setup.length === 0 ? (
           <Empty title="Nothing installed yet">Install parts to track their usage.</Empty>
@@ -337,6 +356,7 @@ export function BikeDetailPage() {
           </ul>
         )}
       </Card>
+      <Journal bikeId={data.id} className="span-2" />
       <Card title="Installation history" className="span-2">
         <table className="table">
           <thead>
@@ -368,6 +388,18 @@ export function BikeDetailPage() {
           <InstallForm bikeId={data.id} onDone={done} />
         </Sheet>
       )}
+      {sheet?.kind === 'costs' && (
+        <Sheet title={`Purchase price · ${data.name}`} onClose={() => setSheet(null)}>
+          <PurchaseForm
+            bike={data}
+            onDone={() => {
+              setSheet(null)
+              toast('Saved.')
+              reload()
+            }}
+          />
+        </Sheet>
+      )}
       {sheet?.kind === 'groupset' && (
         <Sheet title={`Add a groupset · ${data.name}`} onClose={() => setSheet(null)}>
           <GroupsetImport
@@ -397,6 +429,108 @@ export function BikeDetailPage() {
           />
         </Sheet>
       )}
+    </div>
+  )
+}
+
+const COST_KIND: Record<string, string> = { PART: 'part', STOCK: 'from stock', SERVICE: 'service' }
+
+function CostCard({ bike, onEdit }: { bike: BikeDetail; onEdit: () => void }) {
+  const c = bike.cost_detail
+  const perKm = bike.usage.total_km > 0 && c.total_cents ? Math.round(c.total_cents / bike.usage.total_km) : null
+  const [open, setOpen] = useState(false)
+  return (
+    <Card
+      title="Costs"
+      className="span-2"
+      actions={
+        <button className="btn btn-small" onClick={onEdit}>
+          Purchase price
+        </button>
+      }
+    >
+      <div className="stats">
+        <div>
+          <span className="stat">{c.initial_known ? euro(c.initial_cents) : '—'}</span>
+          <span className="muted small">initial cost{c.purchase_date ? ` · ${when(c.purchase_date)}` : c.initial_known ? '' : ' · not entered'}</span>
+        </div>
+        <div>
+          <span className="stat">
+            {c.estimated ? '≈' : ''}
+            {euro(c.running_cents) || euro(0)}
+          </span>
+          <span className="muted small">
+            running cost: parts {euro(c.parts_cents) || euro(0)} · from stock {euro(c.stock_cents) || euro(0)} · services {euro(c.services_cents) || euro(0)}
+          </span>
+        </div>
+        <div>
+          <span className="stat">{euro(c.total_cents) || euro(0)}</span>
+          <span className="muted small">total{perKm !== null ? ` · ${bike.usage.certainty === 'INCOMPLETE' ? 'at most ' : ''}${euro(perKm)} per km` : ''}</span>
+        </div>
+      </div>
+      {(c.unpriced_parts > 0 || c.estimated) && (
+        <p className="small muted">
+          {c.unpriced_parts > 0 && `${c.unpriced_parts} installed part${c.unpriced_parts === 1 ? ' has' : 's have'} no price (fine for parts that came with the bike). `}
+          {c.estimated && '≈: parts taken from stock are valued at the average price paid for that stock.'}
+        </p>
+      )}
+      {(c.items?.length ?? 0) > 0 && (
+        <>
+          <button className="btn btn-small" onClick={() => setOpen(!open)}>
+            {open ? 'Hide' : 'Show'} {c.items?.length} cost entries
+          </button>
+          {open && (
+            <ul className="list">
+              {c.items?.map((i, n) => (
+                <li key={n}>
+                  <span className="muted small">{when(i.date)}</span>
+                  <span>{i.component_id ? <Link to={`/inventory/${i.component_id}`}>{i.text}</Link> : i.text}</span>
+                  <Tag>{COST_KIND[i.kind]}</Tag>
+                  <span>
+                    {i.estimated ? '≈' : ''}
+                    {euro(i.cents)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </>
+      )}
+    </Card>
+  )
+}
+
+function PurchaseForm({ bike, onDone }: { bike: Bike; onDone: () => void }) {
+  const [f, setF] = useState({ price: centsInput(bike.purchase_price_cents), date: bike.purchase_date ?? '' })
+  const [err, setErr] = useState<string | null>(null)
+  async function save() {
+    setErr(null)
+    const price = toCents(f.price)
+    if (Number.isNaN(price)) return setErr('Price: enter an amount such as 3499,00')
+    try {
+      await api.patch(`/bikes/${bike.id}`, { purchase_price_cents: price, purchase_date: f.date || null })
+      onDone()
+    } catch (e) {
+      setErr((e as Error).message)
+    }
+  }
+  return (
+    <div className="form">
+      <div className="row">
+        <Field label="Purchase price" hint="What you paid for the bike, including the parts it came with.">
+          <input inputMode="decimal" value={f.price} onChange={(e) => setF({ ...f, price: e.target.value })} placeholder="€" autoFocus />
+        </Field>
+        <Field label="Bought on">
+          <input type="date" value={f.date} onChange={(e) => setF({ ...f, date: e.target.value })} />
+        </Field>
+      </div>
+      <p className="small muted">Running cost is added up from part prices, stock used on this bike and service costs; it is never typed in.</p>
+      <FormError error={err} />
+      <div className="form-actions">
+        <button className="btn btn-primary" onClick={save}>
+          Save
+        </button>
+      </div>
     </div>
   )
 }

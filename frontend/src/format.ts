@@ -63,3 +63,21 @@ export function certaintyLabel(u: Usage): string {
 }
 
 export const slotName = (s: string | null | undefined) => (s ? s.replace(/_/g, ' ').toLowerCase().replace(/^\w/, (c) => c.toUpperCase()) : '')
+
+/** Euro amount from cents; empty for unknown. */
+export function euro(cents: number | null | undefined): string {
+  if (cents === null || cents === undefined) return ''
+  return (cents / 100).toLocaleString(undefined, { style: 'currency', currency: 'EUR' })
+}
+
+/** "12,50" or "12.50" → 1250; empty → null. */
+export function toCents(value: string): number | null {
+  const v = value.trim().replace(/\s/g, '').replace(',', '.')
+  if (!v) return null
+  const n = Number(v)
+  return Number.isFinite(n) ? Math.round(n * 100) : NaN
+}
+
+export function centsInput(cents: number | null | undefined): string {
+  return cents === null || cents === undefined ? '' : (cents / 100).toFixed(2)
+}

@@ -85,12 +85,15 @@ def log_event(session: Session, *, action_code: str, at: str, component_id: int 
 
 
 def log_batch(session: Session, *, action_code: str, at: str, component_ids: list[int], **common) -> list[MaintenanceEvent]:
-    """Same action on several parts at once (e.g. lube every installed chain)."""
+    """Same action on several parts at once (e.g. lube every installed chain). A cost is one fee for the
+    whole visit, so it is recorded on the first entry only (never once per part)."""
     if not component_ids:
         raise DomainError("Pick at least one component")
     ref = str(uuid.uuid4())
-    return [log_event(session, action_code=action_code, at=at, component_id=cid, batch_ref=ref, **common)
-            for cid in component_ids]
+    cost = common.pop("cost_cents", None)
+    return [log_event(session, action_code=action_code, at=at, component_id=cid, batch_ref=ref,
+                      cost_cents=cost if i == 0 else None, **common)
+            for i, cid in enumerate(component_ids)]
 
 
 def void_event(session: Session, event_id: int, reason: str) -> MaintenanceEvent:

@@ -765,3 +765,47 @@ label.chip {
 .row.options > * {
   flex: 1 1 11rem;
 }
+.price-input {
+  width: 6.5rem;
+  flex: none;
+}
+.journal-add {
+  display: grid;
+  grid-template-columns: 10rem 7rem 1fr auto;
+  gap: 0.5rem;
+  align-items: start;
+  margin-bottom: 0.6rem;
+}
+.journal li {
+  align-items: flex-start;
+}
+.journal-date {
+  flex: none;
+  min-width: 6.5rem;
+}
+.journal-text {
+  flex: 1;
+  min-width: 0;
+}
+.journal-edit {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+.pre {
+  white-space: pre-wrap;
+}
+@media (max-width: 760px) {
+  .journal-add {
+    grid-template-columns: 1fr 1fr;
+  }
+  .journal-add textarea {
+    grid-column: 1 / -1;
+  }
+  .journal-add button {
+    grid-column: 1 / -1;
+  }
+  .journal li {
+    flex-wrap: wrap;
+  }
+}

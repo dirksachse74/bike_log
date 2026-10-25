@@ -41,13 +41,16 @@ def _reallocate(session: Session) -> None:
 def create_bike(session: Session, *, name: str, maker: str | None = None, model: str | None = None,
                 year: int | None = None, strava_gear_id: str | None = None, notes: str | None = None,
                 starting_km: float | None = None, starting_date: str | None = None,
-                starting_is_estimate: bool = False) -> Bike:
+                starting_is_estimate: bool = False, purchase_price_cents: int | None = None,
+                purchase_date: str | None = None) -> Bike:
     name = (name or "").strip()
     if not name:
         raise DomainError("A bike needs a name")
     if session.scalar(select(Bike).where(func.lower(Bike.name) == name.lower())):
         raise Conflict(f"A bike called {name!r} already exists")
-    bike = Bike(name=name, maker=maker, model=model, year=year, strava_gear_id=strava_gear_id or None, notes=notes)
+    _check_price(purchase_price_cents)
+    bike = Bike(name=name, maker=maker, model=model, year=year, strava_gear_id=strava_gear_id or None, notes=notes,
+                purchase_price_cents=purchase_price_cents, purchase_date=purchase_date or None)
     session.add(bike)
     session.flush()
     if starting_km is not None:
@@ -58,14 +61,21 @@ def create_bike(session: Session, *, name: str, maker: str | None = None, model:
 
 def update_bike(session: Session, bike_id: int, **fields) -> Bike:
     bike = get_bike(session, bike_id)
-    for k in ("name", "maker", "model", "year", "strava_gear_id", "notes"):
+    _check_price(fields.get("purchase_price_cents"))
+    for k in ("name", "maker", "model", "year", "strava_gear_id", "notes", "purchase_price_cents", "purchase_date"):
         if k in fields:
-            setattr(bike, k, fields[k] or None if k != "name" else fields[k])
+            v = fields[k]
+            setattr(bike, k, v if k in ("name", "purchase_price_cents") else (v or None))
     try:
         session.flush()
     except IntegrityError as e:
         raise Conflict("Name or Strava gear id already used by another bike") from e
     return bike
+
+
+def _check_price(cents: int | None) -> None:
+    if cents is not None and cents < 0:
+        raise DomainError("A price cannot be negative")
 
 
 def retire_bike(session: Session, bike_id: int) -> Bike:
@@ -79,10 +89,11 @@ def retire_bike(session: Session, bike_id: int) -> Bike:
 
 def create_product(session: Session, *, component_type: str, model: str, maker: str | None = None,
                    specs: dict | None = None, spec_source: str | None = None, spec_version: str | None = None,
-                   notes: str | None = None) -> Product:
+                   notes: str | None = None, list_price_cents: int | None = None) -> Product:
     _check_type(component_type)
+    _check_price(list_price_cents)
     p = Product(component_type=component_type, maker=maker, model=model, specs_json=json.dumps(specs or {}),
-                spec_source=spec_source, spec_version=spec_version, notes=notes)
+                spec_source=spec_source, spec_version=spec_version, notes=notes, list_price_cents=list_price_cents)
     session.add(p)
     session.flush()
     return p
@@ -102,6 +113,7 @@ def create_component(session: Session, *, component_type: str, label: str, produ
     """Only type and label are required; everything else (serial number, specs) can be added later.
     With a work session, price_cents is that session's purchase of this item."""
     _check_type(component_type)
+    _check_price(price_cents)
     label = (label or "").strip()
     if not label:
         raise DomainError("A component needs a name/label, e.g. 'Chain A'")
@@ -129,8 +141,23 @@ def create_component(session: Session, *, component_type: str, label: str, produ
     return comp
 
 
+def update_product(session: Session, product_id: int, **fields) -> Product:
+    p = session.get(Product, product_id)
+    if not p:
+        raise NotFound(f"Product {product_id} not found")
+    _check_price(fields.get("list_price_cents"))
+    for k in ("maker", "model", "notes", "list_price_cents", "spec_source", "spec_version"):
+        if k in fields:
+            setattr(p, k, fields[k])
+    if "specs" in fields:
+        p.specs_json = json.dumps(fields["specs"] or {})
+    session.flush()
+    return p
+
+
 def update_component(session: Session, component_id: int, **fields) -> Component:
     comp = get_component(session, component_id)
+    _check_price(fields.get("price_cents"))
     for k in ("label", "serial_number", "purchase_date", "price_cents", "notes", "product_id", "prior_usage",
               "storage_location"):
         if k in fields:

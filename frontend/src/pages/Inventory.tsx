@@ -1,12 +1,13 @@
 import { useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { api, newOpId } from '../api'
+import Journal from '../components/Journal'
 import LogMaintenance from '../components/LogMaintenance'
 import { DispositionForm, MoveForm, OutcomeChoice, RemoveForm, ReplaceForm } from '../components/PartChange'
 import TaskList from '../components/TaskList'
 import { Card, ChangeNotice, Empty, ErrorBox, Field, FormError, Loading, Sheet, Tag } from '../components/ui'
 import { useApp } from '../context'
-import { certaintyLabel, km, slotName, today, usageText, when } from '../format'
+import { centsInput, certaintyLabel, euro, km, slotName, toCents, today, usageText, when } from '../format'
 import { useApi } from '../hooks'
 import type { Bike, Change, ChainRow, ComponentSummary, EventRow, OpResult, Rule, Task } from '../types'
 
@@ -27,7 +28,7 @@ export function ChainStateTag({ state }: { state: string }) {
 export function ComponentForm({ onSaved, presetType }: { onSaved: (c: ComponentSummary) => void; presetType?: string }) {
   const { meta } = useApp()
   const bikes = useApi<Bike[]>('/bikes')
-  const [f, setF] = useState({ component_type: presetType ?? 'CHAIN', label: '', history: 'NEW', start_km: '', start_date: today(), start_estimate: true, install_bike: '', install_slot: '', install_at: today(), notes: '' })
+  const [f, setF] = useState({ component_type: presetType ?? 'CHAIN', label: '', history: 'NEW', start_km: '', start_date: today(), start_estimate: true, install_bike: '', install_slot: '', install_at: today(), notes: '', price: '', purchase_date: '' })
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [opId] = useState(newOpId)
@@ -39,6 +40,10 @@ export function ComponentForm({ onSaved, presetType }: { onSaved: (c: ComponentS
     try {
       const body: Record<string, unknown> = { component_type: f.component_type, label: f.label, prior_usage: f.history === 'KNOWN' ? 'UNKNOWN' : f.history }
       if (f.notes) body.notes = f.notes
+      const price = toCents(f.price)
+      if (Number.isNaN(price)) throw new Error('Price: enter an amount such as 49,90')
+      if (price !== null) body.price_cents = price
+      if (f.purchase_date) body.purchase_date = f.purchase_date
       if (f.history === 'KNOWN') Object.assign(body, { starting_km: Number(f.start_km || 0), starting_date: f.start_date, starting_is_estimate: f.start_estimate })
       if (f.install_bike) body.install = { bike_id: Number(f.install_bike), at: f.install_at, ...(f.install_slot ? { slot: f.install_slot } : {}) }
       onSaved(await api.post<ComponentSummary>('/components', body, opId))
@@ -62,6 +67,14 @@ export function ComponentForm({ onSaved, presetType }: { onSaved: (c: ComponentS
         </Field>
         <Field label="Name / label" hint="e.g. Chain A. Specs can be added later.">
           <input value={f.label} onChange={(e) => setF({ ...f, label: e.target.value })} autoFocus />
+        </Field>
+      </div>
+      <div className="row">
+        <Field label="Price paid (optional)" hint="Counts as running cost of the bike it is first installed on.">
+          <input inputMode="decimal" value={f.price} onChange={(e) => setF({ ...f, price: e.target.value })} placeholder="€" />
+        </Field>
+        <Field label="Bought on (optional)">
+          <input type="date" value={f.purchase_date} onChange={(e) => setF({ ...f, purchase_date: e.target.value })} />
         </Field>
       </div>
       <Field label="Usage before tracking">
@@ -200,7 +213,6 @@ const TABS: [string, string][] = [
   ['all', 'All parts'],
 ]
 
-const euro = (c: number | null | undefined) => (c ? `${(c / 100).toLocaleString(undefined, { style: 'currency', currency: 'EUR' })}` : '')
 const plural = (n: number, unit: string) => {
   if (n === 1 || /s$/.test(unit)) return `${n.toLocaleString()} ${unit}`
   return `${n.toLocaleString()} ${unit}${/(ch|sh|x)$/.test(unit) ? 'es' : 's'}`
@@ -853,7 +865,7 @@ export function ComponentDetailPage() {
   const { toast, meta } = useApp()
   const actionName = (code: string | null) => (meta.actions.find((a) => a.code === code)?.name ?? code ?? '').toLowerCase()
   const { data, error, loading, reload } = useApi<ComponentDetail>(`/components/${id}`)
-  const [sheet, setSheet] = useState<null | 'log' | 'start' | 'retire' | 'rule' | 'replace' | 'remove' | 'move' | 'disposition' | { rule: Rule } | { correct: number }>(null)
+  const [sheet, setSheet] = useState<null | 'log' | 'details' | 'start' | 'retire' | 'rule' | 'replace' | 'remove' | 'move' | 'disposition' | { rule: Rule } | { correct: number }>(null)
   const [f, setF] = useState({ km: '', date: today(), estimate: true, reason: '', installed_at: '', removed_at: '', action_code: 'INSPECT', interval_km: '', interval_months: '', retire_as: '' })
   const [preview, setPreview] = useState<Change | null>(null)
   const [err, setErr] = useState<string | null>(null)
@@ -932,6 +944,9 @@ export function ComponentDetailPage() {
                   Change status
                 </button>
               )}
+              <button className="btn" onClick={() => setSheet('details')}>
+                Edit details
+              </button>
               <button className="btn" onClick={() => setSheet('start')}>
                 Starting km
               </button>
@@ -964,6 +979,11 @@ export function ComponentDetailPage() {
         </div>
         <p className="small">{u.summary}</p>
         {data.product && <p className="small muted">Product: {data.product}</p>}
+        <p className="small muted">
+          Price: {data.price_cents !== null ? euro(data.price_cents) : 'not entered'}
+          {data.purchase_date ? ` · bought ${when(data.purchase_date)}` : ''}
+          {data.serial_number ? ` · serial ${data.serial_number}` : ''}
+        </p>
       </Card>
       <Card title="Service status" className="span-2">
         <TaskList tasks={data.service_status} onChange={reload} emptyText="No service rules for this part." />
@@ -997,6 +1017,7 @@ export function ComponentDetailPage() {
           </ul>
         )}
       </Card>
+      <Journal componentId={data.id} className="span-2" />
       <Card title="Installation history">
         {data.history.length === 0 ? (
           <Empty title="Never installed" />
@@ -1129,6 +1150,11 @@ export function ComponentDetailPage() {
           <DispositionForm componentId={data.id} current={data.disposition} onDone={() => { close(); toast('Saved.'); reload() }} />
         </Sheet>
       )}
+      {sheet === 'details' && (
+        <Sheet title={`Edit ${data.label}`} onClose={close}>
+          <DetailsForm comp={data} onDone={() => (close(), reload(), toast('Saved.'))} />
+        </Sheet>
+      )}
       {sheet === 'start' && (
         <Sheet title="Starting mileage" onClose={close}>
           <div className="form">
@@ -1251,6 +1277,49 @@ export function ComponentDetailPage() {
           </div>
         </Sheet>
       )}
+    </div>
+  )
+}
+
+function DetailsForm({ comp, onDone }: { comp: ComponentSummary; onDone: () => void }) {
+  const [f, setF] = useState({ label: comp.label, price: centsInput(comp.price_cents), purchase_date: comp.purchase_date ?? '', serial_number: comp.serial_number ?? '', notes: comp.notes ?? '' })
+  const [err, setErr] = useState<string | null>(null)
+  async function save() {
+    setErr(null)
+    const price = toCents(f.price)
+    if (Number.isNaN(price)) return setErr('Price: enter an amount such as 49,90')
+    try {
+      await api.patch(`/components/${comp.id}`, { label: f.label, price_cents: price, purchase_date: f.purchase_date || null, serial_number: f.serial_number || null, notes: f.notes || null })
+      onDone()
+    } catch (e) {
+      setErr((e as Error).message)
+    }
+  }
+  return (
+    <div className="form">
+      <Field label="Name / label">
+        <input value={f.label} onChange={(e) => setF({ ...f, label: e.target.value })} />
+      </Field>
+      <div className="row">
+        <Field label="Price paid" hint="Leave empty if it came with the bike (then it is part of the bike's price).">
+          <input inputMode="decimal" value={f.price} onChange={(e) => setF({ ...f, price: e.target.value })} placeholder="€" />
+        </Field>
+        <Field label="Bought on">
+          <input type="date" value={f.purchase_date} onChange={(e) => setF({ ...f, purchase_date: e.target.value })} />
+        </Field>
+      </div>
+      <Field label="Serial number">
+        <input value={f.serial_number} onChange={(e) => setF({ ...f, serial_number: e.target.value })} />
+      </Field>
+      <Field label="Notes" hint="For dated notes such as issues, use the journal below.">
+        <textarea rows={2} value={f.notes} onChange={(e) => setF({ ...f, notes: e.target.value })} />
+      </Field>
+      <FormError error={err} />
+      <div className="form-actions">
+        <button className="btn btn-primary" disabled={!f.label.trim()} onClick={save}>
+          Save
+        </button>
+      </div>
     </div>
   )
 }

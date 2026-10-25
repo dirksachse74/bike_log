@@ -83,6 +83,22 @@ you disagree. Dates are 2026-10-24 unless noted.
     reachable here. The app shows a warning; correct the template after checking Shimano's spec pages.
     Di2 wires are offered but unticked (lengths depend on the frame); the charging cable is a tool, not a part.
 
+## Costs and journal (Dirk's requests of 2026-10-25)
+31. **Initial cost** is the bike's purchase price (with date). **Running cost is never typed in or
+    stored**: it is added up each time from part prices, stock used and service costs, so corrections and
+    undo change it automatically.
+32. **Each euro is counted once**: a part's price counts for the bike it was *first* installed on (moving
+    it later does not move the cost; parts on a wheel/crankset follow that part's bike). Spares never
+    installed count for no bike. A part drawn from stock has no own price; its share is the stock line's
+    average purchase price, marked ≈. A product's reference price is information only, never spent money.
+33. Parts that came with the bike: leave their price empty (they are inside the purchase price). The
+    bike page lists how many installed parts have no price.
+34. A cost on a maintenance entry logged for several parts is one fee, stored on the first entry only.
+35. **Journal**: dated notes (Note or Issue, issues can be marked resolved) on a bike or a part. A part's
+    entries also record its bike, so they show in the bike journal. Notes written on maintenance entries
+    (symptom, work done, notes) appear in the same journal, read-only, so there is one place to read what
+    happened. Entries can be edited or removed (voided, never deleted).
+
 ## Repository
 27. Pushed only to the feature branch `claude/project-thread-6y3mmh` of the private repository. Demo
     data uses fictional Strava gear ids.

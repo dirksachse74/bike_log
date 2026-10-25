@@ -45,6 +45,7 @@ class Product(Base):
     specs_json: Mapped[str] = mapped_column(Text, default="{}")
     spec_source: Mapped[str | None] = mapped_column(Text)     # e.g. URL or "manual"
     spec_version: Mapped[str | None] = mapped_column(Text)    # e.g. "2026 datasheet"
+    list_price_cents: Mapped[int | None] = mapped_column(Integer)  # reference price, not money spent
     notes: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[str] = mapped_column(String(20), default=utc_now)
 
@@ -61,6 +62,8 @@ class Bike(Base):
     status: Mapped[str] = mapped_column(String(16), default="ACTIVE")
     strava_gear_id: Mapped[str | None] = mapped_column(String(32), unique=True)
     notes: Mapped[str | None] = mapped_column(Text)
+    purchase_price_cents: Mapped[int | None] = mapped_column(Integer)  # initial cost
+    purchase_date: Mapped[str | None] = mapped_column(String(10))
     created_at: Mapped[str] = mapped_column(String(20), default=utc_now)
     updated_at: Mapped[str] = mapped_column(String(20), default=utc_now, onupdate=utc_now)
 
@@ -115,6 +118,26 @@ class ComponentDisposition(Base):
     work_session_id: Mapped[int | None] = mapped_column(ForeignKey("work_session.id"))
     created_at: Mapped[str] = mapped_column(String(20), default=utc_now)
     voided_at: Mapped[str | None] = mapped_column(String(20))   # its work session was undone
+
+
+class JournalEntry(Base):
+    """A dated free-text note on a bike or a part (e.g. an issue noticed). Entries on a part also record
+    the bike it was on. Never deleted: a wrong entry is voided and stays in the history."""
+    __tablename__ = "journal_entry"
+    __table_args__ = (CheckConstraint("kind IN ('NOTE','ISSUE')", name="ck_journal_kind"),
+                      CheckConstraint("bike_id IS NOT NULL OR component_id IS NOT NULL", name="ck_journal_target"))
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    uuid: Mapped[str] = mapped_column(String(36), unique=True, default=new_uuid)
+    bike_id: Mapped[int | None] = mapped_column(ForeignKey("bike.id"), index=True)
+    component_id: Mapped[int | None] = mapped_column(ForeignKey("component.id"), index=True)
+    entry_on: Mapped[str] = mapped_column(String(10))
+    kind: Mapped[str] = mapped_column(String(8), default="NOTE")
+    text: Mapped[str] = mapped_column(Text)
+    resolved_on: Mapped[str | None] = mapped_column(String(10))   # issues only
+    created_at: Mapped[str] = mapped_column(String(20), default=utc_now)
+    updated_at: Mapped[str | None] = mapped_column(String(20))
+    voided_at: Mapped[str | None] = mapped_column(String(20))
+    void_reason: Mapped[str | None] = mapped_column(Text)
 
 
 class ProductCompatibility(Base):

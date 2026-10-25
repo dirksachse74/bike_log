@@ -28,7 +28,8 @@ from bikelog.connectors.strava import sync as strava
 from bikelog.migrate import head_revision
 from bikelog.models import Bike, Component, Product, ServiceRule, UsageProfile
 from bikelog.paths import DataPaths, resource_root
-from bikelog.services import demo, groupsets, imports, spares, stock
+from bikelog.services import costs as costs_svc
+from bikelog.services import demo, groupsets, imports, journal, spares, stock
 from bikelog.services import worksessions as ws_svc
 from bikelog.services import inventory as inv
 from bikelog.services import maintenance as m
@@ -58,6 +59,8 @@ class BikeIn(Body):
     starting_km: float | None = None
     starting_date: str | None = None
     starting_is_estimate: bool = False
+    purchase_price_cents: int | None = None
+    purchase_date: str | None = None
 
 
 class BikePatch(Body):
@@ -67,6 +70,8 @@ class BikePatch(Body):
     year: int | None = None
     strava_gear_id: str | None = None
     notes: str | None = None
+    purchase_price_cents: int | None = None
+    purchase_date: str | None = None
 
 
 class StartingIn(Body):
@@ -84,6 +89,14 @@ class ProductIn(Body):
     spec_source: str | None = None
     spec_version: str | None = None
     notes: str | None = None
+    list_price_cents: int | None = None
+
+
+class ProductPatch(Body):
+    maker: str | None = None
+    model: str | None = None
+    notes: str | None = None
+    list_price_cents: int | None = None
 
 
 class InstallIn(Body):
@@ -196,10 +209,27 @@ class GroupsetPlanIn(Body):
 
 class GroupsetImportIn(GroupsetPlanIn):
     at: str
+    prices: dict[str, int] = {}
     prior_usage: str = "NEW"
     purchase_date: str | None = None
     outcomes: dict[str, str] = {}
     notes: str | None = None
+
+
+class JournalIn(Body):
+    text: str
+    on: str
+    bike_id: int | None = None
+    component_id: int | None = None
+    kind: str = "NOTE"
+    resolved_on: str | None = None
+
+
+class JournalPatch(Body):
+    text: str | None = None
+    on: str | None = None
+    kind: str | None = None
+    resolved_on: str | None = None
 
 
 class UndoIn(Body):
@@ -440,7 +470,8 @@ def create_app(factory: sessionmaker[Session], paths: DataPaths, *, token: str |
 
     @app.get("/api/bikes")
     def bikes(s: Session = Depends(db)):
-        return [_bike_summary(s, b) for b in s.scalars(select(Bike).order_by(Bike.status, Bike.name))]
+        attribution = costs_svc.bike_attribution(s)
+        return [_bike_summary(s, b, attribution) for b in s.scalars(select(Bike).order_by(Bike.status, Bike.name))]
 
     @app.post("/api/bikes", status_code=201)
     def create_bike(body: BikeIn, s: Session = Depends(db), op_id: str | None = OpId):
@@ -452,7 +483,8 @@ def create_app(factory: sessionmaker[Session], paths: DataPaths, *, token: str |
         return {**_bike_summary(s, b), "setup": inv.bike_setup(s, b), "history": inv.bike_installation_history(s, b),
                 "queue": m.queue(s, bike_id=b.id, include_ok=True), "brakes": m.brake_overview(s, bike_id=b.id),
                 "rides": rides_svc.list_rides(s, bike_id=b.id, limit=20),
-                "events": m.events_for(s, bike_id=b.id, limit=20)}
+                "events": m.events_for(s, bike_id=b.id, limit=20),
+                "cost_detail": costs_svc.bike_costs(s, b)}
 
     @app.patch("/api/bikes/{bike_id}")
     def patch_bike(bike_id: int, body: BikePatch, s: Session = Depends(db)):
@@ -481,6 +513,10 @@ def create_app(factory: sessionmaker[Session], paths: DataPaths, *, token: str |
     @app.post("/api/products", status_code=201)
     def create_product(body: ProductIn, s: Session = Depends(db)):
         return _product(inv.create_product(s, **body.model_dump()))
+
+    @app.patch("/api/products/{product_id}")
+    def patch_product(product_id: int, body: ProductPatch, s: Session = Depends(db)):
+        return _product(inv.update_product(s, product_id, **body.model_dump(exclude_unset=True)))
 
     @app.get("/api/components")
     def components(state: str | None = None, component_type: str | None = None, s: Session = Depends(db)):
@@ -782,6 +818,23 @@ def create_app(factory: sessionmaker[Session], paths: DataPaths, *, token: str |
         inv.get_bike(s, body.bike_id)
         return spares.set_compatibility(s, product_id, body.bike_id, body.verified, body.note)
 
+    @app.get("/api/journal")
+    def journal_list(bike_id: int | None = None, component_id: int | None = None, include_voided: bool = False,
+                     s: Session = Depends(db)):
+        return journal.entries(s, bike_id=bike_id, component_id=component_id, include_voided=include_voided)
+
+    @app.post("/api/journal", status_code=201)
+    def journal_add(body: JournalIn, s: Session = Depends(db), op_id: str | None = OpId):
+        return run_once(s, op_id, "journal.add", lambda: journal.row(s, journal.add(s, **body.model_dump())))
+
+    @app.patch("/api/journal/{entry_id}")
+    def journal_edit(entry_id: int, body: JournalPatch, s: Session = Depends(db)):
+        return journal.row(s, journal.update(s, entry_id, **body.model_dump(exclude_unset=True)))
+
+    @app.post("/api/journal/{entry_id}/void")
+    def journal_void(entry_id: int, body: VoidIn, s: Session = Depends(db)):
+        return journal.row(s, journal.void(s, entry_id, body.reason))
+
     @app.get("/api/groupsets")
     def groupset_templates():
         return groupsets.list_templates()
@@ -917,16 +970,20 @@ def _find_static() -> Path | None:
 
 # ---------------------------------------------------------------- serializers
 
-def _bike_summary(s: Session, b: Bike) -> dict:
+def _bike_summary(s: Session, b: Bike, attribution: dict | None = None) -> dict:
+    usage = bike_usage(s, b)
+    cost = costs_svc.bike_costs(s, b, attribution=attribution, with_items=False)
+    cost["per_km_cents"] = costs_svc.per_km(cost, usage["total_km"])
     return {"id": b.id, "uuid": b.uuid, "name": b.name, "maker": b.maker, "model": b.model, "year": b.year,
-            "status": b.status, "strava_gear_id": b.strava_gear_id, "notes": b.notes, "usage": bike_usage(s, b),
+            "status": b.status, "strava_gear_id": b.strava_gear_id, "notes": b.notes, "usage": usage,
+            "purchase_price_cents": b.purchase_price_cents, "purchase_date": b.purchase_date, "costs": cost,
             "open_tasks": sum(1 for t in m.queue(s, bike_id=b.id) if t["status"] in ("DUE", "OVERDUE", "ATTENTION"))}
 
 
 def _product(p: Product) -> dict:
     return {"compatibility": spares.compatibility(object_session(p), p.id),"id": p.id, "uuid": p.uuid, "component_type": p.component_type, "maker": p.maker, "model": p.model,
             "specs": json.loads(p.specs_json or "{}"), "spec_source": p.spec_source, "spec_version": p.spec_version,
-            "notes": p.notes}
+            "notes": p.notes, "list_price_cents": p.list_price_cents}
 
 
 def _component_summary(s: Session, c: Component) -> dict:

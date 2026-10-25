@@ -33,6 +33,12 @@ Status key: ✅ done and tested · 🟡 done, not verified where it matters · �
 - ⏳ Check the R8100 template against productinfo.shimano.com, then mark it verified.
 - 💡 More groupset templates (e.g. Dura-Ace R9200, 105 Di2 R7100, SRAM AXS); optional prices per part.
 
+## P6b Costs and journal
+- ✅ Prices on parts (add, edit, replace, groupset import), service cost on maintenance, bike purchase price.
+- ✅ Initial and running cost per bike (bike list and bike page, with cost entries and cost per km).
+- ✅ Journal with notes and issues on bikes and parts, maintenance notes included.
+- 💡 Costs report across bikes per year; editing product reference prices in the UI (API exists).
+
 ## P7 Imports and Strava
 - ✅ CSV import (generic + Strava export), resumable, start date, corrections and exclusions kept.
 - 🟡 Strava: `--strava-connect` / `--strava-sync` commands done and tested against a fake Strava;

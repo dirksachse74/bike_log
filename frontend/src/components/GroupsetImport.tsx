@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { api, newOpId } from '../api'
 import { useApi } from '../hooks'
-import { today } from '../format'
+import { euro, toCents, today } from '../format'
 import type { Bike, GroupsetPlan, GroupsetTemplate, OpResult } from '../types'
 import { Empty, ErrorBox, Field, FormError, Loading, Tag } from './ui'
 
@@ -19,6 +19,7 @@ export default function GroupsetImport({ bikeId, onDone }: { bikeId?: number; on
   const [occupied, setOccupied] = useState('KEEP')
   const [at, setAt] = useState(today())
   const [priorUsage, setPriorUsage] = useState('NEW')
+  const [prices, setPrices] = useState<Record<string, string>>({})
   const [plan, setPlan] = useState<GroupsetPlan | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
@@ -64,9 +65,15 @@ export default function GroupsetImport({ bikeId, onDone }: { bikeId?: number; on
     setBusy(true)
     setError(null)
     try {
+      const paid: Record<string, number> = {}
+      for (const key of body().include) {
+        const c = toCents(prices[key] ?? '')
+        if (Number.isNaN(c)) throw new Error('Prices: enter amounts such as 49,90')
+        if (c !== null) paid[key] = c
+      }
       const r = await api.post<OpResult<GroupsetPlan & { created: { label: string }[] }>>(
         `/groupsets/${t.code}/import`,
-        { ...body(), at, prior_usage: priorUsage },
+        { ...body(), at, prior_usage: priorUsage, prices: paid },
         opId,
       )
       onDone(`${r.result.created.length} parts added (${r.result.counts.INSTALL + r.result.counts.REPLACE} installed). Undo is under Inventory → History.`)
@@ -80,6 +87,7 @@ export default function GroupsetImport({ bikeId, onDone }: { bikeId?: number; on
   if (templates.loading && !templates.data) return <Loading />
   if (templates.error) return <ErrorBox error={templates.error} onRetry={templates.reload} />
   if (!t) return <Empty title="No groupset templates" />
+  const paidTotal = offered.filter((i) => include.has(i.key)).reduce((sum, i) => sum + (toCents(prices[i.key] ?? '') || 0), 0)
   const toggle = (key: string) => {
     const next = new Set(include)
     if (next.has(key)) next.delete(key)
@@ -158,7 +166,8 @@ export default function GroupsetImport({ bikeId, onDone }: { bikeId?: number; on
       )}
       <fieldset className="field">
         <legend className="field-label">
-          Parts ({offered.filter((i) => include.has(i.key)).length} of {offered.length})
+          Parts ({offered.filter((i) => include.has(i.key)).length} of {offered.length}) · prices are optional
+          {paidTotal > 0 ? `, ${euro(paidTotal)} entered` : ''}
         </legend>
         <ul className="list groupset-items">
           {offered.map((i) => {
@@ -173,6 +182,16 @@ export default function GroupsetImport({ bikeId, onDone }: { bikeId?: number; on
                   </span>
                 </label>
                 {row && <Tag tone={row.action === 'SPARE' ? 'neutral' : row.action === 'REPLACE' ? 'warn' : 'good'}>{ACTION_TEXT[row.action]}</Tag>}
+                {include.has(i.key) && (
+                  <input
+                    className="price-input"
+                    aria-label={`Price ${i.name}`}
+                    inputMode="decimal"
+                    value={prices[i.key] ?? ''}
+                    placeholder={row?.list_price_cents ? euro(row.list_price_cents) : '€'}
+                    onChange={(e) => setPrices({ ...prices, [i.key]: e.target.value })}
+                  />
+                )}
               </li>
             )
           })}

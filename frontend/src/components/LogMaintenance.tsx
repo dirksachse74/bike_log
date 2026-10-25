@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { api, newOpId } from '../api'
 import { useApp } from '../context'
-import { today } from '../format'
+import { toCents, today } from '../format'
 import { useApi } from '../hooks'
 import type { ActionDef, Bike, SetupRow } from '../types'
 import { Field, FormError, Loading } from './ui'
@@ -28,7 +28,7 @@ export default function LogMaintenance({ bikeId, componentId, actionCode, onDone
   const detail = useApi<BikeDetail>(bike && !componentId ? `/bikes/${bike}` : null)
   const [action, setAction] = useState<string | null>(actionCode ?? null)
   const [selected, setSelected] = useState<number[]>(componentId ? [componentId] : [])
-  const [form, setForm] = useState({ at: today(), symptom: '', work_done: '', outcome: '', measurement_value: '', measurement_unit: '', consumable_id: '', consumable_qty: '', notes: '' })
+  const [form, setForm] = useState({ at: today(), symptom: '', work_done: '', outcome: '', measurement_value: '', measurement_unit: '', consumable_id: '', consumable_qty: '', notes: '', cost: '' })
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [opId] = useState(newOpId)
@@ -66,6 +66,9 @@ export default function LogMaintenance({ bikeId, componentId, actionCode, onDone
       if (form.measurement_value) body.measurement_value = Number(form.measurement_value.replace(',', '.'))
       if (form.consumable_id) body.consumable_id = Number(form.consumable_id)
       if (form.consumable_qty) body.consumable_qty = Number(form.consumable_qty.replace(',', '.'))
+      const cost = toCents(form.cost)
+      if (Number.isNaN(cost)) throw new Error('Cost: enter an amount such as 25,00')
+      if (cost !== null) body.cost_cents = cost
       if (selected.length === 1) body.component_id = selected[0]
       else body.component_ids = selected
       await api.post('/maintenance/events', body, opId)
@@ -188,9 +191,14 @@ export default function LogMaintenance({ bikeId, componentId, actionCode, onDone
               </Field>
             </div>
           )}
-          <Field label="Notes (optional)">
-            <input value={form.notes} onChange={set('notes')} />
-          </Field>
+          <div className="row">
+            <Field label="Notes (optional)">
+              <input value={form.notes} onChange={set('notes')} />
+            </Field>
+            <Field label="Cost (optional)" hint="Shop fee or service price; supplies from stock are counted separately.">
+              <input inputMode="decimal" value={form.cost} onChange={set('cost')} placeholder="€" />
+            </Field>
+          </div>
         </>
       )}
       <FormError error={error} />

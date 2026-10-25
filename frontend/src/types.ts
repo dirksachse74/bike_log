@@ -26,6 +26,41 @@ export interface Bike {
   notes: string | null
   usage: Usage
   open_tasks: number
+  purchase_price_cents: number | null
+  purchase_date: string | null
+  costs: BikeCosts
+}
+
+export interface BikeCosts {
+  initial_cents: number | null
+  initial_known: boolean
+  purchase_date: string | null
+  parts_cents: number
+  stock_cents: number
+  services_cents: number
+  running_cents: number
+  total_cents: number
+  per_km_cents?: number | null
+  estimated: boolean
+  unpriced_parts: number
+  unvalued_stock_uses: number
+  items?: { kind: 'PART' | 'STOCK' | 'SERVICE'; date: string | null; text: string; cents: number; estimated: boolean; component_id?: number }[]
+  unpriced_labels?: string[]
+}
+
+export interface JournalRow {
+  id: number
+  source: 'JOURNAL' | 'MAINTENANCE'
+  on: string
+  kind: 'NOTE' | 'ISSUE' | 'MAINTENANCE'
+  text: string
+  resolved_on: string | null
+  open_issue: boolean
+  bike_id: number | null
+  component_id: number | null
+  component_label: string | null
+  edited: boolean
+  voided: boolean
 }
 
 export interface Location {
@@ -51,6 +86,7 @@ export interface ComponentSummary {
   prior_usage: string
   status: string
   purchase_date: string | null
+  price_cents: number | null
   notes: string | null
   serial_number: string | null
   disposition: string
@@ -264,6 +300,7 @@ export interface GroupsetPlanItem {
   model: string
   label: string
   action: 'INSTALL' | 'REPLACE' | 'SPARE'
+  list_price_cents: number | null
   text: string
   product_exists: boolean
   replaces_label?: string

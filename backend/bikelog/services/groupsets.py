@@ -147,6 +147,7 @@ def plan(session: Session, code: str, *, bike_id: int | None = None, options: di
                "model": it["model"], "specs": it["specs"],
                "label": _unique_label(session, it["type"], base, taken),
                "product_id": product.id if product else None, "product_exists": product is not None,
+               "list_price_cents": product.list_price_cents if product else None,
                "action": "SPARE", "slot": mount["slot"], "bike_id": None, "parent_key": None,
                "parent_component_id": None, "replaces_component_id": None, "text": "Added as a spare"}
         if bike is None:
@@ -208,13 +209,21 @@ def import_groupset(session: Session, code: str, *, at: str, work_session_id: in
                     options: dict | None = None, include: list[str] | None = None,
                     label_prefix: str | None = None, occupied: str = "KEEP", prior_usage: str = "NEW",
                     purchase_date: str | None = None, outcomes: dict[str, str] | None = None,
-                    notes: str | None = None) -> dict:
+                    prices: dict[str, int] | None = None, notes: str | None = None) -> dict:
     """Create the parts from ``plan`` and put them in place, all inside one work session.
-    ``outcomes`` overrides, per item key, what happens to a replaced part (default per part type)."""
+    ``outcomes`` overrides, per item key, what happens to a replaced part (default per part type).
+    ``prices`` are the prices paid per item key (cents); they count as running cost of the bike."""
     p = plan(session, code, bike_id=bike_id, options=options, include=include, label_prefix=label_prefix,
              occupied=occupied)
     template = get_template(code)
     outcomes = outcomes or {}
+    prices = prices or {}
+    selected = {r["key"] for r in p["items"]}
+    for key, cents in prices.items():
+        if key not in selected:
+            raise DomainError(f"Price given for {key!r}, which is not part of this import")
+        if cents is not None and cents < 0:
+            raise DomainError("A price cannot be negative")
     for key, outcome in outcomes.items():
         if outcome not in DISPOSITIONS or outcome == "VOIDED":
             raise DomainError(f"{key}: unknown outcome {outcome!r}")
@@ -232,6 +241,7 @@ def import_groupset(session: Session, code: str, *, at: str, work_session_id: in
             row["product_id"] = product.id
         comp = inv.create_component(session, component_type=row["type"], label=row["label"], product_id=product.id,
                                     prior_usage=prior_usage, purchase_date=purchase_date or at[:10], notes=note,
+                                    price_cents=prices.get(row["key"]),
                                     work_session_id=work_session_id)
         created[row["key"]] = comp
         row["component_id"] = comp.id
