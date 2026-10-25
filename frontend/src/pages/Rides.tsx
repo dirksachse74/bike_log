@@ -213,7 +213,7 @@ function RideDetailView({ id, onChanged }: { id: number; onChanged: (c: Change) 
         {data.overridden_fields.length > 0 && ` · locally corrected: ${data.overridden_fields.join(', ')}`}
         {data.usage_profile_name && ` · setup: ${data.usage_profile_name}`}
       </p>
-      {data.inclusion === 'EXCLUDED' && <div className="notice">Excluded: {data.exclusion_reason}. It gives no mileage and stays excluded on re-import.</div>}
+      {data.inclusion === 'EXCLUDED' && <div className="notice">Removed ({data.exclusion_reason}). It counts no km and is never imported again from Strava or CSV. Restore it to count it again.</div>}
       {data.flags.map((f, i) => (
         <div key={i} className="flag">
           <Tag tone="warn">{f.code.replace(/_/g, ' ').toLowerCase()}</Tag> {f.detail}
@@ -291,8 +291,8 @@ function RideDetailView({ id, onChanged }: { id: number; onChanged: (c: Change) 
           Edit
         </button>
         {data.inclusion === 'INCLUDED' ? (
-          <button className="btn btn-danger" onClick={() => act(`/rides/${id}/exclude`, { reason: 'removed by user' })}>
-            Remove from mileage
+          <button className="btn btn-danger" title="Moves it to Removed rides: it counts no km and is never imported again. You can restore it." onClick={() => act(`/rides/${id}/exclude`, { reason: 'removed by user' })}>
+            Remove ride
           </button>
         ) : (
           <button className="btn" onClick={() => act(`/rides/${id}/restore`)}>
@@ -304,20 +304,79 @@ function RideDetailView({ id, onChanged }: { id: number; onChanged: (c: Change) 
   )
 }
 
+const RIDE_TABS: [string, string][] = [
+  ['active', 'Rides'],
+  ['unassigned', 'No bike'],
+  ['removed', 'Removed rides'],
+]
+
+function BikeSelect({ value, bikes, onChange, label }: { value: number | null; bikes: Bike[]; onChange: (id: number | null) => void; label: string }) {
+  return (
+    <select
+      aria-label={label}
+      value={value ?? ''}
+      onClick={(e) => e.stopPropagation()}
+      onChange={(e) => onChange(e.target.value ? Number(e.target.value) : null)}
+    >
+      <option value="">— no bike —</option>
+      {bikes.map((b) => (
+        <option key={b.id} value={b.id}>
+          {b.name}
+          {b.status === 'RETIRED' ? ' (retired)' : ''}
+        </option>
+      ))}
+    </select>
+  )
+}
+
 export default function RidesPage() {
   const { toast } = useApp()
   const [params, setParams] = useSearchParams()
+  const tab = params.get('tab') ?? 'active'
   const [bike, setBike] = useState('')
   const [flagged, setFlagged] = useState(false)
+  const [selected, setSelected] = useState<Set<number>>(new Set())
+  const [bulkBike, setBulkBike] = useState<number | null>(null)
   const bikes = useApi<Bike[]>('/bikes')
-  const { data, error, loading, reload } = useApi<RideRow[]>(`/rides?limit=300${bike ? `&bike_id=${bike}` : ''}${flagged ? '&flagged=true' : ''}`)
+  const query = `/rides?limit=300&view=${tab === 'removed' ? 'removed' : 'active'}${tab === 'unassigned' ? '&unassigned=true' : ''}${bike && tab !== 'unassigned' ? `&bike_id=${bike}` : ''}${flagged ? '&flagged=true' : ''}`
+  const { data, error, loading, reload } = useApi<RideRow[]>(query)
   const [adding, setAdding] = useState(false)
   const open = params.get('open')
-  const close = () => setParams({})
+  const go = (next: Record<string, string>) => setParams({ ...(tab !== 'active' ? { tab } : {}), ...next })
+  const close = () => go({})
   const changed = (c: Change) => {
     toast(c.notice)
     reload()
   }
+  useEffect(() => setSelected(new Set()), [query])
+
+  async function assign(ids: number[], bikeId: number | null) {
+    try {
+      const r = await api.post<OpResult<{ changed: number }>>('/rides/assign-bike', { ride_ids: ids, bike_id: bikeId }, newOpId())
+      const name = bikeId ? bikes.data?.find((b) => b.id === bikeId)?.name : null
+      toast(`${r.result.changed} ride${r.result.changed === 1 ? '' : 's'} ${name ? `assigned to ${name}` : 'now without a bike'}. ${r.change?.notice ?? ''}`)
+      setSelected(new Set())
+      reload()
+    } catch (e) {
+      toast((e as Error).message)
+    }
+  }
+  async function restore(id: number) {
+    try {
+      const r = await api.post<OpResult<unknown>>(`/rides/${id}/restore`, {})
+      toast(r.change?.notice ?? 'Restored.')
+      reload()
+    } catch (e) {
+      toast((e as Error).message)
+    }
+  }
+  const toggle = (id: number) => {
+    const next = new Set(selected)
+    if (next.has(id)) next.delete(id)
+    else next.add(id)
+    setSelected(next)
+  }
+  const allBikes = bikes.data ?? []
   return (
     <Card
       title="Rides"
@@ -327,26 +386,65 @@ export default function RidesPage() {
         </button>
       }
     >
+      <div className="tabs" role="tablist">
+        {RIDE_TABS.map(([k, l]) => (
+          <button key={k} role="tab" aria-selected={tab === k} className={`tab ${tab === k ? 'tab-on' : ''}`} onClick={() => setParams(k === 'active' ? {} : { tab: k })}>
+            {l}
+          </button>
+        ))}
+      </div>
+      {tab === 'removed' && (
+        <p className="small muted">Removed rides count no kilometres and are never imported again from Strava or a CSV file. Restore one to count it again.</p>
+      )}
+      {tab === 'unassigned' && <p className="small muted">Rides without a bike count for no part. Pick the bike for each ride, or tick several and assign them together.</p>}
       <div className="filters">
-        <select value={bike} onChange={(e) => setBike(e.target.value)} aria-label="Filter by bike">
-          <option value="">All bikes</option>
-          {bikes.data?.map((b) => (
-            <option key={b.id} value={b.id}>
-              {b.name}
-            </option>
-          ))}
-        </select>
+        {tab !== 'unassigned' && (
+          <select value={bike} onChange={(e) => setBike(e.target.value)} aria-label="Filter by bike">
+            <option value="">All bikes</option>
+            {allBikes.map((b) => (
+              <option key={b.id} value={b.id}>
+                {b.name}
+              </option>
+            ))}
+          </select>
+        )}
         <label className="check">
           <input type="checkbox" checked={flagged} onChange={(e) => setFlagged(e.target.checked)} /> Only rides to review
         </label>
       </div>
+      {tab !== 'removed' && selected.size > 0 && (
+        <div className="bulk-bar">
+          <span>{selected.size} selected</span>
+          <BikeSelect label="Bike for selected rides" value={bulkBike} bikes={allBikes.filter((b) => b.status === 'ACTIVE')} onChange={setBulkBike} />
+          <button className="btn btn-primary btn-small" onClick={() => assign([...selected], bulkBike)}>
+            {bulkBike ? 'Assign bike' : 'Remove bike'}
+          </button>
+          <button className="btn btn-small" onClick={() => setSelected(new Set())}>
+            Clear
+          </button>
+        </div>
+      )}
       {loading && !data && <Loading what="Loading rides" />}
       {error && <ErrorBox error={error} onRetry={reload} />}
-      {data && data.length === 0 && <Empty title={flagged ? 'No rides need review' : 'No rides yet'}>{!flagged && 'Add a ride (bike, date and distance are enough) or import a CSV under Settings.'}</Empty>}
+      {data && data.length === 0 && (
+        <Empty title={tab === 'removed' ? 'No removed rides' : tab === 'unassigned' ? 'Every ride has a bike' : flagged ? 'No rides need review' : 'No rides yet'}>
+          {tab === 'active' && !flagged && 'Add a ride (bike, date and distance are enough), import a CSV or connect Strava under Settings.'}
+        </Empty>
+      )}
       {data && data.length > 0 && (
         <table className="table rides">
           <thead>
             <tr>
+              {tab !== 'removed' && (
+                <th>
+                  <input
+                    type="checkbox"
+                    aria-label="Select all rides"
+                    checked={selected.size === data.length}
+                    onChange={(e) => setSelected(e.target.checked ? new Set(data.map((r) => r.id)) : new Set())}
+                  />
+                </th>
+              )}
               <th>Date</th>
               <th>Name</th>
               <th>Bike</th>
@@ -356,15 +454,43 @@ export default function RidesPage() {
           </thead>
           <tbody>
             {data.map((r) => (
-              <tr key={r.id} className={r.inclusion === 'EXCLUDED' ? 'excluded' : ''} onClick={() => setParams({ open: String(r.id) })}>
+              <tr key={r.id} className={r.removed ? 'excluded' : ''} onClick={() => go({ open: String(r.id) })}>
+                {tab !== 'removed' && (
+                  <td onClick={(e) => e.stopPropagation()}>
+                    <input type="checkbox" aria-label={`Select ${r.name || 'ride'} ${r.ride_date}`} checked={selected.has(r.id)} onChange={() => toggle(r.id)} />
+                  </td>
+                )}
                 <td>{when(r.start_time_utc ?? r.ride_date)}</td>
                 <td>
                   <button className="linklike">{r.name || 'Ride'}</button>
                 </td>
-                <td>{r.bike ?? <Tag tone="warn">no bike</Tag>}</td>
+                <td onClick={(e) => e.stopPropagation()}>
+                  {r.removed ? (
+                    (r.bike ?? '—')
+                  ) : (
+                    <BikeSelect label={`Bike for ${r.name || 'ride'} ${r.ride_date}`} value={r.bike_id} bikes={allBikes} onChange={(id) => assign([r.id], id)} />
+                  )}
+                  {r.bike_overridden && (
+                    <span className="small muted" title="Your choice is kept when Strava or a CSV import is read again.">
+                      {' '}
+                      changed by you · {r.source_kind.toLowerCase()}: {r.source_bike ?? 'no bike'}
+                    </span>
+                  )}
+                </td>
                 <td className="num">{km(r.distance_km)}</td>
                 <td>
-                  {r.inclusion === 'EXCLUDED' && <Tag>excluded</Tag>}
+                  {r.removed && <Tag>{r.status === 'SOURCE_DELETED' ? 'deleted at source' : 'removed'}</Tag>}
+                  {r.removed && r.inclusion === 'EXCLUDED' && (
+                    <button
+                      className="btn btn-small"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        restore(r.id)
+                      }}
+                    >
+                      Restore
+                    </button>
+                  )}
                   {r.sport_type === 'VirtualRide' && <Tag tone="info">indoor</Tag>}
                   {r.source_kind !== 'MANUAL' && <Tag>{r.source_kind.toLowerCase()}</Tag>}
                   {r.flags.map((f, i) => (

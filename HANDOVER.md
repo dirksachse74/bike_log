@@ -6,7 +6,9 @@ State as of 2026-10-25 (latest commit: see `git log -1` on the branch).
 ## What works (tested in the build environment: Linux x86_64, Python 3.13, Node 22)
 - **Bikes, parts, installations**: products vs physical parts, install/remove/replace/move with
   effective dates, conflict protection, lifetime mileage across bikes, chains labelled A/B/C.
-- **Rides**: manual rides, edit/exclude/restore with exact-once totals, starting mileage with estimate
+- **Rides**: Rides area with tabs Rides / No bike / Removed rides; bike per ride or for several rides
+  (kept across Strava and CSV re-imports); removed rides are restorable and never re-imported;
+  manual rides, edit/remove/restore with exact-once totals, starting mileage with estimate
   flag, uncertain assignments, "where the kilometres come from" ledger, trainer profile.
 - **Maintenance**: hot wax every 500 km, one liquid top-up per 250–300 km window, wear checks,
   brake circuits front/rear independent, bleed vs full fluid replacement, wheel/bearing/freehub rules,
@@ -23,9 +25,12 @@ State as of 2026-10-25 (latest commit: see `git log -1` on the branch).
 - **JSON product import**: products and spare parts from script-made JSON files (Inventory → Import JSON
   or `--import-products`), one template per part type (docs/product-import.md).
 - **Imports**: CSV (generic and Strava export), resumable and repeatable. Strava API: set up, connect, sync
-  and disconnect from Settings (command line still works), tested against a fake Strava only (docs/strava.md).
+  and disconnect (keeps all rides) from Settings (command line still works), tested against a fake Strava only (docs/strava.md).
 - **UI**: Overview, Bikes, Maintenance, Rides, Inventory, Settings; desktop and phone layouts;
   empty/loading/error states; forms keep input after errors; demo mode separate from real data.
+
+## Update an existing Windows build
+See [UPDATING.md](UPDATING.md): close the app, `git pull`, rebuild, reinstall. Data is kept.
 
 ## Launch (development, from the repository root)
 ```bash
@@ -40,11 +45,11 @@ Options: `--no-browser`, `--port N`, `--data-dir PATH`, `--backup`, `--export`, 
 ## Checks actually run (final run on this commit)
 | Check | Result |
 |---|---|
-| Backend tests `pytest -q backend/tests` | 104 passed |
+| Backend tests `pytest -q backend/tests` | 107 passed |
 | Required tests: 260 km liquid wax · liquid wax keeps hot wax at 500 km · chain swap · edit/remove/restore once · reimport no duplicates · bleed keeps fluid deadline · DB upgrade keeps records | all pass (test_chain_maintenance, test_rides, test_imports, test_brakes_rules, test_migrations_backup) |
 | Dirk's replacement examples (tube, patch, bar tape, rewrap, tire move, pads 3→2 + undo, stock modes) | pass (test_replacement_stock.py, test_api.py) |
 | Frontend `tsc -b`, `eslint .`, `vite build` | pass |
-| Browser automation `e2e/smoke.cjs` against the real app (desktop 1280×900 and phone 390×844) | 44/44 (one earlier run failed once on a timing issue, reruns passed) |
+| Browser automation `e2e/smoke.cjs` against the real app (desktop 1280×900 and phone 390×844) | 49/49 |
 | Groupset import: placement, occupied positions, replace, undo, product reuse, every template option | pass (test_groupsets.py) |
 | Costs counted once (moves, stock, services, undo) and journal (issues, voiding, no deletes) | pass (test_costs_journal.py) |
 | JSON import: templates valid and in sync, all errors listed, idempotent, CLI exit codes | pass (test_product_import.py) |

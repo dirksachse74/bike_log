@@ -819,3 +819,23 @@ label.chip {
 .bad-text {
   color: var(--due);
 }
+.bulk-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  padding: 0.5rem 0.7rem;
+  margin-bottom: 0.6rem;
+  border: 1px solid var(--brand);
+  border-radius: var(--radius);
+}
+.bulk-bar select {
+  width: auto;
+}
+.table.rides select {
+  min-width: 9rem;
+}
+.table.rides input[type='checkbox'] {
+  width: auto;
+  min-height: 0;
+}

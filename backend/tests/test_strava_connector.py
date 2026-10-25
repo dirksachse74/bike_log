@@ -66,22 +66,24 @@ def test_interrupted_sync_resumes(session, world):
     session.commit()
 
 
-def test_disconnect_deletes_imported_data_but_keeps_exclusions(session, world):
+def test_disconnect_keeps_all_rides_and_removed_rides_never_come_back(session, world):
     factory, fake, client, chain = world
     strava.sync(factory, client, force=True)
     excluded = session.scalar(select(Ride).where(Ride.distance_km == 30))
     rides.exclude_ride(session, excluded.id, "not my ride")
-    manual = rides.add_manual_ride(session, bike_id=inv.get_bike(session, 1).id, when="2026-10-06", distance=10)
     session.commit()
-    res = strava.delete_imported(factory)
-    assert res == {"deleted_rides": 2, "kept_exclusion_identities": 1}
-    assert component_usage(session, chain)["total_km"] == 10            # manual ride still counts
+    before = n_rides(session)
     session.commit()
-    strava.sync(factory, client, force=True)                            # reconnect
+    res = strava.mark_disconnected(factory)
+    assert res == {"kept_rides": before}
+    assert n_rides(session) == before                                   # nothing deleted
+    assert component_usage(session, chain)["total_km"] == 50            # removed ride counts nothing
+    session.commit()
+    strava.sync(factory, client, force=True)                            # reconnect: full re-read
     session.expire_all()
-    assert session.get(Ride, excluded.id).inclusion == "EXCLUDED"
-    assert component_usage(session, chain)["total_km"] == 60
-    assert manual.id
+    assert n_rides(session) == before                                   # no duplicates
+    assert session.get(Ride, excluded.id).inclusion == "EXCLUDED"       # stays removed
+    assert component_usage(session, chain)["total_km"] == 50
     session.commit()
 
 
@@ -119,3 +121,65 @@ def test_sync_command_without_connection_explains_next_step(tmp_path, capsys):
     assert main(["--data-dir", str(tmp_path / "d"), "--strava-sync", "--no-browser"]) == 2
     assert "--strava-connect" in capsys.readouterr().err
     assert not (tmp_path / "d" / "strava.env").exists()
+
+
+def test_bike_override_survives_resync_and_strava_gear_changes_are_picked_up(session, world):
+    factory, fake, client, chain = world
+    other = inv.create_bike(session, name="TIME NXR", strava_gear_id="90000002")
+    session.commit()
+    strava.sync(factory, client, force=True)
+    r2 = session.scalar(select(Ride).where(Ride.distance_km == 50))          # Strava says BMC
+    r3 = session.scalar(select(Ride).where(Ride.distance_km == 30))
+    res = rides.assign_bike(session, [r2.id], other.id)                     # Strava had the wrong bike
+    assert res == {"changed": 1, "rides": 1}
+    row = rides.ride_row(session, r2)
+    assert row["bike"] == "TIME NXR" and row["bike_overridden"] and row["source_bike"] == "BMC Roadmachine"
+    session.commit()
+    # later, on Strava: gear of ride 3 corrected to the TIME; ride 2 also edited on Strava
+    fake.activities[10_000_003]["gear_id"] = "b90000002"
+    fake.activities[10_000_002]["name"] = "Renamed on Strava"
+    fake.now += 20 * 24 * 3600
+    session.commit()
+    strava.sync(factory, client, force=True)                                # incremental, 30-day look-back
+    session.expire_all()
+    assert session.get(Ride, r3.id).bike_id == other.id                     # gear change picked up
+    r2 = session.get(Ride, r2.id)
+    assert r2.bike_id == other.id and r2.name == "Renamed on Strava"        # override kept, rest updated
+    session.commit()
+    strava.sync(factory, client, rescan=True, force=True)                   # Re-read keeps it too
+    session.expire_all()
+    assert session.get(Ride, r2.id).bike_id == other.id
+    # setting it back to Strava's bike removes the override
+    r2 = session.get(Ride, r2.id)
+    rides.assign_bike(session, [r2.id], rides.ride_row(session, r2)["source_bike_id"])
+    assert not rides.ride_row(session, r2)["bike_overridden"]
+    # remove the assignment (no bike): kept across re-sync
+    rides.assign_bike(session, [r2.id], None)
+    session.commit()
+    strava.sync(factory, client, rescan=True, force=True)
+    session.expire_all()
+    r2 = session.get(Ride, r2.id)
+    assert r2.bike_id is None and rides.ride_row(session, r2)["bike_overridden"]
+    session.commit()
+
+
+def test_manual_ride_bike_can_be_removed(session, world):
+    b = inv.get_bike(session, 1)
+    r = rides.add_manual_ride(session, bike_id=b.id, when="2026-10-06", distance=10)
+    rides.edit_ride(session, r.id, {"bike_id": None})
+    assert r.bike_id is None
+    rides.assign_bike(session, [r.id], b.id)
+    assert r.bike_id == b.id
+    session.commit()
+
+
+def test_removed_rides_view(session, world):
+    factory, fake, client, chain = world
+    strava.sync(factory, client, force=True)
+    r = session.scalar(select(Ride).where(Ride.distance_km == 30))
+    rides.exclude_ride(session, r.id, "not my ride")
+    removed = rides.list_rides(session, view="removed")
+    active = rides.list_rides(session, view="active")
+    assert [x["id"] for x in removed] == [r.id] and removed[0]["removed"]
+    assert r.id not in {x["id"] for x in active}
+    session.commit()

@@ -28,7 +28,7 @@ from bikelog.services import imports, settings
 from bikelog.timeutil import utc_now
 
 SOURCE_KIND, SOURCE_ACCOUNT = "STRAVA", "strava"
-OVERLAP_S = 3 * 24 * 3600
+OVERLAP_S = 30 * 24 * 3600   # re-read the last 30 days on every sync, to pick up gear/name changes made on Strava
 
 BLOCKERS = [
     "Strava API terms (2026 policy: 7-day cache limit, no persistent derived data) were only seen in search "
@@ -163,29 +163,14 @@ def sync(factory: sessionmaker[Session], client: StravaClient, *, rescan: bool =
     return {"counts": counts}
 
 
-def delete_imported(factory: sessionmaker[Session]) -> dict:
-    """On disconnect: delete every Strava-sourced ride and the usage it produced (Strava terms require
-    deletion after revocation). Rides you excluded keep only their identity, so they cannot return."""
-    from sqlalchemy import delete
+def mark_disconnected(factory: sessionmaker[Session]) -> dict:
+    """On disconnect: stop syncing and keep every ride (Dirk's decision: no mass deletes). Removed rides
+    stay removed and keep their identity, so a later reconnect can never import them again."""
+    from sqlalchemy import func
 
-    from bikelog.models import Ride, RideEquipment, RideFlag, RideOverride, UsageContribution
-    deleted = kept = 0
     with factory() as s, s.begin():
-        for src in list(s.scalars(select(RideSource).where(RideSource.source_kind == SOURCE_KIND))):
-            ride = s.get(Ride, src.ride_id)
-            for model in (UsageContribution, RideFlag, RideOverride, RideEquipment):
-                s.execute(delete(model).where(model.ride_id == ride.id))
-            if ride.inclusion == "EXCLUDED":
-                src.values_json, src.payload_hash = "{}", "deleted"
-                ride.name = ride.notes = None
-                ride.status = "SOURCE_DELETED"
-                kept += 1
-            else:
-                s.delete(src)
-                s.flush()
-                s.delete(ride)
-                deleted += 1
         conn = s.get(StravaConnection, SOURCE_ACCOUNT)
         if conn:
             conn.status, conn.cursor_epoch = "DISCONNECTED", None
-    return {"deleted_rides": deleted, "kept_exclusion_identities": kept}
+        kept = s.scalar(select(func.count(RideSource.ride_id)).where(RideSource.source_kind == SOURCE_KIND)) or 0
+    return {"kept_rides": kept}

@@ -111,8 +111,20 @@ you disagree. Dates are 2026-10-24 unless noted.
 ## Strava in Settings (2026-10-25)
 39. Strava is set up entirely from Settings: app details (secret write-only, stored only in `strava.env`),
     browser OAuth with the callback on this app (`http://localhost:<port>/api/strava/callback`, single-use
-    `state`, 15 min), sync in a background thread after a backup, disconnect deletes API-imported rides
-    after a backup. The command-line commands stay. Changing the Client ID drops the old tokens.
+    `state`, 15 min), sync in a background thread after a backup. The command-line commands stay. Changing the Client ID
+    drops the old tokens. **Changed 2026-10-25 (Dirk): disconnecting keeps every ride**; it only stops
+    syncing and revokes access. Dirk does not want mass deletes.
+
+## Rides area (Dirk's request of 2026-10-25)
+40. **Removing a ride never deletes it.** "Remove ride" moves it to Rides → *Removed rides*: it counts no
+    km, keeps its source identity, so Strava sync, Re-read and CSV import never bring it back, and it can
+    be restored. There is no bulk delete.
+41. **The bike of a ride is yours to decide.** Pick a bike (or "no bike") per ride in the list, or tick
+    several rides and assign them together. The choice is stored as a ride override, so it survives
+    sync and Re-read; the list shows "changed by you · strava: X" with Strava's value. Rides without a
+    bike are listed under *No bike* and count for no part.
+42. **Sync looks back 30 days** (was 3) so gear changed on Strava for recent rides is picked up. Older
+    changes come in with *Re-read all since start date*. Your own bike choice always wins.
 
 ## Repository
 27. Pushed only to the feature branch `claude/project-thread-6y3mmh` of the private repository. Demo

@@ -25,8 +25,8 @@ Nothing is hosted or deployed. Data stays in his user folder.
 3. **Totals are derived, never accumulated.** Mileage per part and running cost per bike are rebuilt from
    records, so repeating or correcting an operation can never double-count.
 4. **No hard deletes.** Records are voided/retired with a reason and stay in history (database triggers
-   enforce this for history tables). Exception: disconnecting Strava deletes API-imported rides
-   (Strava terms), after a backup.
+   enforce this for history tables). No exceptions: removing a ride moves it to *Removed rides*, and
+   disconnecting Strava keeps every ride (Dirk does not want mass deletes).
 5. **The core app works without Strava.**
 6. **All mileage, reminder, stock and cost logic lives in Python services.** The UI only displays results.
 7. **Never claim untested things work.** Say exactly what was tested and where (cloud Linux vs Dirk's Windows).
@@ -63,6 +63,7 @@ Runtime shape:
 
 ```
 README.md, HANDOVER.md, DECISIONS.md, TASKS.md      overview, test status, decisions (numbered), open work
+UPDATING.md              Dirk's steps to git pull and rebuild on Windows (keep it current)
 requirements.txt / requirements-dev.txt / pyproject.toml
 backend/bikelog/
   launcher.py            entry point and command-line commands
@@ -167,7 +168,7 @@ maintenance notes (symptom, work done, notes) appear in the same list read-only.
 | Feature | Backend | UI | Docs |
 |---|---|---|---|
 | Bikes, parts, install/remove/replace/move, chains A/B/C | inventory.py | pages/Bikes.tsx, Inventory.tsx, components/PartChange.tsx | DECISIONS 7–11, 14–23 |
-| Rides, starting mileage, ledger ("where the km come from") | rides.py, allocation.py, usage.py | pages/Rides.tsx | |
+| Rides area (tabs Rides / No bike / Removed rides), bike per ride or in bulk, remove/restore, starting mileage, ledger ("where the km come from") | rides.py, allocation.py, usage.py | pages/Rides.tsx | DECISIONS 40–42 |
 | Maintenance, rules, snooze, brakes, chain wax cycle | maintenance.py, catalog.py | pages/Maintenance.tsx, components/LogMaintenance.tsx, TaskList.tsx | DECISIONS 12–13 |
 | Spare parts, stock, supplies, shopping list, undo | stock.py, spares.py, worksessions.py | pages/Inventory.tsx | DECISIONS 14–23 |
 | Groupset import (Shimano Ultegra Di2 R8100) | services/groupsets.py, groupset_templates/ | components/GroupsetImport.tsx (bike page → Add groupset) | docs/groupsets.md, DECISIONS 28–30 |
@@ -175,15 +176,23 @@ maintenance notes (symptom, work done, notes) appear in the same list read-only.
 | Journal | journal.py | components/Journal.tsx (bike and part pages) | DECISIONS 35 |
 | JSON product import (one template per part type) | product_import.py, product_specs.py | components/ProductImport.tsx (Inventory → Import JSON) | docs/product-import.md, docs/product-templates/AGENT_INSTRUCTIONS.md, DECISIONS 36–38 |
 | CSV ride import (generic + Strava export), resumable | imports.py | pages/Settings.tsx | docs/csv-import.md |
-| Strava API sync | connectors/strava/ | components/StravaSettings.tsx (Settings → Strava) | docs/strava.md, DECISIONS 26, 39 |
+| Strava API sync | connectors/strava/ | components/StravaSettings.tsx (Settings → Strava) | docs/strava.md, DECISIONS 26, 39, 42 |
 | Backups, export/restore, demo mode | backup.py, services/demo.py | Settings | DECISIONS 4–5 |
 
 Strava details: full API sync with permanent storage (Dirk's choice). Credentials and tokens live only in
 `<data dir>/strava.env`; the secret is write-only in the UI and never logged. OAuth callback
 `http://localhost:<port>/api/strava/callback` with a single-use state (Strava app setting "Authorization
 Callback Domain" = `localhost`). Rides map to bikes by `strava_gear_id`; unknown gear links a bike with the
-same name or creates one. Sync is resumable (cursor written with each page), runs in the background after
-a backup. **Only ever tested against `tests/fake_strava.py`; no live Strava call has been made.**
+same name or creates one. Sync is resumable (cursor written with each page), looks back 30 days from the
+cursor so gear changed on Strava is picked up, and runs in the background after a backup. Disconnect keeps
+all rides (`mark_disconnected`).
+
+Rides and the bike: the user's bike choice (or "no bike") is a `ride_override` on field `bike_id`
+(`rides.assign_bike`, `POST /api/rides/assign-bike` with `ride_ids` and `bike_id` or null). Overrides win
+over source values in `apply_effective`, so sync, Re-read and CSV re-import keep them; `ride_row` reports
+`bike_overridden` and the source's bike. "Remove ride" = `/exclude`: `inclusion` EXCLUDED, the source
+identity stays, so imports skip it; `/restore` brings it back. `GET /api/rides?view=active|removed|all`
+and `unassigned=true` drive the three tabs. **Only ever tested against `tests/fake_strava.py`; no live Strava call has been made.**
 
 Groupset template data for Ultegra R8100 came from retailer listings (shimano.com was unreachable from the
 cloud environment) and is marked unverified in the app.
@@ -205,10 +214,10 @@ cd backend && ../.venv/bin/python -m bikelog            # http://127.0.0.1:8765/
 Checks that must pass before every push:
 
 ```bash
-.venv/bin/python -m pytest -q backend/tests             # currently 104 passed
+.venv/bin/python -m pytest -q backend/tests             # currently 107 passed
 cd frontend && npx tsc -b && npx eslint . && npx vite build
 # browser test: start the app on a fresh data dir, then
-node e2e/smoke.cjs http://127.0.0.1:8790/ <screenshot-dir>   # currently 44/44
+node e2e/smoke.cjs http://127.0.0.1:8790/ <screenshot-dir>   # currently 49/49
 #   (cd backend && ../.venv/bin/python -m bikelog --no-browser --port 8790 --data-dir <fresh dir>)
 ```
 
@@ -231,6 +240,9 @@ PowerShell needs `&` before a quoted exe path. Inno Setup installed via winget l
 install/launch checklist in `packaging/README.md` is still pending, and nothing was tested on a clean
 Windows machine without Python. The app is unsigned (SmartScreen warns).
 
+Updating an existing build after new commits (close app, pull, rebuild, reinstall; data is kept) is
+described for Dirk in `UPDATING.md`. Every change you push must keep that file correct.
+
 ---
 
 ## 8. Command line (the app must be closed for commands that change data)
@@ -249,7 +261,8 @@ Meta/overview: `health`, `meta`, `overview`, `settings` (GET/PATCH). Bikes: `bik
 (PATCH), `/compatibility`. Components: `components` (GET/POST), `components/{id}` (GET/PATCH/DELETE*),
 `/install`, `/remove`, `/replace-options`, `/replace`, `/move-targets`, `/move`, `/disposition`, `/retire`,
 `/starting-usage`, `/correction`, `/rules`; `installations/{id}/void|correct`. Rides: `rides` (GET/POST),
-`rides/{id}` (GET/PATCH), `/exclude`, `/restore`, `/equipment/{slot}` (PUT/DELETE). Maintenance:
+`rides` GET takes `view` (active/removed/all), `unassigned`, `bike_id`, `flagged`; `rides/assign-bike`
+(POST, several rides, `bike_id` null = no bike); `rides/{id}` (GET/PATCH), `/exclude` (= Remove ride), `/restore`, `/equipment/{slot}` (PUT/DELETE). Maintenance:
 `maintenance/queue|events|candidates`, `events` POST, `/void`, `snooze`; `rules`; `chains`; `brakes`.
 Stock: `consumables` (GET/POST/PATCH), `/txns`, `/txn`, `/install`; `inventory`; `shopping-list`.
 Work sessions: `work-sessions`, `/{id}`, `/{id}/undo`. Journal: `journal` (GET/POST), `/{id}` PATCH,
@@ -268,6 +281,8 @@ Work sessions: `work-sessions`, `/{id}`, `/{id}/undo`. Journal: `journal` (GET/P
   never force-push, never change repository visibility, never deploy anything.**
 - Before every push: run all checks (section 7) and scan for secrets; never commit `.env`/`strava.env`,
   databases, backups, exports or personal ride data. Demo data uses fictional Strava gear ids.
+- Dirk's standing rule: with every change, update the docs and this guide in the same commit, push the
+  feature branch, and tell him it is pushed and what to pull and rebuild (`UPDATING.md`).
 - Commit in small, described steps and push at checkpoints so no work is lost.
 - Keep `DECISIONS.md` (add a numbered entry for each reversible decision), `TASKS.md` and `HANDOVER.md`
   (test counts and status) up to date with every feature.
@@ -289,7 +304,7 @@ Needs Dirk or his machine:
 1. **Windows**: run the installer and the checklist in `packaging/README.md` (install, launch, data entry,
    restart, second start, data location, backup); later a clean machine without Python.
 2. **Strava live**: reset secret, set callback domain `localhost`, connect and sync from Settings; check
-   gear-to-bike matching and VirtualRide handling with his real data.
+   gear-to-bike matching, bike overrides and VirtualRide handling with his real data.
 3. **Strava API terms**: the full 2026 terms (7-day cache rule, storage of derived data) were never read;
    permanent storage is his explicit choice at his own risk (DECISIONS 26).
 4. **Ultegra R8100 template**: verify specs against productinfo.shimano.com, then mark it verified.

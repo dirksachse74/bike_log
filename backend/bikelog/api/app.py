@@ -225,6 +225,11 @@ class StravaSyncIn(Body):
     rescan: bool = False
 
 
+class AssignBikeIn(Body):
+    ride_ids: list[int]
+    bike_id: int | None = None
+
+
 class JournalIn(Body):
     text: str
     on: str
@@ -671,9 +676,17 @@ def create_app(factory: sessionmaker[Session], paths: DataPaths, *, token: str |
 
     @app.get("/api/rides")
     def list_rides(bike_id: int | None = None, flagged: bool = False, include_excluded: bool = True,
+                   view: str = "all", unassigned: bool = False,
                    limit: int = Query(200, le=1000), offset: int = 0, s: Session = Depends(db)):
-        return rides_svc.list_rides(s, bike_id=bike_id, flagged_only=flagged, include_excluded=include_excluded,
-                                    limit=limit, offset=offset)
+        if view not in ("all", "active", "removed"):
+            raise DomainError("view must be all, active or removed")
+        rows = rides_svc.list_rides(s, bike_id=bike_id, flagged_only=flagged, include_excluded=include_excluded,
+                                    limit=limit, offset=offset, view=view, unassigned=unassigned)
+        return rows
+
+    @app.post("/api/rides/assign-bike")
+    def assign_bike(body: AssignBikeIn, dry_run: bool = False, s: Session = Depends(db), op_id: str | None = OpId):
+        return op(s, op_id, "ride.assign_bike", lambda: rides_svc.assign_bike(s, body.ride_ids, body.bike_id), dry_run)
 
     @app.post("/api/rides", status_code=201)
     def add_ride(body: RideIn, s: Session = Depends(db), op_id: str | None = OpId):

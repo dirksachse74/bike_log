@@ -240,9 +240,8 @@ def _strava(args, paths: DataPaths, factory) -> int:
         client = sc.StravaClient(token_store=sc.EnvTokenStore(env_file))
         if args.strava_disconnect:
             client.deauthorize()
-            res = strava.delete_imported(factory)
-            print(f"Strava disconnected. Deleted {res['deleted_rides']} imported rides; "
-                  f"{res['kept_exclusion_identities']} excluded rides keep only their id so they stay excluded.")
+            res = strava.mark_disconnected(factory)
+            print(f"Strava disconnected. All {res['kept_rides']} rides imported from Strava are kept.")
             return 0
         if client.tokens.load() is None:
             print("Strava is not connected yet. Run: BikeLog.exe --strava-connect", file=sys.stderr)

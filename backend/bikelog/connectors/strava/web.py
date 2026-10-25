@@ -5,7 +5,7 @@ The same files and code paths as the command-line commands: credentials and toke
 write-only). OAuth uses a callback on this app (http://localhost:<port>/api/strava/callback, so the
 Strava app's "Authorization Callback Domain" must be ``localhost``); a one-time ``state`` ties the
 callback to a connect request made from this page. Syncs run in a background thread, one at a time,
-after a database backup.
+after a database backup. Disconnecting keeps all rides.
 """
 from __future__ import annotations
 
@@ -155,9 +155,8 @@ class StravaWeb:
     def disconnect(self) -> dict:
         if self.job.get("running"):
             raise DomainError("Wait until the sync has finished")
-        backup_database(self.paths, "pre-strava-disconnect")
         self.client().deauthorize()
-        return strava.delete_imported(self.factory)
+        return strava.mark_disconnected(self.factory)
 
     def status(self, session: Session) -> dict:
         return {**strava.status(session), "credentials": self.credentials(), "job": dict(self.job)}

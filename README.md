@@ -9,4 +9,5 @@ your user folder.
 - Decisions and assumptions: [DECISIONS.md](DECISIONS.md)
 - What is next: [TASKS.md](TASKS.md)
 - Windows build and checklist: [packaging/README.md](packaging/README.md)
+- Update after new changes (git pull and rebuild): [UPDATING.md](UPDATING.md)
 - CSV import format: [docs/csv-import.md](docs/csv-import.md) · Strava: [docs/strava.md](docs/strava.md) · Groupsets: [docs/groupsets.md](docs/groupsets.md) · JSON import: [docs/product-import.md](docs/product-import.md)

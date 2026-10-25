@@ -142,6 +142,10 @@ export interface RideRow {
   notes: string | null
   flags: Flag[]
   overridden_fields: string[]
+  removed: boolean
+  bike_overridden: boolean
+  source_bike_id: number | null
+  source_bike: string | null
 }
 
 export interface RideDetail extends RideRow {

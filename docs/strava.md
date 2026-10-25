@@ -10,8 +10,8 @@ commands below (or with `BIKELOG_ENABLE_STRAVA=1` for developers). The app works
 1. **Terms / retention policy** – the 2026 Strava API policy (7-day cache limit, no persistent
    derived data, deletion on revocation) could only be read from search snippets; the full text was not
    reachable. You decided to store API data permanently at your own risk; the code still supports a
-   `PROVISIONAL` retention mode and deletes imported rides on disconnect (rides you excluded keep only
-   their identity, so they cannot come back).
+   `PROVISIONAL` retention mode. Since 2026-10-25 disconnecting keeps all rides (Dirk's decision; see
+   DECISIONS 39).
 2. **Credentials** – no Strava API application credentials are configured. They belong in a
    `strava.env` file in your data folder (`%LOCALAPPDATA%\BikeLog\strava.env`) or the path in
    `BIKELOG_STRAVA_ENV`, never in the repository. The client secret pasted in chat earlier must be reset
@@ -23,11 +23,13 @@ commands below (or with `BIKELOG_ENABLE_STRAVA=1` for developers). The app works
 
 ## What is implemented and tested (tests/test_strava_connector.py)
 
-* Activities listed oldest-first after max(import start date, cursor − 3 days overlap).
+* Activities listed oldest-first after max(import start date, cursor − 30 days overlap), so gear changed on Strava for
+  recent rides is picked up; Re-read all catches older changes.
 * Each page is written in one transaction together with the cursor: resumable, never ahead of the data.
 * Identity `(STRAVA, "strava", activity id)` shared with the CSV export.
 * Gear ids (`b12345`) mapped to bikes by their Strava gear id; trainer/VirtualRide uses the trainer profile.
-* Local corrections and exclusions preserved; rate limits, retries and token refresh in `client.py`.
+* Local corrections, your bike choice (or "no bike") and removed rides are preserved across sync and
+  Re-read; removed rides are never imported again; rate limits, retries and token refresh in `client.py`.
 
 ## How to connect (in the app, no command line)
 
@@ -41,7 +43,9 @@ commands below (or with `BIKELOG_ENABLE_STRAVA=1` for developers). The app works
    Strava gear id, otherwise by gear name (or a bike with that name is created).
 5. **Sync now** (a backup is written first; progress shows on the page). Run it whenever you want new
    rides. **Re-read all since start date** re-reads everything (no duplicates).
-6. **Disconnect** revokes access and deletes rides imported from the Strava API (backup first).
+6. **Disconnect** stops syncing and revokes access. All rides stay in Bike Log.
+7. Wrong bike on a ride? Change it under **Rides** (dropdown per ride, or tick several rides). Strava's
+   value is shown next to it, and your choice is kept on every later sync.
 
 The command-line versions still work with Bike Log closed: `BikeLog.exe --strava-connect`,
 `--strava-sync`, `--strava-rescan`, `--strava-disconnect`.

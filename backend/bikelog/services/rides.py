@@ -162,6 +162,22 @@ def exclude_ride(session: Session, ride_id: int, reason: str | None = None) -> R
     return ride
 
 
+def assign_bike(session: Session, ride_ids: list[int], bike_id: int | None) -> dict:
+    """Set (or clear) the bike of several rides at once. For imported rides this is a local override:
+    re-sync and re-read keep it; setting the bike back to the imported value removes the override."""
+    if not ride_ids:
+        raise DomainError("Pick at least one ride")
+    if bike_id is not None and not session.get(Bike, bike_id):
+        raise DomainError("Bike not found")
+    changed = 0
+    for rid in dict.fromkeys(ride_ids):
+        ride = get_ride(session, rid)
+        if ride.bike_id != bike_id or ride.assignment_uncertain:
+            edit_ride(session, ride.id, {"bike_id": bike_id, "assignment_uncertain": False})
+            changed += 1
+    return {"changed": changed, "rides": len(set(ride_ids))}
+
+
 def restore_ride(session: Session, ride_id: int) -> Ride:
     ride = get_ride(session, ride_id)
     if ride.inclusion != "INCLUDED":
@@ -222,6 +238,8 @@ def ride_row(session: Session, ride: Ride, bikes: dict[int, str] | None = None) 
                                 "Exclude one if it is the same outing."})
     profile = session.get(UsageProfile, ride.usage_profile_id) if ride.usage_profile_id else None
     overridden = list(session.scalars(select(RideOverride.field).where(RideOverride.ride_id == ride.id)))
+    src = source_values(session, ride) if ride.source_kind != "MANUAL" else None
+    source_bike_id = src.get("bike_id") if src else None
     return {
         "id": ride.id, "uuid": ride.uuid, "name": ride.name, "ride_date": ride.ride_date,
         "start_time_utc": ride.start_time_utc, "date_only": ride.start_time_utc is None,
@@ -232,6 +250,10 @@ def ride_row(session: Session, ride: Ride, bikes: dict[int, str] | None = None) 
         "exclusion_reason": ride.exclusion_reason, "assignment_uncertain": ride.assignment_uncertain,
         "uncertainty_note": ride.uncertainty_note, "notes": ride.notes, "flags": flags,
         "overridden_fields": overridden,
+        "removed": ride.inclusion == "EXCLUDED" or ride.status != "ACTIVE",
+        "bike_overridden": "bike_id" in overridden,
+        "source_bike_id": source_bike_id if src else None,
+        "source_bike": bikes.get(source_bike_id) if source_bike_id else None,
     }
 
 
@@ -250,12 +272,18 @@ def ride_detail(session: Session, ride: Ride) -> dict:
 
 
 def list_rides(session: Session, *, bike_id: int | None = None, include_excluded: bool = True,
-               flagged_only: bool = False, limit: int = 200, offset: int = 0) -> list[dict]:
+               flagged_only: bool = False, limit: int = 200, offset: int = 0, view: str = "all",
+               unassigned: bool = False) -> list[dict]:
+    """view: "active" (counted rides), "removed" (removed by you or deleted at the source) or "all"."""
     q = select(Ride)
     if bike_id is not None:
         q = q.where(Ride.bike_id == bike_id)
-    if not include_excluded:
-        q = q.where(Ride.inclusion == "INCLUDED")
+    if unassigned:
+        q = q.where(Ride.bike_id.is_(None))
+    if not include_excluded or view == "active":
+        q = q.where(Ride.inclusion == "INCLUDED", Ride.status == "ACTIVE")
+    elif view == "removed":
+        q = q.where((Ride.inclusion == "EXCLUDED") | (Ride.status != "ACTIVE"))
     q = q.order_by(Ride.sort_utc.desc(), Ride.id.desc()).limit(limit).offset(offset)
     bikes = dict(session.execute(select(Bike.id, Bike.name)).all())
     rows = [ride_row(session, r, bikes) for r in session.scalars(q)]

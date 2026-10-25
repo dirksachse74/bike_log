@@ -151,8 +151,8 @@ export default function StravaSettings() {
               className="btn btn-small"
               disabled={busy || running}
               onClick={() => {
-                if (window.confirm('Disconnect Strava? Access is revoked and rides imported from the Strava API are deleted (a backup is made first). Rides you entered by hand or imported from CSV stay.'))
-                  act(() => api.post<{ deleted_rides: number }>('/strava/disconnect').then((r) => setNotice(`Disconnected; ${r.deleted_rides} imported rides removed.`)))
+                if (window.confirm('Disconnect Strava? Bike Log stops syncing and Strava access is revoked. All rides stay in Bike Log.'))
+                  act(() => api.post<{ kept_rides: number }>('/strava/disconnect').then((r) => setNotice(`Disconnected. All ${r.kept_rides} rides imported from Strava are kept.`)))
               }}
             >
               Disconnect

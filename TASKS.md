@@ -43,6 +43,8 @@ Status key: ✅ done and tested · 🟡 done, not verified where it matters · �
 - ✅ Templates per part type, importer (app + command line), instructions for script authors/AI agents.
 
 ## P7 Imports and Strava
+- ✅ Rides area: assign/change/remove the bike per ride or in bulk (kept on re-sync), Removed rides with
+  restore (never re-imported), disconnect keeps rides, 30-day sync look-back.
 - ✅ CSV import (generic + Strava export), resumable, start date, corrections and exclusions kept.
 - 🟡 Strava: set up, connect, sync and disconnect from Settings (and command line); tested against a
   fake Strava; first live run on Dirk's machine pending (docs/strava.md).

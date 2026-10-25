@@ -67,7 +67,9 @@ def test_connect_sync_disconnect_from_settings(engine, paths):
     assert any(p.name.startswith("bikelog-") and "pre-strava-sync" in p.name for p in paths.backups.iterdir())
 
     d = c.post("/api/strava/disconnect").json()
-    assert d["deleted_rides"] == 2
+    assert d["kept_rides"] == 2
+    with factory() as s:
+        assert s.scalar(select(func.count(Ride.id))) == 2               # disconnect deletes nothing
     assert c.get("/api/strava/status").json()["credentials"]["tokens_saved"] is False
     assert c.delete("/api/strava/credentials").json()["client_id"] is None
 
