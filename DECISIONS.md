@@ -177,6 +177,28 @@ you disagree. Dates are 2026-10-24 unless noted.
     while the app runs and on Windows (no rename of an open file). Strava app details and login
     (`strava.env`) are kept by default, with a tick box to clear them too. Any backup can be restored
     from Settings; a restore first writes a `…-kept-before-restore.db` backup. (Dirk 2026-10-25.)
+55. **Ride incidents are journal issues**: an incident is a journal ISSUE with `ride_id` and
+    `incident_type` (FLAT/CRASH/DEFECT/OTHER), dated on the ride, on the affected part (or the ride's
+    bike). No separate table, so incidents get resolve/void/no-delete for free and show in every journal.
+    A part's journal includes entries of parts mounted below it on that date. (Dirk 2026-10-25.)
+56. **Dry/wet is local ride data** (`ride.conditions`), an editable field outside SOURCE_FIELDS, so a
+    Strava re-sync or CSV re-import never overwrites it.
+57. **Assemblies are parent installations**: wheelset → wheels → tire/tube/hub/spokes/rim tape/sensor,
+    hub → bearings, rear derailleur → pulleys, crankset → chainrings, chain → quick link. Km flow down the
+    parent chain, each part keeps its own km and starting mileage (a new tire on a 2,000 km wheel starts
+    at 0). A bike has either two wheels or a wheelset. The crank spindle is not a part: on Hollowtech II
+    it is part of the drive-side crank.
+58. **Carry-over at replace**: child parts can move to the new part in the same work session; the
+    default is on unless the child's own limit (PARENT_COUNT) is reached.
+59. **Quick links by number of chains** (PARENT_COUNT, default 2): Connex/KMC/Shimano say reusable a few
+    times, no km figure; counting chains served is what can be tracked.
+60. **Ride-hour rules**: interval_hours/warn_hours count moving time since the last action; rides with
+    no time are listed, not guessed. Used for charging: Assioma PRO RS-1 spec ≥60 h (up to 160 h after
+    firmware), default 50 h; Magene sensor ~500 h per retailers, default 400 h or 12 months (months are
+    Dirk's guess). Di2 BT-DN300 ~1000 km per retailers, default 800 km. All PERSONAL/unverified.
+61. **Charge rules start as "insufficient information"** until the first Charged is logged, because the
+    state of charge at install is unknown. Lever coin-cell rule exists but is off by default (Dirk's
+    the rule only matters for wireless levers such as ST-R8170; switch it on per part).
 
 ## Repository
 27. Pushed only to the feature branch `claude/project-thread-6y3mmh` of the private repository. Demo

@@ -63,6 +63,14 @@ export interface JournalRow {
   component_label: string | null
   edited: boolean
   voided: boolean
+  bike?: string | null
+  component_type?: string | null
+  ride_id?: number | null
+  ride_label?: string | null
+  ride_conditions?: string | null
+  incident_type?: string | null
+  incident_label?: string | null
+  via_child?: boolean
 }
 
 export interface Location {
@@ -199,6 +207,8 @@ export interface RideRow {
   bike_overridden: boolean
   source_bike_id: number | null
   source_bike: string | null
+  conditions: 'DRY' | 'WET' | null
+  incidents: number
 }
 
 export interface RideDetail extends RideRow {
@@ -288,6 +298,8 @@ export interface Meta {
   dispositions: { code: string; label: string }[]
   tracking_modes: { code: string; label: string }[]
   tire_setups: { code: TireSetup; label: string }[]
+  incident_types: { code: string; label: string }[]
+  ride_conditions: { code: string; label: string }[]
 }
 
 export interface EventRow {
@@ -319,8 +331,12 @@ export interface Rule {
   component_id: number | null
   action_code: string
   action: string
-  trigger: 'INTERVAL' | 'CYCLE_WINDOW'
+  trigger: 'INTERVAL' | 'CYCLE_WINDOW' | 'PARENT_COUNT'
   interval_km: number | null
+  interval_hours: number | null
+  warn_hours: number | null
+  interval_count: number | null
+  notes: string | null
   interval_months: number | null
   window_min_km: number | null
   window_max_km: number | null

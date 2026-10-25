@@ -24,13 +24,17 @@ class ComponentType:
 class Action:
     code: str
     name: str
-    kind: str                       # LUBRICATE, INSPECT, MEASURE, SERVICE, CLEAN, REPAIR, NOTE
+    kind: str                       # LUBRICATE, INSPECT, MEASURE, SERVICE, CLEAN, REPAIR, CHARGE, NOTE
     targets: tuple[str, ...]        # component type codes, or ("*",) for all
     quick: bool = False             # offered as one-tap shortcut
     fields: tuple[str, ...] = ()    # extra inputs: symptom, work_done, outcome, measurement, consumable
     outcomes: tuple[str, ...] = ()  # allowed outcome codes (empty = free text)
     attention_outcomes: tuple[str, ...] = ()  # outcomes that need attention until a later event
 
+
+POWER_METERS = ("POWER_METER", "POWER_METER_PEDALS")
+# actions that charge a battery: a charge reminder needs one logged charge before it can count
+CHARGE_ACTIONS = ("BATTERY_CHARGE", "POWER_CHARGE")
 
 COMPONENT_TYPES: dict[str, ComponentType] = {t.code: t for t in [
     ComponentType("CHAIN", "Chain", "Drivetrain", ("CHAIN",)),
@@ -40,9 +44,19 @@ COMPONENT_TYPES: dict[str, ComponentType] = {t.code: t for t in [
     ComponentType("CHAINRING", "Chainring", "Drivetrain", ("CHAINRING_OUTER", "CHAINRING_INNER"), ("CRANKSET",)),
     ComponentType("BOTTOM_BRACKET", "Bottom bracket", "Drivetrain", ("BOTTOM_BRACKET",)),
     ComponentType("REAR_DERAILLEUR", "Rear derailleur", "Drivetrain", ("REAR_DERAILLEUR",)),
+    ComponentType("PULLEY_WHEEL", "Pulley wheel", "Drivetrain", ("PULLEY_UPPER", "PULLEY_LOWER"),
+                  ("REAR_DERAILLEUR",), removed_default="DISCARDED"),
     ComponentType("FRONT_DERAILLEUR", "Front derailleur", "Drivetrain", ("FRONT_DERAILLEUR",)),
-    ComponentType("FRONT_WHEEL", "Front wheel", "Wheels", ("FRONT_WHEEL",)),
-    ComponentType("REAR_WHEEL", "Rear wheel", "Wheels", ("REAR_WHEEL",)),
+    # A wheelset holds the two wheels; the wheels hold tires, tubes, rotors, cassette, hub, spokes, rim tape.
+    # Every part keeps its own km; moving the wheelset moves everything on it.
+    ComponentType("WHEELSET", "Wheelset", "Wheels", ("WHEELSET",)),
+    ComponentType("FRONT_WHEEL", "Front wheel", "Wheels", ("FRONT_WHEEL",), ("WHEELSET",)),
+    ComponentType("REAR_WHEEL", "Rear wheel", "Wheels", ("REAR_WHEEL",), ("WHEELSET",)),
+    ComponentType("HUB", "Hub", "Wheels", ("HUB",), ("FRONT_WHEEL", "REAR_WHEEL")),
+    ComponentType("HUB_BEARINGS", "Hub bearings (set)", "Wheels", ("BEARINGS",), ("HUB",), removed_default="DISCARDED"),
+    ComponentType("SPOKES", "Spokes (set)", "Wheels", ("SPOKES",), ("FRONT_WHEEL", "REAR_WHEEL")),
+    ComponentType("RIM_TAPE", "Rim tape", "Wheels", ("RIM_TAPE",), ("FRONT_WHEEL", "REAR_WHEEL"),
+                  removed_default="DISCARDED"),
     ComponentType("TIRE", "Tire", "Wheels", ("TIRE",), ("FRONT_WHEEL", "REAR_WHEEL")),
     ComponentType("INNER_TUBE", "Inner tube", "Wheels", ("TUBE",), ("FRONT_WHEEL", "REAR_WHEEL"),
                   removed_default="AWAITING_SERVICE"),
@@ -53,12 +67,16 @@ COMPONENT_TYPES: dict[str, ComponentType] = {t.code: t for t in [
     ComponentType("POWER_METER", "Power meter", "Drivetrain", ("POWER_METER",), ("CRANKSET",)),
     ComponentType("HEADSET", "Headset", "Frame", ("HEADSET",)),
     ComponentType("PEDALS", "Pedals", "Contact points", ("PEDALS",)),
+    ComponentType("POWER_METER_PEDALS", "Power-meter pedals", "Contact points", ("PEDALS",)),
     ComponentType("SADDLE", "Saddle", "Contact points", ("SADDLE",)),
     ComponentType("SEATPOST", "Seatpost", "Contact points", ("SEATPOST",)),
     ComponentType("HANDLEBAR", "Handlebar", "Cockpit", ("HANDLEBAR",)),
     ComponentType("BAR_TAPE", "Bar tape", "Cockpit", ("BAR_TAPE",), removed_default="DISCARDED"),
     ComponentType("SHIFTERS", "Shifters", "Controls", ("SHIFTERS",)),
     ComponentType("BATTERY", "Battery (Di2/AXS)", "Electronics", ("BATTERY",)),
+    # speed/cadence sensor: on a wheel (moves with the wheelset), on the crankset or on the bike
+    ComponentType("SENSOR", "Sensor (speed/cadence)", "Electronics", ("SENSOR_SPEED", "SENSOR_CADENCE"),
+                  ("FRONT_WHEEL", "REAR_WHEEL", "CRANKSET")),
     ComponentType("OTHER", "Other part", "Other", ()),
 ]}
 
@@ -134,10 +152,23 @@ ACTIONS: dict[str, Action] = {a.code: a for a in [
     # headset and power meter
     Action("HEADSET_SERVICE", "Service headset (clean, grease, check play)", "SERVICE", ("HEADSET",),
            fields=("symptom", "work_done", "outcome", "consumable")),
-    Action("POWER_ZERO_OFFSET", "Zero offset / calibrate power meter", "SERVICE", ("POWER_METER",), quick=True),
-    Action("POWER_BATTERY", "Charge / replace power-meter battery", "SERVICE", ("POWER_METER",), quick=True,
+    Action("POWER_ZERO_OFFSET", "Zero offset / calibrate power meter", "SERVICE", POWER_METERS, quick=True),
+    Action("POWER_CHARGE", "Charged", "CHARGE", POWER_METERS, quick=True),
+    Action("POWER_BATTERY", "Replace power-meter battery (coin cell)", "SERVICE", POWER_METERS,
            fields=("consumable",)),
-    Action("POWER_FIRMWARE", "Update power-meter firmware", "SERVICE", ("POWER_METER",), fields=("work_done",)),
+    Action("POWER_FIRMWARE", "Update power-meter firmware", "SERVICE", POWER_METERS, fields=("work_done",)),
+    # electronic shifting: the shifters' coin cells (wireless Di2 levers)
+    Action("COIN_CELL_REPLACE", "Replace coin-cell battery", "SERVICE", ("SHIFTERS", "SENSOR"), quick=True,
+           fields=("consumable",)),
+    # drivetrain wear checks for parts inside parts
+    Action("PULLEY_INSPECT", "Check pulley wheels (play, worn teeth, noise)", "INSPECT", ("PULLEY_WHEEL",),
+           quick=True, fields=("outcome",), outcomes=("OK", "WORN", "NOISY"), attention_outcomes=("WORN", "NOISY")),
+    Action("CHAINRING_INSPECT", "Check chainring wear (teeth shape, chain suck)", "INSPECT", ("CHAINRING",),
+           quick=True, fields=("outcome",), outcomes=("OK", "WORN"), attention_outcomes=("WORN",)),
+    Action("QUICK_LINK_CHECK", "Check quick link (closes with a firm snap, not loose)", "INSPECT", ("QUICK_LINK",),
+           quick=True, fields=("outcome",), outcomes=("OK", "LOOSE"), attention_outcomes=("LOOSE",)),
+    Action("RIM_TAPE_CHECK", "Check rim tape (tubeless: leaks at spoke holes)", "INSPECT", ("RIM_TAPE",),
+           fields=("outcome",), outcomes=("OK", "LEAKING", "DAMAGED"), attention_outcomes=("LEAKING", "DAMAGED")),
     # cockpit
     Action("BAR_TAPE_REWRAP", "Rewrap bar tape (same tape)", "SERVICE", ("BAR_TAPE",), fields=("work_done",)),
     # generic
@@ -146,7 +177,7 @@ ACTIONS: dict[str, Action] = {a.code: a for a in [
     Action("CLEAN", "Clean", "CLEAN", ALL),
     Action("SERVICE", "General service", "SERVICE", ALL, fields=("work_done",)),
     Action("REPAIR", "Repair", "REPAIR", ALL, fields=("symptom", "work_done", "outcome", "consumable")),
-    Action("BATTERY_CHARGE", "Charge battery", "SERVICE", ("BATTERY",), quick=True),
+    Action("BATTERY_CHARGE", "Charged", "CHARGE", ("BATTERY",), quick=True),
 ]}
 
 
@@ -160,7 +191,7 @@ class DefaultRule:
     name: str
     component_type: str
     action_code: str
-    trigger: str = "INTERVAL"                # INTERVAL | CYCLE_WINDOW
+    trigger: str = "INTERVAL"                # INTERVAL | CYCLE_WINDOW | PARENT_COUNT
     interval_km: float | None = None
     interval_months: int | None = None
     window_min_km: float | None = None
@@ -169,8 +200,13 @@ class DefaultRule:
     reset_actions: tuple[str, ...] = ()      # default: (action_code,)
     warn_km: float | None = None
     warn_days: int | None = None
+    warn_hours: float | None = None
     origin: str = "DEFAULT"
     requires_setup: str | None = None        # only when the part's wheel has this tire setup
+    interval_hours: float | None = None      # INTERVAL: ride time since the last reset action
+    interval_count: int | None = None        # PARENT_COUNT: due once the part has been on this many parents
+    active: bool = True                      # False: offered but switched off until you turn it on
+    notes: str | None = None                 # where the number comes from
 
 
 DEFAULT_RULES: list[DefaultRule] = [
@@ -198,6 +234,35 @@ DEFAULT_RULES: list[DefaultRule] = [
                 reset_actions=("SEALANT_TOP_UP", "SEALANT_RENEW"), requires_setup="TUBELESS"),
     DefaultRule("HEADSET_SERVICE", "Service headset", "HEADSET", "HEADSET_SERVICE",
                 interval_km=5000, interval_months=12, warn_km=300, warn_days=30),
+    # batteries (figures from retailer listings quoting the makers; not verified with the makers)
+    DefaultRule("DI2_BATTERY_CHARGE", "Charge Di2 battery", "BATTERY", "BATTERY_CHARGE", interval_km=800, warn_km=100,
+                notes="Shimano BT-DN300: about 1000 km per charge (less with much front shifting); 800 km leaves a "
+                      "margin. Source: retailer listings (Rose, Tweeks), not verified with Shimano."),
+    DefaultRule("POWER_METER_CHARGE", "Charge power meter", "POWER_METER", "POWER_CHARGE", interval_hours=50,
+                warn_hours=10, notes="Set to your power meter's battery life with a margin."),
+    DefaultRule("POWER_PEDALS_CHARGE", "Charge power-meter pedals", "POWER_METER_PEDALS", "POWER_CHARGE",
+                interval_hours=50, warn_hours=10,
+                notes="Favero Assioma PRO RS-1: at least 60 h per charge (up to about 160 h after a firmware "
+                      "update). 50 h leaves a margin. Source: retailer listings quoting Favero, not verified."),
+    DefaultRule("SENSOR_BATTERY", "Replace sensor battery", "SENSOR", "COIN_CELL_REPLACE", interval_hours=400,
+                warn_hours=40, interval_months=12, warn_days=30,
+                notes="Magene S3+ (CR2032): about 500 h of riding per battery (retailer listings, not verified with "
+                      "Magene); 400 h leaves a margin. 12 months covers standby drain (your estimate)."),
+    DefaultRule("SHIFTER_COIN_CELLS", "Replace shifter coin cells", "SHIFTERS", "COIN_CELL_REPLACE",
+                interval_months=24, warn_days=30, active=False,
+                notes="Wireless Di2 levers (CR1632): about 2 years. Off by default (mechanical shifters have no "
+                      "battery); switch it on for wireless levers."),
+    # parts inside parts
+    DefaultRule("PULLEY_CHECK", "Check pulley wheels", "PULLEY_WHEEL", "PULLEY_INSPECT", interval_km=5000,
+                warn_km=300, notes="Common workshop practice, not a maker's figure."),
+    DefaultRule("CHAINRING_CHECK", "Check chainring wear", "CHAINRING", "CHAINRING_INSPECT", interval_km=5000,
+                warn_km=300, notes="Check at least at every chain change; common practice, not a maker's figure."),
+    DefaultRule("QUICK_LINK_CHAINS", "Replace quick link", "QUICK_LINK", "QUICK_LINK_CHECK", trigger="PARENT_COUNT",
+                interval_count=2,
+                notes="Wippermann Connex links are sold as reusable many times; no official limit was found. "
+                      "Replace after 2 chains (your choice) or as soon as it closes noticeably looser than new."),
+    DefaultRule("RIM_TAPE_CHECK", "Check rim tape", "RIM_TAPE", "RIM_TAPE_CHECK", interval_months=12, warn_days=30,
+                requires_setup="TUBELESS", notes="Tubeless only: check at every tire change or yearly."),
 ]
 
 
@@ -215,7 +280,7 @@ DEFAULT_PROFILES: list[DefaultProfile] = [
     DefaultProfile("OUTDOOR", "Outdoor", "OUTDOOR"),
     DefaultProfile(
         "DIRECT_DRIVE_TRAINER", "Direct-drive trainer (wheels off)", "TRAINER",
-        excluded_slots=("FRONT_WHEEL", "REAR_WHEEL", "CASSETTE"),
+        excluded_slots=("WHEELSET", "FRONT_WHEEL", "REAR_WHEEL", "CASSETTE"),
         excluded_types=("BRAKE_PADS", "TIRE", "BRAKE_ROTOR"),
         notes="Rear wheel and cassette are removed; the trainer has its own cassette. "
               "Front wheel, tires, rotors and pads do not wear.",
@@ -229,5 +294,15 @@ TIRE_SETUPS: dict[str, str] = {
     "TUBULAR": "Tubular",
 }
 WHEEL_TYPES = ("FRONT_WHEEL", "REAR_WHEEL")
+
+# Things that happen on a ride, logged as a journal issue linked to the ride and the affected part.
+INCIDENT_TYPES: dict[str, str] = {
+    "FLAT": "Flat tire",
+    "CRASH": "Crash",
+    "DEFECT": "Defect / mechanical",
+    "OTHER": "Other incident",
+}
+# Ride conditions you set per ride (Strava does not provide them; imports never change them).
+RIDE_CONDITIONS: dict[str, str] = {"DRY": "Dry", "WET": "Wet"}
 
 RIDE_SPORT_TYPES = ("Ride", "VirtualRide", "GravelRide", "MountainBikeRide", "EBikeRide")

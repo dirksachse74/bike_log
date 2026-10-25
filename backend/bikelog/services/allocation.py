@@ -71,10 +71,15 @@ class AllocationIndex:
         return [i for i in insts if i.start <= t < i.end]
 
     def subtree(self, component_id: int, t: str) -> list[_Inst]:
-        out: list[_Inst] = []
+        return [child for child, _ in self.subtree_paths(component_id, t)]
+
+    def subtree_paths(self, component_id: int, t: str, path: tuple[str, ...] = ()) -> list[tuple[_Inst, tuple[str, ...]]]:
+        """Parts mounted on a part at time t, each with the slots of the parts above it (for exclusions:
+        a hub on a wheel in a wheelset is off when the trainer profile takes the wheel off)."""
+        out: list[tuple[_Inst, tuple[str, ...]]] = []
         for child in self._active(self.by_parent.get(component_id, []), t):
-            out.append(child)
-            out.extend(self.subtree(child.component_id, t))
+            out.append((child, path))
+            out.extend(self.subtree_paths(child.component_id, t, path + (child.slot,)))
         return out
 
     def boundary_days(self, insts: list[_Inst], slot: str) -> dict[str, bool]:
@@ -96,6 +101,7 @@ class _Use:
     slot: str
     basis: str
     ambiguous: bool
+    path: tuple[str, ...] = ()      # slots of the parent parts between the bike and this part
 
 
 def _plan(index: AllocationIndex, ride: Ride, explicit: dict[str, int | None]) -> tuple[list[_Use], list[tuple[str, str | None, str]]]:
@@ -122,18 +128,18 @@ def _plan(index: AllocationIndex, ride: Ride, explicit: dict[str, int | None]) -
             continue
         amb = inst.slot in ambiguous_slots
         uses.append(_Use(inst.component_id, inst.slot, inst.slot, "HISTORY", amb))
-        for child in index.subtree(inst.component_id, t):
-            uses.append(_Use(child.component_id, inst.slot, child.slot, "HISTORY", amb))
+        for child, path in index.subtree_paths(inst.component_id, t):
+            uses.append(_Use(child.component_id, inst.slot, child.slot, "HISTORY", amb, path))
     for slot, comp_id in explicit.items():
         if comp_id is None:
             continue
         uses.append(_Use(comp_id, slot, slot, "EXPLICIT", False))
-        for child in index.subtree(comp_id, t):
-            uses.append(_Use(child.component_id, slot, child.slot, "EXPLICIT", False))
+        for child, path in index.subtree_paths(comp_id, t):
+            uses.append(_Use(child.component_id, slot, child.slot, "EXPLICIT", False, path))
     if ride.usage_profile_id and ride.usage_profile_id in index.profiles:
         ex_slots, ex_types = index.profiles[ride.usage_profile_id]
         uses = [u for u in uses if u.root_slot not in ex_slots and u.slot not in ex_slots
-                and index.types.get(u.component_id) not in ex_types]
+                and not ex_slots.intersection(u.path) and index.types.get(u.component_id) not in ex_types]
     # one row per component (a part cannot be used twice by one ride)
     seen: dict[int, _Use] = {}
     for u in uses:

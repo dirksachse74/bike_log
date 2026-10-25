@@ -23,7 +23,7 @@ from sqlalchemy.orm import Session, object_session, sessionmaker
 
 from bikelog import __version__, backup, buildinfo, changelog
 from bikelog.api.security import LocalSecurityMiddleware
-from bikelog.catalog import ACTIONS, COMPONENT_TYPES, DISPOSITIONS, TIRE_SETUPS, TRACKING_MODES, action_applies
+from bikelog.catalog import ACTIONS, COMPONENT_TYPES, DISPOSITIONS, INCIDENT_TYPES, RIDE_CONDITIONS, TIRE_SETUPS, TRACKING_MODES, action_applies
 from bikelog.connectors.strava import sync as strava
 from bikelog.migrate import head_revision
 from bikelog.models import Bike, Component, Product, ServiceRule, UsageProfile
@@ -164,7 +164,14 @@ class ReplaceIn(Body):
     new_label: str | None = None
     reason: str | None = None
     old_outcome: str | None = None
+    carry_over: list[int] | None = None
     session_notes: str | None = None
+
+
+class GroupWheelsIn(Body):
+    at: str
+    label: str | None = None
+    wheelset_id: int | None = None
 
 
 class MoveIn(Body):
@@ -265,12 +272,14 @@ class AssignBikeIn(Body):
 
 
 class JournalIn(Body):
-    text: str
-    on: str
+    text: str | None = None
+    on: str | None = None
     bike_id: int | None = None
     component_id: int | None = None
-    kind: str = "NOTE"
+    kind: str | None = None
     resolved_on: str | None = None
+    ride_id: int | None = None
+    incident_type: str | None = None
 
 
 class JournalPatch(Body):
@@ -278,6 +287,7 @@ class JournalPatch(Body):
     on: str | None = None
     kind: str | None = None
     resolved_on: str | None = None
+    incident_type: str | None = None
 
 
 class UndoIn(Body):
@@ -318,6 +328,7 @@ class RideIn(Body):
     assignment_uncertain: bool = False
     uncertainty_note: str | None = None
     notes: str | None = None
+    conditions: str | None = None
     equipment: dict[str, int | None] | None = None
 
 
@@ -333,6 +344,7 @@ class RidePatch(Body):
     assignment_uncertain: bool | None = None
     uncertainty_note: str | None = None
     notes: str | None = None
+    conditions: str | None = None
 
 
 class ExcludeIn(Body):
@@ -381,6 +393,9 @@ class RulePatch(Body):
     active: bool | None = None
     origin: str | None = None
     notes: str | None = None
+    interval_hours: float | None = None
+    warn_hours: float | None = None
+    interval_count: int | None = None
 
 
 class ComponentRuleIn(RulePatch):
@@ -524,6 +539,8 @@ def create_app(factory: sessionmaker[Session], paths: DataPaths, *, token: str |
             "dispositions": [{"code": k, "label": v} for k, v in DISPOSITIONS.items()],
             "tracking_modes": [{"code": k, "label": v} for k, v in TRACKING_MODES.items()],
             "tire_setups": [{"code": k, "label": v} for k, v in TIRE_SETUPS.items()],
+            "incident_types": [{"code": k, "label": v} for k, v in INCIDENT_TYPES.items()],
+            "ride_conditions": [{"code": k, "label": v} for k, v in RIDE_CONDITIONS.items()],
             "actions": [{"code": a.code, "name": a.name, "kind": a.kind, "targets": list(a.targets),
                          "quick": a.quick, "fields": list(a.fields), "outcomes": list(a.outcomes)}
                         for a in ACTIONS.values()],
@@ -578,6 +595,15 @@ def create_app(factory: sessionmaker[Session], paths: DataPaths, *, token: str |
         inv.set_starting_usage(s, bike_id=bike_id, km=body.km, effective=body.effective,
                                is_estimate=body.is_estimate, note=body.note)
         return _bike_summary(s, inv.get_bike(s, bike_id))
+
+    @app.post("/api/bikes/{bike_id}/group-wheels")
+    def bike_group_wheels(bike_id: int, body: GroupWheelsIn, dry_run: bool = False, s: Session = Depends(db),
+                          op_id: str | None = OpId):
+        def fn():
+            ws = ws_svc.begin(s, at=body.at, bike_id=bike_id, title="Group wheels into a wheelset")
+            return {**inv.group_wheels(s, bike_id, at=body.at, label=body.label, wheelset_id=body.wheelset_id,
+                                       work_session_id=ws.id), "work_session_id": ws.id}
+        return op(s, op_id, "bike.group_wheels", fn, dry_run)
 
     # ------------------------------------------------------------ products & components
 
@@ -905,9 +931,16 @@ def create_app(factory: sessionmaker[Session], paths: DataPaths, *, token: str |
         return spares.set_compatibility(s, product_id, body.bike_id, body.verified, body.note)
 
     @app.get("/api/journal")
-    def journal_list(bike_id: int | None = None, component_id: int | None = None, include_voided: bool = False,
-                     s: Session = Depends(db)):
-        return journal.entries(s, bike_id=bike_id, component_id=component_id, include_voided=include_voided)
+    def journal_list(bike_id: int | None = None, component_id: int | None = None, ride_id: int | None = None,
+                     include_voided: bool = False, s: Session = Depends(db)):
+        return journal.entries(s, bike_id=bike_id, component_id=component_id, ride_id=ride_id,
+                               include_voided=include_voided)
+
+    @app.get("/api/incidents")
+    def incident_list(bike_id: int | None = None, component_id: int | None = None, incident_type: str | None = None,
+                      open_only: bool = False, s: Session = Depends(db)):
+        return journal.incidents(s, bike_id=bike_id, component_id=component_id, incident_type=incident_type,
+                                 open_only=open_only)
 
     @app.post("/api/journal", status_code=201)
     def journal_add(body: JournalIn, s: Session = Depends(db), op_id: str | None = OpId):

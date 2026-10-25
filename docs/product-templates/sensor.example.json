@@ -1,0 +1,31 @@
+{
+  "format": "bikelog.product.v1",
+  "component_type": "SENSOR",
+  "maker": "Example maker",
+  "model": "Example sensor (speed/cadence) 1",
+  "list_price": 49.9,
+  "currency": "EUR",
+  "specs": {
+    "kind": "speed",
+    "battery": "CR2032",
+    "battery_life_h": 500,
+    "protocols": "ANT+, Bluetooth",
+    "weight_g": 250
+  },
+  "source": {
+    "url": "https://example.com/product-page",
+    "retrieved_at": "2026-10-25",
+    "tool": "my-scraper 1.0"
+  },
+  "verified": false,
+  "notes": "Optional free text",
+  "items": [
+    {
+      "label": "Spare sensor (speed/cadence) 1",
+      "price": 44.9,
+      "purchase_date": "2026-10-20",
+      "prior_usage": "NEW",
+      "storage_location": "Workshop drawer"
+    }
+  ]
+}

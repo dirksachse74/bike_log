@@ -14,7 +14,7 @@ from datetime import date
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from bikelog.catalog import ACTIONS, COMPONENT_TYPES, TIRE_SETUPS, action_applies
+from bikelog.catalog import ACTIONS, CHARGE_ACTIONS, COMPONENT_TYPES, TIRE_SETUPS, action_applies
 from bikelog.models import (
     Bike, Component, Consumable, Installation, MaintenanceEvent, ReminderSnooze, ServiceRule,
     UsageContribution,
@@ -23,7 +23,7 @@ from bikelog.services import settings, stock
 from bikelog.services.stock import add_consumable, consumable_stock, consumable_txn  # noqa: F401 (API)
 from bikelog.services.errors import DomainError, NotFound
 from bikelog.services.inventory import get_component, location, open_installation, set_disposition, tire_setup_of
-from bikelog.services.usage import usage_since
+from bikelog.services.usage import hours_since, usage_since
 from bikelog.timeutil import add_months, parse_when, today_local, utc_now
 
 SEVERITY = {"OVERDUE": 0, "DUE": 1, "ATTENTION": 1, "DUE_SOON": 2, "INSUFFICIENT_INFO": 3, "SNOOZED": 4,
@@ -164,12 +164,16 @@ def effective_rules(session: Session, comp: Component, include_disabled: bool = 
 
 
 RULE_FIELDS = ("name", "interval_km", "interval_months", "window_min_km", "window_max_km", "warn_km", "warn_days",
-               "active", "origin", "notes")
+               "active", "origin", "notes", "interval_hours", "warn_hours", "interval_count")
 
 
 def _validate_rule(r: ServiceRule) -> None:
-    if r.trigger == "INTERVAL" and r.interval_km is None and r.interval_months is None:
-        raise DomainError("A rule needs a distance interval, a calendar interval, or both")
+    if r.trigger == "INTERVAL" and r.interval_km is None and r.interval_months is None and r.interval_hours is None:
+        raise DomainError("A rule needs a distance, ride-time or calendar interval (or several)")
+    if r.trigger == "PARENT_COUNT" and (r.interval_count is None or r.interval_count < 1):
+        raise DomainError("Give the number (at least 1), e.g. replace the quick link after 2 chains")
+    if r.interval_hours is not None and r.interval_hours <= 0:
+        raise DomainError("Intervals must be positive")
     if r.trigger == "CYCLE_WINDOW":
         if r.window_min_km is None or r.window_max_km is None or r.window_max_km < r.window_min_km:
             raise DomainError("The window needs a start and an end (end ≥ start)")
@@ -226,7 +230,11 @@ def set_component_rule(session: Session, component_id: int, *, rule_code: str | 
         cycle_action_code=template.cycle_action_code if template else None,
         reset_actions_json=template.reset_actions_json if template else json.dumps([action_code]),
         warn_km=template.warn_km if template else None, warn_days=template.warn_days if template else None,
-        requires_setup=template.requires_setup if template else None, origin="PERSONAL", active=True)
+        requires_setup=template.requires_setup if template else None,
+        interval_hours=template.interval_hours if template else None,
+        warn_hours=template.warn_hours if template else None,
+        interval_count=template.interval_count if template else None,
+        notes=template.notes if template else None, origin="PERSONAL", active=True)
     for k, v in fields.items():
         if k in RULE_FIELDS:
             setattr(rule, k, v)
@@ -244,7 +252,8 @@ def rule_row(r: ServiceRule) -> dict:
             "window_min_km": r.window_min_km, "window_max_km": r.window_max_km,
             "cycle_action_code": r.cycle_action_code, "reset_actions": _reset_actions(r), "warn_km": r.warn_km,
             "warn_days": r.warn_days, "origin": r.origin, "active": r.active, "notes": r.notes,
-            "requires_setup": r.requires_setup}
+            "requires_setup": r.requires_setup, "interval_hours": r.interval_hours, "warn_hours": r.warn_hours,
+            "interval_count": r.interval_count}
 
 
 # ---------------------------------------------------------------- status
@@ -318,6 +327,8 @@ def rule_status(session: Session, comp: Component, rule: ServiceRule, today: dat
                     "explanation": f"Only for a {need} setup; {why}."}
     if rule.trigger == "CYCLE_WINDOW":
         res = _cycle_status(session, comp, rule, act_name)
+    elif rule.trigger == "PARENT_COUNT":
+        res = _parent_count_status(session, comp, rule)
     else:
         res = _interval_status(session, comp, rule, act_name, today)
     res = {**base, **res}
@@ -330,6 +341,11 @@ def _interval_status(session: Session, comp: Component, rule: ServiceRule, act_n
     if last:
         since_utc, since_date = last.sort_utc, date.fromisoformat(last.performed_on)
         basis = f"last {act_name} on {last.performed_on}"
+    elif rule.action_code in CHARGE_ACTIONS:
+        return {"status": "INSUFFICIENT_INFO", "used_km": None, "last_done": None,
+                "explanation": f"Insufficient information: no charge recorded for {comp.label} yet. Tap "
+                               "'Charged' after the next charge (or log the last one with its date) to start "
+                               "this reminder."}
     elif comp.prior_usage == "NEW":
         since_utc, d = _tracking_start(session, comp)
         since_date = date.fromisoformat(d)
@@ -359,6 +375,17 @@ def _interval_status(session: Session, comp: Component, rule: ServiceRule, act_n
             txt += f" (includes {unc:,.0f} km with uncertain assignment)"
         parts.append(txt)
         out.update(used_km=used, interval_km=rule.interval_km, remaining_km=round(remaining, 3), uncertain_km=unc)
+    if rule.interval_hours is not None:
+        hours, no_time = hours_since(session, comp.id, since_utc)
+        left = rule.interval_hours - hours
+        st = _km_status(hours, rule.interval_hours, rule.warn_hours)
+        statuses.append(st)
+        txt = f"{hours:,.1f} h of riding since {basis} (interval {rule.interval_hours:,.0f} h): "
+        txt += f"{left:,.1f} h left" if left > 0 else (f"{-left:,.1f} h over" if left < 0 else "due now")
+        if no_time:
+            txt += f" ({no_time} ride{'s' if no_time != 1 else ''} without a ride time not counted)"
+        parts.append(txt)
+        out.update(used_hours=hours, interval_hours=rule.interval_hours, remaining_hours=round(left, 2))
     if rule.interval_months is not None:
         due = add_months(since_date, rule.interval_months)
         days_left = (due - today).days
@@ -378,6 +405,37 @@ def _interval_status(session: Session, comp: Component, rule: ServiceRule, act_n
             parts.append(f"bleed on {bleed.performed_on} does not reset the fluid-replacement interval")
     out["status"] = _worst(*statuses)
     out["explanation"] = "; ".join(parts) + "."
+    return out
+
+
+def parents_served(session: Session, comp: Component) -> list[Component]:
+    """The parent parts this part has been mounted on, oldest first (e.g. the chains a quick link was on)."""
+    seen: dict[int, Component] = {}
+    for i in session.scalars(select(Installation).where(
+            Installation.component_id == comp.id, Installation.voided_at.is_(None),
+            Installation.parent_component_id.is_not(None)).order_by(Installation.installed_utc)):
+        if i.parent_component_id not in seen:
+            seen[i.parent_component_id] = session.get(Component, i.parent_component_id)
+    return list(seen.values())
+
+
+def _parent_count_status(session: Session, comp: Component, rule: ServiceRule) -> dict:
+    parents = parents_served(session, comp)
+    n, limit = len(parents), rule.interval_count or 1
+    kind = (COMPONENT_TYPES[comp.component_type].parent_types or ("part",))[0].replace("_", " ").lower()
+    names = ", ".join(p.label for p in parents) or "none yet"
+    out = {"used_count": n, "interval_count": limit, "last_done": None}
+    if n > limit:
+        out["status"] = "OVERDUE"
+        tail = f"replace it (limit {limit})"
+    elif n == limit:
+        out["status"] = "DUE_SOON"
+        tail = f"replace it at the next {kind} change instead of moving it on (limit {limit})"
+    else:
+        out["status"] = "OK"
+        tail = f"can move on to {limit - n} more {kind}{'s' if limit - n != 1 else ''}"
+    out["explanation"] = (f"Has been on {n} {kind}{'s' if n != 1 else ''} ({names}): {tail}. "
+                          + (rule.notes or ""))
     return out
 
 

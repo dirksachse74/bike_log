@@ -138,7 +138,28 @@ def replace_options(session: Session, component_id: int) -> dict:
                           "product": f"{comp.product.maker or ''} {comp.product.model}".strip() if comp.product else None},
             "location": loc, "suggested_outcome": t.removed_default,
             "outcomes": [{"code": k, "label": v} for k, v in DISPOSITIONS.items()],
-            "spares": spares, "stock": lines, "can_same_product": True}
+            "spares": spares, "stock": lines, "can_same_product": True,
+            "children": _children_to_carry(session, comp)}
+
+
+def _children_to_carry(session: Session, comp) -> list[dict]:
+    """Parts mounted on the outgoing part, and whether they move to the new one by default. A part whose
+    own rule says it should be replaced now (e.g. a quick link that has served its chains) stays behind."""
+    from sqlalchemy import select
+
+    from bikelog.models import Component, Installation
+    out = []
+    for i in session.scalars(select(Installation).where(Installation.parent_component_id == comp.id,
+                                                        Installation.removed_utc.is_(None),
+                                                        Installation.voided_at.is_(None))):
+        child = session.get(Component, i.component_id)
+        due = [r for r in m.component_status(session, child)
+               if r.get("trigger") == "PARENT_COUNT" and r["status"] in ("DUE_SOON", "DUE", "OVERDUE")]
+        out.append({"component_id": child.id, "label": child.label, "component_type": child.component_type,
+                    "type_name": COMPONENT_TYPES[child.component_type].name, "slot": i.slot,
+                    "carry_over": not due,
+                    "note": due[0]["explanation"] if due else None})
+    return out
 
 
 def move_targets(session: Session, component_id: int) -> list[dict]:

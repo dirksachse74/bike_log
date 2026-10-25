@@ -22,6 +22,12 @@ Status key: ✅ done and tested · 🟡 done, not verified where it matters · �
 
 - ✅ Time-based reminders: brake fluid 24 months, sealant top-up every 3 months for tubeless tires.
 - ✅ Tube/tubeless setting on wheels (moves with the wheelset); headset service rule.
+- ✅ Ride-hour and number-of-chains rules; charging reminders (Di2, power meter, sensor, coin cells).
+- ✅ Ride incidents (flat/crash/defect) linked to ride and part; dry/wet per ride.
+- ✅ Wheelset assemblies (wheels, tires, hub, bearings, spokes, rim tape, sensor), pulley wheels, carry-over.
+- ⏳ Maintenance coverage review items (bike-level rules, measurement limits, torque checks, crash
+  inspection, hanger, cleats, thru-axles, mechanical-only cable rules, …).
+- ⏳ Sample database as the first-start default (wiped by Fresh start).
 
 ## P5 Chain rotation and brakes
 - ✅ Hot wax / liquid wax cycle, spare chain readiness, independent brake circuits, bleed vs fluid.
@@ -34,7 +40,7 @@ Status key: ✅ done and tested · 🟡 done, not verified where it matters · �
 - 💡 Barcode scanning, automatic ordering (explicitly deferred).
 - ✅ Groupset import with a template for Shimano Ultegra Di2 R8100 (docs/groupsets.md).
 - ⏳ Check the R8100 template against productinfo.shimano.com, then mark it verified.
-- 💡 More groupset templates (e.g. Dura-Ace R9200, 105 Di2 R7100, SRAM AXS); optional prices per part.
+- ⏳ More groupset templates, 12/13-speed Shimano and SRAM (Dura-Ace R9200, 105, GRX, Red/Force/Rival/Apex AXS).
 
 ## P6b Costs and journal
 - ✅ Prices on parts (add, edit, replace, groupset import), service cost on maintenance, bike purchase price.

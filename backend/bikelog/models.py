@@ -159,6 +159,8 @@ class JournalEntry(Base):
     kind: Mapped[str] = mapped_column(String(8), default="NOTE")
     text: Mapped[str] = mapped_column(Text)
     resolved_on: Mapped[str | None] = mapped_column(String(10))   # issues only
+    ride_id: Mapped[int | None] = mapped_column(ForeignKey("ride.id"), index=True)   # incident on this ride
+    incident_type: Mapped[str | None] = mapped_column(String(16))  # catalog.INCIDENT_TYPES; set = an incident
     created_at: Mapped[str] = mapped_column(String(20), default=utc_now)
     updated_at: Mapped[str | None] = mapped_column(String(20))
     voided_at: Mapped[str | None] = mapped_column(String(20))
@@ -312,6 +314,7 @@ class Ride(Base):
     assignment_uncertain: Mapped[bool] = mapped_column(Boolean, default=False)
     uncertainty_note: Mapped[str | None] = mapped_column(Text)
     notes: Mapped[str | None] = mapped_column(Text)
+    conditions: Mapped[str | None] = mapped_column(String(8))   # DRY / WET (catalog.RIDE_CONDITIONS); local only
     created_at: Mapped[str] = mapped_column(String(20), default=utc_now)
     updated_at: Mapped[str] = mapped_column(String(20), default=utc_now, onupdate=utc_now)
 
@@ -414,10 +417,11 @@ class ServiceRule(Base):
     __tablename__ = "service_rule"
     __table_args__ = (
         CheckConstraint("(component_type IS NULL) <> (component_id IS NULL)", name="ck_rule_target"),
-        CheckConstraint("trigger IN ('INTERVAL','CYCLE_WINDOW')", name="ck_rule_trigger"),
+        CheckConstraint("trigger IN ('INTERVAL','CYCLE_WINDOW','PARENT_COUNT')", name="ck_rule_trigger"),
         CheckConstraint("origin IN ('DEFAULT','MANUFACTURER','PERSONAL')", name="ck_rule_origin"),
-        CheckConstraint("trigger <> 'INTERVAL' OR interval_km IS NOT NULL OR interval_months IS NOT NULL",
-                        name="ck_rule_interval"),
+        CheckConstraint("trigger <> 'INTERVAL' OR interval_km IS NOT NULL OR interval_months IS NOT NULL "
+                        "OR interval_hours IS NOT NULL", name="ck_rule_interval"),
+        CheckConstraint("trigger <> 'PARENT_COUNT' OR interval_count >= 1", name="ck_rule_count"),
         CheckConstraint("trigger <> 'CYCLE_WINDOW' OR (window_min_km IS NOT NULL AND window_max_km >= window_min_km "
                         "AND cycle_action_code IS NOT NULL)", name="ck_rule_window"),
         Index("uq_rule_type_code", "component_type", "rule_code", unique=True,
@@ -444,6 +448,9 @@ class ServiceRule(Base):
     origin: Mapped[str] = mapped_column(String(16), default="PERSONAL")
     # Only for parts whose wheel has this tire setup (e.g. sealant: TUBELESS). NULL = always.
     requires_setup: Mapped[str | None] = mapped_column(String(12))
+    interval_hours: Mapped[float | None] = mapped_column(Float)    # ride time, e.g. charging every 50 h
+    warn_hours: Mapped[float | None] = mapped_column(Float)
+    interval_count: Mapped[int | None] = mapped_column(Integer)    # PARENT_COUNT: e.g. 2 chains for a quick link
     active: Mapped[bool] = mapped_column(Boolean, default=True)
     notes: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[str] = mapped_column(String(20), default=utc_now)

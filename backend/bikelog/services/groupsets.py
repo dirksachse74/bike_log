@@ -178,7 +178,7 @@ def plan(session: Session, code: str, *, bike_id: int | None = None, options: di
             rows.append(row)
             continue
         if "wheel" in mount:
-            wheel_inst = _open_in(session, bike_id=bike.id, slot=mount["wheel"])
+            wheel_inst = inv.wheel_on_bike(session, bike.id, mount["wheel"])
             if wheel_inst is None:
                 row["text"] = (f"Added as a spare: {bike.name} has no {mount['wheel'].replace('_', ' ').lower()} "
                                "installed. Install it on the wheel later.")

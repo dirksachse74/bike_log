@@ -34,6 +34,7 @@ duplicate products.
 | Di2 levers | ST-R8170 (wireless, CR1632 coin cell per lever) | bike · shifters |
 | Front derailleur | FD-R8150 (braze-on, max 52T, capacity 16T) | bike |
 | Rear derailleur | RD-R8150 (max 34T, capacity 39T, charging port) | bike |
+| Pulley wheels upper/lower | RD-R8150 guide and tension pulleys (13T) | rear derailleur |
 | Crankset | FC-R8100 or FC-R8100-P, 160/165/170/172.5/175 mm, Hollowtech II 24 mm | bike |
 | Chainrings | 50/34 or 52/36 | crankset |
 | Bottom bracket | SM-BB-R60 (BSA 68) or SM-BB72-41B (press-fit), or none | bike |

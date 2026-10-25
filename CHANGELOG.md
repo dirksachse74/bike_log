@@ -19,8 +19,21 @@ UPDATING.md → "Making a release". New entries go under "Unreleased" as work is
 - Part page: "Add km from before" for parts that were ridden on other bikes; the date defaults to the
   day the part was first installed.
 
+- Ride incidents: open a ride and log a flat, crash or defect, linked to the affected part; it shows on
+  the ride, the bike, the part (and the wheel/wheelset above it) and in Rides → Incidents.
+- Dry/wet per ride (never overwritten by Strava or CSV imports).
+- Wheelsets as a group: bike page → "Group wheels into a wheelset"; wheels carry tires, tubes, hub,
+  hub bearings, spokes, rim tape and a speed sensor, each with its own km. New part types WHEELSET, HUB,
+  HUB_BEARINGS, SPOKES, RIM_TAPE, PULLEY_WHEEL (upper/lower on the rear derailleur), POWER_METER_PEDALS,
+  SENSOR.
+- Quick links move to the next chain at a chain change (tick box in Replace) and are due after 2 chains.
+- Charging reminders with a "Charged" action: Di2 battery 800 km, power meter / Assioma pedals 50 ride
+  hours, speed sensor battery 400 h or 12 months; lever coin cells 24 months (off by default).
+- Reminder rules can count ride hours or the number of parts served (rule editor).
+
 ### Changed
-- Database schema 0005 → 0006 (upgraded automatically with a backup first).
+- Database schema 0005 → 0008 (upgraded automatically with a backup first).
+- Ultegra R8100 groupset import adds upper and lower pulley wheels.
 
 ## 0.2.0 (2026-10-25)
 

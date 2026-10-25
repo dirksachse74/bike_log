@@ -43,6 +43,7 @@ interface ReplaceOptions {
   outcomes: Disposition[]
   spares: SpareRow[]
   stock: StockRow[]
+  children: { component_id: number; label: string; type_name: string; slot: string; carry_over: boolean; note: string | null }[]
 }
 
 const FIT_TEXT: Record<SpareRow['fit'], [string, 'good' | 'info' | 'warn' | 'neutral']> = {
@@ -86,9 +87,11 @@ export function ReplaceForm({ componentId, onDone }: { componentId: number; onDo
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [opId] = useState(newOpId)
+  const [carry, setCarry] = useState<Set<number> | null>(null)
   useEffect(() => {
     const d = opts.data
     if (!d) return
+    setCarry((c) => c ?? new Set(d.children.filter((x) => x.carry_over).map((x) => x.component_id)))
     setF((x) => (x.outcome ? x : { ...x, outcome: d.suggested_outcome }))
     setSource((s) => s ?? (d.stock[0] ? { kind: 'stock', id: d.stock[0].id } : d.spares[0] ? { kind: 'spare', id: d.spares[0].id } : { kind: 'same' }))
   }, [opts.data])
@@ -97,7 +100,7 @@ export function ReplaceForm({ componentId, onDone }: { componentId: number; onDo
   const d = opts.data
   if (!d || !source) return null
   const body = () => {
-    const b: Record<string, unknown> = { at: f.at, reason: f.reason || null, old_outcome: f.outcome }
+    const b: Record<string, unknown> = { at: f.at, reason: f.reason || null, old_outcome: f.outcome, carry_over: [...(carry ?? [])] }
     if (source.kind === 'spare') b.new_component_id = source.id
     if (source.kind === 'stock') b.from_stock_id = source.id
     if (source.kind === 'same') b.same_product = true
@@ -201,6 +204,28 @@ export function ReplaceForm({ componentId, onDone }: { componentId: number; onDo
         </Field>
       </div>
       <OutcomeChoice name="replace-outcome" outcomes={d.outcomes} value={f.outcome} suggested={d.suggested_outcome} onChange={(v) => setF({ ...f, outcome: v })} />
+      {d.children.length > 0 && (
+        <fieldset className="field">
+          <legend className="field-label">Parts on {d.component.label}: move them to the new one?</legend>
+          {d.children.map((c) => (
+            <label key={c.component_id} className="check">
+              <input
+                type="checkbox"
+                aria-label={`Move ${c.label} to the new part`}
+                checked={carry?.has(c.component_id) ?? false}
+                onChange={(e) => {
+                  const next = new Set(carry ?? [])
+                  if (e.target.checked) next.add(c.component_id)
+                  else next.delete(c.component_id)
+                  setCarry(next)
+                }}
+              />{' '}
+              {c.label} <span className="small muted">({c.type_name}){c.note ? ` · ${c.note}` : ''}</span>
+            </label>
+          ))}
+          <p className="small muted">Ticked parts move over and keep their own km. Unticked parts stay with the old part.</p>
+        </fieldset>
+      )}
       <ChangeNotice change={preview} />
       <FormError error={error} />
       <div className="form-actions">

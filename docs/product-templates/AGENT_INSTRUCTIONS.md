@@ -69,9 +69,15 @@ error; put extra data under `specs`.
 | `CHAINRING` | Chainring | Drivetrain |
 | `BOTTOM_BRACKET` | Bottom bracket | Drivetrain |
 | `REAR_DERAILLEUR` | Rear derailleur | Drivetrain |
+| `PULLEY_WHEEL` | Pulley wheel | Drivetrain |
 | `FRONT_DERAILLEUR` | Front derailleur | Drivetrain |
+| `WHEELSET` | Wheelset | Wheels |
 | `FRONT_WHEEL` | Front wheel | Wheels |
 | `REAR_WHEEL` | Rear wheel | Wheels |
+| `HUB` | Hub | Wheels |
+| `HUB_BEARINGS` | Hub bearings (set) | Wheels |
+| `SPOKES` | Spokes (set) | Wheels |
+| `RIM_TAPE` | Rim tape | Wheels |
 | `TIRE` | Tire | Wheels |
 | `INNER_TUBE` | Inner tube | Wheels |
 | `BRAKE_ROTOR` | Brake rotor | Brakes |
@@ -80,12 +86,14 @@ error; put extra data under `specs`.
 | `POWER_METER` | Power meter | Drivetrain |
 | `HEADSET` | Headset | Frame |
 | `PEDALS` | Pedals | Contact points |
+| `POWER_METER_PEDALS` | Power-meter pedals | Contact points |
 | `SADDLE` | Saddle | Contact points |
 | `SEATPOST` | Seatpost | Contact points |
 | `HANDLEBAR` | Handlebar | Cockpit |
 | `BAR_TAPE` | Bar tape | Cockpit |
 | `SHIFTERS` | Shifters | Controls |
 | `BATTERY` | Battery (Di2/AXS) | Electronics |
+| `SENSOR` | Sensor (speed/cadence) | Electronics |
 | `OTHER` | Other part | Other |
 
 Every type also accepts `weight_g`, `color`, `material`.
@@ -183,6 +191,18 @@ Template: `rear_derailleur.schema.json`, example: `rear_derailleur.example.json`
 | `weight_g` | number | g | Weight |
 | `color` | string |  | Colour / finish |
 | `material` | string |  | Main material |
+### Pulley wheel (`PULLEY_WHEEL`)
+
+Template: `pulley_wheel.schema.json`, example: `pulley_wheel.example.json`
+
+| key | type | unit | meaning |
+|---|---|---|---|
+| `speeds` | integer |  | Number of rear sprockets the part is made for |
+| `teeth` | number |  | Teeth |
+| `bearing` | string |  | Bearing |
+| `weight_g` | number | g | Weight |
+| `color` | string |  | Colour / finish |
+| `material` | string |  | Main material |
 ### Front derailleur (`FRONT_DERAILLEUR`)
 
 Template: `front_derailleur.schema.json`, example: `front_derailleur.example.json`
@@ -194,6 +214,20 @@ Template: `front_derailleur.schema.json`, example: `front_derailleur.example.jso
 | `capacity` | integer | T | Front capacity |
 | `electronic` | boolean |  | Electronic shifting |
 | `mount` | one of `braze-on`, `clamp` |  | Mount |
+| `weight_g` | number | g | Weight |
+| `color` | string |  | Colour / finish |
+| `material` | string |  | Main material |
+### Wheelset (`WHEELSET`)
+
+Template: `wheelset.schema.json`, example: `wheelset.example.json`
+
+| key | type | unit | meaning |
+|---|---|---|---|
+| `rim_depth_mm` | number | mm | Rim depth |
+| `internal_width_mm` | number | mm | Internal rim width |
+| `brake` | one of `disc`, `rim` |  | Brake type |
+| `axles` | string |  | Axle standard front / rear |
+| `weight_g` | number | g | Weight of the pair |
 | `weight_g` | number | g | Weight |
 | `color` | string |  | Colour / finish |
 | `material` | string |  | Main material |
@@ -227,6 +261,52 @@ Template: `rear_wheel.schema.json`, example: `rear_wheel.example.json`
 | `rotor_mount` | one of `centerlock`, `6-bolt`, `none` |  | Rotor mount |
 | `freehub` | string |  | Freehub body |
 | `spokes` | integer |  | Spoke count |
+| `weight_g` | number | g | Weight |
+| `color` | string |  | Colour / finish |
+| `material` | string |  | Main material |
+### Hub (`HUB`)
+
+Template: `hub.schema.json`, example: `hub.example.json`
+
+| key | type | unit | meaning |
+|---|---|---|---|
+| `axle` | string |  | Axle standard |
+| `freehub` | string |  | Freehub body (rear) |
+| `rotor_mount` | one of `center lock`, `6-bolt` |  | Rotor mount |
+| `spoke_holes` | number |  | Spoke holes |
+| `weight_g` | number | g | Weight |
+| `color` | string |  | Colour / finish |
+| `material` | string |  | Main material |
+### Hub bearings (set) (`HUB_BEARINGS`)
+
+Template: `hub_bearings.schema.json`, example: `hub_bearings.example.json`
+
+| key | type | unit | meaning |
+|---|---|---|---|
+| `size` | string |  | Bearing size(s) |
+| `type` | one of `cartridge`, `cup and cone`, `ceramic` |  | Bearing type |
+| `weight_g` | number | g | Weight |
+| `color` | string |  | Colour / finish |
+| `material` | string |  | Main material |
+### Spokes (set) (`SPOKES`)
+
+Template: `spokes.schema.json`, example: `spokes.example.json`
+
+| key | type | unit | meaning |
+|---|---|---|---|
+| `count` | number |  | Number of spokes |
+| `model` | string |  | Spoke model and length |
+| `nipples` | string |  | Nipples |
+| `weight_g` | number | g | Weight |
+| `color` | string |  | Colour / finish |
+| `material` | string |  | Main material |
+### Rim tape (`RIM_TAPE`)
+
+Template: `rim_tape.schema.json`, example: `rim_tape.example.json`
+
+| key | type | unit | meaning |
+|---|---|---|---|
+| `width_mm` | number | mm | Width |
 | `weight_g` | number | g | Weight |
 | `color` | string |  | Colour / finish |
 | `material` | string |  | Main material |
@@ -339,6 +419,20 @@ Template: `pedals.schema.json`, example: `pedals.example.json`
 | `weight_g` | number | g | Weight |
 | `color` | string |  | Colour / finish |
 | `material` | string |  | Main material |
+### Power-meter pedals (`POWER_METER_PEDALS`)
+
+Template: `power_meter_pedals.schema.json`, example: `power_meter_pedals.example.json`
+
+| key | type | unit | meaning |
+|---|---|---|---|
+| `system` | string |  | Cleat system |
+| `sides` | one of `single`, `dual` |  | Measures one or both legs |
+| `battery` | string |  | Battery |
+| `battery_life_h` | number | h | Claimed battery life |
+| `protocols` | string |  | Wireless protocols |
+| `weight_g` | number | g | Weight |
+| `color` | string |  | Colour / finish |
+| `material` | string |  | Main material |
 ### Saddle (`SADDLE`)
 
 Template: `saddle.schema.json`, example: `saddle.example.json`
@@ -410,6 +504,19 @@ Template: `battery.schema.json`, example: `battery.example.json`
 | `system` | string |  | Shifting system |
 | `capacity_wh` | number | Wh | Capacity |
 | `mount` | string |  | Where it is mounted |
+| `weight_g` | number | g | Weight |
+| `color` | string |  | Colour / finish |
+| `material` | string |  | Main material |
+### Sensor (speed/cadence) (`SENSOR`)
+
+Template: `sensor.schema.json`, example: `sensor.example.json`
+
+| key | type | unit | meaning |
+|---|---|---|---|
+| `kind` | one of `speed`, `cadence`, `speed/cadence` |  | Sensor kind |
+| `battery` | string |  | Battery |
+| `battery_life_h` | number | h | Claimed battery life |
+| `protocols` | string |  | Wireless protocols |
 | `weight_g` | number | g | Weight |
 | `color` | string |  | Colour / finish |
 | `material` | string |  | Main material |

@@ -805,13 +805,14 @@ interface ComponentDetail extends ComponentSummary {
 }
 
 function RuleEditor({ rule, componentId, onDone }: { rule: Rule; componentId: number; onDone: () => void }) {
-  const [f, setF] = useState({ interval_km: rule.interval_km?.toString() ?? '', interval_months: rule.interval_months?.toString() ?? '', window_min_km: rule.window_min_km?.toString() ?? '', window_max_km: rule.window_max_km?.toString() ?? '', origin: rule.origin === 'DEFAULT' ? 'PERSONAL' : rule.origin, scope: 'part' })
+  const [f, setF] = useState({ interval_km: rule.interval_km?.toString() ?? '', interval_months: rule.interval_months?.toString() ?? '', interval_hours: rule.interval_hours?.toString() ?? '', interval_count: rule.interval_count?.toString() ?? '', window_min_km: rule.window_min_km?.toString() ?? '', window_max_km: rule.window_max_km?.toString() ?? '', origin: rule.origin === 'DEFAULT' ? 'PERSONAL' : rule.origin, scope: 'part' })
   const [err, setErr] = useState<string | null>(null)
   const num = (s: string) => (s.trim() === '' ? null : Number(s))
   async function save(active = true) {
     setErr(null)
     const body: Record<string, unknown> = { origin: f.origin, active }
-    if (rule.trigger === 'INTERVAL') Object.assign(body, { interval_km: num(f.interval_km), interval_months: num(f.interval_months) })
+    if (rule.trigger === 'INTERVAL') Object.assign(body, { interval_km: num(f.interval_km), interval_months: num(f.interval_months), interval_hours: num(f.interval_hours) })
+    else if (rule.trigger === 'PARENT_COUNT') Object.assign(body, { interval_count: num(f.interval_count) })
     else Object.assign(body, { window_min_km: num(f.window_min_km), window_max_km: num(f.window_max_km) })
     try {
       if (f.scope === 'type' && rule.component_type) await api.patch(`/rules/${rule.id}`, body)
@@ -823,13 +824,23 @@ function RuleEditor({ rule, componentId, onDone }: { rule: Rule; componentId: nu
   }
   return (
     <div className="form">
+      {rule.notes && <p className="small muted">{rule.notes}</p>}
       {rule.trigger === 'INTERVAL' ? (
         <div className="row">
           <Field label="Every … km">
             <input inputMode="decimal" value={f.interval_km} onChange={(e) => setF({ ...f, interval_km: e.target.value })} />
           </Field>
+          <Field label="or every … hours of riding">
+            <input inputMode="decimal" aria-label="Every … hours of riding" value={f.interval_hours} onChange={(e) => setF({ ...f, interval_hours: e.target.value })} />
+          </Field>
           <Field label="or every … months">
             <input inputMode="numeric" value={f.interval_months} onChange={(e) => setF({ ...f, interval_months: e.target.value })} />
+          </Field>
+        </div>
+      ) : rule.trigger === 'PARENT_COUNT' ? (
+        <div className="row">
+          <Field label="Replace after it has been on … parts" hint="e.g. a quick link after 2 chains">
+            <input inputMode="numeric" value={f.interval_count} onChange={(e) => setF({ ...f, interval_count: e.target.value })} />
           </Field>
         </div>
       ) : (
@@ -877,7 +888,7 @@ export function ComponentDetailPage() {
   const actionName = (code: string | null) => (meta.actions.find((a) => a.code === code)?.name ?? code ?? '').toLowerCase()
   const { data, error, loading, reload } = useApi<ComponentDetail>(`/components/${id}`)
   const [sheet, setSheet] = useState<null | 'log' | 'details' | 'start' | 'retire' | 'rule' | 'replace' | 'remove' | 'move' | 'disposition' | { rule: Rule } | { correct: number }>(null)
-  const [f, setF] = useState({ km: '', date: today(), estimate: true, reason: '', installed_at: '', removed_at: '', action_code: 'INSPECT', interval_km: '', interval_months: '', retire_as: '' })
+  const [f, setF] = useState({ km: '', date: today(), estimate: true, reason: '', installed_at: '', removed_at: '', action_code: 'INSPECT', interval_km: '', interval_months: '', interval_hours: '', retire_as: '' })
   const [preview, setPreview] = useState<Change | null>(null)
   const [err, setErr] = useState<string | null>(null)
   if (loading && !data) return <Loading />
@@ -1273,6 +1284,9 @@ export function ComponentDetailPage() {
               <Field label="Every … km">
                 <input inputMode="decimal" value={f.interval_km} onChange={(e) => setF({ ...f, interval_km: e.target.value })} />
               </Field>
+              <Field label="or every … hours of riding">
+                <input inputMode="decimal" value={f.interval_hours} onChange={(e) => setF({ ...f, interval_hours: e.target.value })} />
+              </Field>
               <Field label="or every … months">
                 <input inputMode="numeric" value={f.interval_months} onChange={(e) => setF({ ...f, interval_months: e.target.value })} />
               </Field>
@@ -1286,6 +1300,7 @@ export function ComponentDetailPage() {
                     action_code: f.action_code,
                     interval_km: f.interval_km ? Number(f.interval_km) : null,
                     interval_months: f.interval_months ? Number(f.interval_months) : null,
+                    interval_hours: f.interval_hours ? Number(f.interval_hours) : null,
                   })
                 }
               >

@@ -358,6 +358,67 @@ def check_conflicts(session: Session, *, component_id: int, bike_id: int | None,
                        "Use replace, or remove that part first.", installation_id=i.id)
 
 
+def _bike_slot_periods(session: Session, bike_id: int, slots: tuple[str, ...], start: str, end: str | None):
+    return [i for i in session.scalars(select(Installation).where(
+        Installation.bike_id == bike_id, Installation.voided_at.is_(None), Installation.slot.in_(slots)))
+        if _overlaps(start, end, i.installed_utc, i.removed_utc)]
+
+
+def _check_wheels_and_wheelset(session: Session, comp: Component, bike_id: int, start: str, end: str | None) -> None:
+    """A bike carries its wheels either directly or in a wheelset, never both (km would count twice)."""
+    if comp.component_type in WHEEL_TYPES and _bike_slot_periods(session, bike_id, ("WHEELSET",), start, end):
+        raise DomainError(f"This bike has a wheelset then; mount {comp.label} on the wheelset instead")
+    if comp.component_type == "WHEELSET" and _bike_slot_periods(session, bike_id, WHEEL_TYPES, start, end):
+        raise DomainError("This bike has its wheels mounted directly then. Use 'Group wheels into a wheelset' "
+                          "on the bike page to put them into this wheelset.")
+
+
+def wheel_on_bike(session: Session, bike_id: int, slot: str) -> Installation | None:
+    """The open installation of the bike's wheel in a wheel slot, mounted directly or in a wheelset."""
+    direct = session.scalar(select(Installation).where(
+        Installation.bike_id == bike_id, Installation.slot == slot, Installation.removed_utc.is_(None),
+        Installation.voided_at.is_(None)))
+    if direct:
+        return direct
+    ws = session.scalar(select(Installation).where(
+        Installation.bike_id == bike_id, Installation.slot == "WHEELSET", Installation.removed_utc.is_(None),
+        Installation.voided_at.is_(None)))
+    if ws is None:
+        return None
+    return session.scalar(select(Installation).where(
+        Installation.parent_component_id == ws.component_id, Installation.slot == slot,
+        Installation.removed_utc.is_(None), Installation.voided_at.is_(None)))
+
+
+def group_wheels(session: Session, bike_id: int, *, at: str, label: str | None = None,
+                 wheelset_id: int | None = None, work_session_id: int | None = None) -> dict:
+    """Put the wheels mounted directly on a bike into a wheelset (a new one, or an existing spare
+    wheelset). From ``at`` the wheelset counts km; the wheels and everything on them carry on."""
+    bike = get_bike(session, bike_id)
+    wheels = [i for i in session.scalars(select(Installation).where(
+        Installation.bike_id == bike.id, Installation.slot.in_(WHEEL_TYPES), Installation.removed_utc.is_(None),
+        Installation.voided_at.is_(None)))]
+    if not wheels:
+        raise DomainError(f"{bike.name} has no wheels mounted directly")
+    if wheelset_id is not None:
+        ws = get_component(session, wheelset_id)
+        if ws.component_type != "WHEELSET":
+            raise DomainError(f"{ws.label} is not a wheelset")
+    else:
+        ws = create_component(session, component_type="WHEELSET",
+                              label=(label or "").strip() or f"Wheelset ({bike.name})", prior_usage="NEW",
+                              work_session_id=work_session_id)
+    for i in wheels:
+        remove(session, i.component_id, at=at, reason="put into a wheelset", outcome="MOVED", reallocate=False,
+               work_session_id=work_session_id)
+    install(session, ws.id, at=at, bike_id=bike.id, slot="WHEELSET", reallocate=False, work_session_id=work_session_id)
+    for i in wheels:
+        install(session, i.component_id, at=at, parent_component_id=ws.id, slot=i.slot, reallocate=False,
+                work_session_id=work_session_id)
+    _reallocate(session)
+    return {"wheelset_id": ws.id, "label": ws.label, "wheels": [i.component_id for i in wheels]}
+
+
 def install(session: Session, component_id: int, *, at: str, bike_id: int | None = None,
             parent_component_id: int | None = None, slot: str | None = None, until: str | None = None,
             note: str | None = None, reallocate: bool = True, work_session_id: int | None = None) -> Installation:
@@ -388,6 +449,8 @@ def install(session: Session, component_id: int, *, at: str, bike_id: int | None
         raise DomainError("Removal must be after installation")
     check_conflicts(session, component_id=comp.id, bike_id=bike_id, parent_id=parent_component_id, slot=slot,
                     start=w.utc, end=wu.utc if wu else None)
+    if bike_id is not None:
+        _check_wheels_and_wheelset(session, comp, bike_id, w.utc, wu.utc if wu else None)
     inst = Installation(component_id=comp.id, bike_id=bike_id, parent_component_id=parent_component_id, slot=slot,
                         installed_at=w.raw, installed_utc=w.utc, removed_at=wu.raw if wu else None,
                         removed_utc=wu.utc if wu else None, note=note, install_session_id=work_session_id)
@@ -429,14 +492,16 @@ def remove(session: Session, component_id: int, *, at: str, reason: str | None =
 def replace(session: Session, old_component_id: int, *, at: str, new_component_id: int | None = None,
             same_product: bool = False, new: dict | None = None, new_label: str | None = None,
             reason: str | None = None, old_outcome: str | None = None, from_stock_id: int | None = None,
-            work_session_id: int | None = None) -> dict:
+            carry_over: list[int] | None = None, work_session_id: int | None = None) -> dict:
     """Replace an installed part in the same position.
 
     The new part is an existing spare (``new_component_id``), a new physical instance of the same
     product (``same_product``), one unit taken from counted stock (``from_stock_id``: the stock goes
     down by one and the unit gets its own identity), or a new item described by ``new`` (label, product_id, price_cents,
     purchase_date, prior_usage). ``old_outcome`` records what happened to the removed part; it keeps
-    its identity, mileage and history whatever the outcome.
+    its identity, mileage and history whatever the outcome. ``carry_over`` lists parts mounted on the
+    old part that move to the new one (e.g. the quick link onto the new chain, the tire and cassette
+    onto a new wheel); the others stay with the old part.
     """
     old = get_component(session, old_component_id)
     inst = open_installation(session, old_component_id)
@@ -475,10 +540,22 @@ def replace(session: Session, old_component_id: int, *, at: str, new_component_i
             raise DomainError(f"Unknown fields for the new item: {', '.join(spec)}")
     else:
         raise DomainError("Pick a spare, 'replace with the same product', or describe the new item")
+    children = {c.component_id: c for c in session.scalars(select(Installation).where(
+        Installation.parent_component_id == old.id, Installation.removed_utc.is_(None),
+        Installation.voided_at.is_(None)))}
+    unknown = set(carry_over or []) - set(children)
+    if unknown:
+        raise DomainError("Only parts mounted on the old part can be moved to the new one")
+    for cid in carry_over or []:
+        remove(session, cid, at=at, reason=f"moved from {old.label} to {new_comp.label}", outcome="MOVED",
+               reallocate=False, work_session_id=work_session_id)
     remove(session, old.id, at=at, reason=reason or "replaced", outcome=outcome, reallocate=False,
            work_session_id=work_session_id)
     new_inst = install(session, new_comp.id, at=at, bike_id=inst.bike_id, parent_component_id=inst.parent_component_id,
                        slot=inst.slot, reallocate=False, work_session_id=work_session_id)
+    for cid in carry_over or []:
+        install(session, cid, at=at, parent_component_id=new_comp.id, slot=children[cid].slot, reallocate=False,
+                work_session_id=work_session_id)
     _reallocate(session)
     return {"removed_installation_id": inst.id, "installation_id": new_inst.id, "new_component_id": new_comp.id,
             "new_label": new_comp.label, "old_outcome": outcome}

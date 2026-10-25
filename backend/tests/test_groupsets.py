@@ -44,7 +44,7 @@ def test_whole_groupset_installed_on_bike_with_wheels(session):
     front, rear = wheels(session, b)
     res = run_import(session, b, options={"gearing": "50-34", "crank_length": "170", "cassette": "11-30"})
     rows = by_key(res)
-    assert res["counts"] == {"INSTALL": 17, "REPLACE": 0, "SPARE": 0}   # every default part, wires left out
+    assert res["counts"] == {"INSTALL": 19, "REPLACE": 0, "SPARE": 0}   # every default part (incl. 2 pulley wheels), wires left out
     assert "wires" not in rows
     setup = {(r["slot"], r["label"]) for r in inv.bike_setup(session, b)}
     assert ("CRANKSET", "Ultegra crankset (TIME NXR)") in setup

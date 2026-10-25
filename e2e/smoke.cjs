@@ -306,6 +306,28 @@ async function sheetButton(page, name) {
   await page.locator('.card').filter({ hasText: 'Bought as a bundle' }).getByText('No bundles').waitFor()
   check('undoing the import voids the bundle', true)
 
+  // incidents and wet/dry on a ride; incidents list; wheels grouped into a wheelset
+  await page.goto(BASE + '#/rides')
+  await page.locator('table.rides tbody tr').filter({ hasText: 'TIME NXR' }).first().locator('button.linklike').click()
+  await page.locator('.sheet').getByRole('button', { name: 'Wet' }).click()
+  await page.locator('.sheet').getByRole('button', { name: 'Wet', pressed: true }).waitFor()
+  await page.locator('.sheet').getByLabel('Incident type').selectOption('FLAT')
+  const partOptions = await page.locator('.sheet').getByLabel('Affected part').locator('option').allInnerTexts()
+  const tireOption = partOptions.find((o) => /tire|Tire/.test(o)) ?? partOptions[0]
+  await page.locator('.sheet').getByLabel('Affected part').selectOption({ label: tireOption })
+  await page.locator('.sheet').getByLabel('Incident details').fill('glass shard')
+  await page.locator('.sheet').getByRole('button', { name: 'Log incident' }).click()
+  await page.locator('.sheet .incidents li').filter({ hasText: 'glass shard' }).waitFor()
+  check('incident logged on the ride with the affected part', true, tireOption)
+  await page.keyboard.press('Escape')
+  await page.goto(BASE + '#/rides')
+  const wetRow = await page.locator('table.rides tbody tr').filter({ hasText: '1 incident' }).first().innerText()
+  check('ride list shows wet and the incident', /wet/.test(wetRow) && /1 incident/.test(wetRow), wetRow.replace(/\s+/g, ' ').slice(0, 120))
+  await page.getByRole('tab', { name: 'Incidents' }).click()
+  await page.locator('table.incidents-table tr').filter({ hasText: 'flat tire' }).waitFor()
+  check('Incidents tab lists the flat', true)
+  await page.screenshot({ path: path.join(OUT, '09c-incidents.png'), fullPage: true })
+
   // JSON product import: check, see errors per file, import valid file, re-import changes nothing
   await page.goto(BASE + '#/inventory')
   await page.getByRole('button', { name: 'Import JSON' }).click()
@@ -402,6 +424,20 @@ async function sheetButton(page, name) {
   const bikeLog = await bikeLogCard.innerText()
   check('bike change log lists purchase price and installed parts', /purchase price/.test(bikeLog) && /Zipp 303 front/.test(bikeLog), bikeLog.slice(0, 200).replace(/\s+/g, ' '))
   await page.screenshot({ path: path.join(OUT, '11-change-log.png'), fullPage: true })
+
+  await page.goto(BASE + '#/bikes')
+  await page.getByRole('link', { name: /TIME NXR/ }).click()
+  await page.locator('.list.setup li').filter({ hasText: 'Zipp 303 front' }).waitFor()
+  const groupBtn = page.getByRole('button', { name: 'Group wheels into a wheelset' })
+  if (await groupBtn.count()) {
+    await groupBtn.click()
+    await page.locator('.sheet').getByLabel('Wheelset name').fill('Test wheelset')
+    await sheetButton(page, 'Group wheels')
+    await page.locator('.list.setup').getByRole('link', { name: 'Test wheelset' }).waitFor()
+    check('wheels grouped into a wheelset', (await groupBtn.count()) === 0)
+  } else {
+    check('wheels grouped into a wheelset', false, 'button not shown')
+  }
 
   // headset and power meter exist as part types
   await page.goto(BASE + '#/inventory')

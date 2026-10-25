@@ -139,6 +139,16 @@ def bike_usage(session: Session, bike: Bike) -> dict:
     }
 
 
+def hours_since(session: Session, component_id: int, since_utc: str | None) -> tuple[float, int]:
+    """Ride time (hours) counted on a part since an instant, and how many of those rides have no time."""
+    q = select(UsageContribution.duration_s).where(
+        UsageContribution.component_id == component_id, UsageContribution.state == "COUNTED")
+    if since_utc:
+        q = q.where(UsageContribution.sort_utc >= since_utc)
+    durations = list(session.scalars(q))
+    return round(sum(d for d in durations if d) / 3600, 2), sum(1 for d in durations if not d)
+
+
 def usage_since(session: Session, component_id: int, since_utc: str | None) -> float:
     q = select(func.sum(UsageContribution.km)).where(
         UsageContribution.component_id == component_id, UsageContribution.state == "COUNTED")

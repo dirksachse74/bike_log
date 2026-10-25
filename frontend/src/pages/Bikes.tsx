@@ -257,7 +257,7 @@ export function BikeDetailPage() {
   const { id } = useParams()
   const { toast } = useApp()
   const { data, error, loading, reload } = useApi<BikeDetail>(`/bikes/${id}`)
-  const [sheet, setSheet] = useState<null | { kind: 'install' } | { kind: 'groupset' } | { kind: 'costs' } | { kind: 'part'; row: SetupRow } | { kind: 'log' }>(null)
+  const [sheet, setSheet] = useState<null | { kind: 'install' } | { kind: 'groupset' } | { kind: 'wheelset' } | { kind: 'costs' } | { kind: 'part'; row: SetupRow } | { kind: 'log' }>(null)
   if (loading && !data) return <Loading />
   if (error && !data) return <ErrorBox error={error} onRetry={reload} />
   if (!data) return null
@@ -308,7 +308,16 @@ export function BikeDetailPage() {
         )}
       </Card>
       <CostCard bike={data} onEdit={() => setSheet({ kind: 'costs' })} />
-      <Card title="Installed now">
+      <Card
+        title="Installed now"
+        actions={
+          data.setup.some((s) => s.depth === 0 && (s.component_type === 'FRONT_WHEEL' || s.component_type === 'REAR_WHEEL')) ? (
+            <button className="btn btn-small" onClick={() => setSheet({ kind: 'wheelset' })}>
+              Group wheels into a wheelset
+            </button>
+          ) : undefined
+        }
+      >
         {data.setup.length === 0 ? (
           <Empty title="Nothing installed yet">Install parts to track their usage.</Empty>
         ) : (
@@ -416,6 +425,11 @@ export function BikeDetailPage() {
               reload()
             }}
           />
+        </Sheet>
+      )}
+      {sheet?.kind === 'wheelset' && (
+        <Sheet title={`Group wheels into a wheelset · ${data.name}`} onClose={() => setSheet(null)}>
+          <WheelsetForm bikeId={data.id} onDone={done} />
         </Sheet>
       )}
       {sheet?.kind === 'part' && (
@@ -536,6 +550,49 @@ function PurchaseForm({ bike, onDone }: { bike: Bike; onDone: () => void }) {
       <div className="form-actions">
         <button className="btn btn-primary" onClick={save}>
           Save
+        </button>
+      </div>
+    </div>
+  )
+}
+
+function WheelsetForm({ bikeId, onDone }: { bikeId: number; onDone: (c: Change) => void }) {
+  const [f, setF] = useState({ label: '', at: today() })
+  const [preview, setPreview] = useState<Change | null>(null)
+  const [err, setErr] = useState<string | null>(null)
+  const [opId] = useState(newOpId)
+  async function run(dry: boolean) {
+    setErr(null)
+    try {
+      const r = await api.post<OpResult<unknown>>(`/bikes/${bikeId}/group-wheels${dry ? '?dry_run=true' : ''}`, { at: f.at, label: f.label || null }, dry ? undefined : opId)
+      if (dry) setPreview(r.change)
+      else onDone(r.change)
+    } catch (e) {
+      setErr((e as Error).message)
+    }
+  }
+  return (
+    <div className="form">
+      <p className="small muted">
+        The front and rear wheel go into one wheelset with everything on them (tires, tubes, rotors, cassette, sensors). Each part keeps its own km. From then on you can move
+        the whole wheelset to another bike in one step. The wheelset itself counts km from this date; add its km from before on its page if you know them.
+      </p>
+      <div className="row">
+        <Field label="Wheelset name">
+          <input value={f.label} onChange={(e) => setF({ ...f, label: e.target.value })} placeholder="e.g. Reynolds AR58" />
+        </Field>
+        <Field label="From">
+          <input type="date" value={f.at} onChange={(e) => setF({ ...f, at: e.target.value })} />
+        </Field>
+      </div>
+      <ChangeNotice change={preview} />
+      <FormError error={err} />
+      <div className="form-actions">
+        <button className="btn" onClick={() => run(true)}>
+          Preview
+        </button>
+        <button className="btn btn-primary" onClick={() => run(false)}>
+          Group wheels
         </button>
       </div>
     </div>

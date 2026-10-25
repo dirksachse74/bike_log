@@ -65,8 +65,15 @@ export default function Journal({ bikeId, componentId, className = '' }: { bikeI
               <span className="muted small journal-date">{when(r.on)}</span>
               <span className="journal-text">
                 {r.kind === 'ISSUE' && <Tag tone={r.open_issue ? 'warn' : 'good'}>{r.open_issue ? 'open issue' : `resolved ${when(r.resolved_on)}`}</Tag>}
-                {r.kind === 'MAINTENANCE' && <Tag tone="info">maintenance</Tag>}{' '}
-                {bikeId && r.component_label && r.component_id && (
+                {r.kind === 'MAINTENANCE' && <Tag tone="info">maintenance</Tag>}
+                {r.incident_label && <Tag tone="bad">{r.incident_label.toLowerCase()}</Tag>}{' '}
+                {r.ride_id && (
+                  <>
+                    <Link to={`/rides?open=${r.ride_id}`}>{r.ride_label}</Link>
+                    {r.ride_conditions === 'WET' ? ' (wet)' : ''}:{' '}
+                  </>
+                )}
+                {(bikeId || r.via_child) && r.component_label && r.component_id && (
                   <>
                     <Link to={`/inventory/${r.component_id}`}>{r.component_label}</Link>:{' '}
                   </>

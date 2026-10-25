@@ -8,12 +8,12 @@ from __future__ import annotations
 
 import json
 
-from sqlalchemy import delete, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
-from bikelog.catalog import COMPONENT_TYPES
+from bikelog.catalog import COMPONENT_TYPES, RIDE_CONDITIONS
 from bikelog.models import (
-    Bike, Component, Ride, RideEquipment, RideFlag, RideOverride, RideSource, UsageContribution, UsageProfile,
+    Bike, Component, JournalEntry, Ride, RideEquipment, RideFlag, RideOverride, RideSource, UsageContribution, UsageProfile,
 )
 from bikelog.services import allocation, settings
 from bikelog.services.errors import DomainError, NotFound
@@ -22,7 +22,7 @@ from bikelog.timeutil import parse_when
 
 KM_PER_MILE = 1.609344
 EDITABLE_FIELDS = ("name", "when", "distance_km", "duration_s", "bike_id", "sport_type", "usage_profile_code",
-                   "assignment_uncertain", "uncertainty_note", "notes")
+                   "assignment_uncertain", "uncertainty_note", "notes", "conditions")
 # fields an import may set; anything in ride_override wins over these
 SOURCE_FIELDS = ("name", "when", "distance_km", "duration_s", "bike_id", "sport_type", "usage_profile_code")
 
@@ -86,6 +86,10 @@ def _apply_fields(session: Session, ride: Ride, values: dict) -> None:
             setattr(ride, k, values[k])
     if "assignment_uncertain" in values:
         ride.assignment_uncertain = bool(values["assignment_uncertain"])
+    if "conditions" in values:
+        if values["conditions"] is not None and values["conditions"] not in RIDE_CONDITIONS:
+            raise DomainError(f"conditions must be one of {', '.join(RIDE_CONDITIONS)} (or empty)")
+        ride.conditions = values["conditions"]
 
 
 def _allocate(session: Session, ride: Ride) -> None:
@@ -96,7 +100,7 @@ def _allocate(session: Session, ride: Ride) -> None:
 def add_manual_ride(session: Session, *, bike_id: int | None, when: str, distance: float | None, unit: str = "km",
                     duration_s: int | None = None, name: str | None = None, sport_type: str = "Ride",
                     usage_profile_code: str | None = None, assignment_uncertain: bool = False,
-                    uncertainty_note: str | None = None, notes: str | None = None,
+                    uncertainty_note: str | None = None, notes: str | None = None, conditions: str | None = None,
                     equipment: dict[str, int | None] | None = None) -> Ride:
     """Bike + date + distance is enough. Date-only rides get no invented clock time."""
     if bike_id is None and not assignment_uncertain:
@@ -104,7 +108,8 @@ def add_manual_ride(session: Session, *, bike_id: int | None, when: str, distanc
     ride = Ride(source_kind="MANUAL", sport_type=sport_type or "Ride")
     values = {"when": when, "distance_km": to_km(distance, unit), "duration_s": duration_s, "bike_id": bike_id,
               "name": name, "assignment_uncertain": assignment_uncertain, "uncertainty_note": uncertainty_note,
-              "notes": notes, "usage_profile_code": usage_profile_code or _default_profile(session, sport_type)}
+              "notes": notes, "conditions": conditions,
+              "usage_profile_code": usage_profile_code or _default_profile(session, sport_type)}
     _apply_fields(session, ride, values)
     session.add(ride)
     session.flush()
@@ -227,7 +232,13 @@ def possible_duplicates(session: Session, ride: Ride) -> list[int]:
     return [o.id for o in others if abs(o.distance_km - ride.distance_km) <= max(0.5, pct * ride.distance_km)]
 
 
-def ride_row(session: Session, ride: Ride, bikes: dict[int, str] | None = None) -> dict:
+def _incident_count(session: Session, ride_id: int) -> int:
+    return session.scalar(select(func.count(JournalEntry.id)).where(
+        JournalEntry.ride_id == ride_id, JournalEntry.voided_at.is_(None))) or 0
+
+
+def ride_row(session: Session, ride: Ride, bikes: dict[int, str] | None = None,
+             incident_counts: dict[int, int] | None = None) -> dict:
     bikes = bikes if bikes is not None else dict(session.execute(select(Bike.id, Bike.name)).all())
     flags = [{"code": f.code, "slot": f.slot, "detail": f.detail}
              for f in session.scalars(select(RideFlag).where(RideFlag.ride_id == ride.id))]
@@ -249,6 +260,8 @@ def ride_row(session: Session, ride: Ride, bikes: dict[int, str] | None = None) 
         "source_kind": ride.source_kind, "status": ride.status, "inclusion": ride.inclusion,
         "exclusion_reason": ride.exclusion_reason, "assignment_uncertain": ride.assignment_uncertain,
         "uncertainty_note": ride.uncertainty_note, "notes": ride.notes, "flags": flags,
+        "conditions": ride.conditions, "incidents": incident_counts.get(ride.id, 0) if incident_counts is not None
+        else _incident_count(session, ride.id),
         "overridden_fields": overridden,
         "removed": ride.inclusion == "EXCLUDED" or ride.status != "ACTIVE",
         "bike_overridden": "bike_id" in overridden,
@@ -286,7 +299,9 @@ def list_rides(session: Session, *, bike_id: int | None = None, include_excluded
         q = q.where((Ride.inclusion == "EXCLUDED") | (Ride.status != "ACTIVE"))
     q = q.order_by(Ride.sort_utc.desc(), Ride.id.desc()).limit(limit).offset(offset)
     bikes = dict(session.execute(select(Bike.id, Bike.name)).all())
-    rows = [ride_row(session, r, bikes) for r in session.scalars(q)]
+    counts = dict(session.execute(select(JournalEntry.ride_id, func.count(JournalEntry.id)).where(
+        JournalEntry.ride_id.is_not(None), JournalEntry.voided_at.is_(None)).group_by(JournalEntry.ride_id)).all())
+    rows = [ride_row(session, r, bikes, counts) for r in session.scalars(q)]
     if flagged_only:
         rows = [r for r in rows if r["flags"]]
     return rows
