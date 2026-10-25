@@ -225,6 +225,28 @@ async function sheetButton(page, name) {
   check('undo takes the groupset price out of the running cost', /parts €0\.00/.test(costAfter))
   check('undo removes the whole groupset again', (await page.locator('.list.setup').getByRole('link', { name: 'Ultegra crankset (TIME NXR)' }).count()) === 0)
 
+  // JSON product import: check, see errors per file, import valid file, re-import changes nothing
+  await page.goto(BASE + '#/inventory')
+  await page.getByRole('button', { name: 'Import JSON' }).click()
+  const fixtures = path.join(__dirname, 'fixtures')
+  await page.locator('.sheet').getByLabel('JSON files').setInputFiles([path.join(fixtures, 'products-ok.json'), path.join(fixtures, 'products-bad.json')])
+  await sheetButton(page, 'Check files')
+  await page.locator('.sheet .import-results li').filter({ hasText: 'products-bad.json' }).getByText('file.model: required text').waitFor()
+  const okRow = await page.locator('.sheet .import-results li').filter({ hasText: 'products-ok.json' }).innerText()
+  check('JSON check lists errors per file and accepts the valid one', /ready: 2 new/.test(okRow) && /read as a number/.test(okRow), okRow.replace(/\s+/g, ' ').slice(0, 140))
+  await page.locator('.sheet').getByRole('button', { name: /^Import/ }).click()
+  await page.locator('.toast').filter({ hasText: '1 of 1 file imported: 2 new' }).waitFor()
+  await page.getByRole('button', { name: 'Import JSON' }).click()
+  await page.locator('.sheet').getByLabel('JSON files').setInputFiles([path.join(fixtures, 'products-ok.json')])
+  await sheetButton(page, 'Check files')
+  const again = await page.locator('.sheet .import-results li').innerText()
+  check('re-importing the same JSON changes nothing', /0 new · 0 updated · 2 unchanged/.test(again), again.replace(/\s+/g, ' ').slice(0, 120))
+  await page.screenshot({ path: path.join(OUT, '11-json-import.png'), fullPage: true })
+  await page.keyboard.press('Escape')
+  await page.goto(BASE + '#/bikes')
+  await page.getByRole('link', { name: /TIME NXR/ }).click()
+  await page.getByRole('heading', { name: 'TIME NXR' }).waitFor()
+
   // purchase price and journal
   await page.locator('.card').filter({ hasText: 'running cost' }).getByRole('button', { name: 'Purchase price' }).click()
   await page.locator('.sheet').getByLabel('Purchase price').fill('3499')

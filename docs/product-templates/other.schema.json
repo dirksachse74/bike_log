@@ -1,0 +1,121 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "bikelog/product-templates/other.schema.json",
+  "title": "Bike Log product: Other part",
+  "description": "One product (what you can buy) and optionally physical items you own. Only component_type, maker and model are required. Unlisted spec keys are imported too.",
+  "type": "object",
+  "required": [
+    "component_type",
+    "maker",
+    "model"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "format": {
+      "const": "bikelog.product.v1"
+    },
+    "component_type": {
+      "const": "OTHER"
+    },
+    "maker": {
+      "type": "string",
+      "minLength": 1
+    },
+    "model": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Model name or number, unique per maker"
+    },
+    "list_price": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Reference price in euro (not money spent)"
+    },
+    "currency": {
+      "const": "EUR"
+    },
+    "specs": {
+      "type": "object",
+      "properties": {
+        "weight_g": {
+          "type": "number",
+          "description": "Weight (g)"
+        },
+        "color": {
+          "type": "string",
+          "description": "Colour / finish"
+        },
+        "material": {
+          "type": "string",
+          "description": "Main material"
+        }
+      },
+      "additionalProperties": true
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "url": {
+          "type": "string"
+        },
+        "retrieved_at": {
+          "type": "string",
+          "format": "date"
+        },
+        "tool": {
+          "type": "string",
+          "description": "Script name and version"
+        }
+      }
+    },
+    "verified": {
+      "type": "boolean",
+      "description": "true only if checked against the maker's documentation"
+    },
+    "notes": {
+      "type": "string"
+    },
+    "items": {
+      "type": "array",
+      "description": "Physical parts you own of this product (added as spares)",
+      "items": {
+        "type": "object",
+        "required": [
+          "label"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "label": {
+            "type": "string",
+            "minLength": 1
+          },
+          "price": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Price paid in euro"
+          },
+          "purchase_date": {
+            "type": "string",
+            "format": "date"
+          },
+          "prior_usage": {
+            "enum": [
+              "NEW",
+              "UNKNOWN"
+            ]
+          },
+          "serial_number": {
+            "type": "string"
+          },
+          "storage_location": {
+            "type": "string"
+          },
+          "notes": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

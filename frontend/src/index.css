@@ -809,3 +809,13 @@ label.chip {
     flex-wrap: wrap;
   }
 }
+.import-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  margin-top: 0.3rem;
+  overflow-wrap: anywhere;
+}
+.bad-text {
+  color: var(--due);
+}

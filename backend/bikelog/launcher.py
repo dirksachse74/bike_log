@@ -7,6 +7,7 @@ Demo mode (--demo) uses a separate "demo" data directory with sample data and ne
 from __future__ import annotations
 
 import argparse
+import json
 import logging
 import os
 import socket
@@ -94,9 +95,16 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--strava-rescan", action="store_true", help="with --strava-sync: re-read all rides since the start date")
     ap.add_argument("--strava-disconnect", action="store_true",
                     help="revoke Strava access and delete rides imported from the Strava API, then exit")
+    ap.add_argument("--import-products", type=Path, nargs="+", metavar="FILE",
+                    help="import product JSON files (see docs/product-import.md) and exit")
+    ap.add_argument("--dry-run", action="store_true", help="with --import-products: check only, write nothing")
+    ap.add_argument("--write-product-templates", type=Path, metavar="DIR",
+                    help="write the JSON schema and example for every part type into DIR and exit")
     ap.add_argument("--version", action="version", version=f"Bike Log {__version__} (schema {head_revision()})")
     args = ap.parse_args(argv)
 
+    if args.write_product_templates:
+        return _write_templates(args.write_product_templates)
     root = args.data_dir.expanduser().resolve() if args.data_dir else default_data_dir()
     if args.demo:
         root = root / "demo"
@@ -109,7 +117,7 @@ def main(argv: list[str] | None = None) -> int:
         lock.acquire()
     except AlreadyRunning as e:
         url = e.info.get("url")
-        if args.backup or args.export is not None or args.restore or _strava_cmd(args):
+        if args.backup or args.export is not None or args.restore or _strava_cmd(args) or args.import_products:
             print("Bike Log is running; close it first.", file=sys.stderr)
             return 2
         print(f"Bike Log is already running{' at ' + url if url else ''}.")
@@ -135,6 +143,8 @@ def main(argv: list[str] | None = None) -> int:
             return 0
         if _strava_cmd(args):
             return _strava(args, paths, factory)
+        if args.import_products:
+            return _import_products(args.import_products, factory, dry_run=args.dry_run, paths=paths)
         _daily_backup(paths)
 
         import uvicorn
@@ -153,6 +163,47 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     finally:
         lock.release()
+
+
+def _write_templates(folder: Path) -> int:
+    from bikelog.services import product_import
+    folder.mkdir(parents=True, exist_ok=True)
+    for t in product_import.templates():
+        code = t["component_type"]
+        for kind, fn in (("schema", product_import.schema), ("example", product_import.example)):
+            (folder / f"{code.lower()}.{kind}.json").write_text(
+                json.dumps(fn(code), indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    (folder / "AGENT_INSTRUCTIONS.md").write_text(product_import.agent_instructions(), encoding="utf-8")
+    print(f"Templates written to {folder}")
+    return 0
+
+
+def _import_products(files: list[Path], factory, *, dry_run: bool, paths: DataPaths) -> int:
+    """Import product JSON files one by one; each file is all-or-nothing. Exit code 1 if any file failed."""
+    from bikelog.services import product_import
+    from bikelog.services.errors import DomainError
+    if not dry_run:
+        print(f"Backup written: {backup_database(paths, 'pre-product-import')}")
+    failed = 0
+    for f in files:
+        try:
+            report = product_import.run_import(factory, f.read_bytes(), dry_run=dry_run)
+        except (OSError, DomainError) as e:
+            print(f"{f}: {e}", file=sys.stderr)
+            failed += 1
+            continue
+        for w in report["warnings"]:
+            print(f"{f}: warning: {w}")
+        if not report["ok"]:
+            failed += 1
+            for e in report["errors"]:
+                print(f"{f}: error: {e}", file=sys.stderr)
+            print(f"{f}: nothing imported", file=sys.stderr)
+            continue
+        c = report["counts"]
+        print(f"{f}: {'check only, ' if dry_run else ''}{c['CREATED']} new, {c['UPDATED']} updated, "
+              f"{c['UNCHANGED']} unchanged products; {c['ITEMS_CREATED']} new and {c['ITEMS_EXISTING']} existing items")
+    return 1 if failed else 0
 
 
 def _strava_cmd(args) -> bool:

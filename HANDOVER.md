@@ -20,6 +20,8 @@ State as of 2026-10-25 (latest commit: see `git log -1` on the branch).
 - **Costs**: purchase price per bike (initial cost) and running cost added up from part prices, stock
   used and service costs, counted once; shown on the bike list and the bike page with cost per km.
 - **Journal**: dated notes and issues on every bike and part, with maintenance notes in the same list.
+- **JSON product import**: products and spare parts from script-made JSON files (Inventory → Import JSON
+  or `--import-products`), one template per part type (docs/product-import.md).
 - **Imports**: CSV (generic and Strava export), resumable and repeatable. Strava API: connect and sync
   commands (`BikeLog.exe --strava-connect`, `--strava-sync`), tested against a fake Strava only (docs/strava.md).
 - **UI**: Overview, Bikes, Maintenance, Rides, Inventory, Settings; desktop and phone layouts;
@@ -38,13 +40,14 @@ Options: `--no-browser`, `--port N`, `--data-dir PATH`, `--backup`, `--export`, 
 ## Checks actually run (final run on this commit)
 | Check | Result |
 |---|---|
-| Backend tests `pytest -q backend/tests` | 95 passed |
+| Backend tests `pytest -q backend/tests` | 102 passed |
 | Required tests: 260 km liquid wax · liquid wax keeps hot wax at 500 km · chain swap · edit/remove/restore once · reimport no duplicates · bleed keeps fluid deadline · DB upgrade keeps records | all pass (test_chain_maintenance, test_rides, test_imports, test_brakes_rules, test_migrations_backup) |
 | Dirk's replacement examples (tube, patch, bar tape, rewrap, tire move, pads 3→2 + undo, stock modes) | pass (test_replacement_stock.py, test_api.py) |
 | Frontend `tsc -b`, `eslint .`, `vite build` | pass |
-| Browser automation `e2e/smoke.cjs` against the real app (desktop 1280×900 and phone 390×844) | 39/39 (one earlier run failed once on a timing issue, reruns passed) |
+| Browser automation `e2e/smoke.cjs` against the real app (desktop 1280×900 and phone 390×844) | 41/41 (one earlier run failed once on a timing issue, reruns passed) |
 | Groupset import: placement, occupied positions, replace, undo, product reuse, every template option | pass (test_groupsets.py) |
 | Costs counted once (moves, stock, services, undo) and journal (issues, voiding, no deletes) | pass (test_costs_journal.py) |
+| JSON import: templates valid and in sync, all errors listed, idempotent, CLI exit codes | pass (test_product_import.py) |
 | Restart persistence (dev server and frozen build) | data identical after a new process |
 | Real upgrade 0002→0003 of a database made by the previous version | records kept, pre-upgrade backup written |
 | PyInstaller build on Linux, run with a cleared environment | builds, starts, persists, upgrades |

@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { api, newOpId } from '../api'
 import Journal from '../components/Journal'
 import LogMaintenance from '../components/LogMaintenance'
+import ProductImport from '../components/ProductImport'
 import { DispositionForm, MoveForm, OutcomeChoice, RemoveForm, ReplaceForm } from '../components/PartChange'
 import TaskList from '../components/TaskList'
 import { Card, ChangeNotice, Empty, ErrorBox, Field, FormError, Loading, Sheet, Tag } from '../components/ui'
@@ -601,7 +602,7 @@ export default function InventoryPage() {
   const { toast } = useApp()
   const [params, setParams] = useSearchParams()
   const tab = params.get('tab') ?? 'available'
-  const [sheet, setSheet] = useState<null | 'part' | 'stock' | 'supply'>(null)
+  const [sheet, setSheet] = useState<null | 'part' | 'stock' | 'supply' | 'json'>(null)
   const nav = useNavigate()
   const view = useApi<InventoryView>(['chains', 'all'].includes(tab) ? null : '/inventory')
   const parts = useApi<ComponentSummary[]>(tab === 'all' ? '/components' : null)
@@ -619,6 +620,9 @@ export default function InventoryPage() {
         <>
           <button className="btn btn-primary" onClick={() => setSheet('part')}>
             Add part
+          </button>
+          <button className="btn" onClick={() => setSheet('json')}>
+            Import JSON
           </button>
           <button className="btn" onClick={() => setSheet('stock')}>
             Add spare stock
@@ -764,6 +768,11 @@ export default function InventoryPage() {
       {sheet === 'part' && (
         <Sheet title="Add part" onClose={() => setSheet(null)}>
           <ComponentForm presetType={tab === 'chains' ? 'CHAIN' : undefined} onSaved={(c) => nav(`/inventory/${c.id}`)} />
+        </Sheet>
+      )}
+      {sheet === 'json' && (
+        <Sheet title="Import products from JSON" onClose={() => setSheet(null)}>
+          <ProductImport onDone={changed} />
         </Sheet>
       )}
       {sheet === 'stock' && (

@@ -29,7 +29,7 @@ from bikelog.migrate import head_revision
 from bikelog.models import Bike, Component, Product, ServiceRule, UsageProfile
 from bikelog.paths import DataPaths, resource_root
 from bikelog.services import costs as costs_svc
-from bikelog.services import demo, groupsets, imports, journal, spares, stock
+from bikelog.services import demo, groupsets, imports, journal, product_import, spares, stock
 from bikelog.services import worksessions as ws_svc
 from bikelog.services import inventory as inv
 from bikelog.services import maintenance as m
@@ -887,6 +887,33 @@ def create_app(factory: sessionmaker[Session], paths: DataPaths, *, token: str |
             raise DomainError("File too large (max 20 MB)")
         from starlette.concurrency import run_in_threadpool
         return await run_in_threadpool(imports.run_csv_import, factory, content, file_name=file_name)
+
+    @app.get("/api/product-templates")
+    def product_templates():
+        return product_import.templates()
+
+    @app.get("/api/product-templates/instructions.md", response_class=PlainTextResponse)
+    def product_template_instructions():
+        return PlainTextResponse(product_import.agent_instructions(), media_type="text/markdown",
+                                 headers={"Content-Disposition": 'attachment; filename="bikelog-import-instructions.md"'})
+
+    @app.get("/api/product-templates/{component_type}/{kind}")
+    def product_template(component_type: str, kind: str):
+        if kind not in ("schema", "example"):
+            raise DomainError("Ask for 'schema' or 'example'")
+        doc = (product_import.schema if kind == "schema" else product_import.example)(component_type)
+        name = f"{component_type.lower()}.{kind}.json"
+        return JSONResponse(doc, headers={"Content-Disposition": f'attachment; filename="{name}"'})
+
+    @app.post("/api/imports/products")
+    async def import_products(request: Request, dry_run: bool = False):
+        content = await request.body()
+        if not content:
+            raise DomainError("Empty upload")
+        if len(content) > 5_000_000:
+            raise DomainError("File too large (max 5 MB)")
+        from starlette.concurrency import run_in_threadpool
+        return await run_in_threadpool(product_import.run_import, factory, content, dry_run=dry_run)
 
     @app.get("/api/imports")
     def import_batches(s: Session = Depends(db)):

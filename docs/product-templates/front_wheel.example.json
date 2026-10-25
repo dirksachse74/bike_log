@@ -1,0 +1,34 @@
+{
+  "format": "bikelog.product.v1",
+  "component_type": "FRONT_WHEEL",
+  "maker": "Example maker",
+  "model": "Example front wheel 1",
+  "list_price": 49.9,
+  "currency": "EUR",
+  "specs": {
+    "rim_depth_mm": 45,
+    "internal_width_mm": 21,
+    "tubeless": true,
+    "axle": "12x100 thru axle",
+    "brake": "disc",
+    "rotor_mount": "centerlock",
+    "spokes": 24,
+    "weight_g": 250
+  },
+  "source": {
+    "url": "https://example.com/product-page",
+    "retrieved_at": "2026-10-25",
+    "tool": "my-scraper 1.0"
+  },
+  "verified": false,
+  "notes": "Optional free text",
+  "items": [
+    {
+      "label": "Spare front wheel 1",
+      "price": 44.9,
+      "purchase_date": "2026-10-20",
+      "prior_usage": "NEW",
+      "storage_location": "Workshop drawer"
+    }
+  ]
+}

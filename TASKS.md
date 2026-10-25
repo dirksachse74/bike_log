@@ -39,6 +39,9 @@ Status key: ✅ done and tested · 🟡 done, not verified where it matters · �
 - ✅ Journal with notes and issues on bikes and parts, maintenance notes included.
 - 💡 Costs report across bikes per year; editing product reference prices in the UI (API exists).
 
+## P6c JSON product import
+- ✅ Templates per part type, importer (app + command line), instructions for script authors/AI agents.
+
 ## P7 Imports and Strava
 - ✅ CSV import (generic + Strava export), resumable, start date, corrections and exclusions kept.
 - 🟡 Strava: `--strava-connect` / `--strava-sync` commands done and tested against a fake Strava;

@@ -99,6 +99,15 @@ you disagree. Dates are 2026-10-24 unless noted.
     (symptom, work done, notes) appear in the same journal, read-only, so there is one place to read what
     happened. Entries can be edited or removed (voided, never deleted).
 
+## JSON product import (2026-10-25)
+36. **One template per part type**, generated from `product_specs.py` (JSON Schema + example + agent
+    instructions); a test keeps the shipped files in sync. Spec fields are optional; unknown spec keys are
+    kept and reported, so a template never blocks useful data.
+37. **Files are all-or-nothing** with every error listed by path. Products are matched by type + maker +
+    model: re-import is a no-op, changed values update (file wins, app-only keys kept). Items are spares
+    matched by label. Only euro prices; scraped data is unverified unless the file says `verified: true`.
+38. The command-line import writes a backup first and needs the app closed, like the other commands.
+
 ## Repository
 27. Pushed only to the feature branch `claude/project-thread-6y3mmh` of the private repository. Demo
     data uses fictional Strava gear ids.
