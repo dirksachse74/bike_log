@@ -2,10 +2,12 @@ import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { api, newOpId } from '../api'
 import GroupsetImport from '../components/GroupsetImport'
+import ChangeLog from '../components/ChangeLog'
 import Journal from '../components/Journal'
 import LogMaintenance from '../components/LogMaintenance'
 import { MoveForm, RemoveForm, ReplaceForm } from '../components/PartChange'
 import TaskList from '../components/TaskList'
+import { TireSetupSelect } from '../components/TireSetup'
 import { Card, ChangeNotice, Empty, ErrorBox, Field, FormError, Loading, Sheet, StatusBadge, Tag } from '../components/ui'
 import { useApp } from '../context'
 import { centsInput, certaintyLabel, euro, km, slotName, toCents, today, usageText, when } from '../format'
@@ -315,6 +317,7 @@ export function BikeDetailPage() {
                 <span className="muted small">{slotName(s.slot)}</span>
                 <Link to={`/inventory/${s.component_id}`}>{s.label}</Link>
                 <span className="muted small">since {when(s.since)}</span>
+                {(s.component_type === 'FRONT_WHEEL' || s.component_type === 'REAR_WHEEL') && <TireSetupSelect wheelId={s.component_id} value={s.tire_setup} onSaved={reload} />}
                 <button className="btn btn-small" onClick={() => setSheet({ kind: 'part', row: s })}>
                   Change
                 </button>
@@ -357,6 +360,7 @@ export function BikeDetailPage() {
         )}
       </Card>
       <Journal bikeId={data.id} className="span-2" />
+      <ChangeLog bikeId={data.id} refresh={data} className="span-2" />
       <Card title="Installation history" className="span-2">
         <table className="table">
           <thead>

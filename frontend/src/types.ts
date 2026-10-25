@@ -1,4 +1,4 @@
-export type Status = 'OVERDUE' | 'DUE' | 'ATTENTION' | 'DUE_SOON' | 'INSUFFICIENT_INFO' | 'SNOOZED' | 'OK' | 'DONE_THIS_CYCLE' | 'DISABLED'
+export type Status = 'OVERDUE' | 'DUE' | 'ATTENTION' | 'DUE_SOON' | 'INSUFFICIENT_INFO' | 'SNOOZED' | 'OK' | 'DONE_THIS_CYCLE' | 'DISABLED' | 'NOT_APPLICABLE'
 
 export interface Usage {
   total_km: number
@@ -91,6 +91,9 @@ export interface ComponentSummary {
   serial_number: string | null
   disposition: string
   storage_location: string | null
+  tire_setup: TireSetup | null
+  effective_tire_setup: TireSetup | null
+  tire_setup_from: string | null
   location: Location
   usage: Usage
 }
@@ -216,6 +219,8 @@ export interface Profile {
   notes: string | null
 }
 
+export type TireSetup = 'TUBE' | 'TUBELESS' | 'TUBULAR'
+
 export interface Meta {
   version: string
   demo: boolean
@@ -226,6 +231,7 @@ export interface Meta {
   profiles: Profile[]
   dispositions: { code: string; label: string }[]
   tracking_modes: { code: string; label: string }[]
+  tire_setups: { code: TireSetup; label: string }[]
 }
 
 export interface EventRow {
@@ -268,6 +274,21 @@ export interface Rule {
   warn_days: number | null
   origin: string
   active: boolean
+  requires_setup: TireSetup | null
+}
+
+export interface ChangeRow {
+  id: number
+  changed_at: string
+  action: string
+  field: string | null
+  old_value: string | null
+  new_value: string | null
+  source: string
+  who: string
+  via: string | null
+  component_id: number | null
+  component: string | null
 }
 
 export interface SetupRow {
@@ -279,6 +300,7 @@ export interface SetupRow {
   since: string
   installation_id: number
   depth: number
+  tire_setup: TireSetup | null
 }
 
 export interface GroupsetTemplate {

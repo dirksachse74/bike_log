@@ -140,6 +140,7 @@ class StravaWeb:
                 self.job.update(page=page, counts=dict(counts))
             res = strava.sync(self.factory, self.client(), rescan=rescan, force=True, progress=progress)
             self.job.update(counts=res.get("counts", self.job["counts"]))
+            log.info("Strava sync finished%s: %s", " (re-read all)" if rescan else "", self.job["counts"])
         except Exception as e:  # shown on the Settings page; never contains the secret
             log.warning("Strava sync failed: %s", e)
             self.job["error"] = str(e) or type(e).__name__

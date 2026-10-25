@@ -21,15 +21,15 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError, OperationalError
 from sqlalchemy.orm import Session, object_session, sessionmaker
 
-from bikelog import __version__, backup
+from bikelog import __version__, backup, changelog
 from bikelog.api.security import LocalSecurityMiddleware
-from bikelog.catalog import ACTIONS, COMPONENT_TYPES, DISPOSITIONS, TRACKING_MODES, action_applies
+from bikelog.catalog import ACTIONS, COMPONENT_TYPES, DISPOSITIONS, TIRE_SETUPS, TRACKING_MODES, action_applies
 from bikelog.connectors.strava import sync as strava
 from bikelog.migrate import head_revision
 from bikelog.models import Bike, Component, Product, ServiceRule, UsageProfile
 from bikelog.paths import DataPaths, resource_root
 from bikelog.services import costs as costs_svc
-from bikelog.services import demo, groupsets, imports, journal, product_import, spares, stock
+from bikelog.services import demo, diagnostics, groupsets, imports, journal, product_import, spares, stock
 from bikelog.services import worksessions as ws_svc
 from bikelog.services import inventory as inv
 from bikelog.services import maintenance as m
@@ -122,6 +122,7 @@ class ComponentIn(Body):
     starting_date: str | None = None
     starting_is_estimate: bool = False
     storage_location: str | None = None
+    tire_setup: str | None = None
     install: InstallIn | None = None
 
 
@@ -135,6 +136,7 @@ class ComponentPatch(Body):
     prior_usage: str | None = None
     specs: dict | None = None
     storage_location: str | None = None
+    tire_setup: str | None = None
 
 
 class RemoveIn(Body):
@@ -425,7 +427,8 @@ def create_app(factory: sessionmaker[Session], paths: DataPaths, *, token: str |
             s.close()
 
     @app.exception_handler(DomainError)
-    async def _domain(_req: Request, exc: DomainError):
+    async def _domain(req: Request, exc: DomainError):
+        log.info("refused %s %s: %s", req.method, req.url.path, exc.message)
         return JSONResponse({"detail": exc.message, **exc.details}, status_code=exc.status)
 
     @app.exception_handler(IntegrityError)
@@ -433,6 +436,12 @@ def create_app(factory: sessionmaker[Session], paths: DataPaths, *, token: str |
         msg = str(exc.orig)
         status = 409 if ("CONFLICT" in msg or "PROTECTED" in msg or "UNIQUE" in msg) else 400
         return JSONResponse({"detail": f"Rejected by the database: {msg}"}, status_code=status)
+
+    @app.exception_handler(Exception)
+    async def _unexpected(req: Request, exc: Exception):
+        log.error("unexpected error in %s %s", req.method, req.url.path, exc_info=exc)
+        return JSONResponse({"detail": "Something went wrong inside Bike Log. Nothing was saved. The details are "
+                                       "in the log (Settings → Diagnostics)."}, status_code=500)
 
     @app.exception_handler(OperationalError)
     async def _busy(_req: Request, exc: OperationalError):
@@ -444,7 +453,14 @@ def create_app(factory: sessionmaker[Session], paths: DataPaths, *, token: str |
         def run() -> dict:
             result, change = with_change(s, fn, dry_run=dry_run)
             return {"result": result, "change": change}
-        return run_once(s, op_id, kind, run)
+        token = changelog.set_via(kind)
+        try:
+            res = run_once(s, op_id, kind, run)
+            if not (dry_run or res.get("repeated")):
+                log.info("%s done%s", kind, f": {res['change']['notice']}" if (res.get("change") or {}).get("notice") else "")
+            return res
+        finally:
+            changelog.reset(token)
 
     OpId = Header(default=None, alias="X-Client-Op-Id")
 
@@ -464,6 +480,7 @@ def create_app(factory: sessionmaker[Session], paths: DataPaths, *, token: str |
                                 for t in COMPONENT_TYPES.values()],
             "dispositions": [{"code": k, "label": v} for k, v in DISPOSITIONS.items()],
             "tracking_modes": [{"code": k, "label": v} for k, v in TRACKING_MODES.items()],
+            "tire_setups": [{"code": k, "label": v} for k, v in TIRE_SETUPS.items()],
             "actions": [{"code": a.code, "name": a.name, "kind": a.kind, "targets": list(a.targets),
                          "quick": a.quick, "fields": list(a.fields), "outcomes": list(a.outcomes)}
                         for a in ACTIONS.values()],
@@ -912,7 +929,9 @@ def create_app(factory: sessionmaker[Session], paths: DataPaths, *, token: str |
         if len(content) > 20_000_000:
             raise DomainError("File too large (max 20 MB)")
         from starlette.concurrency import run_in_threadpool
-        return await run_in_threadpool(imports.run_csv_import, factory, content, file_name=file_name)
+        res = await run_in_threadpool(imports.run_csv_import, factory, content, file_name=file_name)
+        log.info("CSV import %s: %s", file_name or "(upload)", res.get("counts"))
+        return res
 
     @app.get("/api/product-templates")
     def product_templates():
@@ -939,7 +958,10 @@ def create_app(factory: sessionmaker[Session], paths: DataPaths, *, token: str |
         if len(content) > 5_000_000:
             raise DomainError("File too large (max 5 MB)")
         from starlette.concurrency import run_in_threadpool
-        return await run_in_threadpool(product_import.run_import, factory, content, dry_run=dry_run)
+        res = await run_in_threadpool(product_import.run_import, factory, content, dry_run=dry_run)
+        if not dry_run:
+            log.info("JSON product import: %s; %d errors", res.get("counts"), len(res.get("errors") or []))
+        return res
 
     @app.get("/api/imports")
     def import_batches(s: Session = Depends(db)):
@@ -1007,6 +1029,22 @@ def create_app(factory: sessionmaker[Session], paths: DataPaths, *, token: str |
     @app.post("/api/admin/rebuild")
     def rebuild(s: Session = Depends(db)):
         return {"rides": rebuild_everything(s)}
+
+    @app.get("/api/changes")
+    def changes(bike_id: int | None = None, component_id: int | None = None, limit: int = 500,
+                s: Session = Depends(db)):
+        if (bike_id is None) == (component_id is None):
+            raise DomainError("Ask for the changes of one bike or one part")
+        return changelog.entries(s, bike_id=bike_id, component_id=component_id, limit=min(limit, 2000))
+
+    @app.get("/api/logs")
+    def logs(lines: int = 300, level: str = "INFO"):
+        return diagnostics.tail(paths, lines=lines, min_level=level.upper())
+
+    @app.get("/api/logs/download", response_class=PlainTextResponse)
+    def logs_download():
+        return PlainTextResponse(diagnostics.full_text(paths), media_type="text/plain",
+                                 headers={"Content-Disposition": 'attachment; filename="bikelog-log.txt"'})
 
     @app.get("/api/backups")
     def list_backups():
@@ -1078,6 +1116,7 @@ def _product(p: Product) -> dict:
 
 def _component_summary(s: Session, c: Component) -> dict:
     t = COMPONENT_TYPES.get(c.component_type)
+    setup, wheel = inv.tire_setup_of(s, c)
     return {"id": c.id, "uuid": c.uuid, "label": c.label, "component_type": c.component_type,
             "type_name": t.name if t else c.component_type, "category": t.category if t else None,
             "product_id": c.product_id,
@@ -1085,5 +1124,6 @@ def _component_summary(s: Session, c: Component) -> dict:
             "prior_usage": c.prior_usage, "status": c.status, "purchase_date": c.purchase_date,
             "price_cents": c.price_cents, "serial_number": c.serial_number, "notes": c.notes,
             "retired_on": c.retired_on, "retire_reason": c.retire_reason, "disposition": c.disposition,
-            "storage_location": c.storage_location,
+            "storage_location": c.storage_location, "tire_setup": c.tire_setup,
+            "effective_tire_setup": setup, "tire_setup_from": wheel.label if wheel is not None and wheel.id != c.id else None,
             "location": inv.location(s, c), "usage": component_usage(s, c)}

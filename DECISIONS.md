@@ -126,6 +126,26 @@ you disagree. Dates are 2026-10-24 unless noted.
 42. **Sync looks back 30 days** (was 3) so gear changed on Strava for recent rides is picked up. Older
     changes come in with *Re-read all since start date*. Your own bike choice always wins.
 
+## Reminders, tire setup, change log, logs (Dirk's requests of 2026-10-25)
+43. **Tube or tubeless lives on the wheel** (`component.tire_setup`: TUBE, TUBELESS, TUBULAR or not set).
+    A wheelset moved to another bike keeps its setup; the tire and tube on the wheel follow it. Set it on
+    the bike page (wheel row) or the wheel's page.
+44. **Sealant reminder is time-based**: top up every 3 months (changeable per part or per type, warning
+    14 days before); a top-up or renewal resets it. It runs only when the tire's wheel is tubeless
+    (`service_rule.requires_setup`); otherwise it shows "Not for this setup" and stays out of the to-do
+    list. Brake fluid (24 months) was already time-based and is now tested end to end.
+45. **Change log is automatic and separate from the journal**: every created part/bike, every changed
+    field (old → new), every install/remove/correction is written by a database-session hook, with time,
+    who (you in the app, Strava sync, CSV import, JSON import, demo) and the operation. It cannot be edited
+    or deleted (triggers). It starts with this version; older history is in the installation and
+    maintenance lists. Product (catalogue) edits are not in it yet.
+46. **Diagnostics**: refused actions, operations, imports, syncs and unexpected errors (with traceback)
+    go to the rotating log; Settings → Diagnostics shows and downloads it, redacting secrets again on
+    the way out.
+47. **Headset and power meter** are part types (a power meter can sit on the bike or on the crankset).
+    Headset service default: 5000 km or 12 months. Power meter actions: zero offset, battery, firmware;
+    no default reminder (add a time-based one per part if wanted).
+
 ## Repository
 27. Pushed only to the feature branch `claude/project-thread-6y3mmh` of the private repository. Demo
     data uses fictional Strava gear ids.

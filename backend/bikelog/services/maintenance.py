@@ -14,7 +14,7 @@ from datetime import date
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from bikelog.catalog import ACTIONS, COMPONENT_TYPES, action_applies
+from bikelog.catalog import ACTIONS, COMPONENT_TYPES, TIRE_SETUPS, action_applies
 from bikelog.models import (
     Bike, Component, Consumable, Installation, MaintenanceEvent, ReminderSnooze, ServiceRule,
     UsageContribution,
@@ -22,12 +22,12 @@ from bikelog.models import (
 from bikelog.services import settings, stock
 from bikelog.services.stock import add_consumable, consumable_stock, consumable_txn  # noqa: F401 (API)
 from bikelog.services.errors import DomainError, NotFound
-from bikelog.services.inventory import get_component, location, open_installation, set_disposition
+from bikelog.services.inventory import get_component, location, open_installation, set_disposition, tire_setup_of
 from bikelog.services.usage import usage_since
 from bikelog.timeutil import add_months, parse_when, today_local, utc_now
 
 SEVERITY = {"OVERDUE": 0, "DUE": 1, "ATTENTION": 1, "DUE_SOON": 2, "INSUFFICIENT_INFO": 3, "SNOOZED": 4,
-            "OK": 5, "DONE_THIS_CYCLE": 6, "DISABLED": 7}
+            "OK": 5, "DONE_THIS_CYCLE": 6, "DISABLED": 7, "NOT_APPLICABLE": 8}
 RETURNS_TO_SPARE = ("REPAIRED", "OK", "RESOLVED")
 SAFETY_NOTE = "Reminders follow recorded usage only. They never confirm that a part is safe."
 
@@ -226,7 +226,7 @@ def set_component_rule(session: Session, component_id: int, *, rule_code: str | 
         cycle_action_code=template.cycle_action_code if template else None,
         reset_actions_json=template.reset_actions_json if template else json.dumps([action_code]),
         warn_km=template.warn_km if template else None, warn_days=template.warn_days if template else None,
-        origin="PERSONAL", active=True)
+        requires_setup=template.requires_setup if template else None, origin="PERSONAL", active=True)
     for k, v in fields.items():
         if k in RULE_FIELDS:
             setattr(rule, k, v)
@@ -243,7 +243,8 @@ def rule_row(r: ServiceRule) -> dict:
             "trigger": r.trigger, "interval_km": r.interval_km, "interval_months": r.interval_months,
             "window_min_km": r.window_min_km, "window_max_km": r.window_max_km,
             "cycle_action_code": r.cycle_action_code, "reset_actions": _reset_actions(r), "warn_km": r.warn_km,
-            "warn_days": r.warn_days, "origin": r.origin, "active": r.active, "notes": r.notes}
+            "warn_days": r.warn_days, "origin": r.origin, "active": r.active, "notes": r.notes,
+            "requires_setup": r.requires_setup}
 
 
 # ---------------------------------------------------------------- status
@@ -303,6 +304,18 @@ def rule_status(session: Session, comp: Component, rule: ServiceRule, today: dat
             "origin": rule.origin, "trigger": rule.trigger}
     if not rule.active:
         return {**base, "status": "DISABLED", "explanation": "Rule disabled for this part."}
+    if rule.requires_setup:
+        setup, wheel = tire_setup_of(session, comp)
+        if setup != rule.requires_setup:
+            need = TIRE_SETUPS.get(rule.requires_setup, rule.requires_setup).lower()
+            if wheel is None:
+                why = "it is not on a wheel"
+            elif setup is None:
+                why = f"tube or tubeless is not set on {wheel.label}; set it on the wheel to use this reminder"
+            else:
+                why = f"{wheel.label} is set to {TIRE_SETUPS.get(setup, setup).lower()}"
+            return {**base, "status": "NOT_APPLICABLE", "requires_setup": rule.requires_setup,
+                    "explanation": f"Only for a {need} setup; {why}."}
     if rule.trigger == "CYCLE_WINDOW":
         res = _cycle_status(session, comp, rule, act_name)
     else:
@@ -486,7 +499,7 @@ def queue(session: Session, *, bike_id: int | None = None, include_ok: bool = Fa
         if loc["state"] != "INSTALLED" or (bike_id is not None and loc.get("bike_id") != bike_id):
             continue
         for row in component_status(session, comp, today):
-            if row["status"] in ("DISABLED", "DONE_THIS_CYCLE") or (row["status"] == "OK" and not include_ok):
+            if row["status"] in ("DISABLED", "DONE_THIS_CYCLE", "NOT_APPLICABLE") or (row["status"] == "OK" and not include_ok):
                 continue
             out.append({**row, "bike_id": loc.get("bike_id"), "bike": loc.get("bike"), "slot": loc.get("slot")})
     return sorted(out, key=lambda r: (SEVERITY[r["status"]], r.get("bike") or "", r["component"]))

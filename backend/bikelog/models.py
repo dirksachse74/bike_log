@@ -101,6 +101,9 @@ class Component(Base):
     purchase_session_id: Mapped[int | None] = mapped_column(Integer)
     from_stock_txn_id: Mapped[int | None] = mapped_column(Integer)
     storage_location: Mapped[str | None] = mapped_column(Text)   # where the spare is kept
+    # Wheels only: how the tire on it is run (TUBE, TUBELESS, TUBULAR; NULL = not set). It lives on the
+    # wheel so it moves with the wheel (wheelset) between bikes; tires inherit it. Valid values: trigger.
+    tire_setup: Mapped[str | None] = mapped_column(String(12))
 
     product: Mapped[Product | None] = relationship()
 
@@ -138,6 +141,25 @@ class JournalEntry(Base):
     updated_at: Mapped[str | None] = mapped_column(String(20))
     voided_at: Mapped[str | None] = mapped_column(String(20))
     void_reason: Mapped[str | None] = mapped_column(Text)
+
+
+class ChangeLog(Base):
+    """Change history of bikes and parts: one row per changed field (old -> new) or per event (created,
+    installed, removed, voided), with when and who/what made it. Written automatically on every flush
+    (bikelog.changelog); rows are never updated or deleted (triggers)."""
+    __tablename__ = "change_log"
+    __table_args__ = (CheckConstraint("bike_id IS NOT NULL OR component_id IS NOT NULL", name="ck_change_log_target"),)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    changed_at: Mapped[str] = mapped_column(String(20), default=utc_now)
+    # plain ids, no foreign keys: a part deleted right after a typo keeps its CREATED/DELETED rows
+    bike_id: Mapped[int | None] = mapped_column(Integer, index=True)
+    component_id: Mapped[int | None] = mapped_column(Integer, index=True)
+    action: Mapped[str] = mapped_column(String(16))         # CREATED, CHANGED, INSTALLED, REMOVED, ...
+    field: Mapped[str | None] = mapped_column(String(64))
+    old_value: Mapped[str | None] = mapped_column(Text)
+    new_value: Mapped[str | None] = mapped_column(Text)
+    source: Mapped[str] = mapped_column(String(32))         # who: APP, COMMAND_LINE, STRAVA, CSV_IMPORT, ...
+    via: Mapped[str | None] = mapped_column(String(64))     # the operation (e.g. groupset.import)
 
 
 class ProductCompatibility(Base):
@@ -398,6 +420,8 @@ class ServiceRule(Base):
     warn_km: Mapped[float | None] = mapped_column(Float)
     warn_days: Mapped[int | None] = mapped_column(Integer)
     origin: Mapped[str] = mapped_column(String(16), default="PERSONAL")
+    # Only for parts whose wheel has this tire setup (e.g. sealant: TUBELESS). NULL = always.
+    requires_setup: Mapped[str | None] = mapped_column(String(12))
     active: Mapped[bool] = mapped_column(Boolean, default=True)
     notes: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[str] = mapped_column(String(20), default=utc_now)

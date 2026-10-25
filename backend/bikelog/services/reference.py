@@ -21,7 +21,7 @@ def ensure_reference_data(session: Session) -> None:
             trigger=d.trigger, interval_km=d.interval_km, interval_months=d.interval_months,
             window_min_km=d.window_min_km, window_max_km=d.window_max_km, cycle_action_code=d.cycle_action_code,
             reset_actions_json=json.dumps(list(d.reset_actions or (d.action_code,))),
-            warn_km=d.warn_km, warn_days=d.warn_days, origin=d.origin, active=True,
+            warn_km=d.warn_km, warn_days=d.warn_days, origin=d.origin, requires_setup=d.requires_setup, active=True,
         ))
     have_profiles = set(session.scalars(select(UsageProfile.code)))
     for p in DEFAULT_PROFILES:

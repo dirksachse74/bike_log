@@ -70,7 +70,8 @@ backend/bikelog/
   catalog.py             component types, slots, maintenance actions, default rules, dispositions
   product_specs.py       spec fields per component type (drives the JSON import templates)
   models.py              SQLAlchemy models (mirror of the migrations)
-  migrations/versions/   0001 core, 0002 Strava + specs, 0003 replacement/stock/work sessions, 0004 prices+journal
+  migrations/versions/   0001 core, 0002 Strava + specs, 0003 replacement/stock/work sessions, 0004 prices+journal,
+                         0005 tire setup + rule condition + change log
   api/app.py, security.py
   services/              business logic (one module per area, see section 5)
   connectors/strava/     client.py (OAuth, retries, rate limits), sync.py (import), web.py (Settings flow)
@@ -117,11 +118,18 @@ packaging/               bikelog.spec (PyInstaller), entry.py, bikelog.iss (Inno
 - **product_compatibility** (product ↔ bike, verified or not), **journal_entry** (dated NOTE/ISSUE on a
   bike or part, resolved date, voidable, no deletes), **import_batch**, **operation** (idempotency),
   **strava_connection** (status, cursor, last success/error), **app_setting**.
+- **component.tire_setup** (wheels only: TUBE/TUBELESS/TUBULAR; tires and tubes inherit it from their
+  wheel via `inventory.tire_setup_of`), **service_rule.requires_setup** (rule only runs for that setup).
+- **change_log**: one row per created/changed/installed/removed/voided/deleted event on a bike or part,
+  old → new as readable text, `source` (APP, STRAVA, CSV_IMPORT, PRODUCT_IMPORT, DEMO) and `via` (op kind).
+  Written by an `after_flush` hook in `bikelog/changelog.py` for every session, so new code is covered
+  automatically; set the source with `change_source(...)` / `@from_source(...)` for non-UI writers.
+  Plain ids (no FKs) so a deleted typo part keeps its rows; update/delete blocked by triggers.
 
 Migrations: plain `ADD COLUMN` / `CREATE TABLE` where possible; tables with protection triggers are not
 rebuilt. Every schema upgrade writes a backup first; a database newer than the app is refused. A test
 compares `models.py` with the migrated schema, so **every model change needs a new migration**
-(never edit a released one; 0004 is the newest).
+(never edit a released one; 0005 is the newest).
 
 ---
 
@@ -139,7 +147,9 @@ nothing. Starting mileage before its effective date covers earlier rides. Unknow
 **Reminders (`maintenance.py`).** Rules per type with overrides per part. Defaults: hot wax every 500 km;
 liquid-wax top-up once in the 250–300 km window after hot wax (never postpones hot wax); chain wear check
 1000 km; brake fluid every 24 months (a bleed never resets it); pad check 1000 km; wheel inspection
-3000 km/12 months; hub bearings 10000 km; freehub 5000 km/12 months; tire check 1000 km. Each due task
+3000 km/12 months; hub bearings 10000 km; freehub 5000 km/12 months; tire check 1000 km; sealant top-up every 3 months, tubeless only
+(else NOT_APPLICABLE, hidden from the queue); headset service 5000 km/12 months. Part types include HEADSET and
+POWER_METER (on the bike or on a crankset; actions zero offset, battery, firmware). Each due task
 has a plain-language explanation. Snooze records no maintenance. Outcomes like AT_LIMIT/SPONGY/LEAK
 raise attention until a later event.
 
@@ -174,6 +184,9 @@ maintenance notes (symptom, work done, notes) appear in the same list read-only.
 | Groupset import (Shimano Ultegra Di2 R8100) | services/groupsets.py, groupset_templates/ | components/GroupsetImport.tsx (bike page → Add groupset) | docs/groupsets.md, DECISIONS 28–30 |
 | Prices, initial/running cost | costs.py | bike list, bike page Costs card, part Edit details | DECISIONS 31–34 |
 | Journal | journal.py | components/Journal.tsx (bike and part pages) | DECISIONS 35 |
+| Change log | changelog.py | components/ChangeLog.tsx (bike and part pages) | DECISIONS 45 |
+| Tube/tubeless on wheels, sealant reminder | inventory.tire_setup_of, maintenance.py, catalog.py | components/TireSetup.tsx (bike setup rows, wheel page) | DECISIONS 43–44 |
+| Diagnostics log | logging_setup.py, services/diagnostics.py | components/Diagnostics.tsx (Settings) | DECISIONS 46 |
 | JSON product import (one template per part type) | product_import.py, product_specs.py | components/ProductImport.tsx (Inventory → Import JSON) | docs/product-import.md, docs/product-templates/AGENT_INSTRUCTIONS.md, DECISIONS 36–38 |
 | CSV ride import (generic + Strava export), resumable | imports.py | pages/Settings.tsx | docs/csv-import.md |
 | Strava API sync | connectors/strava/ | components/StravaSettings.tsx (Settings → Strava) | docs/strava.md, DECISIONS 26, 39, 42 |
@@ -214,10 +227,10 @@ cd backend && ../.venv/bin/python -m bikelog            # http://127.0.0.1:8765/
 Checks that must pass before every push:
 
 ```bash
-.venv/bin/python -m pytest -q backend/tests             # currently 107 passed
+.venv/bin/python -m pytest -q backend/tests             # currently 114 passed
 cd frontend && npx tsc -b && npx eslint . && npx vite build
 # browser test: start the app on a fresh data dir, then
-node e2e/smoke.cjs http://127.0.0.1:8790/ <screenshot-dir>   # currently 49/49
+node e2e/smoke.cjs http://127.0.0.1:8790/ <screenshot-dir>   # currently 54/54
 #   (cd backend && ../.venv/bin/python -m bikelog --no-browser --port 8790 --data-dir <fresh dir>)
 ```
 
@@ -269,7 +282,8 @@ Work sessions: `work-sessions`, `/{id}`, `/{id}/undo`. Journal: `journal` (GET/P
 `/{id}/void`. Groupsets: `groupsets`, `/{code}/plan`, `/{code}/import`. Imports: `imports/csv`,
 `imports`, `imports/template`, `imports/products`, `product-templates`, `product-templates/{type}/schema|example`,
 `product-templates/instructions.md`. Strava: `strava/status`, `credentials` (PUT/DELETE), `connect`,
-`callback`, `sync`, `disconnect`. Data: `backups` (GET/POST), `exports` (POST, GET file), `admin/rebuild`.
+`callback`, `sync`, `disconnect`. History/diagnostics: `changes?bike_id=|component_id=`, `logs?lines=&level=`,
+`logs/download`. Data: `backups` (GET/POST), `exports` (POST, GET file), `admin/rebuild`.
 (*DELETE of a component is refused once it has installations, usage or maintenance; such parts are retired instead.)
 
 ---

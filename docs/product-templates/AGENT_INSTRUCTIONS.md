@@ -77,6 +77,8 @@ error; put extra data under `specs`.
 | `BRAKE_ROTOR` | Brake rotor | Brakes |
 | `BRAKE_CIRCUIT` | Brake circuit (hydraulic) | Brakes |
 | `BRAKE_PADS` | Brake pads | Brakes |
+| `POWER_METER` | Power meter | Drivetrain |
+| `HEADSET` | Headset | Frame |
 | `PEDALS` | Pedals | Contact points |
 | `SADDLE` | Saddle | Contact points |
 | `SEATPOST` | Seatpost | Contact points |
@@ -292,6 +294,36 @@ Template: `brake_pads.schema.json`, example: `brake_pads.example.json`
 | `cooling_fins` | boolean |  | Has cooling fins |
 | `fits` | string |  | Calipers it fits |
 | `min_thickness_mm` | number | mm | Replace below this pad thickness |
+| `weight_g` | number | g | Weight |
+| `color` | string |  | Colour / finish |
+| `material` | string |  | Main material |
+### Power meter (`POWER_METER`)
+
+Template: `power_meter.schema.json`, example: `power_meter.example.json`
+
+| key | type | unit | meaning |
+|---|---|---|---|
+| `placement` | one of `left crank`, `dual crank`, `spider`, `pedals`, `hub`, `chainring` |  | Where it measures |
+| `sides` | one of `single`, `dual` |  | Measures one or both legs |
+| `accuracy_pct` | number | ±% | Claimed accuracy |
+| `battery` | string |  | Battery |
+| `battery_life_h` | number | h | Claimed battery life |
+| `protocols` | string |  | Wireless protocols |
+| `crank_length_mm` | number | mm | Crank length (crank-based meters) |
+| `spindle` | string |  | Spindle / interface it fits |
+| `weight_g` | number | g | Weight |
+| `color` | string |  | Colour / finish |
+| `material` | string |  | Main material |
+### Headset (`HEADSET`)
+
+Template: `headset.schema.json`, example: `headset.example.json`
+
+| key | type | unit | meaning |
+|---|---|---|---|
+| `standard` | string |  | Headset standard (SHIS), top / bottom |
+| `steerer` | string |  | Steerer tube |
+| `bearings` | string |  | Bearing type and size |
+| `integrated_cables` | boolean |  | Routes hoses/cables through the headset |
 | `weight_g` | number | g | Weight |
 | `color` | string |  | Colour / finish |
 | `material` | string |  | Main material |

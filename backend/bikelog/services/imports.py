@@ -21,6 +21,7 @@ from datetime import UTC, datetime
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, sessionmaker
 
+from bikelog.changelog import from_source
 from bikelog.catalog import RIDE_SPORT_TYPES
 from bikelog.models import Bike, ImportBatch, Ride, RideSource
 from bikelog.services import allocation, rides, settings
@@ -214,6 +215,7 @@ def _to_ride_values(session: Session, v: dict) -> dict:
     return out
 
 
+@from_source("CSV_IMPORT")
 def run_csv_import(factory: sessionmaker[Session], content: bytes, *, file_name: str | None = None,
                    chunk_size: int = 100, on_chunk_committed: Callable[[int], None] | None = None) -> dict:
     """Import a CSV file. Each chunk commits rows and the cursor together, so a crash loses nothing."""

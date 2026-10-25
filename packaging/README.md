@@ -40,7 +40,7 @@ Building is not testing. Tick these only after doing them.
 On the build machine (Python present):
 - [ ] `pytest` passes on Windows (paths, file locking, timezone data).
 - [ ] PyInstaller build finishes without missing-module warnings that matter.
-- [ ] `dist\BikeLog\BikeLog.exe --version` prints `Bike Log 0.1.0 (schema 0003)`.
+- [ ] `dist\BikeLog\BikeLog.exe --version` prints `Bike Log 0.1.0 (schema 0005)`.
 
 **Need a clean Windows machine without Python or Node** (a fresh VM or Windows Sandbox):
 - [ ] The installer runs without admin rights and installs to `%LOCALAPPDATA%\Programs\BikeLog`.

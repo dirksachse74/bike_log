@@ -19,6 +19,7 @@ from datetime import date
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from bikelog.changelog import from_source
 from bikelog.catalog import COMPONENT_TYPES
 from bikelog.models import Component, Product
 from bikelog.product_specs import SpecField, fields_for
@@ -394,6 +395,7 @@ def parse(content: bytes | str) -> object:
         raise DomainError(f"Not valid JSON: {e.msg} at line {e.lineno}, column {e.colno}") from e
 
 
+@from_source("PRODUCT_IMPORT")
 def run_import(factory, content: bytes | str, *, dry_run: bool = False) -> dict:
     """Parse and import one file in its own transaction (rolled back on any error)."""
     from bikelog.db import session_scope

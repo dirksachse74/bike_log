@@ -1,14 +1,16 @@
 import { useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { api, newOpId } from '../api'
+import ChangeLog from '../components/ChangeLog'
 import Journal from '../components/Journal'
 import LogMaintenance from '../components/LogMaintenance'
 import ProductImport from '../components/ProductImport'
 import { DispositionForm, MoveForm, OutcomeChoice, RemoveForm, ReplaceForm } from '../components/PartChange'
 import TaskList from '../components/TaskList'
+import { TireSetupSelect } from '../components/TireSetup'
 import { Card, ChangeNotice, Empty, ErrorBox, Field, FormError, Loading, Sheet, Tag } from '../components/ui'
 import { useApp } from '../context'
-import { centsInput, certaintyLabel, euro, km, slotName, toCents, today, usageText, when } from '../format'
+import { centsInput, certaintyLabel, euro, km, setupLabel, slotName, toCents, today, usageText, when } from '../format'
 import { useApi } from '../hooks'
 import type { Bike, Change, ChainRow, ComponentSummary, EventRow, OpResult, Rule, Task } from '../types'
 
@@ -988,6 +990,17 @@ export function ComponentDetailPage() {
         </div>
         <p className="small">{u.summary}</p>
         {data.product && <p className="small muted">Product: {data.product}</p>}
+        {(data.component_type === 'FRONT_WHEEL' || data.component_type === 'REAR_WHEEL') && (
+          <p className="small">
+            Tire setup: <TireSetupSelect wheelId={data.id} value={data.tire_setup} onSaved={reload} />{' '}
+            <span className="muted">Set on the wheel, so it moves with the wheel; the tire on it follows.</span>
+          </p>
+        )}
+        {(data.component_type === 'TIRE' || data.component_type === 'INNER_TUBE') && (
+          <p className="small muted">
+            Tire setup: {data.tire_setup_from ? `${setupLabel(meta.tire_setups, data.effective_tire_setup)} (set on ${data.tire_setup_from})` : 'follows the wheel it is mounted on'}
+          </p>
+        )}
         <p className="small muted">
           Price: {data.price_cents !== null ? euro(data.price_cents) : 'not entered'}
           {data.purchase_date ? ` · bought ${when(data.purchase_date)}` : ''}
@@ -1017,6 +1030,7 @@ export function ComponentDetailPage() {
                   {r.trigger === 'CYCLE_WINDOW' ? `once at ${r.window_min_km}–${r.window_max_km} km after ${actionName(r.cycle_action_code)}` : [r.interval_km && `every ${r.interval_km} km`, r.interval_months && `every ${r.interval_months} months`].filter(Boolean).join(' or ')}
                   {' · '}
                   {r.component_id ? 'this part' : 'type default'} · {r.origin.toLowerCase()}
+                  {r.requires_setup && ` · only ${setupLabel(meta.tire_setups, r.requires_setup).toLowerCase()}`}
                 </span>
                 <button className="btn btn-small" onClick={() => setSheet({ rule: r })}>
                   Edit
@@ -1027,6 +1041,7 @@ export function ComponentDetailPage() {
         )}
       </Card>
       <Journal componentId={data.id} className="span-2" />
+      <ChangeLog componentId={data.id} refresh={data} className="span-2" />
       <Card title="Installation history">
         {data.history.length === 0 ? (
           <Empty title="Never installed" />

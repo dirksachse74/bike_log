@@ -343,6 +343,43 @@ async function sheetButton(page, name) {
   check('part journal: add an issue and mark it resolved', (await issue.getByText('open issue').count()) === 0)
   await page.screenshot({ path: path.join(OUT, '10-journal.png'), fullPage: true })
 
+  // tube / tubeless on the wheel; the tire follows it and the sealant reminder only runs for tubeless
+  await page.goto(BASE + '#/inventory')
+  await page.getByRole('button', { name: 'Add part' }).click()
+  await page.locator('.sheet').getByLabel('Type').selectOption('FRONT_WHEEL')
+  await page.locator('.sheet').getByLabel('Name / label').fill('Zipp 303 front')
+  await page.locator('.sheet').getByLabel('Install on (optional)').selectOption({ label: 'TIME NXR' })
+  await page.locator('.sheet').getByLabel('Since').fill('2026-10-01')
+  await sheetButton(page, 'Add part')
+  await page.getByRole('heading', { name: /Zipp 303 front/ }).waitFor()
+  await page.getByLabel('Tire setup').selectOption('TUBELESS')
+  const changeLog = page.locator('.card').filter({ has: page.getByRole('heading', { name: 'Change log' }) })
+  await changeLog.locator('tr').filter({ hasText: 'tire setup' }).filter({ hasText: 'Tubeless (sealant)' }).waitFor()
+  const logText = await changeLog.innerText()
+  check('wheel set to tubeless; change log shows it with who and when', /You \(app\)/.test(logText) && /installed/.test(logText), logText.slice(0, 200).replace(/\s+/g, ' '))
+  await page.goto(BASE + '#/bikes')
+  await page.getByRole('link', { name: /TIME NXR/ }).click()
+  const wheelRow = page.locator('.list.setup li').filter({ hasText: 'Zipp 303 front' })
+  check('bike page shows the wheel with its tire setup', (await wheelRow.getByLabel('Tire setup').inputValue()) === 'TUBELESS')
+  const bikeLogCard = page.locator('.card').filter({ has: page.getByRole('heading', { name: 'Change log' }) })
+  await bikeLogCard.locator('tr').filter({ hasText: 'purchase price' }).waitFor()
+  const bikeLog = await bikeLogCard.innerText()
+  check('bike change log lists purchase price and installed parts', /purchase price/.test(bikeLog) && /Zipp 303 front/.test(bikeLog), bikeLog.slice(0, 200).replace(/\s+/g, ' '))
+  await page.screenshot({ path: path.join(OUT, '11-change-log.png'), fullPage: true })
+
+  // headset and power meter exist as part types
+  await page.goto(BASE + '#/inventory')
+  await page.getByRole('button', { name: 'Add part' }).click()
+  const typeOptions = await page.locator('.sheet').getByLabel('Type').locator('option').allInnerTexts()
+  check('headset and power meter can be added', typeOptions.includes('Headset') && typeOptions.includes('Power meter'))
+  await page.keyboard.press('Escape')
+
+  // diagnostics: the log is readable in Settings and never shows the Strava secret
+  await page.goto(BASE + '#/settings')
+  await page.locator('pre.log-view').waitFor()
+  const logShown = await page.locator('pre.log-view').innerText()
+  check('Settings → Diagnostics shows the log without secrets', /Strava app credentials saved/.test(logShown) && !logShown.includes('0123456789abcdef0123456789abcdef01234567'), logShown.split('\n').slice(-2).join(' | '))
+
   // mobile viewport
   const phone = await browser.newPage({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true })
   phone.on('pageerror', (e) => consoleErrors.push(e.message))

@@ -50,6 +50,8 @@ COMPONENT_TYPES: dict[str, ComponentType] = {t.code: t for t in [
     ComponentType("BRAKE_CIRCUIT", "Brake circuit (hydraulic)", "Brakes", ("FRONT_BRAKE", "REAR_BRAKE"),
                   tracks_distance=True),
     ComponentType("BRAKE_PADS", "Brake pads", "Brakes", ("FRONT_PADS", "REAR_PADS"), removed_default="DISCARDED"),
+    ComponentType("POWER_METER", "Power meter", "Drivetrain", ("POWER_METER",), ("CRANKSET",)),
+    ComponentType("HEADSET", "Headset", "Frame", ("HEADSET",)),
     ComponentType("PEDALS", "Pedals", "Contact points", ("PEDALS",)),
     ComponentType("SADDLE", "Saddle", "Contact points", ("SADDLE",)),
     ComponentType("SEATPOST", "Seatpost", "Contact points", ("SEATPOST",)),
@@ -129,6 +131,13 @@ ACTIONS: dict[str, Action] = {a.code: a for a in [
            fields=("outcome",), outcomes=("OK", "CUT", "WORN"), attention_outcomes=("CUT", "WORN")),
     Action("TUBE_PATCH", "Patch tube", "REPAIR", ("INNER_TUBE",), fields=("symptom", "outcome", "consumable"),
            outcomes=("REPAIRED", "NOT_REPAIRABLE")),
+    # headset and power meter
+    Action("HEADSET_SERVICE", "Service headset (clean, grease, check play)", "SERVICE", ("HEADSET",),
+           fields=("symptom", "work_done", "outcome", "consumable")),
+    Action("POWER_ZERO_OFFSET", "Zero offset / calibrate power meter", "SERVICE", ("POWER_METER",), quick=True),
+    Action("POWER_BATTERY", "Charge / replace power-meter battery", "SERVICE", ("POWER_METER",), quick=True,
+           fields=("consumable",)),
+    Action("POWER_FIRMWARE", "Update power-meter firmware", "SERVICE", ("POWER_METER",), fields=("work_done",)),
     # cockpit
     Action("BAR_TAPE_REWRAP", "Rewrap bar tape (same tape)", "SERVICE", ("BAR_TAPE",), fields=("work_done",)),
     # generic
@@ -161,6 +170,7 @@ class DefaultRule:
     warn_km: float | None = None
     warn_days: int | None = None
     origin: str = "DEFAULT"
+    requires_setup: str | None = None        # only when the part's wheel has this tire setup
 
 
 DEFAULT_RULES: list[DefaultRule] = [
@@ -183,6 +193,11 @@ DEFAULT_RULES: list[DefaultRule] = [
     DefaultRule("FREEHUB", "Service freehub", "REAR_WHEEL", "FREEHUB_SERVICE",
                 interval_km=5000, interval_months=12, warn_km=300, warn_days=30),
     DefaultRule("TIRE_CHECK", "Inspect tire", "TIRE", "TIRE_INSPECT", interval_km=1000, warn_km=100),
+    # sealant dries out with time, not distance; renewing it also resets the top-up reminder
+    DefaultRule("TIRE_SEALANT", "Top up sealant", "TIRE", "SEALANT_TOP_UP", interval_months=3, warn_days=14,
+                reset_actions=("SEALANT_TOP_UP", "SEALANT_RENEW"), requires_setup="TUBELESS"),
+    DefaultRule("HEADSET_SERVICE", "Service headset", "HEADSET", "HEADSET_SERVICE",
+                interval_km=5000, interval_months=12, warn_km=300, warn_days=30),
 ]
 
 
@@ -206,5 +221,13 @@ DEFAULT_PROFILES: list[DefaultProfile] = [
               "Front wheel, tires, rotors and pads do not wear.",
     ),
 ]
+
+# How a wheel's tire is run (component.tire_setup on the wheel; tires inherit it from their wheel).
+TIRE_SETUPS: dict[str, str] = {
+    "TUBE": "Inner tube",
+    "TUBELESS": "Tubeless (sealant)",
+    "TUBULAR": "Tubular",
+}
+WHEEL_TYPES = ("FRONT_WHEEL", "REAR_WHEEL")
 
 RIDE_SPORT_TYPES = ("Ride", "VirtualRide", "GravelRide", "MountainBikeRide", "EBikeRide")

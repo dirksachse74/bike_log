@@ -20,6 +20,9 @@ Status key: ✅ done and tested · 🟡 done, not verified where it matters · �
 ## P4 Maintenance rules and reminders
 - ✅ Interval and cycle-window rules, explanations, snooze, component overrides.
 
+- ✅ Time-based reminders: brake fluid 24 months, sealant top-up every 3 months for tubeless tires.
+- ✅ Tube/tubeless setting on wheels (moves with the wheelset); headset service rule.
+
 ## P5 Chain rotation and brakes
 - ✅ Hot wax / liquid wax cycle, spare chain readiness, independent brake circuits, bleed vs fluid.
 
@@ -38,6 +41,11 @@ Status key: ✅ done and tested · 🟡 done, not verified where it matters · �
 - ✅ Initial and running cost per bike (bike list and bike page, with cost entries and cost per km).
 - ✅ Journal with notes and issues on bikes and parts, maintenance notes included.
 - 💡 Costs report across bikes per year; editing product reference prices in the UI (API exists).
+
+## P6d History and diagnostics
+- ✅ Change log for every bike and part (old → new, when, who), shown on their pages.
+- ✅ Settings → Diagnostics: view and download the log, secrets removed.
+- 💡 Change log for products (catalogue data) and service-rule edits.
 
 ## P6c JSON product import
 - ✅ Templates per part type, importer (app + command line), instructions for script authors/AI agents.

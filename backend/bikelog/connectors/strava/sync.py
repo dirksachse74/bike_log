@@ -21,6 +21,7 @@ from zoneinfo import ZoneInfo
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
+from bikelog.changelog import from_source
 from bikelog.catalog import RIDE_SPORT_TYPES
 from bikelog.connectors.strava.client import StravaClient
 from bikelog.models import RideSource, StravaConnection
@@ -116,6 +117,7 @@ def _gear(gear_id: str | None) -> str | None:
     return gear_id
 
 
+@from_source("STRAVA")
 def sync(factory: sessionmaker[Session], client: StravaClient, *, rescan: bool = False, per_page: int = 100,
          force: bool = False, progress=None) -> dict:
     if not (enabled() or force):

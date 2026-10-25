@@ -45,7 +45,7 @@ export default function TaskList({ tasks, onChange, emptyText = 'Nothing due by 
               </div>
             </div>
             <div className="task-actions">
-              {t.status !== 'ATTENTION' && (
+              {t.status !== 'ATTENTION' && t.status !== 'NOT_APPLICABLE' && (
                 <button className="btn btn-small btn-primary" onClick={() => setLogging(t)}>
                   Log done
                 </button>

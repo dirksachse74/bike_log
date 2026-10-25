@@ -40,6 +40,7 @@ export const STATUS_LABEL: Record<Status, string> = {
   OK: 'OK',
   DONE_THIS_CYCLE: 'Done this cycle',
   DISABLED: 'Off',
+  NOT_APPLICABLE: 'Not for this setup',
 }
 
 export function usageText(u: Usage): string {
@@ -80,4 +81,8 @@ export function toCents(value: string): number | null {
 
 export function centsInput(cents: number | null | undefined): string {
   return cents === null || cents === undefined ? '' : (cents / 100).toFixed(2)
+}
+
+export function setupLabel(setups: { code: string; label: string }[], code: string | null): string {
+  return setups.find((s) => s.code === code)?.label ?? 'not set'
 }

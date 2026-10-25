@@ -6,6 +6,7 @@ from datetime import date, timedelta
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from bikelog.changelog import from_source
 from bikelog.models import Bike, Component, Ride
 from bikelog.services import inventory as inv
 from bikelog.services import maintenance as m
@@ -26,6 +27,7 @@ def mark_demo_database(session: Session) -> None:
     settings.set_value(session, "demo_mode", "1", internal=True)
 
 
+@from_source("DEMO")
 def seed(session: Session, today: date | None = None) -> bool:
     if not is_demo(session):
         raise Protected("Sample data can only be loaded into a demo database (start with --demo).")

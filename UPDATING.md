@@ -82,7 +82,7 @@ Then close Bike Log, run `dist\installer\BikeLog-0.1.0-setup.exe`, and start Bik
 & "$env:LOCALAPPDATA\Programs\BikeLog\BikeLog.exe" --version     # installed copy
 dist\BikeLog\BikeLog.exe --version                               # freshly built copy
 ```
-It prints e.g. `Bike Log 0.1.0 (schema 0004)`. The app version number is not raised for every change,
+It prints e.g. `Bike Log 0.1.0 (schema 0005)`. The app version number is not raised for every change,
 so `git log -1 --oneline` in the code folder is the exact way to see which commit you built.
 
 ## If you downloaded a ZIP instead of cloning

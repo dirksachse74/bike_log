@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react'
 import { api } from '../api'
+import Diagnostics from '../components/Diagnostics'
 import StravaSettings from '../components/StravaSettings'
 import { Card, Field, FormError, Tag } from '../components/ui'
 import { useApp } from '../context'
@@ -189,6 +190,7 @@ export default function SettingsPage() {
         )}
         <p className="small muted">Bike Log {meta.version}</p>
       </Card>
+      <Diagnostics />
     </div>
   )
 }

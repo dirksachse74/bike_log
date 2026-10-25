@@ -22,6 +22,10 @@ State as of 2026-10-25 (latest commit: see `git log -1` on the branch).
 - **Costs**: purchase price per bike (initial cost) and running cost added up from part prices, stock
   used and service costs, counted once; shown on the bike list and the bike page with cost per km.
 - **Journal**: dated notes and issues on every bike and part, with maintenance notes in the same list.
+- **Change log**: every change to a bike or part (old → new, when, who) on its page; cannot be edited.
+- **Tire setup and time reminders**: tube/tubeless set on the wheel (moves with it); sealant top-up every
+  3 months for tubeless, brake fluid every 24 months. Headset and power meter part types.
+- **Diagnostics**: Settings shows and downloads the log (secrets removed).
 - **JSON product import**: products and spare parts from script-made JSON files (Inventory → Import JSON
   or `--import-products`), one template per part type (docs/product-import.md).
 - **Imports**: CSV (generic and Strava export), resumable and repeatable. Strava API: set up, connect, sync
@@ -45,11 +49,11 @@ Options: `--no-browser`, `--port N`, `--data-dir PATH`, `--backup`, `--export`, 
 ## Checks actually run (final run on this commit)
 | Check | Result |
 |---|---|
-| Backend tests `pytest -q backend/tests` | 107 passed |
+| Backend tests `pytest -q backend/tests` | 114 passed |
 | Required tests: 260 km liquid wax · liquid wax keeps hot wax at 500 km · chain swap · edit/remove/restore once · reimport no duplicates · bleed keeps fluid deadline · DB upgrade keeps records | all pass (test_chain_maintenance, test_rides, test_imports, test_brakes_rules, test_migrations_backup) |
 | Dirk's replacement examples (tube, patch, bar tape, rewrap, tire move, pads 3→2 + undo, stock modes) | pass (test_replacement_stock.py, test_api.py) |
 | Frontend `tsc -b`, `eslint .`, `vite build` | pass |
-| Browser automation `e2e/smoke.cjs` against the real app (desktop 1280×900 and phone 390×844) | 49/49 |
+| Browser automation `e2e/smoke.cjs` against the real app (desktop 1280×900 and phone 390×844) | 54/54 |
 | Groupset import: placement, occupied positions, replace, undo, product reuse, every template option | pass (test_groupsets.py) |
 | Costs counted once (moves, stock, services, undo) and journal (issues, voiding, no deletes) | pass (test_costs_journal.py) |
 | JSON import: templates valid and in sync, all errors listed, idempotent, CLI exit codes | pass (test_product_import.py) |

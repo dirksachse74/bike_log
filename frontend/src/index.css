@@ -203,7 +203,8 @@ code {
   border-style: dashed;
 }
 .st-snoozed,
-.st-disabled {
+.st-disabled,
+.st-not_applicable {
   background: color-mix(in srgb, var(--muted) 12%, transparent);
   color: var(--muted);
 }
@@ -838,4 +839,25 @@ label.chip {
 .table.rides input[type='checkbox'] {
   width: auto;
   min-height: 0;
+}
+
+.select-small {
+  width: auto;
+  padding: 0.15rem 0.4rem;
+  font-size: 0.85rem;
+}
+.nowrap {
+  white-space: nowrap;
+}
+.log-view {
+  max-height: 24rem;
+  overflow: auto;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  background: color-mix(in srgb, var(--muted) 8%, transparent);
+  border-radius: 6px;
+  padding: 0.5rem;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }

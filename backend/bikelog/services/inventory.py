@@ -7,7 +7,7 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from bikelog.catalog import COMPONENT_TYPES, DISPOSITIONS, OUT_OF_USE
+from bikelog.catalog import COMPONENT_TYPES, DISPOSITIONS, OUT_OF_USE, TIRE_SETUPS, WHEEL_TYPES
 from bikelog.models import (
     Bike, Component, ComponentDisposition, Installation, Product, UsageAdjustment, UsageContribution,
 )
@@ -109,11 +109,13 @@ def create_component(session: Session, *, component_type: str, label: str, produ
                      purchase_date: str | None = None, price_cents: int | None = None, notes: str | None = None,
                      specs: dict | None = None, starting_km: float | None = None, starting_date: str | None = None,
                      starting_is_estimate: bool = False, work_session_id: int | None = None,
-                     from_stock_txn_id: int | None = None, storage_location: str | None = None) -> Component:
+                     from_stock_txn_id: int | None = None, storage_location: str | None = None,
+                     tire_setup: str | None = None) -> Component:
     """Only type and label are required; everything else (serial number, specs) can be added later.
     With a work session, price_cents is that session's purchase of this item."""
     _check_type(component_type)
     _check_price(price_cents)
+    _check_tire_setup(component_type, tire_setup)
     label = (label or "").strip()
     if not label:
         raise DomainError("A component needs a name/label, e.g. 'Chain A'")
@@ -132,7 +134,8 @@ def create_component(session: Session, *, component_type: str, label: str, produ
                      serial_number=serial_number, purchase_date=purchase_date, price_cents=price_cents, notes=notes,
                      specs_json=json.dumps(specs or {}), disposition="STORED",
                      purchase_session_id=work_session_id,
-                     from_stock_txn_id=from_stock_txn_id, storage_location=storage_location)
+                     from_stock_txn_id=from_stock_txn_id, storage_location=storage_location,
+                     tire_setup=tire_setup)
     session.add(comp)
     session.flush()
     if starting_km is not None:
@@ -155,11 +158,34 @@ def update_product(session: Session, product_id: int, **fields) -> Product:
     return p
 
 
+def _check_tire_setup(component_type: str, setup: str | None) -> None:
+    if setup is None:
+        return
+    if component_type not in WHEEL_TYPES:
+        raise DomainError("Tube or tubeless is set on the wheel; the tire and tube on it follow the wheel")
+    if setup not in TIRE_SETUPS:
+        raise DomainError(f"Tire setup must be one of {', '.join(TIRE_SETUPS)}")
+
+
+def tire_setup_of(session: Session, comp: Component) -> tuple[str | None, Component | None]:
+    """How this part's tire is run: a wheel's own setting; a tire or tube follows the wheel it is on."""
+    if comp.component_type in WHEEL_TYPES:
+        return comp.tire_setup, comp
+    inst = open_installation(session, comp.id)
+    if inst is not None and inst.parent_component_id is not None:
+        parent = session.get(Component, inst.parent_component_id)
+        if parent is not None and parent.component_type in WHEEL_TYPES:
+            return parent.tire_setup, parent
+    return None, None
+
+
 def update_component(session: Session, component_id: int, **fields) -> Component:
     comp = get_component(session, component_id)
     _check_price(fields.get("price_cents"))
+    if "tire_setup" in fields:
+        _check_tire_setup(comp.component_type, fields["tire_setup"])
     for k in ("label", "serial_number", "purchase_date", "price_cents", "notes", "product_id", "prior_usage",
-              "storage_location"):
+              "storage_location", "tire_setup"):
         if k in fields:
             setattr(comp, k, fields[k])
     if "specs" in fields:
@@ -627,7 +653,8 @@ def bike_setup(session: Session, bike: Bike) -> list[dict]:
 def _setup_row(c: Component, i: Installation, depth: int) -> dict:
     return {"component_id": c.id, "label": c.label, "component_type": c.component_type,
             "type_name": COMPONENT_TYPES[c.component_type].name, "slot": i.slot, "since": i.installed_at,
-            "installation_id": i.id, "depth": depth, "parent_component_id": i.parent_component_id}
+            "installation_id": i.id, "depth": depth, "parent_component_id": i.parent_component_id,
+            "tire_setup": c.tire_setup}
 
 
 def bike_installation_history(session: Session, bike: Bike) -> list[dict]:
