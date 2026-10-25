@@ -403,6 +403,7 @@ async function sheetButton(page, name) {
     const of = await phone.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1)
     check(`mobile: ${route} fits the screen`, !of)
   }
+  check('no version mismatch bar (app and screens from the same commit)', (await page.locator('.version-banner').count()) === 0)
   check('no uncaught page errors', consoleErrors.length === 0, consoleErrors.join(' | '))
   await browser.close()
   const failed = results.filter((r) => !r.ok)

@@ -195,3 +195,21 @@ def test_headset_and_power_meter_types(session):
     with pytest.raises(DomainError):
         m.log_event(session, action_code="POWER_BATTERY", component_id=headset.id, at="2026-02-01")
     assert session.scalars(select(ChangeLog).where(ChangeLog.component_id == pm.id)).first() is not None
+
+
+def test_version_info_shows_app_and_screens_commit(engine, paths, tmp_path):
+    import json
+
+    from bikelog import buildinfo
+    static = tmp_path / "static"
+    static.mkdir()
+    (static / "index.html").write_text("<html>%BIKELOG_TOKEN%</html>", encoding="utf-8")
+    (static / "build-info.json").write_text(json.dumps({"commit": "abc1234"}), encoding="utf-8")
+    factory = make_session_factory(engine)
+    with session_scope(factory) as s:
+        ensure_reference_data(s)
+    c = TestClient(create_app(factory, paths, token=TOKEN, testing=True, static_dir=static))
+    meta = c.get("/api/meta").json()
+    assert meta["ui_commit"] == "abc1234" and meta["commit"] == buildinfo.commit() and meta["schema"]
+    assert c.get("/api/health").json()["ui_commit"] == "abc1234"
+    assert buildinfo.ui_commit(tmp_path / "nowhere") == "unknown"

@@ -146,6 +146,12 @@ you disagree. Dates are 2026-10-24 unless noted.
     Headset service default: 5000 km or 12 months. Power meter actions: zero offset, battery, firmware;
     no default reminder (add a time-based one per part if wanted).
 
+48. **Every build says which code it is**: the backend commit (git, or `build_commit.txt` written by
+    the PyInstaller spec) and the screens' commit (`frontend/dist/build-info.json` from Vite) are shown
+    in Settings and by `--version`. A mismatch shows a red bar; the spec refuses to bundle a stale
+    `frontend/dist`; a second start warns when an older copy is still running. Reason: Dirk saw the old
+    Strava panel after updating (2026-10-25).
+
 ## Repository
 27. Pushed only to the feature branch `claude/project-thread-6y3mmh` of the private repository. Demo
     data uses fictional Strava gear ids.

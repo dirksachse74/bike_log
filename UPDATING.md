@@ -82,8 +82,15 @@ Then close Bike Log, run `dist\installer\BikeLog-0.1.0-setup.exe`, and start Bik
 & "$env:LOCALAPPDATA\Programs\BikeLog\BikeLog.exe" --version     # installed copy
 dist\BikeLog\BikeLog.exe --version                               # freshly built copy
 ```
-It prints e.g. `Bike Log 0.1.0 (schema 0005)`. The app version number is not raised for every change,
-so `git log -1 --oneline` in the code folder is the exact way to see which commit you built.
+It prints e.g. `Bike Log 0.1.0 (schema 0005, commit 1a2b3c4)`. The commit must match what
+`git log -1 --oneline` shows in the code folder (the first 7 characters).
+
+Inside the app: **Settings → bottom of "Backups and export"** shows the database schema, the **app
+commit** and the **screens commit**. All of them should be the newest commit. If the screens are older than
+the app, or the browser still shows old screens, a red bar at the top of every page says so and what to do.
+
+From this update on, the build refuses to start if `frontend\dist` was built from older code, so
+forgetting `npm run build` is caught at step 6.
 
 ## If you downloaded a ZIP instead of cloning
 
@@ -109,6 +116,7 @@ the first time.
 | `ISCC.exe is not recognized` or a red error about the path | Put `&` before the quoted path, check Inno Setup is in `%LOCALAPPDATA%\Programs\Inno Setup 6` (or `C:\Program Files (x86)\Inno Setup 6`). |
 | PyInstaller: "Access is denied" / "file in use" in `dist\BikeLog` | Bike Log is still running: close it (step 1) and build again. |
 | `npm ci` fails with EPERM or "file in use" | Close editors/terminals using `frontend\node_modules`, try again. |
-| The app still looks old in the browser | Press Ctrl+F5 on the Bike Log page to reload without cache. |
+| The app still looks old in the browser (e.g. Settings → Strava shows only "Not connected" and a list of reasons, no fields) | An old Bike Log is still running: starting the new one only opens the old one. Close every Bike Log window, check Task Manager for `BikeLog.exe` and end it, then start Bike Log again. The console window now warns when the running copy is a different version. If it persists, check the commits (above) and press Ctrl+F5. |
+| PyInstaller stops with "frontend/dist was built from …" | Run `cd frontend; npm ci; npm run build; cd ..` and build again. |
 | Bike Log says the database is newer than the app | You started an older build. Build/install the newest one. |
 | Something is wrong after an update | Your data before the upgrade is in `%LOCALAPPDATA%\BikeLog\backups`. Tell Claude what you saw before restoring anything. |

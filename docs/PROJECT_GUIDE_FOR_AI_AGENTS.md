@@ -187,6 +187,7 @@ maintenance notes (symptom, work done, notes) appear in the same list read-only.
 | Change log | changelog.py | components/ChangeLog.tsx (bike and part pages) | DECISIONS 45 |
 | Tube/tubeless on wheels, sealant reminder | inventory.tire_setup_of, maintenance.py, catalog.py | components/TireSetup.tsx (bike setup rows, wheel page) | DECISIONS 43–44 |
 | Diagnostics log | logging_setup.py, services/diagnostics.py | components/Diagnostics.tsx (Settings) | DECISIONS 46 |
+| Build/version check (app vs screens commit) | buildinfo.py, packaging/bikelog.spec, frontend/vite.config.ts | components/VersionInfo.tsx, version.ts (red bar in App.tsx) | DECISIONS 48, UPDATING.md |
 | JSON product import (one template per part type) | product_import.py, product_specs.py | components/ProductImport.tsx (Inventory → Import JSON) | docs/product-import.md, docs/product-templates/AGENT_INSTRUCTIONS.md, DECISIONS 36–38 |
 | CSV ride import (generic + Strava export), resumable | imports.py | pages/Settings.tsx | docs/csv-import.md |
 | Strava API sync | connectors/strava/ | components/StravaSettings.tsx (Settings → Strava) | docs/strava.md, DECISIONS 26, 39, 42 |
@@ -227,10 +228,10 @@ cd backend && ../.venv/bin/python -m bikelog            # http://127.0.0.1:8765/
 Checks that must pass before every push:
 
 ```bash
-.venv/bin/python -m pytest -q backend/tests             # currently 114 passed
+.venv/bin/python -m pytest -q backend/tests             # currently 115 passed
 cd frontend && npx tsc -b && npx eslint . && npx vite build
 # browser test: start the app on a fresh data dir, then
-node e2e/smoke.cjs http://127.0.0.1:8790/ <screenshot-dir>   # currently 54/54
+node e2e/smoke.cjs http://127.0.0.1:8790/ <screenshot-dir>   # currently 55/55
 #   (cd backend && ../.venv/bin/python -m bikelog --no-browser --port 8790 --data-dir <fresh dir>)
 ```
 

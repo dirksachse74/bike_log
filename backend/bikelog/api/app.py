@@ -21,7 +21,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError, OperationalError
 from sqlalchemy.orm import Session, object_session, sessionmaker
 
-from bikelog import __version__, backup, changelog
+from bikelog import __version__, backup, buildinfo, changelog
 from bikelog.api.security import LocalSecurityMiddleware
 from bikelog.catalog import ACTIONS, COMPONENT_TYPES, DISPOSITIONS, TIRE_SETUPS, TRACKING_MODES, action_applies
 from bikelog.connectors.strava import sync as strava
@@ -409,6 +409,7 @@ def create_app(factory: sessionmaker[Session], paths: DataPaths, *, token: str |
     app = FastAPI(title="Bike Log", version=__version__, docs_url="/api/docs" if testing else None,
                   redoc_url=None, openapi_url="/api/openapi.json" if testing else None)
     app.state.token = token
+    static = static_dir if static_dir is not None else _find_static()
     app.add_middleware(LocalSecurityMiddleware, token=token, allow_test_host=testing)
     from bikelog.connectors.strava.client import urllib_transport
     from bikelog.connectors.strava.web import StravaWeb
@@ -468,12 +469,14 @@ def create_app(factory: sessionmaker[Session], paths: DataPaths, *, token: str |
 
     @app.get("/api/health")
     def health(s: Session = Depends(db)):
-        return {"ok": True, "version": __version__, "schema": head_revision(), "demo": demo.is_demo(s)}
+        return {"ok": True, "version": __version__, "schema": head_revision(), "demo": demo.is_demo(s),
+                "commit": buildinfo.commit(), "ui_commit": buildinfo.ui_commit(static)}
 
     @app.get("/api/meta")
     def meta(s: Session = Depends(db)):
         return {
             "version": __version__, "demo": demo.is_demo(s), "safety_note": m.SAFETY_NOTE,
+            "schema": head_revision(), "commit": buildinfo.commit(), "ui_commit": buildinfo.ui_commit(static),
             "settings": settings_svc.all_settings(s),
             "component_types": [{"code": t.code, "name": t.name, "category": t.category, "slots": list(t.slots),
                                  "parent_types": list(t.parent_types), "removed_default": t.removed_default}
@@ -1072,7 +1075,6 @@ def create_app(factory: sessionmaker[Session], paths: DataPaths, *, token: str |
 
     # ------------------------------------------------------------ frontend
 
-    static = static_dir if static_dir is not None else _find_static()
     if static and (static / "index.html").exists():
         index_html = (static / "index.html").read_text(encoding="utf-8").replace("%BIKELOG_TOKEN%", token)
 

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { versionProblem } from './version'
 import { HashRouter, NavLink, Route, Routes } from 'react-router-dom'
 import { ErrorBox, Loading } from './components/ui'
 import { Ctx } from './context'
@@ -67,6 +68,11 @@ export default function App() {
             </nav>
           </aside>
           <main className="main">
+            {versionProblem(meta.data) && (
+              <div className="demo-banner version-banner" role="alert">
+                {versionProblem(meta.data)}
+              </div>
+            )}
             {meta.data.demo && <div className="demo-banner">Demo mode: sample data in a separate demo database. Your own data is not touched.</div>}
             <Routes>
               <Route path="/" element={<OverviewPage />} />

@@ -223,6 +223,9 @@ export type TireSetup = 'TUBE' | 'TUBELESS' | 'TUBULAR'
 
 export interface Meta {
   version: string
+  schema: string
+  commit: string
+  ui_commit: string
   demo: boolean
   safety_note: string
   settings: Record<string, string>

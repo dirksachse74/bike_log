@@ -39,8 +39,8 @@ class InstanceLock:
             raise AlreadyRunning(info) from None
         self._fh = fh
 
-    def publish(self, url: str) -> None:
-        self.info_file.write_text(json.dumps({"url": url, "pid": os.getpid()}))
+    def publish(self, url: str, **extra) -> None:
+        self.info_file.write_text(json.dumps({"url": url, "pid": os.getpid(), **extra}))
 
     def release(self) -> None:
         if self._fh:
