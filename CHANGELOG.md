@@ -7,6 +7,8 @@ UPDATING.md → "Making a release". New entries go under "Unreleased" as work is
 
 ## Unreleased
 
+## 0.2.0 (2026-10-25)
+
 ### Added
 - Proper versioning: one version number for the app, the screens, BikeLog.exe (Windows file properties)
   and the installer (`BikeLog-0.2.0-setup.exe`); builds between releases carry the commit; this changelog;
