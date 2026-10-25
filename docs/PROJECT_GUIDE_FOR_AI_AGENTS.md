@@ -300,6 +300,9 @@ Work sessions: `work-sessions`, `/{id}`, `/{id}/undo`. Journal: `journal` (GET/P
   never force-push, never change repository visibility, never deploy anything.**
 - Before every push: run all checks (section 7) and scan for secrets; never commit `.env`/`strava.env`,
   databases, backups, exports or personal ride data. Demo data uses fictional Strava gear ids.
+- The cloud environment can push the feature branch but not tags (the push is refused). After a release
+  there, Dirk pushes the tag from his PC: `git fetch origin; git tag -a vX.Y.Z <commit> -m "Bike Log X.Y.Z";
+  git push origin vX.Y.Z` (v0.2.0 = e95b486 was made this way).
 - Add every user-visible change to CHANGELOG.md under "## Unreleased". Make a release (scripts/release.py)
   only when Dirk asks; the version lives only in `backend/bikelog/__init__.py`.
 - Dirk's standing rule: with every change, update the docs and this guide in the same commit, push the
