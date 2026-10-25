@@ -63,7 +63,9 @@ Runtime shape:
 
 ```
 README.md, HANDOVER.md, DECISIONS.md, TASKS.md      overview, test status, decisions (numbered), open work
-UPDATING.md              Dirk's steps to git pull and rebuild on Windows (keep it current)
+UPDATING.md              Dirk's steps to git pull and rebuild on Windows, versions, releases (keep it current)
+CHANGELOG.md             what changed per version; add to "## Unreleased" with every change
+scripts/release.py       bump version, date changelog, commit "Release X.Y.Z", tag vX.Y.Z
 requirements.txt / requirements-dev.txt / pyproject.toml
 backend/bikelog/
   launcher.py            entry point and command-line commands
@@ -187,6 +189,7 @@ maintenance notes (symptom, work done, notes) appear in the same list read-only.
 | Change log | changelog.py | components/ChangeLog.tsx (bike and part pages) | DECISIONS 45 |
 | Tube/tubeless on wheels, sealant reminder | inventory.tire_setup_of, maintenance.py, catalog.py | components/TireSetup.tsx (bike setup rows, wheel page) | DECISIONS 43–44 |
 | Diagnostics log | logging_setup.py, services/diagnostics.py | components/Diagnostics.tsx (Settings) | DECISIONS 46 |
+| Versioning (one number in bikelog/__init__.py; release vs 0.2.0+commit) | buildinfo.py, scripts/release.py, packaging/bikelog.spec + bikelog.iss | App.tsx (v0.2.0 by the logo), components/VersionInfo.tsx | DECISIONS 50, CHANGELOG.md, UPDATING.md |
 | Build/version check (app vs screens commit) | buildinfo.py, packaging/bikelog.spec, frontend/vite.config.ts | components/VersionInfo.tsx, version.ts (red bar in App.tsx) | DECISIONS 48, UPDATING.md |
 | JSON product import (one template per part type) | product_import.py, product_specs.py | components/ProductImport.tsx (Inventory → Import JSON) | docs/product-import.md, docs/product-templates/AGENT_INSTRUCTIONS.md, DECISIONS 36–38 |
 | CSV ride import (generic + Strava export), resumable | imports.py | pages/Settings.tsx | docs/csv-import.md |
@@ -228,7 +231,7 @@ cd backend && ../.venv/bin/python -m bikelog            # http://127.0.0.1:8765/
 Checks that must pass before every push:
 
 ```bash
-.venv/bin/python -m pytest -q backend/tests             # currently 115 passed
+.venv/bin/python -m pytest -q backend/tests             # currently 118 passed
 cd frontend && npx tsc -b && npx eslint . && npx vite build
 # browser test: start the app on a fresh data dir, then
 node e2e/smoke.cjs http://127.0.0.1:8790/ <screenshot-dir>   # currently 55/55
@@ -297,6 +300,8 @@ Work sessions: `work-sessions`, `/{id}`, `/{id}/undo`. Journal: `journal` (GET/P
   never force-push, never change repository visibility, never deploy anything.**
 - Before every push: run all checks (section 7) and scan for secrets; never commit `.env`/`strava.env`,
   databases, backups, exports or personal ride data. Demo data uses fictional Strava gear ids.
+- Add every user-visible change to CHANGELOG.md under "## Unreleased". Make a release (scripts/release.py)
+  only when Dirk asks; the version lives only in `backend/bikelog/__init__.py`.
 - Dirk's standing rule: with every change, update the docs and this guide in the same commit, push the
   feature branch, and tell him it is pushed and what to pull and rebuild (`UPDATING.md`).
 - Commit in small, described steps and push at checkpoints so no work is lost.

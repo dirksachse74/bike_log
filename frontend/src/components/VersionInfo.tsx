@@ -12,7 +12,9 @@ export default function VersionInfo() {
         </p>
       )}
       <p className="small muted">
-        Bike Log {meta.version} · database schema {meta.schema} · app commit <code>{meta.commit}</code> · screens commit <code>{meta.ui_commit}</code>
+        <strong>Bike Log {meta.full_version}</strong>
+        {meta.release ? ' (release)' : ' (build between releases; the part after + is the commit)'} · database schema {meta.schema} · app commit <code>{meta.commit}</code> · screens
+        commit <code>{meta.ui_commit}</code>
       </p>
     </>
   )

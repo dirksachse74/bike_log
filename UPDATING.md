@@ -15,9 +15,9 @@ powershell -ExecutionPolicy Bypass -File D:\Ablage\Coding\bike_log\packaging\bui
 
 It pulls the newest code, installs packages, runs the tests, builds the screens, BikeLog.exe and the
 installer, and **stops at the first error** with the step that failed. At the end it prints the
-installer's full path, e.g. `dist\installer\BikeLog-0.1.0-0fc3f6e-setup.exe`. The part after the version
-is the commit, so every build has its own name and an old installer can no longer be mistaken for a new
-one. Options: `-Install` (runs the installer at the end), `-SkipTests`, `-NoPull`.
+installer's full path: `dist\installer\BikeLog-0.2.0-setup.exe` for a release, or
+`BikeLog-0.2.0+abc1234-setup.exe` for a build between releases (the part after `+` is the commit). Every
+build has its own name, so an old installer can no longer be mistaken for a new one (see "Versions" below). Options: `-Install` (runs the installer at the end), `-SkipTests`, `-NoPull`.
 (`-ExecutionPolicy Bypass` only applies to this one run; Windows blocks unsigned scripts otherwise.)
 
 The script was checked for syntax but not yet run on Windows; if a step fails, send the red line.
@@ -35,9 +35,9 @@ cd frontend; npm ci; npm run build; cd ..
 & "$env:LOCALAPPDATA\Programs\Inno Setup 6\ISCC.exe" packaging\bikelog.iss
 ```
 
-Then close Bike Log, run the newest `dist\installer\BikeLog-0.1.0-<commit>-setup.exe` (the commit
-matches `git log -1 --oneline`), and start Bike Log again. Old installers named
-`BikeLog-0.1.0-setup.exe` are from before this change and can be deleted.
+Then close Bike Log, run the newest installer in `dist\installer\` (named after the version, see
+"Versions" below), and start Bike Log again. Old installers named `BikeLog-0.1.0-setup.exe` or
+`BikeLog-0.1.0-<commit>-setup.exe` are from before versioning and can be deleted.
 
 ## Step by step
 
@@ -90,7 +90,7 @@ matches `git log -1 --oneline`), and start Bike Log again. Old installers named
    & "$env:LOCALAPPDATA\Programs\Inno Setup 6\ISCC.exe" packaging\bikelog.iss
    ```
    The `&` is needed in PowerShell before a quoted program path. Then run
-   `dist\installer\BikeLog-0.1.0-<commit>-setup.exe` and install over the old version. No uninstall is needed.
+   the newest installer in `dist\installer\` and install over the old version. No uninstall is needed.
 
 8. **Start Bike Log** from the Start menu. If the new version changes the database, it first writes a
    backup (`%LOCALAPPDATA%\BikeLog\backups\...pre-upgrade...`) and then upgrades. Nothing is deleted.
@@ -101,15 +101,44 @@ matches `git log -1 --oneline`), and start Bike Log again. Old installers named
 & "$env:LOCALAPPDATA\Programs\BikeLog\BikeLog.exe" --version     # installed copy
 dist\BikeLog\BikeLog.exe --version                               # freshly built copy
 ```
-It prints e.g. `Bike Log 0.1.0 (schema 0005, commit 1a2b3c4)`. The commit must match what
+It prints e.g. `Bike Log 0.2.0 (schema 0005, commit 1a2b3c4)`. The commit must match what
 `git log -1 --oneline` shows in the code folder (the first 7 characters).
 
-Inside the app: **Settings → bottom of "Backups and export"** shows the database schema, the **app
-commit** and the **screens commit**. All of them should be the newest commit. If the screens are older than
+Inside the app: the version is next to the logo (`v0.2.0`, with a `+` for a build between releases), and
+**Settings → bottom of "Backups and export"** shows the full version, the database schema, the **app
+commit** and the **screens commit**. In Windows, right-click `BikeLog.exe` → Properties → Details shows
+the version too. All of them should be the newest commit. If the screens are older than
 the app, or the browser still shows old screens, a red bar at the top of every page says so and what to do.
 
 From this update on, the build refuses to start if `frontend\dist` was built from older code, so
 forgetting `npm run build` is caught at step 6.
+
+## Versions
+
+Bike Log uses version numbers like **0.2.0** (MAJOR.MINOR.PATCH):
+* PATCH (0.2.**1**): only fixes.
+* MINOR (0.**3**.0): new features.
+* MAJOR (**1**.0.0): a big change, for example to how data is stored.
+
+A **release** is a version that was finished and given its number on purpose (a git tag `v0.2.0` marks
+it). Building exactly that state gives `Bike Log 0.2.0` and `BikeLog-0.2.0-setup.exe`. When more changes
+come in afterwards, builds show `0.2.0+abc1234` until the next release: "0.2.0 plus the changes up to
+commit abc1234". What changed in each version is in [CHANGELOG.md](CHANGELOG.md).
+
+## Making a release
+
+You can simply ask Claude: "make release 0.3.0" (or "a patch release"). To do it yourself, in the code
+folder with Bike Log's changes committed:
+
+```powershell
+.venv\Scripts\python scripts\release.py minor --dry-run   # shows the new number and the changes
+.venv\Scripts\python scripts\release.py minor --push      # does it: patch / minor / major
+powershell -ExecutionPolicy Bypass -File packaging\build.ps1 -NoPull
+```
+
+The script raises the number, dates the "Unreleased" part of CHANGELOG.md, commits "Release 0.3.0",
+tags it `v0.3.0` and (with `--push`) pushes the branch and the tag. It refuses on `main`, with uncommitted
+changes, or when CHANGELOG.md lists nothing new. The build then makes `BikeLog-0.3.0-setup.exe`.
 
 ## If you downloaded a ZIP instead of cloning
 

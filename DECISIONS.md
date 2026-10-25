@@ -153,7 +153,13 @@ you disagree. Dates are 2026-10-24 unless noted.
     Strava panel after updating (2026-10-25).
 49. **One build script and commit-named installers**: `packaging/build.ps1` does pull → packages →
     tests → screens → exe → installer and stops at the first failure; installers are named
-    `BikeLog-<version>-<commit>-setup.exe` (the version number stays 0.1.0 until a real release).
+    `BikeLog-<version>-<commit>-setup.exe` (superseded by 50: the name now carries the version).
+50. **Semantic versioning with one source**: `bikelog.__version__` (MAJOR.MINOR.PATCH) is the only place
+    the number is written; Vite, the PyInstaller spec (exe file properties, `build_version.txt`) and the
+    installer read it. The tagged release commit (`vX.Y.Z`) shows the plain number; other builds append
+    the commit (`0.2.0+abc1234`, semver build metadata). `scripts/release.py` bumps, dates CHANGELOG.md,
+    commits and tags on the feature branch; tags may be pushed, main is never touched. 0.1.0 = the first
+    Windows build (untagged); 0.2.0 = first tagged release.
 
 ## Repository
 27. Pushed only to the feature branch `claude/project-thread-6y3mmh` of the private repository. Demo

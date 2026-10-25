@@ -18,7 +18,7 @@ from contextlib import closing
 from datetime import UTC, datetime
 from pathlib import Path
 
-from bikelog import __version__
+from bikelog import __version__, buildinfo
 from bikelog.paths import DataPaths
 
 log = logging.getLogger(__name__)
@@ -68,7 +68,7 @@ def export_archive(paths: DataPaths, schema_revision: str | None, dest: Path | N
         snap = snapshot_database(paths.database, Path(tmp) / "bikelog.db")
         manifest = {
             "format": EXPORT_FORMAT,
-            "app_version": __version__,
+            "app_version": __version__, "app_build": buildinfo.full_version(),
             "schema_revision": schema_revision,
             "created_at": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
         }

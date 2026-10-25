@@ -18,7 +18,7 @@ import urllib.request
 import webbrowser
 from pathlib import Path
 
-from bikelog import __version__, buildinfo
+from bikelog import buildinfo
 from bikelog.backup import backup_database, export_archive, restore_archive
 from bikelog.db import make_engine, make_session_factory, session_scope
 from bikelog.logging_setup import setup_logging
@@ -54,7 +54,7 @@ def _wait_and_open(url: str, open_browser: bool) -> None:
         except OSError:
             time.sleep(0.1)
     log.info("Bike Log is running at %s", url)
-    print(f"Bike Log {__version__} is running at {url}  (close this window or press Ctrl+C to stop)", flush=True)
+    print(f"Bike Log {buildinfo.full_version()} is running at {url}  (close this window or press Ctrl+C to stop)", flush=True)
     if open_browser:
         webbrowser.open(url)
 
@@ -100,7 +100,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--dry-run", action="store_true", help="with --import-products: check only, write nothing")
     ap.add_argument("--write-product-templates", type=Path, metavar="DIR",
                     help="write the JSON schema and example for every part type into DIR and exit")
-    ap.add_argument("--version", action="version", version=f"Bike Log {__version__} (schema {head_revision()}, commit {buildinfo.commit()})")
+    ap.add_argument("--version", action="version", version=f"Bike Log {buildinfo.full_version()} (schema {head_revision()}, commit {buildinfo.commit()})")
     args = ap.parse_args(argv)
 
     if args.write_product_templates:
@@ -110,7 +110,8 @@ def main(argv: list[str] | None = None) -> int:
         root = root / "demo"
     paths = DataPaths(root).ensure()
     setup_logging(paths.logs)
-    log.info("Bike Log %s (commit %s) starting; data directory %s", __version__, buildinfo.commit(), paths.root)
+    log.info("Bike Log %s (commit %s) starting; data directory %s", buildinfo.full_version(), buildinfo.commit(),
+             paths.root)
 
     lock = InstanceLock(paths.lock_file, paths.instance_file)
     try:
@@ -160,7 +161,7 @@ def main(argv: list[str] | None = None) -> int:
         app = create_app(factory, paths, token=token)
         port = _free_port(args.port)
         url = f"http://127.0.0.1:{port}/"
-        lock.publish(url, version=__version__, commit=buildinfo.commit())
+        lock.publish(url, version=buildinfo.full_version(), commit=buildinfo.commit())
         threading.Thread(target=_wait_and_open, args=(url, not args.no_browser), daemon=True).start()
         config = uvicorn.Config(app, host="127.0.0.1", port=port, loop="asyncio", http="h11", log_config=None,
                                 access_log=False)

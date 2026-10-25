@@ -76,6 +76,7 @@ Run "PyInstaller" { .venv\Scripts\pyinstaller --noconfirm --clean packaging\bike
 $version = (& dist\BikeLog\BikeLog.exe --version).Trim()
 Write-Host $version
 if ($version -notmatch $Commit) { Fail "The new BikeLog.exe reports '$version', expected commit $Commit." }
+$AppVersion = (Get-Content dist\BikeLog\_internal\bikelog\build_version.txt -Raw).Trim()
 
 Step "Installer (Inno Setup)"
 $iscc = @("$env:LOCALAPPDATA\Programs\Inno Setup 6\ISCC.exe", "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe",
@@ -83,12 +84,15 @@ $iscc = @("$env:LOCALAPPDATA\Programs\Inno Setup 6\ISCC.exe", "${env:ProgramFile
 if (-not $iscc) {
     Fail "Inno Setup was not found. Install it once with: winget install JRSoftware.InnoSetup"
 }
-Run "ISCC" { & $iscc /Q "/DBuildCommit=$Commit" packaging\bikelog.iss }
-$setup = Get-ChildItem dist\installer\BikeLog-*-$Commit-setup.exe | Sort-Object LastWriteTime -Descending | Select-Object -First 1
-if (-not $setup) { Fail "The installer for commit $Commit was not created." }
+Run "ISCC" { & $iscc /Q packaging\bikelog.iss }
+$setup = Get-Item -LiteralPath "dist\installer\BikeLog-$AppVersion-setup.exe" -ErrorAction SilentlyContinue
+if (-not $setup) { Fail "The installer for version $AppVersion was not created." }
 
 Write-Host ""
-Write-Host "DONE: $version" -ForegroundColor Green
+Write-Host "DONE: Bike Log $AppVersion" -ForegroundColor Green
+if ($AppVersion -match '\+') {
+    Write-Host "This is a build between releases (the part after + is the commit). See RELEASING in UPDATING.md."
+}
 Write-Host "Installer: $($setup.FullName)  ($($setup.LastWriteTime))" -ForegroundColor Green
 if ($Install) {
     Step "Install"
@@ -96,4 +100,4 @@ if ($Install) {
 } else {
     Write-Host "Next: run that installer (or start dist\BikeLog\BikeLog.exe directly to try it)."
 }
-Write-Host "In Bike Log, Settings shows 'app commit $Commit · screens commit $Commit'."
+Write-Host "In Bike Log, Settings shows version $AppVersion (app and screens commit $Commit)."

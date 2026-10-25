@@ -55,6 +55,10 @@ export default function App() {
             <div className="brand">
               <img src="./logo.svg" alt="" width={32} height={32} />
               <span>Bike Log</span>
+              <span className="brand-version" title={`Bike Log ${meta.data.full_version}`}>
+                v{meta.data.version}
+                {meta.data.release ? '' : '+'}
+              </span>
             </div>
             <nav aria-label="Main">
               {NAV.map(([to, label, icon]) => (

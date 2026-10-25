@@ -469,7 +469,8 @@ def create_app(factory: sessionmaker[Session], paths: DataPaths, *, token: str |
 
     @app.get("/api/health")
     def health(s: Session = Depends(db)):
-        return {"ok": True, "version": __version__, "schema": head_revision(), "demo": demo.is_demo(s),
+        return {"ok": True, "version": __version__, "full_version": buildinfo.full_version(),
+                "release": buildinfo.is_release(), "schema": head_revision(), "demo": demo.is_demo(s),
                 "commit": buildinfo.commit(), "ui_commit": buildinfo.ui_commit(static)}
 
     @app.get("/api/meta")
@@ -477,6 +478,8 @@ def create_app(factory: sessionmaker[Session], paths: DataPaths, *, token: str |
         return {
             "version": __version__, "demo": demo.is_demo(s), "safety_note": m.SAFETY_NOTE,
             "schema": head_revision(), "commit": buildinfo.commit(), "ui_commit": buildinfo.ui_commit(static),
+            "full_version": buildinfo.full_version(), "release": buildinfo.is_release(),
+            "ui_version": buildinfo.ui_version(static),
             "settings": settings_svc.all_settings(s),
             "component_types": [{"code": t.code, "name": t.name, "category": t.category, "slots": list(t.slots),
                                  "parent_types": list(t.parent_types), "removed_default": t.removed_default}

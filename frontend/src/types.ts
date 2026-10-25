@@ -226,6 +226,9 @@ export interface Meta {
   schema: string
   commit: string
   ui_commit: string
+  full_version: string
+  release: boolean
+  ui_version: string
   demo: boolean
   safety_note: string
   settings: Record<string, string>

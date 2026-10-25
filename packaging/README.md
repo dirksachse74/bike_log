@@ -30,7 +30,7 @@ cd frontend; npm ci; npm run build; cd ..
 # install once: winget install JRSoftware.InnoSetup  (often lands in your user folder)
 & "$env:LOCALAPPDATA\Programs\Inno Setup 6\ISCC.exe" packaging\bikelog.iss   # the & is needed in PowerShell
 # or, for a machine-wide install: & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" packaging\bikelog.iss
-# result: dist\installer\BikeLog-0.1.0-<commit>-setup.exe
+# result: dist\installer\BikeLog-<version>-setup.exe (e.g. 0.2.0, or 0.2.0+<commit> between releases)
 # or all steps at once, stopping on the first error: powershell -ExecutionPolicy Bypass -File packaging\build.ps1
 ```
 
@@ -41,7 +41,7 @@ Building is not testing. Tick these only after doing them.
 On the build machine (Python present):
 - [ ] `pytest` passes on Windows (paths, file locking, timezone data).
 - [ ] PyInstaller build finishes without missing-module warnings that matter.
-- [ ] `dist\BikeLog\BikeLog.exe --version` prints `Bike Log 0.1.0 (schema 0005)`.
+- [ ] `dist\BikeLog\BikeLog.exe --version` prints `Bike Log 0.2.0 (schema 0005, commit …)`, and Properties → Details shows 0.2.0.
 
 **Need a clean Windows machine without Python or Node** (a fresh VM or Windows Sandbox):
 - [ ] The installer runs without admin rights and installs to `%LOCALAPPDATA%\Programs\BikeLog`.
