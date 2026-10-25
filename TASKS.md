@@ -29,15 +29,18 @@ Status key: ✅ done and tested · 🟡 done, not verified where it matters · �
 - ⏳ Edit stock line details in the UI (location, minimum) – API exists (PATCH /api/consumables/{id}).
 - ⏳ Compatibility editing in the UI – API exists (POST /api/products/{id}/compatibility).
 - 💡 Barcode scanning, automatic ordering (explicitly deferred).
+- ✅ Groupset import with a template for Shimano Ultegra Di2 R8100 (docs/groupsets.md).
+- ⏳ Check the R8100 template against productinfo.shimano.com, then mark it verified.
+- 💡 More groupset templates (e.g. Dura-Ace R9200, 105 Di2 R7100, SRAM AXS); optional prices per part.
 
 ## P7 Imports and Strava
 - ✅ CSV import (generic + Strava export), resumable, start date, corrections and exclusions kept.
-- ⏳ Strava: small command for OAuth + sync around the tested connector, then a first live run on
-  Dirk's machine (needs reset client secret, strava.env, BIKELOG_ENABLE_STRAVA=1).
+- 🟡 Strava: `--strava-connect` / `--strava-sync` commands done and tested against a fake Strava;
+  first live run on Dirk's machine pending (docs/strava.md).
 - ⏳ Confirm the Strava API terms from the full text.
 
 ## P8 Packaging and verification
 - ✅ PyInstaller spec; Linux frozen build launches, persists, upgrades.
-- ⏳ Windows build + installer (packaging/bikelog.iss) + checklist on a clean Windows machine.
+- 🟡 Windows build + installer compiled on Dirk's PC (2026-10-25); install/launch checklist and a clean-machine test pending.
 - ⏳ Optional: activate packaging/ci/windows-build.yml.example (needs Dirk's OK).
 - 💡 App icon (.ico from the logo), code signing.

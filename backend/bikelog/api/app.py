@@ -28,7 +28,7 @@ from bikelog.connectors.strava import sync as strava
 from bikelog.migrate import head_revision
 from bikelog.models import Bike, Component, Product, ServiceRule, UsageProfile
 from bikelog.paths import DataPaths, resource_root
-from bikelog.services import demo, imports, spares, stock
+from bikelog.services import demo, groupsets, imports, spares, stock
 from bikelog.services import worksessions as ws_svc
 from bikelog.services import inventory as inv
 from bikelog.services import maintenance as m
@@ -184,6 +184,22 @@ class CompatIn(Body):
     bike_id: int
     verified: bool = False
     note: str | None = None
+
+
+class GroupsetPlanIn(Body):
+    bike_id: int | None = None
+    options: dict[str, str] = {}
+    include: list[str] | None = None
+    label_prefix: str | None = None
+    occupied: str = "KEEP"
+
+
+class GroupsetImportIn(GroupsetPlanIn):
+    at: str
+    prior_usage: str = "NEW"
+    purchase_date: str | None = None
+    outcomes: dict[str, str] = {}
+    notes: str | None = None
 
 
 class UndoIn(Body):
@@ -765,6 +781,23 @@ def create_app(factory: sessionmaker[Session], paths: DataPaths, *, token: str |
             raise DomainError("Product not found")
         inv.get_bike(s, body.bike_id)
         return spares.set_compatibility(s, product_id, body.bike_id, body.verified, body.note)
+
+    @app.get("/api/groupsets")
+    def groupset_templates():
+        return groupsets.list_templates()
+
+    @app.post("/api/groupsets/{code}/plan")
+    def groupset_plan(code: str, body: GroupsetPlanIn, s: Session = Depends(db)):
+        return groupsets.plan(s, code, **body.model_dump())
+
+    @app.post("/api/groupsets/{code}/import")
+    def groupset_import(code: str, body: GroupsetImportIn, dry_run: bool = False, s: Session = Depends(db),
+                        op_id: str | None = OpId):
+        def fn():
+            name = groupsets.get_template(code)["name"]
+            ws = ws_svc.begin(s, at=body.at, bike_id=body.bike_id, title=f"Add groupset {name}", notes=body.notes)
+            return groupsets.import_groupset(s, code, work_session_id=ws.id, **body.model_dump())
+        return op(s, op_id, "groupset.import", fn, dry_run)
 
     @app.get("/api/work-sessions")
     def work_sessions(limit: int = 50, s: Session = Depends(db)):

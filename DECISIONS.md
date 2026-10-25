@@ -73,6 +73,16 @@ you disagree. Dates are 2026-10-24 unless noted.
     choice (permanent storage at your own risk) is supported, but no live connection was ever made; see
     docs/strava.md for the exact blockers.
 
+## Groupsets (Dirk's request of 2026-10-25)
+28. **Groupset templates are data** (`bikelog/groupset_templates/`), one module per groupset, checked by a
+    test for every option combination. Importing creates products (reused by maker + model) and one
+    component per part in a single work session, so it can be undone in one step.
+29. **Occupied positions are kept by default**: the new part becomes a spare unless you choose Replace.
+    Wheel-mounted parts (cassette, rotors) go on the installed wheels, or become spares without wheels.
+30. **Ultegra Di2 R8100 data is unverified**: taken from retailer listings because shimano.com was not
+    reachable here. The app shows a warning; correct the template after checking Shimano's spec pages.
+    Di2 wires are offered but unticked (lengths depend on the frame); the charging cable is a tool, not a part.
+
 ## Repository
 27. Pushed only to the feature branch `claude/project-thread-6y3mmh` of the private repository. Demo
     data uses fictional Strava gear ids.

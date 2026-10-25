@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { api, newOpId } from '../api'
+import GroupsetImport from '../components/GroupsetImport'
 import LogMaintenance from '../components/LogMaintenance'
 import { MoveForm, RemoveForm, ReplaceForm } from '../components/PartChange'
 import TaskList from '../components/TaskList'
@@ -235,7 +236,7 @@ export function BikeDetailPage() {
   const { id } = useParams()
   const { toast } = useApp()
   const { data, error, loading, reload } = useApi<BikeDetail>(`/bikes/${id}`)
-  const [sheet, setSheet] = useState<null | { kind: 'install' } | { kind: 'part'; row: SetupRow } | { kind: 'log' }>(null)
+  const [sheet, setSheet] = useState<null | { kind: 'install' } | { kind: 'groupset' } | { kind: 'part'; row: SetupRow } | { kind: 'log' }>(null)
   if (loading && !data) return <Loading />
   if (error && !data) return <ErrorBox error={error} onRetry={reload} />
   if (!data) return null
@@ -256,6 +257,9 @@ export function BikeDetailPage() {
             </button>
             <button className="btn" onClick={() => setSheet({ kind: 'install' })}>
               Install part
+            </button>
+            <button className="btn" onClick={() => setSheet({ kind: 'groupset' })}>
+              Add groupset
             </button>
           </>
         }
@@ -362,6 +366,18 @@ export function BikeDetailPage() {
       {sheet?.kind === 'install' && (
         <Sheet title="Install a part" onClose={() => setSheet(null)}>
           <InstallForm bikeId={data.id} onDone={done} />
+        </Sheet>
+      )}
+      {sheet?.kind === 'groupset' && (
+        <Sheet title={`Add a groupset · ${data.name}`} onClose={() => setSheet(null)}>
+          <GroupsetImport
+            bikeId={data.id}
+            onDone={(msg) => {
+              setSheet(null)
+              toast(msg)
+              reload()
+            }}
+          />
         </Sheet>
       )}
       {sheet?.kind === 'part' && (

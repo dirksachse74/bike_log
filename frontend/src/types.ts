@@ -240,3 +240,42 @@ export interface SetupRow {
   installation_id: number
   depth: number
 }
+
+export interface GroupsetTemplate {
+  code: string
+  name: string
+  maker: string
+  series: string
+  speeds: number
+  notes: string | null
+  source: string
+  checked_on: string | null
+  verified: boolean
+  label_prefix: string
+  options: { key: string; label: string; default: string; choices: { value: string; label: string }[] }[]
+  items: { key: string; type: string; type_name: string; name: string; default: boolean; when: Record<string, string[]> | null }[]
+  occupied_modes: { code: string; label: string }[]
+}
+
+export interface GroupsetPlanItem {
+  key: string
+  type: string
+  type_name: string
+  model: string
+  label: string
+  action: 'INSTALL' | 'REPLACE' | 'SPARE'
+  text: string
+  product_exists: boolean
+  replaces_label?: string
+}
+
+export interface GroupsetPlan {
+  template: string
+  name: string
+  verified: boolean
+  bike_id: number | null
+  bike_name: string | null
+  items: GroupsetPlanItem[]
+  counts: { INSTALL: number; REPLACE: number; SPARE: number }
+  new_products: number
+}

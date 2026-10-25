@@ -747,3 +747,21 @@ label.chip {
     overflow-x: auto;
   }
 }
+.groupset-items li {
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+.groupset-items .check {
+  align-items: flex-start;
+  flex: 1;
+  min-width: 0;
+}
+.groupset-items .check input {
+  width: auto;
+  min-height: 0;
+  flex: none;
+  margin-top: 0.2rem;
+}
+.row.options > * {
+  flex: 1 1 11rem;
+}

@@ -1,7 +1,7 @@
 # Handover
 
 Repository: https://github.com/dirksachse74/bike_log (private) · branch `claude/project-thread-6y3mmh`
-State as of 2026-10-24 (latest commit: see `git log -1` on the branch).
+State as of 2026-10-25 (latest commit: see `git log -1` on the branch).
 
 ## What works (tested in the build environment: Linux x86_64, Python 3.13, Node 22)
 - **Bikes, parts, installations**: products vs physical parts, install/remove/replace/move with
@@ -15,8 +15,10 @@ State as of 2026-10-24 (latest commit: see `git log -1` on the branch).
   "What happened to the old item?", stock counts per product, install from stock, tube patch and
   return to spares, bar tape rewrap, tire position change and swap, undo of a whole work session,
   shopping list from minimum stock, purchases/returns/corrections, compatibility labels.
-- **Imports**: CSV (generic and Strava export), resumable and repeatable. Strava API connector isolated
-  and off; never connected live (docs/strava.md).
+- **Groupset import**: Bike → Add groupset creates every part of Shimano Ultegra Di2 R8100 in one
+  undoable step, placed on the bike, its wheels and the new crankset/chain (docs/groupsets.md).
+- **Imports**: CSV (generic and Strava export), resumable and repeatable. Strava API: connect and sync
+  commands (`BikeLog.exe --strava-connect`, `--strava-sync`), tested against a fake Strava only (docs/strava.md).
 - **UI**: Overview, Bikes, Maintenance, Rides, Inventory, Settings; desktop and phone layouts;
   empty/loading/error states; forms keep input after errors; demo mode separate from real data.
 
@@ -33,23 +35,26 @@ Options: `--no-browser`, `--port N`, `--data-dir PATH`, `--backup`, `--export`, 
 ## Checks actually run (final run on this commit)
 | Check | Result |
 |---|---|
-| Backend tests `pytest -q backend/tests` | 81 passed |
+| Backend tests `pytest -q backend/tests` | 91 passed |
 | Required tests: 260 km liquid wax · liquid wax keeps hot wax at 500 km · chain swap · edit/remove/restore once · reimport no duplicates · bleed keeps fluid deadline · DB upgrade keeps records | all pass (test_chain_maintenance, test_rides, test_imports, test_brakes_rules, test_migrations_backup) |
 | Dirk's replacement examples (tube, patch, bar tape, rewrap, tire move, pads 3→2 + undo, stock modes) | pass (test_replacement_stock.py, test_api.py) |
 | Frontend `tsc -b`, `eslint .`, `vite build` | pass |
-| Browser automation `e2e/smoke.cjs` against the real app (desktop 1280×900 and phone 390×844) | 31/31 (one earlier run failed once on a timing issue, two reruns passed) |
+| Browser automation `e2e/smoke.cjs` against the real app (desktop 1280×900 and phone 390×844) | 34/34 (one earlier run failed once on a timing issue, reruns passed) |
+| Groupset import: placement, occupied positions, replace, undo, product reuse, every template option | pass (test_groupsets.py) |
 | Restart persistence (dev server and frozen build) | data identical after a new process |
 | Real upgrade 0002→0003 of a database made by the previous version | records kept, pre-upgrade backup written |
 | PyInstaller build on Linux, run with a cleared environment | builds, starts, persists, upgrades |
 
 ## Packaging status
 - Linux: frozen one-folder build verified (see above). Not a deliverable, only proves the recipe.
-- **Windows: pending.** Not built, installed or launched on Windows. Build steps and the checklist
+- **Windows:** Dirk built BikeLog.exe and the installer on his PC on 2026-10-25; installing and the
+  checklist are still pending. Build steps and the checklist
   (including which checks need a clean Windows machine without Python) are in `packaging/README.md`.
 
 ## Blockers and limitations
 - No Windows machine in the build environment.
-- Strava: terms not fully read, no credentials, OAuth never completed, strava.com unreachable from here.
+- Strava: terms not fully read; OAuth never completed against the real Strava (strava.com unreachable from here).
+- Groupset template specs not yet checked against Shimano's own documentation.
 - Stock line details and compatibility can be set via the API but not yet edited in the UI.
 - App is unsigned; Windows SmartScreen will warn.
 

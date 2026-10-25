@@ -1,0 +1,31 @@
+"""Groupset templates: every component of a groupset, so a whole group can be added in one action.
+
+Each template is plain data (one module per groupset, registered in TEMPLATES below). To add a groupset,
+copy an existing module, change the items and options, and add it to TEMPLATES; no other code changes.
+
+Template fields
+- code, name, maker, series, speeds, notes
+- source / checked_on / verified: where the data comes from and whether it was checked against the
+  maker's own documentation (shown in the app; unverified data is marked as such)
+- options: choices made at import time (crank length, gearing, cassette, rotor sizes, bottom bracket).
+  Each choice has ``vars`` that are filled into the ``{placeholders}`` of item models and specs.
+- items: one entry per physical component
+  - key: unique within the template (other items refer to it as a parent)
+  - type: a component type code from bikelog.catalog
+  - name: short name used in the label ("<prefix> <name>")
+  - model: the product model; together with the maker it identifies the product
+  - specs: dict of product specs (strings may use {placeholders})
+  - mount: where it goes when installed on a bike, one of
+      {"slot": S}                      on the bike in slot S
+      {"wheel": W, "slot": S}          on the wheel installed in the bike's slot W (FRONT_WHEEL/REAR_WHEEL)
+      {"parent": key, "slot": S}       on another item of this template (e.g. chainring on the crankset)
+  - default: included unless the user leaves it out (False: offered, unticked)
+  - when: optional {option_key: [values]}; the item is only offered for those choices
+"""
+from __future__ import annotations
+
+from bikelog.groupset_templates import shimano_ultegra_di2_r8100
+
+TEMPLATES: dict[str, dict] = {t["code"]: t for t in [
+    shimano_ultegra_di2_r8100.TEMPLATE,
+]}
