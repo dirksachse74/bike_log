@@ -27,7 +27,7 @@ cd frontend; npm ci; npm run build; cd ..
 .venv\Scripts\pyinstaller --noconfirm --clean packaging\bikelog.spec
 # result: dist\BikeLog\BikeLog.exe  (copy the whole dist\BikeLog folder)
 # optional installer:
-"C:\Program Files (x86)\Inno Setup 6\ISCC.exe" packaging\bikelog.iss
+& "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" packaging\bikelog.iss   # the & is needed in PowerShell
 # result: dist\installer\BikeLog-0.1.0-setup.exe
 ```
 
