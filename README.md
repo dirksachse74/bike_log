@@ -5,6 +5,7 @@ spare parts and component wear. Runs on your own computer at http://127.0.0.1; y
 your user folder.
 
 - Start here: [HANDOVER.md](HANDOVER.md) (what works, how to launch, what was tested)
+- Handing the project to another AI agent: [docs/PROJECT_GUIDE_FOR_AI_AGENTS.md](docs/PROJECT_GUIDE_FOR_AI_AGENTS.md)
 - Decisions and assumptions: [DECISIONS.md](DECISIONS.md)
 - What is next: [TASKS.md](TASKS.md)
 - Windows build and checklist: [packaging/README.md](packaging/README.md)
