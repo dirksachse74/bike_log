@@ -98,7 +98,8 @@ COMPONENT_TYPES: dict[str, ComponentType] = {t.code: t for t in [
     ComponentType("HANDLEBAR", "Handlebar", "Cockpit", ("HANDLEBAR",), torque=True),
     ComponentType("BAR_TAPE", "Bar tape", "Cockpit", ("BAR_TAPE",), removed_default="DISCARDED"),
     ComponentType("SHIFTERS", "Shifters", "Controls", ("SHIFTERS",), torque=True),
-    ComponentType("BATTERY", "Battery (Di2/AXS)", "Electronics", ("BATTERY",)),
+    # Di2: one battery on the bike; SRAM AXS: one battery on each derailleur
+    ComponentType("BATTERY", "Battery (Di2/AXS)", "Electronics", ("BATTERY",), ("FRONT_DERAILLEUR", "REAR_DERAILLEUR")),
     # speed/cadence sensor: on a wheel (moves with the wheelset), on the crankset or on the bike
     ComponentType("SENSOR", "Sensor (speed/cadence)", "Electronics", ("SENSOR_SPEED", "SENSOR_CADENCE"),
                   ("FRONT_WHEEL", "REAR_WHEEL", "CRANKSET")),

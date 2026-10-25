@@ -228,6 +228,11 @@ you disagree. Dates are 2026-10-24 unless noted.
     so rides and km agree. A ride before the purchase date is flagged, never moved or dropped.
 71. **Part names carry no bike name** unless the plain name is taken (parts move between bikes; the
     database keeps labels unique per type, including records of undone imports).
+72. **Groupset templates stay data, with shared building blocks** (`_shared.py`) for repeated parts
+    (brakes, rotors, chain + quick link, AXS batteries). SRAM parts are named by product name where
+    retailers disagree on part numbers; nothing is marked verified without the maker's own documentation.
+73. **SRAM AXS batteries are parts of the derailleurs** (BATTERY may mount on a derailleur) and the
+    template gives them a per-part charge rule in ride hours (55 h; SRAM: about 60 h).
 
 ## Repository
 27. Pushed only to the feature branch `claude/project-thread-6y3mmh` of the private repository. Demo

@@ -46,7 +46,8 @@ Status key: ✅ done and tested · 🟡 done, not verified where it matters · �
 - 💡 Barcode scanning, automatic ordering (explicitly deferred).
 - ✅ Groupset import with a template for Shimano Ultegra Di2 R8100 (docs/groupsets.md).
 - ⏳ Check the R8100 template against productinfo.shimano.com, then mark it verified.
-- ⏳ More groupset templates, 12/13-speed Shimano and SRAM (Dura-Ace R9200, 105, GRX, Red/Force/Rival/Apex AXS).
+- ✅ More groupset templates, 12/13-speed Shimano and SRAM (11 more; all unverified until checked with the makers).
+- ⏳ Check the groupset templates against productinfo.shimano.com and SRAM spec sheets.
 
 ## P6b Costs and journal
 - ✅ Prices on parts (add, edit, replace, groupset import), service cost on maintenance, bike purchase price.

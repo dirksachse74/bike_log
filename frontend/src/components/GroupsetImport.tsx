@@ -53,7 +53,8 @@ export default function GroupsetImport({ bikeId, onDone }: { bikeId?: number; on
 
   // The preview follows every change, so what you see is what "Add" will do.
   useEffect(() => {
-    if (!t || Object.keys(options).length === 0) return
+    // skip the render in which the options still belong to the previously picked groupset
+    if (!t || Object.keys(options).length === 0 || t.options.some((o) => !(o.key in options))) return
     let live = true
     api
       .post<GroupsetPlan>(`/groupsets/${t.code}/plan`, body())
@@ -119,16 +120,22 @@ export default function GroupsetImport({ bikeId, onDone }: { bikeId?: number; on
       {(templates.data?.length ?? 0) > 1 && (
         <Field label="Groupset">
           <select value={code} onChange={(e) => setCode(e.target.value)}>
-            {templates.data?.map((x) => (
-              <option key={x.code} value={x.code}>
-                {x.name}
-              </option>
+            {[...new Set(templates.data?.map((x) => x.maker))].map((maker) => (
+              <optgroup key={maker} label={maker}>
+                {templates.data
+                  ?.filter((x) => x.maker === maker)
+                  .map((x) => (
+                    <option key={x.code} value={x.code}>
+                      {x.name}
+                    </option>
+                  ))}
+              </optgroup>
             ))}
           </select>
         </Field>
       )}
       <p className="small">
-        <strong>{t.name}</strong> {!t.verified && <Tag tone="warn" title={t.source}>specs not verified with Shimano yet</Tag>}
+        <strong>{t.name}</strong> {!t.verified && <Tag tone="warn" title={t.source}>specs not verified with {t.maker} yet</Tag>}
         <br />
         <span className="muted">{t.notes}</span>
       </p>

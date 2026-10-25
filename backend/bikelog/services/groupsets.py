@@ -14,10 +14,11 @@ import string
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from bikelog.catalog import COMPONENT_TYPES, DISPOSITIONS
+from bikelog.catalog import COMPONENT_TYPES, DEFAULT_RULES, DISPOSITIONS
 from bikelog.groupset_templates import TEMPLATES
 from bikelog.models import Component, Installation, Product
 from bikelog.services import inventory as inv
+from bikelog.services import maintenance
 from bikelog.services.errors import DomainError, NotFound
 
 OCCUPIED_MODES = {"KEEP": "Keep the current part; the new one becomes a spare",
@@ -65,7 +66,7 @@ def items(template: dict, chosen: dict, variables: dict) -> list[dict]:
             continue
         out.append({"key": it["key"], "type": it["type"], "name": _fill(it["name"], variables),
                     "model": _fill(it["model"], variables), "specs": _fill(it.get("specs", {}), variables),
-                    "mount": it["mount"], "default": it.get("default", True)})
+                    "mount": it["mount"], "default": it.get("default", True), "rules": it.get("rules") or {}})
     return out
 
 
@@ -157,6 +158,7 @@ def plan(session: Session, code: str, *, bike_id: int | None = None, options: di
         base = f"{prefix} {it['name']}"
         product = _find_product(session, template["maker"], it["model"], it["type"])
         row = {"key": it["key"], "type": it["type"], "type_name": COMPONENT_TYPES[it["type"]].name,
+               "rules": it["rules"],
                "model": it["model"], "specs": it["specs"],
                "label": _unique_label(session, it["type"], base, taken, bike.name if bike else None),
                "product_id": product.id if product else None, "product_exists": product is not None,
@@ -267,6 +269,8 @@ def import_groupset(session: Session, code: str, *, at: str, work_session_id: in
                                     work_session_id=work_session_id)
         created[row["key"]] = comp
         row["component_id"] = comp.id
+        for rule_code, fields in (row.get("rules") or {}).items():
+            maintenance.set_component_rule(session, comp.id, rule_code=rule_code, **fields)
         if row["action"] == "INSTALL":
             parent_id = created[row["parent_key"]].id if row["parent_key"] else row["parent_component_id"]
             inv.install(session, comp.id, at=at, bike_id=row["bike_id"] if parent_id is None else None,
@@ -325,6 +329,9 @@ def check_templates() -> list[str]:
                 if "wheel" in m and m["wheel"] not in ctype.parent_types:
                     problems.append(f"{code}/{i['key']}: cannot be mounted on a {m['wheel']}")
         for i in t["items"]:
+            for rule_code in i.get("rules") or {}:
+                if not any(r.rule_code == rule_code and r.component_type == i["type"] for r in DEFAULT_RULES):
+                    problems.append(f"{code}/{i['key']}: no default rule {rule_code} for {i['type']}")
             if set((i.get("when") or {})) - option_keys:
                 problems.append(f"{code}/{i['key']}: 'when' names an unknown option")
     return problems

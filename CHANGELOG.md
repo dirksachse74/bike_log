@@ -52,6 +52,11 @@ UPDATING.md → "Making a release". New entries go under "Unreleased" as work is
 - A quick link on a chain in storage reads "on Chain A (not on a bike)" instead of "unmounted parent".
 - Ultegra R8100 groupset import adds upper and lower pulley wheels.
 
+- More groupsets to import (all 12 or 13 speed, hydraulic disc, specs marked unverified): Shimano Dura-Ace
+  Di2 R9200, 105 Di2 R7150, 105 R7100 mechanical, GRX Di2 RX825 2×12, GRX RX820 1×12; SRAM RED AXS E1,
+  Force AXS, Rival AXS, Apex XPLR 1×12 (AXS or mechanical), and the 13-speed RED XPLR and Force XPLR AXS.
+  SRAM AXS batteries sit on the derailleurs and are charged every 55 ride hours.
+
 ### Fixed (imaginary-bike test run, B1–B15)
 - A road ride on a bike with no wheels is flagged ("No wheels on this bike on the ride day").
 - A service logged before a part's "km from before" date reads "at least N km since …"; a part with km

@@ -162,7 +162,8 @@ def test_groupset_import_over_http(engine, paths):
     c.headers.update({"X-BikeLog-Token": "t"})
     b = c.post("/api/bikes", json={"name": "TIME NXR"}).json()
     templates = c.get("/api/groupsets").json()
-    assert templates[0]["code"] == R8100 and templates[0]["verified"] is False
+    assert templates[0]["code"] == R8100 and all(t["verified"] is False for t in templates)
+    assert {t["speeds"] for t in templates} == {12, 13}
     body = {"bike_id": b["id"], "options": {"gearing": "52-36"}}
     plan = c.post(f"/api/groupsets/{R8100}/plan", json=body).json()
     assert plan["counts"]["INSTALL"] > 10
@@ -174,3 +175,45 @@ def test_groupset_import_over_http(engine, paths):
     assert len(c.get(f"/api/bikes/{b['id']}").json()["setup"]) == r["result"]["counts"]["INSTALL"]
     assert c.post(f"/api/work-sessions/{ws}/undo", json={"reason": "test"}).status_code == 200
     assert c.get(f"/api/bikes/{b['id']}").json()["setup"] == []
+
+
+@pytest.mark.parametrize("code", sorted(gs.TEMPLATES))
+def test_every_template_installs_completely_on_a_bike_with_wheels(session, code):
+    """Each shipped groupset (12 and 13 speed) goes on a bike in one action, every default part placed."""
+    b = bike(session, f"Bike {code}")
+    wheels(session, b)
+    ws = ws_svc.begin(session, at="2026-10-25", bike_id=b.id, title="Groupset")
+    res = gs.import_groupset(session, code, at="2026-10-25", bike_id=b.id, work_session_id=ws.id)
+    assert res["counts"]["SPARE"] == 0 and res["counts"]["REPLACE"] == 0
+    assert all(r["action"] == "INSTALL" for r in res["items"])
+    assert inv.shifting_of(session, b) == ("ELECTRONIC" if any(r["type"] == "BATTERY" for r in res["items"])
+                                           else None)
+
+
+def test_sram_axs_batteries_sit_on_the_derailleurs_and_count_ride_hours(session):
+    from bikelog.services import maintenance as m
+    b = bike(session)
+    wheels(session, b)
+    ws = ws_svc.begin(session, at="2026-10-25", bike_id=b.id, title="Groupset")
+    res = gs.import_groupset(session, "SRAM_RED_AXS_E1_2X12", at="2026-10-25", bike_id=b.id, work_session_id=ws.id)
+    rows = by_key(res)
+    for end in ("front", "rear"):
+        inst = inv.open_installation(session, rows[f"battery_{end}"]["component_id"])
+        assert inst.parent_component_id == rows[f"{end}_derailleur"]["component_id"]
+        battery = inv.get_component(session, rows[f"battery_{end}"]["component_id"])
+        rule = next(r for r in m.effective_rules(session, battery) if r.rule_code == "DI2_BATTERY_CHARGE")
+        assert rule.interval_hours == 55 and rule.interval_km is None and rule.name == "Charge AXS battery"
+
+
+def test_13_speed_and_mechanical_templates(session):
+    red13 = gs.TEMPLATES["SRAM_RED_XPLR_AXS_1X13"]
+    assert red13["speeds"] == 13 and not red13["verified"]
+    keys = {i["key"] for i in gs.items(red13, *gs.choose(red13, None))}
+    assert "front_derailleur" not in keys and "chainring" in keys and "battery_front" not in keys
+    apex = gs.TEMPLATES["SRAM_APEX_XPLR_1X12"]
+    mech = {i["key"] for i in gs.items(apex, *gs.choose(apex, {"shifting": "MECH"}))}
+    axs = {i["key"] for i in gs.items(apex, *gs.choose(apex, {"shifting": "AXS"}))}
+    assert "cable_rear" in mech and "battery_rear" not in mech
+    assert "battery_rear" in axs and "cable_rear" not in axs
+    r7100 = {i["key"] for i in gs.TEMPLATES["SHIMANO_105_R7100"]["items"]}
+    assert {"cable_front", "cable_rear", "housing_front", "housing_rear"} <= r7100 and "battery" not in r7100

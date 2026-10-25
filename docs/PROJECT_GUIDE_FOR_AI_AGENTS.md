@@ -234,7 +234,7 @@ bike and default text from the ride; `entries(ride_id=)`, `incidents(bike_id, in
 | Rides area (tabs Rides / No bike / Removed rides), bike per ride or in bulk, remove/restore, starting mileage, ledger ("where the km come from") | rides.py, allocation.py, usage.py | pages/Rides.tsx | DECISIONS 40–42 |
 | Maintenance, rules, snooze, brakes, chain wax cycle | maintenance.py, catalog.py | pages/Maintenance.tsx, components/LogMaintenance.tsx, TaskList.tsx | DECISIONS 12–13 |
 | Spare parts, stock, supplies, shopping list, undo | stock.py, spares.py, worksessions.py | pages/Inventory.tsx | DECISIONS 14–23 |
-| Groupset import (Shimano Ultegra Di2 R8100) | services/groupsets.py, groupset_templates/ | components/GroupsetImport.tsx (bike page → Add groupset) | docs/groupsets.md, DECISIONS 28–30 |
+| Groupset import (12 templates: Shimano Ultegra/Dura-Ace/105 Di2, 105 mechanical, GRX; SRAM RED/Force/Rival/Apex, RED/Force XPLR 13-speed) | services/groupsets.py, groupset_templates/ | components/GroupsetImport.tsx (bike page → Add groupset) | docs/groupsets.md, DECISIONS 28–30 |
 | Prices, initial/running cost | costs.py | bike list, bike page Costs card, part Edit details | DECISIONS 31–34 |
 | Purchase bundles (groupset bought at one price), parts kept as spares at import | services/bundles.py, groupsets.py, costs.py | components/Bundles.tsx (bike page "Bought as a bundle"), GroupsetImport.tsx, part page | docs/groupsets.md, DECISIONS 51–52 |
 | Km from before (starting mileage of a part, e.g. a wheelset from another bike) | inventory.set_starting_usage, usage.py | part page → Starting km / "Add km from before"; Add part form | DECISIONS 53 |
@@ -280,6 +280,9 @@ the source values as `unmatched_bike`, sets the ride uncertain with a note, and 
 result's `unknown_bikes`. Interval reminders report `km_at_least` when the last service is older than the
 part's "km from before" date. **Only ever tested against `tests/fake_strava.py`; no live Strava call has been made.**
 
+Groupset templates: shared building blocks in `groupset_templates/_shared.py`; an item may carry `rules`
+(per-part version of a default rule, applied with `maintenance.set_component_rule` at import). BATTERY can
+mount on a front or rear derailleur (SRAM AXS). All templates are unverified.
 Groupset template data for Ultegra R8100 came from retailer listings (shimano.com was unreachable from the
 cloud environment) and is marked unverified in the app.
 
@@ -300,10 +303,10 @@ cd backend && ../.venv/bin/python -m bikelog            # http://127.0.0.1:8765/
 Checks that must pass before every push:
 
 ```bash
-.venv/bin/python -m pytest -q backend/tests             # currently 149 passed
+.venv/bin/python -m pytest -q backend/tests             # currently 163 passed
 cd frontend && npx tsc -b && npx eslint . && npx vite build
 # browser test: start the app on a fresh data dir, then
-node e2e/smoke.cjs http://127.0.0.1:8790/ <screenshot-dir>   # currently 73/73 (the ride-form step can flake once; rerun)
+node e2e/smoke.cjs http://127.0.0.1:8790/ <screenshot-dir>   # currently 74/74 (the ride-form step can flake once; rerun)
 #   (cd backend && ../.venv/bin/python -m bikelog --no-browser --port 8790 --data-dir <fresh dir>)
 ```
 

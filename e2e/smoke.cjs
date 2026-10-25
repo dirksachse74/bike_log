@@ -245,6 +245,12 @@ async function sheetButton(page, name) {
   await page.goto(BASE + '#/bikes')
   await page.getByRole('link', { name: /TIME NXR/ }).click()
   await page.getByRole('button', { name: 'Add groupset' }).click()
+  // other groupsets: SRAM RED E1 puts an AXS battery on each derailleur; then back to Ultegra
+  await page.locator('.sheet').getByLabel('Groupset').selectOption('SRAM_RED_AXS_E1_2X12')
+  await page.locator('.sheet .groupset-items li').filter({ hasText: 'AXS battery (front derailleur)' }).waitFor()
+  check('groupset list offers SRAM and Shimano 12/13-speed groups',
+    (await page.locator('.sheet').getByLabel('Groupset').locator('option').count()) >= 12)
+  await page.locator('.sheet').getByLabel('Groupset').selectOption('SHIMANO_ULTEGRA_DI2_R8100')
   await page.locator('.sheet').getByLabel('Chainrings').selectOption('50-34')
   await page.locator('.sheet .groupset-items li').filter({ hasText: 'outer chainring 50T' }).waitFor()
   const chainRow = await page.locator('.sheet .groupset-items li').filter({ hasText: 'CN-M8100' }).innerText()
