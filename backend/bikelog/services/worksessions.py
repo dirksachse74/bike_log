@@ -144,6 +144,10 @@ def undo(session: Session, ws_id: int, reason: str | None = None) -> dict:
                                          effective_on=ws.performed_on, note=f"created by undone session {ws.id}"))
         c.disposition, c.status, c.retired_on = "VOIDED", "RETIRED", ws.performed_on
         c.retire_reason = "record of an undone operation"
+    from bikelog.models import PurchaseBundle
+    for b in session.scalars(select(PurchaseBundle).where(PurchaseBundle.work_session_id == ws.id,
+                                                          PurchaseBundle.voided_at.is_(None))):
+        b.voided_at, b.void_reason = now, f"undone: {reason}"
     ws.undone_at, ws.undo_reason = now, reason
     session.flush()
     allocation.rebuild_all(session, settings.tz(session))

@@ -7,6 +7,18 @@ UPDATING.md → "Making a release". New entries go under "Unreleased" as work is
 
 ## Unreleased
 
+### Added
+- Groupset bought as one bundle: one price, shop and date for the whole set, counted once in the bike's
+  running cost; parts replaced later get their own price. Bike page → "Bought as a bundle" lists what is
+  in use and in storage, with an estimated share per part; existing parts can be grouped later.
+- Groupset import: tick "spare" to keep a part in storage instead of installing it (e.g. a bottom
+  bracket that does not fit); it stays part of the bundle.
+- Part page: "Add km from before" for parts that were ridden on other bikes; the date defaults to the
+  day the part was first installed.
+
+### Changed
+- Database schema 0005 → 0006 (upgraded automatically with a backup first).
+
 ## 0.2.0 (2026-10-25)
 
 ### Added

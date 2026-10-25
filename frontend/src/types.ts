@@ -38,13 +38,15 @@ export interface BikeCosts {
   parts_cents: number
   stock_cents: number
   services_cents: number
+  bundles_cents: number
   running_cents: number
   total_cents: number
   per_km_cents?: number | null
   estimated: boolean
   unpriced_parts: number
   unvalued_stock_uses: number
-  items?: { kind: 'PART' | 'STOCK' | 'SERVICE'; date: string | null; text: string; cents: number; estimated: boolean; component_id?: number }[]
+  unpriced_bundles: number
+  items?: { kind: 'PART' | 'STOCK' | 'SERVICE' | 'BUNDLE'; date: string | null; text: string; cents: number; estimated: boolean; component_id?: number }[]
   unpriced_labels?: string[]
 }
 
@@ -96,6 +98,54 @@ export interface ComponentSummary {
   tire_setup_from: string | null
   location: Location
   usage: Usage
+  bundle: BundleRef | null
+}
+
+export interface BundleRef {
+  id: number
+  name: string
+  merchant: string | null
+  purchased_on: string | null
+  price_cents: number | null
+  share_cents: number | null
+}
+
+export interface BundleMember {
+  component_id: number
+  label: string
+  component_type: string
+  type_name: string
+  status: string
+  state: Location['state']
+  where: string
+  in_use: boolean
+  share_cents: number | null
+}
+
+export interface BundleRow {
+  id: number
+  name: string
+  merchant: string | null
+  purchased_on: string | null
+  price_cents: number | null
+  notes: string | null
+  voided: boolean
+  void_reason: string | null
+  bike_id: number | null
+  bike: string | null
+  members: BundleMember[]
+  in_use: number
+  member_count: number
+  share_basis: string
+}
+
+export interface BundleCandidate {
+  component_id: number
+  label: string
+  component_type: string
+  type_name: string
+  where: string
+  purchase_date: string | null
 }
 
 export interface Task {
@@ -336,6 +386,7 @@ export interface GroupsetPlanItem {
   text: string
   product_exists: boolean
   replaces_label?: string
+  kept_as_spare?: boolean
 }
 
 export interface GroupsetPlan {

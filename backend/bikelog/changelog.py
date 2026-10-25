@@ -43,7 +43,7 @@ LABELS = {
     "purchase_date": "purchase date", "label": "label", "product_id": "product", "serial_number": "serial number",
     "prior_usage": "history before tracking", "price_cents": "price", "retired_on": "retired on",
     "retire_reason": "retire reason", "disposition": "state when not installed", "storage_location": "stored at",
-    "tire_setup": "tire setup", "component_type": "type",
+    "tire_setup": "tire setup", "bundle_id": "bought in bundle", "component_type": "type",
 }
 _SETUP = {"TUBE": "inner tube", "TUBELESS": "tubeless (sealant)", "TUBULAR": "tubular"}
 _PRIOR = {"NEW": "new", "RECORDED": "recorded", "UNKNOWN": "unknown"}
@@ -89,6 +89,10 @@ def _fmt(session: Session, field: str, value) -> str | None:
     if field == "product_id":
         p = session.get(Product, value)
         return " ".join(x for x in (p.maker, p.model) if x) if p else f"#{value}"
+    if field == "bundle_id":
+        from bikelog.models import PurchaseBundle
+        b = session.get(PurchaseBundle, value)
+        return b.name if b else f"#{value}"
     if field == "tire_setup":
         return _SETUP.get(value, value)
     if field == "prior_usage":

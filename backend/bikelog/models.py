@@ -68,6 +68,26 @@ class Bike(Base):
     updated_at: Mapped[str] = mapped_column(String(20), default=utc_now, onupdate=utc_now)
 
 
+class PurchaseBundle(Base):
+    """Parts bought together at one price, at one shop, on one date (e.g. a whole groupset). The price
+    belongs to the bundle, not to its parts; parts replaced later get their own price and the originals
+    stay members. Never deleted; a bundle entered by mistake is voided (its parts are released)."""
+    __tablename__ = "purchase_bundle"
+    __table_args__ = (CheckConstraint("price_cents IS NULL OR price_cents >= 0", name="ck_bundle_price"),)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    uuid: Mapped[str] = mapped_column(String(36), unique=True, default=new_uuid)
+    name: Mapped[str] = mapped_column(Text)
+    merchant: Mapped[str | None] = mapped_column(Text)
+    purchased_on: Mapped[str | None] = mapped_column(String(10))
+    price_cents: Mapped[int | None] = mapped_column(Integer)
+    notes: Mapped[str | None] = mapped_column(Text)
+    work_session_id: Mapped[int | None] = mapped_column(ForeignKey("work_session.id"))
+    created_at: Mapped[str] = mapped_column(String(20), default=utc_now)
+    updated_at: Mapped[str] = mapped_column(String(20), default=utc_now, onupdate=utc_now)
+    voided_at: Mapped[str | None] = mapped_column(String(20))
+    void_reason: Mapped[str | None] = mapped_column(Text)
+
+
 class Component(Base):
     """One physical part you own. Identity never changes, whatever bike it is on."""
     __tablename__ = "component"
@@ -104,6 +124,8 @@ class Component(Base):
     # Wheels only: how the tire on it is run (TUBE, TUBELESS, TUBULAR; NULL = not set). It lives on the
     # wheel so it moves with the wheel (wheelset) between bikes; tires inherit it. Valid values: trigger.
     tire_setup: Mapped[str | None] = mapped_column(String(12))
+    # Bought together with other parts at one price (e.g. a groupset); the bundle carries the price.
+    bundle_id: Mapped[int | None] = mapped_column(ForeignKey("purchase_bundle.id"), index=True)
 
     product: Mapped[Product | None] = relationship()
 

@@ -20,6 +20,10 @@ export default function GroupsetImport({ bikeId, onDone }: { bikeId?: number; on
   const [at, setAt] = useState(today())
   const [priorUsage, setPriorUsage] = useState('NEW')
   const [prices, setPrices] = useState<Record<string, string>>({})
+  // How it was bought: one price for the whole set (a bundle) or a price per part.
+  const [priceMode, setPriceMode] = useState<'BUNDLE' | 'PARTS'>('BUNDLE')
+  const [bundle, setBundle] = useState({ price: '', merchant: '', purchased_on: today() })
+  const [spares, setSpares] = useState<Set<string>>(new Set())
   const [plan, setPlan] = useState<GroupsetPlan | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
@@ -44,6 +48,7 @@ export default function GroupsetImport({ bikeId, onDone }: { bikeId?: number; on
     options,
     include: offered.filter((i) => include.has(i.key)).map((i) => i.key),
     occupied,
+    to_spares: [...spares].filter((k) => include.has(k)),
   })
 
   // The preview follows every change, so what you see is what "Add" will do.
@@ -58,7 +63,7 @@ export default function GroupsetImport({ bikeId, onDone }: { bikeId?: number; on
       live = false
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [t, bike, options, include, occupied, offered])
+  }, [t, bike, options, include, occupied, offered, spares])
 
   async function add() {
     if (!t) return
@@ -66,17 +71,26 @@ export default function GroupsetImport({ bikeId, onDone }: { bikeId?: number; on
     setError(null)
     try {
       const paid: Record<string, number> = {}
-      for (const key of body().include) {
-        const c = toCents(prices[key] ?? '')
-        if (Number.isNaN(c)) throw new Error('Prices: enter amounts such as 49,90')
-        if (c !== null) paid[key] = c
+      let bundleBody = null
+      if (priceMode === 'PARTS') {
+        for (const key of body().include) {
+          const c = toCents(prices[key] ?? '')
+          if (Number.isNaN(c)) throw new Error('Prices: enter amounts such as 49,90')
+          if (c !== null) paid[key] = c
+        }
+      } else {
+        const c = toCents(bundle.price)
+        if (Number.isNaN(c)) throw new Error('Bundle price: enter an amount such as 1899,00')
+        bundleBody = { price_cents: c, merchant: bundle.merchant || null, purchased_on: bundle.purchased_on || null }
       }
-      const r = await api.post<OpResult<GroupsetPlan & { created: { label: string }[] }>>(
+      const r = await api.post<OpResult<GroupsetPlan & { created: { label: string }[]; bundle: { name: string } | null }>>(
         `/groupsets/${t.code}/import`,
-        { ...body(), at, prior_usage: priorUsage, prices: paid },
+        { ...body(), at, prior_usage: priorUsage, prices: paid, bundle: bundleBody, purchase_date: priceMode === 'BUNDLE' ? bundle.purchased_on || null : null },
         opId,
       )
-      onDone(`${r.result.created.length} parts added (${r.result.counts.INSTALL + r.result.counts.REPLACE} installed). Undo is under Inventory → History.`)
+      onDone(
+        `${r.result.created.length} parts added (${r.result.counts.INSTALL + r.result.counts.REPLACE} installed)${r.result.bundle ? `, recorded as the bundle "${r.result.bundle.name}"` : ''}. Undo is under Inventory → History.`,
+      )
     } catch (e) {
       setError((e as Error).message)
     } finally {
@@ -88,6 +102,12 @@ export default function GroupsetImport({ bikeId, onDone }: { bikeId?: number; on
   if (templates.error) return <ErrorBox error={templates.error} onRetry={templates.reload} />
   if (!t) return <Empty title="No groupset templates" />
   const paidTotal = offered.filter((i) => include.has(i.key)).reduce((sum, i) => sum + (toCents(prices[i.key] ?? '') || 0), 0)
+  const toggleSpare = (key: string) => {
+    const next = new Set(spares)
+    if (next.has(key)) next.delete(key)
+    else next.add(key)
+    setSpares(next)
+  }
   const toggle = (key: string) => {
     const next = new Set(include)
     if (next.has(key)) next.delete(key)
@@ -165,9 +185,39 @@ export default function GroupsetImport({ bikeId, onDone }: { bikeId?: number; on
         </fieldset>
       )}
       <fieldset className="field">
+        <legend className="field-label">How was it bought?</legend>
+        <div className="pick-list">
+          <label className={`pick ${priceMode === 'BUNDLE' ? 'pick-on' : ''}`}>
+            <input type="radio" name="priceMode" checked={priceMode === 'BUNDLE'} onChange={() => setPriceMode('BUNDLE')} />
+            <span>
+              As one bundle (one price for the whole set)
+              <span className="small muted"> The price counts once. Parts replaced later get their own price; the originals stay in the bundle.</span>
+            </span>
+          </label>
+          <label className={`pick ${priceMode === 'PARTS' ? 'pick-on' : ''}`}>
+            <input type="radio" name="priceMode" checked={priceMode === 'PARTS'} onChange={() => setPriceMode('PARTS')} />
+            <span>Part by part (a price per part)</span>
+          </label>
+        </div>
+        {priceMode === 'BUNDLE' && (
+          <div className="row">
+            <Field label="Bundle price" hint="Optional; can be added later.">
+              <input inputMode="decimal" placeholder="€" value={bundle.price} onChange={(e) => setBundle({ ...bundle, price: e.target.value })} />
+            </Field>
+            <Field label="Shop">
+              <input value={bundle.merchant} onChange={(e) => setBundle({ ...bundle, merchant: e.target.value })} />
+            </Field>
+            <Field label="Bought on">
+              <input type="date" value={bundle.purchased_on} onChange={(e) => setBundle({ ...bundle, purchased_on: e.target.value })} />
+            </Field>
+          </div>
+        )}
+      </fieldset>
+      <fieldset className="field">
         <legend className="field-label">
-          Parts ({offered.filter((i) => include.has(i.key)).length} of {offered.length}) · prices are optional
-          {paidTotal > 0 ? `, ${euro(paidTotal)} entered` : ''}
+          Parts ({offered.filter((i) => include.has(i.key)).length} of {offered.length})
+          {priceMode === 'PARTS' ? ` · prices are optional${paidTotal > 0 ? `, ${euro(paidTotal)} entered` : ''}` : ''}
+          {bike ? ' · tick "spare" for parts that go into storage instead of onto the bike' : ''}
         </legend>
         <ul className="list groupset-items">
           {offered.map((i) => {
@@ -182,7 +232,12 @@ export default function GroupsetImport({ bikeId, onDone }: { bikeId?: number; on
                   </span>
                 </label>
                 {row && <Tag tone={row.action === 'SPARE' ? 'neutral' : row.action === 'REPLACE' ? 'warn' : 'good'}>{ACTION_TEXT[row.action]}</Tag>}
-                {include.has(i.key) && (
+                {bike && include.has(i.key) && (
+                  <label className="check small" title="Keep this part in storage instead of installing it">
+                    <input type="checkbox" aria-label={`Keep ${i.name} as spare`} checked={spares.has(i.key)} onChange={() => toggleSpare(i.key)} /> spare
+                  </label>
+                )}
+                {priceMode === 'PARTS' && include.has(i.key) && (
                   <input
                     className="price-input"
                     aria-label={`Price ${i.name}`}

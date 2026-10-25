@@ -160,6 +160,17 @@ you disagree. Dates are 2026-10-24 unless noted.
     the commit (`0.2.0+abc1234`, semver build metadata). `scripts/release.py` bumps, dates CHANGELOG.md,
     commits and tags on the feature branch; tags may be pushed, main is never touched. 0.1.0 = the first
     Windows build (untagged); 0.2.0 = first tagged release.
+51. **Purchase bundles**: a groupset bought as one bundle (one price, shop, date) is a `purchase_bundle`
+    with member parts that carry no own price, so the money is counted once, for the bike most members
+    were first installed on. Per-part shares are shown as estimates only. Later replacements (pads,
+    rotor, chain) are separate parts with their own price; originals stay members. Wrong bundles are
+    voided, never deleted; undoing the import voids its bundle. Existing parts can be grouped later
+    (bike page → Group parts as a bundle). Reason: Dirk bought his Ultegra group as a bundle (2026-10-25).
+52. **Bundle parts kept as spares at import**: per item, "spare" puts it in storage although a bike is
+    chosen (e.g. the BSA bottom bracket that does not fit the TIME NXR). It stays a bundle member.
+53. **Km from before** is the part's starting mileage (value, "as of" date, estimate flag). The part
+    page offers it when none is set and defaults the date to the day the part was first installed, so
+    rides from then on count on top (e.g. wheels with a few thousand km on a bike with 150 km).
 
 ## Repository
 27. Pushed only to the feature branch `claude/project-thread-6y3mmh` of the private repository. Demo

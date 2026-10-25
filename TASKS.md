@@ -40,6 +40,8 @@ Status key: ✅ done and tested · 🟡 done, not verified where it matters · �
 - ✅ Prices on parts (add, edit, replace, groupset import), service cost on maintenance, bike purchase price.
 - ✅ Initial and running cost per bike (bike list and bike page, with cost entries and cost per km).
 - ✅ Journal with notes and issues on bikes and parts, maintenance notes included.
+- ✅ Purchase bundles (groupset at one price, counted once), parts kept as spares at import, grouping existing parts later.
+- ✅ Km from before on a part (starting mileage, date defaults to first install).
 - 💡 Costs report across bikes per year; editing product reference prices in the UI (API exists).
 
 ## P6d History and diagnostics

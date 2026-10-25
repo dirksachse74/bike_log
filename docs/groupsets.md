@@ -15,8 +15,16 @@ The list shows, per part, exactly what will happen before anything is saved. Cas
 wheels that are installed on the bike; without a wheel they are added as spares. Chainrings go on the new
 crankset and the quick link on the new chain. With "No bike" everything is added as spares.
 
+**How was it bought?** Choose **As one bundle** (default) to enter one price, shop and date for the whole
+set: the price counts once in the bike's running cost and the parts get no own price (each part shows an
+estimated share). Choose **Part by part** to enter a price per part instead. Tick **spare** on a part to
+put it into storage instead of onto the bike (for example a BSA bottom bracket that does not fit); it
+stays part of the bundle. Parts replaced later (pads, rotor, chain) are bought separately and get their own
+price; the originals stay listed in the bundle as retired or stored. Already imported without a bundle?
+Bike page → **Bought as a bundle** → **Group parts as a bundle**, tick the parts, enter the price.
+
 The whole import is one work session: Inventory → History → **Undo** takes it all back (the records stay,
-marked as an undone operation). Products are reused: importing the same group on a second bike creates no
+marked as an undone operation, and the bundle is voided). Products are reused: importing the same group on a second bike creates no
 duplicate products.
 
 ## Shimano Ultegra Di2 R8100 (2×12, hydraulic disc)

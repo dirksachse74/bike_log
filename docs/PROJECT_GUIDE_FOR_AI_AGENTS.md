@@ -127,11 +127,14 @@ packaging/               bikelog.spec (PyInstaller), entry.py, bikelog.iss (Inno
   Written by an `after_flush` hook in `bikelog/changelog.py` for every session, so new code is covered
   automatically; set the source with `change_source(...)` / `@from_source(...)` for non-UI writers.
   Plain ids (no FKs) so a deleted typo part keeps its rows; update/delete blocked by triggers.
+- **purchase_bundle**: parts bought together at one price (a groupset): name, merchant, `purchased_on`,
+  `price_cents`, notes, `work_session_id` (set by a groupset import, so undo voids it), voided/reason;
+  delete blocked by a trigger. **component.bundle_id** links a member part; members carry no own price.
 
 Migrations: plain `ADD COLUMN` / `CREATE TABLE` where possible; tables with protection triggers are not
 rebuilt. Every schema upgrade writes a backup first; a database newer than the app is refused. A test
 compares `models.py` with the migrated schema, so **every model change needs a new migration**
-(never edit a released one; 0005 is the newest).
+(never edit a released one; 0006 is the newest).
 
 ---
 
@@ -168,7 +171,14 @@ created stay as "record of an undone operation".
 (counted for the bike the part was *first* installed on, following parents; spares never installed count
 for no bike), stock used on the bike valued at the stock line's average purchase price (≈), and service
 costs on maintenance entries (a multi-part entry stores one fee once). Undone sessions drop out. Parts that
-came with the bike should have no price (they are inside the purchase price).
+came with the bike should have no price (they are inside the purchase price). **Bundles
+(`bundles.py`)**: the bundle price counts once, for the bike most of its members were first installed on;
+members have no own price (refused while the bundle is live) and their per-part share (weighted by product
+reference price, else even; rounding to the largest) is an estimate for display only. Replacement parts
+bought later carry their own price; the original members stay in the bundle (retired or stored). A part
+with its own price, from stock, or in another live bundle cannot join. Voiding frees the members.
+Groupset import takes `bundle` (one price) or `prices` (per part), never both, and `to_spares` (keys kept
+in storage although a bike is chosen, e.g. a BSA bottom bracket that does not fit).
 
 **Journal (`journal.py`).** Dated notes/issues on bikes and parts; a part's entry also records its bike;
 maintenance notes (symptom, work done, notes) appear in the same list read-only.
@@ -185,6 +195,8 @@ maintenance notes (symptom, work done, notes) appear in the same list read-only.
 | Spare parts, stock, supplies, shopping list, undo | stock.py, spares.py, worksessions.py | pages/Inventory.tsx | DECISIONS 14–23 |
 | Groupset import (Shimano Ultegra Di2 R8100) | services/groupsets.py, groupset_templates/ | components/GroupsetImport.tsx (bike page → Add groupset) | docs/groupsets.md, DECISIONS 28–30 |
 | Prices, initial/running cost | costs.py | bike list, bike page Costs card, part Edit details | DECISIONS 31–34 |
+| Purchase bundles (groupset bought at one price), parts kept as spares at import | services/bundles.py, groupsets.py, costs.py | components/Bundles.tsx (bike page "Bought as a bundle"), GroupsetImport.tsx, part page | docs/groupsets.md, DECISIONS 51–52 |
+| Km from before (starting mileage of a part, e.g. a wheelset from another bike) | inventory.set_starting_usage, usage.py | part page → Starting km / "Add km from before"; Add part form | DECISIONS 53 |
 | Journal | journal.py | components/Journal.tsx (bike and part pages) | DECISIONS 35 |
 | Change log | changelog.py | components/ChangeLog.tsx (bike and part pages) | DECISIONS 45 |
 | Tube/tubeless on wheels, sealant reminder | inventory.tire_setup_of, maintenance.py, catalog.py | components/TireSetup.tsx (bike setup rows, wheel page) | DECISIONS 43–44 |
@@ -231,10 +243,10 @@ cd backend && ../.venv/bin/python -m bikelog            # http://127.0.0.1:8765/
 Checks that must pass before every push:
 
 ```bash
-.venv/bin/python -m pytest -q backend/tests             # currently 118 passed
+.venv/bin/python -m pytest -q backend/tests             # currently 122 passed
 cd frontend && npx tsc -b && npx eslint . && npx vite build
 # browser test: start the app on a fresh data dir, then
-node e2e/smoke.cjs http://127.0.0.1:8790/ <screenshot-dir>   # currently 55/55
+node e2e/smoke.cjs http://127.0.0.1:8790/ <screenshot-dir>   # currently 61/61 (the ride-form step can flake once; rerun)
 #   (cd backend && ../.venv/bin/python -m bikelog --no-browser --port 8790 --data-dir <fresh dir>)
 ```
 
@@ -284,7 +296,8 @@ Meta/overview: `health`, `meta`, `overview`, `settings` (GET/PATCH). Bikes: `bik
 `maintenance/queue|events|candidates`, `events` POST, `/void`, `snooze`; `rules`; `chains`; `brakes`.
 Stock: `consumables` (GET/POST/PATCH), `/txns`, `/txn`, `/install`; `inventory`; `shopping-list`.
 Work sessions: `work-sessions`, `/{id}`, `/{id}/undo`. Journal: `journal` (GET/POST), `/{id}` PATCH,
-`/{id}/void`. Groupsets: `groupsets`, `/{code}/plan`, `/{code}/import`. Imports: `imports/csv`,
+`/{id}/void`. Groupsets: `groupsets`, `/{code}/plan`, `/{code}/import`. Bundles: `bundles` (GET `bike_id`, `include_voided`; POST),
+`bundles/candidates`, `bundles/{id}` (GET/PATCH), `/members` (POST), `/members/{cid}` (DELETE), `/void`. Imports: `imports/csv`,
 `imports`, `imports/template`, `imports/products`, `product-templates`, `product-templates/{type}/schema|example`,
 `product-templates/instructions.md`. Strava: `strava/status`, `credentials` (PUT/DELETE), `connect`,
 `callback`, `sync`, `disconnect`. History/diagnostics: `changes?bike_id=|component_id=`, `logs?lines=&level=`,

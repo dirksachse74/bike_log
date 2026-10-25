@@ -6,6 +6,8 @@ Running cost is derived from the records every time, never stored:
 - stock used: units taken from counted stock or bulk supplies for this bike's parts or maintenance,
   valued at the average purchase price of that stock line (an estimate, marked as such).
 - services: the cost entered on maintenance entries, such as a shop fee.
+- bundles: parts bought together at one price (e.g. a groupset) count once, with the bundle price, for
+  the bike most of their parts were first installed on (services/bundles.py). Their parts have no own price.
 Money is counted once: a part drawn from stock has no own price, its value comes from the stock line.
 Undone work sessions and voided records are left out.
 """
@@ -15,7 +17,9 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from bikelog.catalog import ACTIONS
-from bikelog.models import Bike, Component, Consumable, ConsumableTxn, Installation, MaintenanceEvent
+from bikelog.models import (
+    Bike, Component, Consumable, ConsumableTxn, Installation, MaintenanceEvent, PurchaseBundle,
+)
 
 
 def _first_bike(session: Session, component_id: int, depth: int = 0) -> int | None:
@@ -61,10 +65,25 @@ def bike_costs(session: Session, bike: Bike, *, attribution: dict[int, int | Non
     first_bike = attribution if attribution is not None else bike_attribution(session)
     items: list[dict] = []
     unpriced: list[str] = []
+    from bikelog.services import bundles as bundles_svc
+    live_bundles = {b.id: b for b in session.scalars(select(PurchaseBundle).where(PurchaseBundle.voided_at.is_(None)))}
+    unpriced_bundles = 0
+    for b in live_bundles.values():
+        comps = [c for c in bundles_svc.members(session, b) if c.disposition != "VOIDED"]
+        if bundles_svc.bike_of(b, comps, first_bike) != bike.id:
+            continue
+        if b.price_cents is None:
+            unpriced_bundles += 1
+            continue
+        items.append({"kind": "BUNDLE", "date": b.purchased_on, "bundle_id": b.id, "cents": b.price_cents,
+                      "text": f"{b.name} ({len(comps)} parts{', ' + b.merchant if b.merchant else ''})",
+                      "estimated": False})
     for cid, bid in first_bike.items():
         if bid != bike.id:
             continue
         c = session.get(Component, cid)
+        if c.bundle_id in live_bundles:
+            continue                      # priced by its bundle
         if c.price_cents is not None:
             items.append({"kind": "PART", "date": c.purchase_date, "text": c.label, "component_id": c.id,
                           "cents": c.price_cents, "estimated": False})
@@ -101,11 +120,12 @@ def bike_costs(session: Session, bike: Bike, *, attribution: dict[int, int | Non
     def total(kind: str) -> int:
         return sum(i["cents"] for i in items if i["kind"] == kind)
 
-    running = total("PART") + total("STOCK") + total("SERVICE")
+    running = total("PART") + total("BUNDLE") + total("STOCK") + total("SERVICE")
     initial = bike.purchase_price_cents
     out = {
         "initial_cents": initial, "purchase_date": bike.purchase_date,
-        "parts_cents": total("PART"), "stock_cents": total("STOCK"), "services_cents": total("SERVICE"),
+        "parts_cents": total("PART"), "bundles_cents": total("BUNDLE"), "stock_cents": total("STOCK"),
+        "services_cents": total("SERVICE"), "unpriced_bundles": unpriced_bundles,
         "running_cents": running, "total_cents": (initial or 0) + running,
         "estimated": any(i["estimated"] for i in items),
         "unpriced_parts": len(unpriced), "unvalued_stock_uses": unvalued,

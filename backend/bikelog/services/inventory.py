@@ -182,6 +182,11 @@ def tire_setup_of(session: Session, comp: Component) -> tuple[str | None, Compon
 def update_component(session: Session, component_id: int, **fields) -> Component:
     comp = get_component(session, component_id)
     _check_price(fields.get("price_cents"))
+    if fields.get("price_cents") is not None and comp.bundle_id:
+        from bikelog.models import PurchaseBundle
+        b = session.get(PurchaseBundle, comp.bundle_id)
+        if b is not None and b.voided_at is None:
+            raise DomainError(f"{comp.label} was bought in the bundle '{b.name}'; the bundle carries the price")
     if "tire_setup" in fields:
         _check_tire_setup(comp.component_type, fields["tire_setup"])
     for k in ("label", "serial_number", "purchase_date", "price_cents", "notes", "product_id", "prior_usage",

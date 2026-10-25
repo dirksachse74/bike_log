@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { api, newOpId } from '../api'
+import Bundles from '../components/Bundles'
 import GroupsetImport from '../components/GroupsetImport'
 import ChangeLog from '../components/ChangeLog'
 import Journal from '../components/Journal'
@@ -359,6 +360,7 @@ export function BikeDetailPage() {
           </ul>
         )}
       </Card>
+      <Bundles bikeId={data.id} refresh={data} onChanged={(msg) => { toast(msg); reload() }} className="span-2" />
       <Journal bikeId={data.id} className="span-2" />
       <ChangeLog bikeId={data.id} refresh={data} className="span-2" />
       <Card title="Installation history" className="span-2">
@@ -437,7 +439,7 @@ export function BikeDetailPage() {
   )
 }
 
-const COST_KIND: Record<string, string> = { PART: 'part', STOCK: 'from stock', SERVICE: 'service' }
+const COST_KIND: Record<string, string> = { PART: 'part', BUNDLE: 'bundle', STOCK: 'from stock', SERVICE: 'service' }
 
 function CostCard({ bike, onEdit }: { bike: BikeDetail; onEdit: () => void }) {
   const c = bike.cost_detail
@@ -464,7 +466,7 @@ function CostCard({ bike, onEdit }: { bike: BikeDetail; onEdit: () => void }) {
             {euro(c.running_cents) || euro(0)}
           </span>
           <span className="muted small">
-            running cost: parts {euro(c.parts_cents) || euro(0)} · from stock {euro(c.stock_cents) || euro(0)} · services {euro(c.services_cents) || euro(0)}
+            running cost: {c.bundles_cents > 0 ? `bundles ${euro(c.bundles_cents)} · ` : ''}parts {euro(c.parts_cents) || euro(0)} · from stock {euro(c.stock_cents) || euro(0)} · services {euro(c.services_cents) || euro(0)}
           </span>
         </div>
         <div>
@@ -472,8 +474,9 @@ function CostCard({ bike, onEdit }: { bike: BikeDetail; onEdit: () => void }) {
           <span className="muted small">total{perKm !== null ? ` · ${bike.usage.certainty === 'INCOMPLETE' ? 'at most ' : ''}${euro(perKm)} per km` : ''}</span>
         </div>
       </div>
-      {(c.unpriced_parts > 0 || c.estimated) && (
+      {(c.unpriced_parts > 0 || c.estimated || c.unpriced_bundles > 0) && (
         <p className="small muted">
+          {c.unpriced_bundles > 0 && `${c.unpriced_bundles} bundle${c.unpriced_bundles === 1 ? ' has' : 's have'} no price yet. `}
           {c.unpriced_parts > 0 && `${c.unpriced_parts} installed part${c.unpriced_parts === 1 ? ' has' : 's have'} no price (fine for parts that came with the bike). `}
           {c.estimated && '≈: parts taken from stock are valued at the average price paid for that stock.'}
         </p>

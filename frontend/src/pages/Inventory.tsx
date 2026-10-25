@@ -920,6 +920,13 @@ export function ComponentDetailPage() {
     close()
     reload()
   }
+  // Km the part already had (e.g. a wheelset used on other bikes). Defaults to the day it was first
+  // installed here, so rides from then on count on top of the value.
+  const firstInstall = data.history.filter((h) => !h.voided).map((h) => h.installed_at.slice(0, 10)).sort()[0]
+  const openStart = () => {
+    setF({ ...f, km: u.starting_km !== null ? String(u.starting_km) : '', date: (u.starting_effective ?? firstInstall ?? today()).slice(0, 10), estimate: u.starting_km !== null ? u.starting_is_estimate : true })
+    setSheet('start')
+  }
   return (
     <div className="grid">
       <Card
@@ -958,7 +965,7 @@ export function ComponentDetailPage() {
               <button className="btn" onClick={() => setSheet('details')}>
                 Edit details
               </button>
-              <button className="btn" onClick={() => setSheet('start')}>
+              <button className="btn" onClick={openStart}>
                 Starting km
               </button>
               <button className="btn" onClick={() => setSheet('retire')}>
@@ -989,6 +996,14 @@ export function ComponentDetailPage() {
           </div>
         </div>
         <p className="small">{u.summary}</p>
+        {u.starting_km === null && data.status !== 'RETIRED' && (
+          <p className="small muted">
+            Already ridden before (on another bike or before Bike Log)?{' '}
+            <button className="btn btn-small" onClick={openStart}>
+              Add km from before
+            </button>
+          </p>
+        )}
         {data.product && <p className="small muted">Product: {data.product}</p>}
         {(data.component_type === 'FRONT_WHEEL' || data.component_type === 'REAR_WHEEL') && (
           <p className="small">
@@ -1002,8 +1017,20 @@ export function ComponentDetailPage() {
           </p>
         )}
         <p className="small muted">
-          Price: {data.price_cents !== null ? euro(data.price_cents) : 'not entered'}
-          {data.purchase_date ? ` · bought ${when(data.purchase_date)}` : ''}
+          {data.bundle ? (
+            <>
+              Bought in the bundle <strong>{data.bundle.name}</strong>
+              {data.bundle.price_cents !== null ? ` (${euro(data.bundle.price_cents)}` : ' (no bundle price yet'}
+              {data.bundle.merchant ? `, ${data.bundle.merchant}` : ''}
+              {data.bundle.purchased_on ? `, ${when(data.bundle.purchased_on)}` : ''})
+              {data.bundle.share_cents !== null ? ` · share ≈ ${euro(data.bundle.share_cents)} (estimate)` : ''}
+            </>
+          ) : (
+            <>
+              Price: {data.price_cents !== null ? euro(data.price_cents) : 'not entered'}
+              {data.purchase_date ? ` · bought ${when(data.purchase_date)}` : ''}
+            </>
+          )}
           {data.serial_number ? ` · serial ${data.serial_number}` : ''}
         </p>
       </Card>
@@ -1182,7 +1209,10 @@ export function ComponentDetailPage() {
       {sheet === 'start' && (
         <Sheet title="Starting mileage" onClose={close}>
           <div className="form">
-            <p className="small muted">The part had this many km on the given date. Rides before that date are treated as already inside this value.</p>
+            <p className="small muted">
+              The km the part already had on the given date, for example a wheelset used on other bikes. Rides recorded in Bike Log after that date are added on top; rides before it are treated as already inside this value. The date is set to the day the part was first installed here
+              {firstInstall ? ` (${when(firstInstall)})` : ''}, so enter the km it had then.
+            </p>
             <div className="row">
               <Field label="km">
                 <input inputMode="decimal" value={f.km} onChange={(e) => setF({ ...f, km: e.target.value })} />
@@ -1325,9 +1355,15 @@ function DetailsForm({ comp, onDone }: { comp: ComponentSummary; onDone: () => v
         <input value={f.label} onChange={(e) => setF({ ...f, label: e.target.value })} />
       </Field>
       <div className="row">
-        <Field label="Price paid" hint="Leave empty if it came with the bike (then it is part of the bike's price).">
-          <input inputMode="decimal" value={f.price} onChange={(e) => setF({ ...f, price: e.target.value })} placeholder="€" />
-        </Field>
+        {comp.bundle ? (
+          <Field label="Price paid" hint={`Bought in the bundle "${comp.bundle.name}": the bundle carries the price (change it on the bike page under "Bought as a bundle").`}>
+            <input value="in bundle" disabled aria-label="Price paid (in bundle)" />
+          </Field>
+        ) : (
+          <Field label="Price paid" hint="Leave empty if it came with the bike (then it is part of the bike's price).">
+            <input inputMode="decimal" value={f.price} onChange={(e) => setF({ ...f, price: e.target.value })} placeholder="€" />
+          </Field>
+        )}
         <Field label="Bought on">
           <input type="date" value={f.purchase_date} onChange={(e) => setF({ ...f, purchase_date: e.target.value })} />
         </Field>

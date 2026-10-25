@@ -115,8 +115,10 @@ def _unique_label(session: Session, component_type: str, base: str, taken: set[s
 
 
 def plan(session: Session, code: str, *, bike_id: int | None = None, options: dict | None = None,
-         include: list[str] | None = None, label_prefix: str | None = None, occupied: str = "KEEP") -> dict:
-    """What an import would do, item by item, without changing anything."""
+         include: list[str] | None = None, label_prefix: str | None = None, occupied: str = "KEEP",
+         to_spares: list[str] | None = None) -> dict:
+    """What an import would do, item by item, without changing anything. ``to_spares`` names items that
+    go straight into storage instead of onto the bike (e.g. a bottom bracket that does not fit the frame)."""
     template = get_template(code)
     if occupied not in OCCUPIED_MODES:
         raise DomainError(f"occupied must be one of {', '.join(OCCUPIED_MODES)}")
@@ -136,6 +138,9 @@ def plan(session: Session, code: str, *, bike_id: int | None = None, options: di
     if not selected:
         raise DomainError("Pick at least one part to add")
     selected_keys = {i["key"] for i in selected}
+    to_spares = set(to_spares or [])
+    if to_spares - keys:
+        raise DomainError(f"Unknown items: {', '.join(sorted(to_spares - keys))}")
     prefix = (label_prefix or template.get("label_prefix") or template["series"]).strip()
     taken: set[str] = set()
     rows = []
@@ -152,6 +157,10 @@ def plan(session: Session, code: str, *, bike_id: int | None = None, options: di
                "parent_component_id": None, "replaces_component_id": None, "text": "Added as a spare"}
         if bike is None:
             row["text"] = "Added as a spare (no bike chosen)"
+            rows.append(row)
+            continue
+        if it["key"] in to_spares:
+            row.update(text="Kept as a spare, not installed (your choice)", kept_as_spare=True)
             rows.append(row)
             continue
         where_text = bike.name
@@ -201,7 +210,7 @@ def plan(session: Session, code: str, *, bike_id: int | None = None, options: di
     return {"template": template["code"], "name": template["name"], "verified": template["verified"],
             "source": template["source"], "bike_id": bike.id if bike else None,
             "bike_name": bike.name if bike else None, "options": chosen, "occupied": occupied,
-            "items": rows, "counts": counts,
+            "items": rows, "counts": counts, "to_spares": sorted(to_spares),
             "new_products": len({(r["type"], r["model"].lower()) for r in rows if not r["product_exists"]})}
 
 
@@ -209,12 +218,15 @@ def import_groupset(session: Session, code: str, *, at: str, work_session_id: in
                     options: dict | None = None, include: list[str] | None = None,
                     label_prefix: str | None = None, occupied: str = "KEEP", prior_usage: str = "NEW",
                     purchase_date: str | None = None, outcomes: dict[str, str] | None = None,
-                    prices: dict[str, int] | None = None, notes: str | None = None) -> dict:
+                    prices: dict[str, int] | None = None, notes: str | None = None,
+                    bundle: dict | None = None, to_spares: list[str] | None = None) -> dict:
     """Create the parts from ``plan`` and put them in place, all inside one work session.
     ``outcomes`` overrides, per item key, what happens to a replaced part (default per part type).
-    ``prices`` are the prices paid per item key (cents); they count as running cost of the bike."""
+    ``prices`` are the prices paid per item key (cents); they count as running cost of the bike.
+    ``bundle`` ({price_cents, merchant, purchased_on, name}) records the whole set as one purchase instead:
+    the parts get no own price and the bundle price counts once (services/bundles.py)."""
     p = plan(session, code, bike_id=bike_id, options=options, include=include, label_prefix=label_prefix,
-             occupied=occupied)
+             occupied=occupied, to_spares=to_spares)
     template = get_template(code)
     outcomes = outcomes or {}
     prices = prices or {}
@@ -224,6 +236,8 @@ def import_groupset(session: Session, code: str, *, at: str, work_session_id: in
             raise DomainError(f"Price given for {key!r}, which is not part of this import")
         if cents is not None and cents < 0:
             raise DomainError("A price cannot be negative")
+    if bundle is not None and any(v is not None for v in prices.values()):
+        raise DomainError("Enter either one price for the whole bundle or prices per part, not both")
     for key, outcome in outcomes.items():
         if outcome not in DISPOSITIONS or outcome == "VOIDED":
             raise DomainError(f"{key}: unknown outcome {outcome!r}")
@@ -256,8 +270,17 @@ def import_groupset(session: Session, code: str, *, at: str, work_session_id: in
                         old_outcome=outcome, reason=f"replaced by {template['series']} groupset",
                         work_session_id=work_session_id)
             row["old_outcome"] = outcome
+    bundle_row = None
+    if bundle is not None:
+        from bikelog.services import bundles as bundles_svc
+        b = bundles_svc.create(session, name=bundle.get("name") or f"{template['name']} groupset",
+                               component_ids=[c.id for c in created.values()], merchant=bundle.get("merchant"),
+                               purchased_on=bundle.get("purchased_on") or purchase_date or at[:10],
+                               price_cents=bundle.get("price_cents"), notes=bundle.get("notes"),
+                               work_session_id=work_session_id)
+        bundle_row = {"id": b.id, "name": b.name}
     inv._reallocate(session)
-    return {**p, "work_session_id": work_session_id,
+    return {**p, "work_session_id": work_session_id, "bundle": bundle_row,
             "created": [{"key": k, "component_id": c.id, "label": c.label} for k, c in created.items()]}
 
 

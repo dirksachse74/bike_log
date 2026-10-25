@@ -29,6 +29,7 @@ from bikelog.migrate import head_revision
 from bikelog.models import Bike, Component, Product, ServiceRule, UsageProfile
 from bikelog.paths import DataPaths, resource_root
 from bikelog.services import costs as costs_svc
+from bikelog.services import bundles as bundles_svc
 from bikelog.services import demo, diagnostics, groupsets, imports, journal, product_import, spares, stock
 from bikelog.services import worksessions as ws_svc
 from bikelog.services import inventory as inv
@@ -207,6 +208,36 @@ class GroupsetPlanIn(Body):
     include: list[str] | None = None
     label_prefix: str | None = None
     occupied: str = "KEEP"
+    to_spares: list[str] = []
+
+
+class BundlePriceIn(Body):
+    name: str | None = None
+    merchant: str | None = None
+    purchased_on: str | None = None
+    price_cents: int | None = None
+    notes: str | None = None
+
+
+class BundleIn(Body):
+    name: str
+    component_ids: list[int]
+    merchant: str | None = None
+    purchased_on: str | None = None
+    price_cents: int | None = None
+    notes: str | None = None
+
+
+class BundlePatch(Body):
+    name: str | None = None
+    merchant: str | None = None
+    purchased_on: str | None = None
+    price_cents: int | None = None
+    notes: str | None = None
+
+
+class BundleMembersIn(Body):
+    component_ids: list[int]
 
 
 class GroupsetImportIn(GroupsetPlanIn):
@@ -216,6 +247,7 @@ class GroupsetImportIn(GroupsetPlanIn):
     purchase_date: str | None = None
     outcomes: dict[str, str] = {}
     notes: str | None = None
+    bundle: BundlePriceIn | None = None
 
 
 class StravaCredentialsIn(Body):
@@ -901,6 +933,41 @@ def create_app(factory: sessionmaker[Session], paths: DataPaths, *, token: str |
             return groupsets.import_groupset(s, code, work_session_id=ws.id, **body.model_dump())
         return op(s, op_id, "groupset.import", fn, dry_run)
 
+    # ------------------------------------------------------------ purchase bundles (e.g. a groupset)
+
+    @app.get("/api/bundles")
+    def bundles_list(bike_id: int | None = None, include_voided: bool = False, s: Session = Depends(db)):
+        return bundles_svc.list_rows(s, bike_id=bike_id, include_voided=include_voided)
+
+    @app.get("/api/bundles/candidates")
+    def bundle_candidates(bike_id: int | None = None, s: Session = Depends(db)):
+        return bundles_svc.candidates(s, bike_id=bike_id)
+
+    @app.get("/api/bundles/{bundle_id}")
+    def bundle_detail(bundle_id: int, s: Session = Depends(db)):
+        return bundles_svc.row(s, bundles_svc.get(s, bundle_id))
+
+    @app.post("/api/bundles", status_code=201)
+    def bundle_create(body: BundleIn, s: Session = Depends(db), op_id: str | None = OpId):
+        return op(s, op_id, "bundle.create",
+                  lambda: bundles_svc.row(s, bundles_svc.create(s, **body.model_dump())))
+
+    @app.patch("/api/bundles/{bundle_id}")
+    def bundle_patch(bundle_id: int, body: BundlePatch, s: Session = Depends(db)):
+        return bundles_svc.row(s, bundles_svc.update(s, bundle_id, **body.model_dump(exclude_unset=True)))
+
+    @app.post("/api/bundles/{bundle_id}/members")
+    def bundle_add(bundle_id: int, body: BundleMembersIn, s: Session = Depends(db)):
+        return bundles_svc.row(s, bundles_svc.add_members(s, bundle_id, body.component_ids))
+
+    @app.delete("/api/bundles/{bundle_id}/members/{component_id}")
+    def bundle_remove(bundle_id: int, component_id: int, s: Session = Depends(db)):
+        return bundles_svc.row(s, bundles_svc.remove_member(s, bundle_id, component_id))
+
+    @app.post("/api/bundles/{bundle_id}/void")
+    def bundle_void(bundle_id: int, body: VoidIn, s: Session = Depends(db)):
+        return bundles_svc.row(s, bundles_svc.void(s, bundle_id, body.reason))
+
     @app.get("/api/work-sessions")
     def work_sessions(limit: int = 50, s: Session = Depends(db)):
         return ws_svc.recent(s, limit=limit)
@@ -1119,6 +1186,16 @@ def _product(p: Product) -> dict:
             "notes": p.notes, "list_price_cents": p.list_price_cents}
 
 
+def _bundle_ref(s: Session, c: Component) -> dict | None:
+    if not c.bundle_id:
+        return None
+    b = bundles_svc.get(s, c.bundle_id)
+    if b.voided_at:
+        return None
+    return {"id": b.id, "name": b.name, "merchant": b.merchant, "purchased_on": b.purchased_on,
+            "price_cents": b.price_cents, "share_cents": bundles_svc.shares(s, b).get(c.id)}
+
+
 def _component_summary(s: Session, c: Component) -> dict:
     t = COMPONENT_TYPES.get(c.component_type)
     setup, wheel = inv.tire_setup_of(s, c)
@@ -1129,6 +1206,6 @@ def _component_summary(s: Session, c: Component) -> dict:
             "prior_usage": c.prior_usage, "status": c.status, "purchase_date": c.purchase_date,
             "price_cents": c.price_cents, "serial_number": c.serial_number, "notes": c.notes,
             "retired_on": c.retired_on, "retire_reason": c.retire_reason, "disposition": c.disposition,
-            "storage_location": c.storage_location, "tire_setup": c.tire_setup,
+            "storage_location": c.storage_location, "tire_setup": c.tire_setup, "bundle": _bundle_ref(s, c),
             "effective_tire_setup": setup, "tire_setup_from": wheel.label if wheel is not None and wheel.id != c.id else None,
             "location": inv.location(s, c), "usage": component_usage(s, c)}
