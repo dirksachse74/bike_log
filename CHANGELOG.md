@@ -7,6 +7,16 @@ UPDATING.md → "Making a release". New entries go under "Unreleased" as work is
 
 ## Unreleased
 
+### Added
+- Frame and fork are parts (Dirk 2026-10-26). The bike is the build (name, Strava gear, rides, total km);
+  its frame and fork are parts with their own km, serial number, purchase date and a new "Warranty until"
+  date (Edit details; the part page shows it, with "expired" once past). Every bike gets them
+  automatically, existing bikes on the next start, with the bike's starting km. A warranty frame is
+  Replace frame with "Returned under warranty" for the old one: the new frame starts at 0 km, the bike's
+  total goes on. A frame moved to a new build takes its km along. The part page of a frame or fork shows
+  "Frame history" (inspections and crashes while it was on a bike). Retiring a bike with "take parts
+  off" leaves the frame and fork on it.
+
 ### Fixed
 - Two fields side by side (Add bike: "Purchase price" and "Bought on"; the same in every other form) now
   line up on their input even when a hint sits under one of them.

@@ -807,6 +807,60 @@ interface ComponentDetail extends ComponentSummary {
   parts: PartNode[]
   groupset_bike_id: number | null
   chain: (ChainRow & { cycles: { cycle: number; waxed_on: string; km: number; current: boolean }[] }) | null
+  frame_history: FrameHistory | null
+}
+
+interface FrameHistory {
+  inspections: EventRow[]
+  crashes: { group: string; on: string; label: string; text: string | null; bike: string | null; ride_id: number | null; ride_label: string | null; open: boolean }[]
+}
+
+// A frame or fork keeps its own record: inspections and crashes from the bikes it was on, while it was on them.
+function FrameHistoryCard({ h, kind }: { h: FrameHistory; kind: string }) {
+  return (
+    <Card title={`${kind} history`}>
+      <p className="small muted">Inspections and crashes while this {kind.toLowerCase()} was on a bike. They stay with it when it moves to another build.</p>
+      <details>
+        <summary>
+          Inspections ({h.inspections.length}){h.inspections[0] ? ` · last ${when(h.inspections[0].performed_on)}` : ''}
+        </summary>
+        {h.inspections.length === 0 ? (
+          <p className="small muted">None recorded. Record one on the bike with "Record work done" → Frame and fork inspection.</p>
+        ) : (
+          <ul className="list">
+            {h.inspections.map((e) => (
+              <li key={e.id} className="small">
+                {when(e.performed_on)} · {e.bike}
+                {e.outcome ? ` · ${e.outcome}` : ''}
+                {e.notes ? ` · ${e.notes}` : ''}
+              </li>
+            ))}
+          </ul>
+        )}
+      </details>
+      <details>
+        <summary>Crashes ({h.crashes.length})</summary>
+        {h.crashes.length === 0 ? (
+          <p className="small muted">No crashes recorded.</p>
+        ) : (
+          <ul className="list">
+            {h.crashes.map((c) => (
+              <li key={c.group} className="small">
+                {when(c.on)} · {c.bike}
+                {c.ride_id ? (
+                  <>
+                    {' · '}
+                    <Link to={`/rides?open=${c.ride_id}`}>{c.ride_label ?? 'ride'}</Link>
+                  </>
+                ) : null}
+                {c.text ? ` · ${c.text}` : ''} {c.open ? <Tag tone="warn">open</Tag> : <Tag tone="good">solved</Tag>}
+              </li>
+            ))}
+          </ul>
+        )}
+      </details>
+    </Card>
+  )
 }
 
 function RuleEditor({ rule, componentId, onDone }: { rule: Rule; componentId: number; onDone: () => void }) {
@@ -1064,8 +1118,17 @@ export function ComponentDetailPage() {
             </>
           )}
           {data.serial_number ? ` · serial ${data.serial_number}` : ''}
+          {data.warranty_until ? (
+            <>
+              {` · warranty until ${when(data.warranty_until)} `}
+              {data.warranty_until < today() && <Tag>expired</Tag>}
+            </>
+          ) : (
+            ''
+          )}
         </p>
       </Card>
+      {data.frame_history && <FrameHistoryCard h={data.frame_history} kind={data.type_name} />}
       {data.chain && <ChainCard comp={data} chain={data.chain} onChanged={reload} />}
       {data.parts.length > 0 && (
         <Card title="Parts on it" className="span-2">
@@ -1448,14 +1511,14 @@ function ChainCard({ comp, chain, onChanged }: { comp: ComponentSummary; chain: 
 }
 
 function DetailsForm({ comp, onDone }: { comp: ComponentSummary; onDone: () => void }) {
-  const [f, setF] = useState({ label: comp.label, mark: comp.mark ?? '', price: centsInput(comp.price_cents), purchase_date: comp.purchase_date ?? '', serial_number: comp.serial_number ?? '', notes: comp.notes ?? '' })
+  const [f, setF] = useState({ label: comp.label, mark: comp.mark ?? '', price: centsInput(comp.price_cents), purchase_date: comp.purchase_date ?? '', serial_number: comp.serial_number ?? '', warranty_until: comp.warranty_until ?? '', notes: comp.notes ?? '' })
   const [err, setErr] = useState<string | null>(null)
   async function save() {
     setErr(null)
     const price = toCents(f.price)
     if (Number.isNaN(price)) return setErr('Price: enter an amount such as 49,90')
     try {
-      await api.patch(`/components/${comp.id}`, { label: f.label, mark: f.mark || null, price_cents: price, purchase_date: f.purchase_date || null, serial_number: f.serial_number || null, notes: f.notes || null })
+      await api.patch(`/components/${comp.id}`, { label: f.label, mark: f.mark || null, price_cents: price, purchase_date: f.purchase_date || null, serial_number: f.serial_number || null, warranty_until: f.warranty_until || null, notes: f.notes || null })
       onDone()
     } catch (e) {
       setErr((e as Error).message)
@@ -1483,9 +1546,14 @@ function DetailsForm({ comp, onDone }: { comp: ComponentSummary; onDone: () => v
       <Field label="Mark" hint={comp.component_type === 'CHAIN' ? 'How you tell it apart from identical chains, e.g. "1 punch dot next to the quick link". Paint and nail polish come off in hot wax; a punch or engraver mark on an outer plate stays.' : 'How you tell it apart from identical parts (e.g. a dot, a sticker, a colour).'}>
         <input value={f.mark} maxLength={80} onChange={(e) => setF({ ...f, mark: e.target.value })} />
       </Field>
-      <Field label="Serial number">
-        <input value={f.serial_number} onChange={(e) => setF({ ...f, serial_number: e.target.value })} />
-      </Field>
+      <div className="row">
+        <Field label="Serial number">
+          <input value={f.serial_number} onChange={(e) => setF({ ...f, serial_number: e.target.value })} />
+        </Field>
+        <Field label="Warranty until">
+          <input type="date" value={f.warranty_until} onChange={(e) => setF({ ...f, warranty_until: e.target.value })} />
+        </Field>
+      </div>
       <Field label="Notes" hint="For dated notes such as issues, use the journal below.">
         <textarea rows={2} value={f.notes} onChange={(e) => setF({ ...f, notes: e.target.value })} />
       </Field>

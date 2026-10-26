@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+from datetime import date
 
 from sqlalchemy import func, or_, select
 from sqlalchemy.exc import IntegrityError
@@ -59,6 +60,8 @@ def create_bike(session: Session, *, name: str, maker: str | None = None, model:
     if starting_km is not None:
         set_starting_usage(session, bike_id=bike.id, km=starting_km, effective=starting_date,
                            is_estimate=starting_is_estimate)
+    from bikelog.services import frames
+    frames.ensure_frames(session, bike.id)
     return bike
 
 
@@ -91,11 +94,14 @@ def _check_price(cents: int | None) -> None:
 def retire_bike(session: Session, bike_id: int, *, parts_off_at: str | None = None,
                 work_session_id: int | None = None) -> Bike:
     """Retire (sold, archived): hidden from the active lists, rides and km kept, can be restored.
-    ``parts_off_at`` takes the parts off on that date and stores them (they keep their km)."""
+    ``parts_off_at`` takes the parts off on that date and stores them (they keep their km); the frame
+    and fork stay on the bike."""
     bike = get_bike(session, bike_id)
     if parts_off_at:
-        for i in list(session.scalars(select(Installation).where(
-                Installation.bike_id == bike.id, Installation.removed_utc.is_(None), Installation.voided_at.is_(None)))):
+        # frame and fork stay: they are the bike (move them to a new build on their own if wanted)
+        for i in list(session.scalars(select(Installation).join(Component, Component.id == Installation.component_id).where(
+                Installation.bike_id == bike.id, Installation.removed_utc.is_(None), Installation.voided_at.is_(None),
+                Component.component_type.not_in(("FRAME", "FORK"))))):
             remove(session, i.component_id, at=parts_off_at, reason=f"{bike.name} retired", outcome="STORED",
                    reallocate=False, work_session_id=work_session_id)
         _reallocate(session)
@@ -116,9 +122,12 @@ def restore_bike(session: Session, bike_id: int) -> Bike:
 def bike_history_counts(session: Session, bike_id: int) -> dict:
     """What a bike has recorded; a bike with none of it (created by mistake) may be deleted."""
     from bikelog.models import JournalEntry, MaintenanceEvent, Ride
+    from bikelog.services.frames import AUTO_NOTE
     def n(model, col=None):
         return session.scalar(select(func.count()).select_from(model).where((col or model.bike_id) == bike_id)) or 0
-    return {"rides": n(Ride), "installations": n(Installation), "maintenance": n(MaintenanceEvent),
+    installs = session.scalar(select(func.count()).select_from(Installation).where(
+        Installation.bike_id == bike_id, func.coalesce(Installation.note, "") != AUTO_NOTE)) or 0
+    return {"rides": n(Ride), "installations": installs, "maintenance": n(MaintenanceEvent),
             "journal": n(JournalEntry), "usage": n(UsageContribution)}
 
 
@@ -141,6 +150,14 @@ def delete_bike(session: Session, bike_id: int) -> str:
         session.query(model).filter(model.bike_id == bike_id).delete()
     session.query(WorkSession).filter(WorkSession.bike_id == bike_id).update({"bike_id": None})
     session.query(Component).filter(Component.rotation_bike_id == bike_id).update({"rotation_bike_id": None})
+    # its automatic frame and fork (nothing else recorded on them) go with it
+    for i in list(session.scalars(select(Installation).where(Installation.bike_id == bike_id))):
+        comp = session.get(Component, i.component_id)
+        session.delete(i)
+        session.flush()
+        if not session.scalar(select(func.count()).select_from(Installation).where(Installation.component_id == comp.id)):
+            session.query(UsageAdjustment).filter(UsageAdjustment.component_id == comp.id).delete()
+            session.delete(comp)
     name = bike.name
     session.delete(bike)
     session.flush()
@@ -272,12 +289,19 @@ def update_component(session: Session, component_id: int, **fields) -> Component
         fields["mark"] = (fields["mark"] or "").strip() or None
         if fields["mark"] and len(fields["mark"]) > 80:
             raise DomainError("Keep the mark short (80 characters at most)")
+    if "warranty_until" in fields:
+        fields["warranty_until"] = (fields["warranty_until"] or "").strip()[:10] or None
+        if fields["warranty_until"]:
+            try:
+                date.fromisoformat(fields["warranty_until"])
+            except ValueError as e:
+                raise DomainError("Warranty until must be a date (YYYY-MM-DD)") from e
     if fields.get("rotation_bike_id") is not None:
         if comp.component_type != "CHAIN":
             raise DomainError("Only chains go in a chain rotation")
         get_bike(session, fields["rotation_bike_id"])
     for k in ("label", "serial_number", "purchase_date", "price_cents", "notes", "product_id", "prior_usage",
-              "storage_location", "tire_setup", "pressure_note", "mark", "rotation_bike_id"):
+              "storage_location", "tire_setup", "pressure_note", "mark", "rotation_bike_id", "warranty_until"):
         if k in fields:
             setattr(comp, k, fields[k])
     if "specs" in fields:

@@ -106,6 +106,10 @@ COMPONENT_TYPES: dict[str, ComponentType] = {t.code: t for t in [
     ComponentType("BRAKE_PADS", "Brake pads", "Brakes", ("FRONT_PADS", "REAR_PADS"), removed_default="DISCARDED"),
     ComponentType("POWER_METER", "Power meter", "Drivetrain", ("POWER_METER",), ("CRANKSET",)),
     ComponentType("HEADSET", "Headset", "Frame", ("HEADSET",), torque=True),
+    # the bike is the build (name, Strava gear, rides); frame and fork are parts so a warranty swap or a
+    # frame moving to another build keeps km, serial number and crash history with the right frame
+    ComponentType("FRAME", "Frame", "Frame", ("FRAME",)),
+    ComponentType("FORK", "Fork", "Frame", ("FORK",)),
     ComponentType("PEDALS", "Pedals", "Contact points", ("PEDALS",), torque=True),
     ComponentType("POWER_METER_PEDALS", "Power-meter pedals", "Contact points", ("PEDALS",), torque=True),
     # shoes are worn, not mounted: while in use they count every ride on any bike; cleats sit on the shoes
@@ -142,8 +146,9 @@ DISPOSITIONS: dict[str, str] = {
     "DISCARDED": "Discarded",
     "SOLD": "Sold or given away",
     "IN_USE": "In use (worn by the rider)",     # rider gear (shoes) only
+    "WARRANTY_RETURN": "Returned under warranty",
 }
-OUT_OF_USE = ("RETIRED", "DISCARDED", "SOLD")
+OUT_OF_USE = ("RETIRED", "DISCARDED", "SOLD", "WARRANTY_RETURN")
 
 # Stock units for spare parts held as a quantity. One unit is one usable item, never "one package":
 # a pack of two quick links is two units (record packages separately on the purchase).

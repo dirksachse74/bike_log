@@ -166,6 +166,8 @@ def sync(factory: sessionmaker[Session], client: StravaClient, *, rescan: bool =
     with factory() as s, s.begin():
         conn = s.get(StravaConnection, SOURCE_ACCOUNT)
         conn.last_success_at, conn.last_error = utc_now(), None
+        from bikelog.services import frames
+        frames.ensure_frames(s)   # bikes created from Strava gear get their frame and fork; older rides move them back
     return {"counts": counts}
 
 

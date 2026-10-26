@@ -87,8 +87,8 @@ def bike_costs(session: Session, bike: Bike, *, attribution: dict[int, int | Non
         if c.price_cents is not None:
             items.append({"kind": "PART", "date": c.purchase_date, "text": c.label, "component_id": c.id,
                           "cents": c.price_cents, "estimated": False})
-        elif not c.from_stock_txn_id:
-            unpriced.append(c.label)
+        elif not c.from_stock_txn_id and c.component_type not in ("FRAME", "FORK"):
+            unpriced.append(c.label)      # a frame and fork without own price came with the bike
 
     events = list(session.scalars(select(MaintenanceEvent).where(MaintenanceEvent.voided_at.is_(None),
                                                                  MaintenanceEvent.bike_id == bike.id)))

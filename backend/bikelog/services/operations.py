@@ -18,17 +18,24 @@ class _Rollback(Exception):
 
 def _deltas(session: Session, before: dict[int, float], after: dict[int, float]) -> list[dict]:
     ids = sorted(k for k in set(before) | set(after) if abs(before.get(k, 0.0) - after.get(k, 0.0)) > 1e-9)
-    names = dict(session.execute(select(Component.id, Component.label).where(Component.id.in_(ids))).all()) if ids else {}
+    rows = session.execute(select(Component.id, Component.label, Component.component_type)
+                           .where(Component.id.in_(ids))).all() if ids else []
+    names = {r[0]: r[1] for r in rows}
+    types = {r[0]: r[2] for r in rows}
     out = []
     for cid in ids:
         b, a = before.get(cid, 0.0), after.get(cid, 0.0)
-        out.append({"component_id": cid, "label": names.get(cid, f"#{cid}"), "before_km": round(b, 3),
+        out.append({"component_id": cid, "label": names.get(cid, f"#{cid}"), "component_type": types.get(cid),
+                    "before_km": round(b, 3),
                     "after_km": round(a, 3), "delta_km": round(a - b, 3)})
     return out
 
 
 def notice(deltas: list[dict], preview: bool) -> str:
     prefix = "Preview: " if preview else ""
+    # frame and fork follow every ride of the bike: name them only when nothing else changed
+    others = [d for d in deltas if d.get("component_type") not in ("FRAME", "FORK")]
+    deltas = others or deltas
     if not deltas:
         return prefix + "No component mileage changes."
     def one(d: dict) -> str:

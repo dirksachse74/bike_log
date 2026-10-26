@@ -33,6 +33,7 @@ from bikelog.models import Bike, Component, Product, ServiceRule, UsageProfile
 from bikelog.paths import DataPaths, resource_root
 from bikelog.services import assemblies
 from bikelog.services import chains as chains_svc
+from bikelog.services import frames as frames_svc
 from bikelog.services import costs as costs_svc
 from bikelog.services import bundles as bundles_svc
 from bikelog.services import demo, diagnostics, groupsets, imports, journal, product_import, spares, stock
@@ -150,6 +151,7 @@ class ComponentPatch(Body):
     pressure_note: str | None = None
     mark: str | None = None
     rotation_bike_id: int | None = None
+    warranty_until: str | None = None
 
 
 class RetireBikeIn(Body):
@@ -777,6 +779,7 @@ def create_app(factory: sessionmaker[Session], paths: DataPaths, *, token: str |
                 "parts": assemblies.tree(s, c), "groupset_bike_id": assemblies.groupset_bike(s, c),
                 "chain": ({**m.chain_row(s, c), "cycles": chains_svc.chain_history(s, c)}
                           if c.component_type == "CHAIN" else None),
+                "frame_history": frames_svc.frame_history(s, c) if c.component_type in ("FRAME", "FORK") else None,
                 "suggested_outcome": COMPONENT_TYPES[c.component_type].removed_default}
 
     @app.patch("/api/components/{component_id}")
@@ -1460,7 +1463,7 @@ def _component_summary(s: Session, c: Component) -> dict:
             "price_cents": c.price_cents, "serial_number": c.serial_number, "notes": c.notes,
             "retired_on": c.retired_on, "retire_reason": c.retire_reason, "disposition": c.disposition,
             "storage_location": c.storage_location, "tire_setup": c.tire_setup, "pressure_note": c.pressure_note,
-            "mark": c.mark, "rotation_bike_id": c.rotation_bike_id,
+            "mark": c.mark, "rotation_bike_id": c.rotation_bike_id, "warranty_until": c.warranty_until,
             "bundle": _bundle_ref(s, c),
             "effective_tire_setup": setup, "tire_setup_from": wheel.label if wheel is not None and wheel.id != c.id else None,
             "location": inv.location(s, c), "usage": component_usage(s, c)}

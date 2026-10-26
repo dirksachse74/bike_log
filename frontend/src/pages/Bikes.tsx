@@ -690,7 +690,7 @@ function RetireBike({ bike, onRetired }: { bike: BikeDetail; onRetired: () => vo
       )}
       {bike.setup.length > 0 && (
         <label className="check">
-          <input type="checkbox" checked={partsOff} onChange={(e) => setPartsOff(e.target.checked)} /> Take its parts off and store them (they keep their km)
+          <input type="checkbox" checked={partsOff} onChange={(e) => setPartsOff(e.target.checked)} /> Take its parts off and store them (they keep their km; frame and fork stay with the bike)
         </label>
       )}
       {partsOff && bike.setup.length > 0 && (

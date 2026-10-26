@@ -160,6 +160,7 @@ export interface ComponentSummary {
   storage_location: string | null
   tire_setup: TireSetup | null
   pressure_note: string | null
+  warranty_until: string | null
   effective_tire_setup: TireSetup | null
   tire_setup_from: string | null
   location: Location

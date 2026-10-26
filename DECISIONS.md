@@ -326,6 +326,16 @@ you disagree. Dates are 2026-10-24 unless noted.
     sessions and chain rotations, writes a DELETED change-log row, and adds its Strava gear id to the
     setting strava_ignored_gear, which the gear mapper skips so a sync never re-creates it. Retiring can
     take the parts off into storage in one work session.
+96. **Frame and fork are parts; the bike is the build** (Dirk 2026-10-26, services/frames.py, migration
+    0014): catalog types FRAME and FORK, component.warranty_until, disposition WARRANTY_RETURN.
+    `ensure_frames` gives every active bike both parts (on create, at start-up, after imports and Strava
+    sync) installed at the bike's first day (purchase, creation, first ride or starting km, whichever is
+    earliest) with the bike's STARTING adjustment copied. While that automatic installation (note
+    AUTO_NOTE) is the part's only one it follows the bike's start back when older rides arrive; a real
+    swap is never touched. Automatic installations do not count as bike history (delete stays possible),
+    frame/fork are left out of unpriced-part warnings (they came with the bike) and of change notices when
+    other parts changed. Retire with parts off keeps them on the bike. `frame_history` lists bike-level
+    FRAME_INSPECT events and CRASH incidents inside the part's installation periods.
 
 ## Repository
 27. Pushed only to the feature branch `claude/project-thread-6y3mmh` of the private repository. Demo

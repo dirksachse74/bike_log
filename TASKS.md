@@ -12,6 +12,7 @@ Status key: ✅ done and tested · 🟡 done, not verified where it matters · �
 - ✅ Products vs physical components; install/remove/replace/reinstall with effective dates.
 - ✅ Conflicting installations refused (service and database triggers); lifetime usage kept.
 - ✅ Replacement workflow with removed-item outcomes, move/swap positions, undo per work session.
+- ✅ Frame and fork as parts (km, serial, warranty until, warranty replacement, frame history).
 - ✅ Retire or delete a bike (delete only without history; Strava does not re-create it; Retired bikes list; Restore).
 - ✅ Manage parts as Add / Remove / Change parts with a Groupset sub-group (change one part, replace whole groupset); Add groupset only on a bike without one; incident buttons on one line.
 - ✅ Chain rotation: mark per part, rotation card on the bike (on / waxed, ready / dirty), swap prompt from the 500 km hot-wax rule with one-click swap, Wax chains batch, rotation history, wax cycles per chain.

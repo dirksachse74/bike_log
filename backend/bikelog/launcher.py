@@ -76,6 +76,8 @@ def prepare(paths: DataPaths, *, demo: bool = False, sample: bool = False):
     from bikelog.services.reference import ensure_reference_data
     with session_scope(factory) as s:
         ensure_reference_data(s)
+        from bikelog.services import frames
+        frames.ensure_frames(s)       # every bike has a frame and fork part (DECISIONS 96)
         if demo:
             demo_svc.mark_demo_database(s)
             demo_svc.seed(s)

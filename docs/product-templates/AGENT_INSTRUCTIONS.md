@@ -90,6 +90,8 @@ error; put extra data under `specs`.
 | `BRAKE_PADS` | Brake pads | Brakes |
 | `POWER_METER` | Power meter | Drivetrain |
 | `HEADSET` | Headset | Frame |
+| `FRAME` | Frame | Frame |
+| `FORK` | Fork | Frame |
 | `PEDALS` | Pedals | Contact points |
 | `POWER_METER_PEDALS` | Power-meter pedals | Contact points |
 | `SHOES` | Cycling shoes | Contact points |
@@ -486,6 +488,40 @@ Template: `headset.schema.json`, example: `headset.example.json`
 | `bearings` | string |  | Bearing type and size |
 | `integrated_cables` | boolean |  | Routes hoses/cables through the headset |
 | `torque_nm` | string | Nm | Tightening torque (bolts, clamps, axle) as printed by the maker |
+| `weight_g` | number | g | Weight |
+| `color` | string |  | Colour / finish |
+| `material` | string |  | Main material |
+### Frame (`FRAME`)
+
+Template: `frame.schema.json`, example: `frame.example.json`
+
+| key | type | unit | meaning |
+|---|---|---|---|
+| `material` | one of `carbon`, `aluminium`, `steel`, `titanium` |  | Material |
+| `size` | string |  | Frame size |
+| `bottom_bracket` | string |  | Bottom bracket standard |
+| `rear_axle` | string |  | Rear axle |
+| `brake_mount` | one of `flat mount`, `post mount`, `rim` |  | Brake mount |
+| `max_tire_mm` | number | mm | Largest tire that fits |
+| `headset` | string |  | Headset standard (SHIS) |
+| `seatpost` | string |  | Seatpost (diameter or shape) |
+| `weight_g` | number | g | Weight |
+| `weight_g` | number | g | Weight |
+| `color` | string |  | Colour / finish |
+| `material` | string |  | Main material |
+### Fork (`FORK`)
+
+Template: `fork.schema.json`, example: `fork.example.json`
+
+| key | type | unit | meaning |
+|---|---|---|---|
+| `material` | one of `carbon`, `aluminium`, `steel`, `titanium` |  | Material |
+| `steerer` | string |  | Steerer tube |
+| `front_axle` | string |  | Front axle |
+| `brake_mount` | one of `flat mount`, `post mount`, `rim` |  | Brake mount |
+| `rake_mm` | number | mm | Rake / offset |
+| `max_tire_mm` | number | mm | Largest tire that fits |
+| `weight_g` | number | g | Weight |
 | `weight_g` | number | g | Weight |
 | `color` | string |  | Colour / finish |
 | `material` | string |  | Main material |

@@ -289,6 +289,8 @@ def run_csv_import(factory: sessionmaker[Session], content: bytes, *, file_name:
     with factory() as s, s.begin():
         b = s.get(ImportBatch, batch_id)
         b.status, b.finished_at = "COMPLETED", utc_now()
+        from bikelog.services import frames
+        frames.ensure_frames(s)   # older rides move the bikes' automatic frame and fork back
         b.counts_json = json.dumps({**counts, "errors": errors[-50:], "unknown_bikes": unknown})
     return {"batch_id": batch_id, "source_kind": source_kind, "resumed": resumed, "rows": len(rows),
             "counts": counts, "errors": errors[-50:], "unknown_bikes": unknown}

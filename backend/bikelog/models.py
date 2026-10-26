@@ -134,6 +134,8 @@ class Component(Base):
     mark: Mapped[str | None] = mapped_column(Text)
     # Chains only: the bike whose chain rotation this chain is in (services/chains.py); NULL = none.
     rotation_bike_id: Mapped[int | None] = mapped_column(ForeignKey("bike.id"))
+    # Last day of the warranty (frames above all); shown on the part page.
+    warranty_until: Mapped[str | None] = mapped_column(String(10))
 
     product: Mapped[Product | None] = relationship()
 

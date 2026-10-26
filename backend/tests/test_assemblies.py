@@ -157,7 +157,8 @@ def test_swap_to_a_stored_wheelset_keeps_each_wheelsets_own_wheels(session):
     ride(session, b, "2026-10-02", 30)
     assert km(session, f2) == 30 and km(session, summer[0]) == 0
     assert inv.location(session, summer[0])["parent_component_id"] == ws1.id
-    assert {r["label"] for r in inv.bike_setup(session, b)} == {"Winter", "Winter front", "Winter rear"}
+    assert {r["label"] for r in inv.bike_setup(session, b) if r["component_type"] not in ("FRAME", "FORK")} == \
+        {"Winter", "Winter front", "Winter rear"}
 
 
 def test_spare_tubes_and_tires_to_keep(session):

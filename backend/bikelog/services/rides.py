@@ -117,7 +117,15 @@ def add_manual_ride(session: Session, *, bike_id: int | None, when: str, distanc
     for slot, cid in (equipment or {}).items():
         _put_equipment(session, ride, slot, cid)
     _allocate(session, ride)
+    _frames_follow(session, ride.bike_id)
     return ride
+
+
+def _frames_follow(session: Session, bike_id: int | None) -> None:
+    """A ride older than the bike's first day moves its automatic frame and fork back (services/frames.py)."""
+    if bike_id is not None:
+        from bikelog.services import frames
+        frames.ensure_frames(session, bike_id)
 
 
 def source_values(session: Session, ride: Ride) -> dict | None:
@@ -148,6 +156,7 @@ def edit_ride(session: Session, ride_id: int, changes: dict) -> Ride:
                     session.add(RideOverride(ride_id=ride.id, field=field, value_json=json.dumps(new)))
     _apply_fields(session, ride, changes)
     _allocate(session, ride)
+    _frames_follow(session, ride.bike_id)
     return ride
 
 

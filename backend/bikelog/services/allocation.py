@@ -106,10 +106,13 @@ class AllocationIndex:
     def boundary_days(self, insts: list[_Inst], slot: str) -> dict[str, bool]:
         """Local dates on which the slot changed -> whether that boundary is date-only."""
         days: dict[str, bool] = {}
+        ends = {i.end_local for i in insts if i.slot == slot and i.end_local}
         for i in insts:
             if i.slot != slot:
                 continue
-            days[i.start_local] = days.get(i.start_local, False) or i.start_date_only
+            # a first installation with no part before it that day is not a change (e.g. the bike's frame)
+            if i.start_local in ends:
+                days[i.start_local] = days.get(i.start_local, False) or i.start_date_only
             if i.end_local:
                 days[i.end_local] = days.get(i.end_local, False) or i.end_date_only
         return days

@@ -117,7 +117,7 @@ def test_undo_takes_back_the_whole_import(session):
     ws_svc.undo(session, res["work_session_id"], "wrong bike")
     assert inv.open_installation(session, old_chain.id) is not None
     assert old_chain.disposition == "STORED"
-    labels = {r["label"] for r in inv.bike_setup(session, b)}
+    labels = {r["label"] for r in inv.bike_setup(session, b) if r["component_type"] not in ("FRAME", "FORK")}
     assert labels == {"Front wheel", "Rear wheel", "Chain A"}
     created = [session.get(Component, c["component_id"]) for c in res["created"]]
     assert all(c.disposition == "VOIDED" for c in created)  # kept as records, not deleted
@@ -150,8 +150,8 @@ def test_options_and_item_selection(session):
         gs.plan(session, R8100, options={"cassette": "11-36"})
     with pytest.raises(DomainError, match="Unknown items"):
         gs.plan(session, R8100, include=["saddle"])
-    # planning changes nothing
-    assert session.scalar(select(func.count(Installation.id))) == 0
+    # planning changes nothing (the bike's own frame and fork are its only installations)
+    assert session.scalar(select(func.count(Installation.id))) == 2
 
 
 def test_groupset_import_over_http(engine, paths):
@@ -169,11 +169,12 @@ def test_groupset_import_over_http(engine, paths):
     assert plan["counts"]["INSTALL"] > 10
     dry = c.post(f"/api/groupsets/{R8100}/import?dry_run=true", json={**body, "at": "2026-10-25"})
     assert dry.status_code == 200
-    assert c.get(f"/api/bikes/{b['id']}").json()["setup"] == []   # dry run changed nothing
+    def setup(): return [r for r in c.get(f"/api/bikes/{b['id']}").json()["setup"] if r["component_type"] not in ("FRAME", "FORK")]
+    assert setup() == []   # dry run changed nothing
     r = c.post(f"/api/groupsets/{R8100}/import", json={**body, "at": "2026-10-25"}).json()
     ws = r["result"]["work_session_id"]
     detail = c.get(f"/api/bikes/{b['id']}").json()
-    assert len(detail["setup"]) == r["result"]["counts"]["INSTALL"]
+    assert len(setup()) == r["result"]["counts"]["INSTALL"]
     # the bike shows the groupset as one line; its page lists the parts as a tree
     assert detail["groupset"]["parts"] == r["result"]["counts"]["INSTALL"]
     page = c.get(f"/api/bikes/{b['id']}/groupset").json()
@@ -181,7 +182,7 @@ def test_groupset_import_over_http(engine, paths):
     own = c.get(f"/api/components/{crank['component_id']}").json()["parts"]
     assert crank["children"] and [n["component_id"] for n in own] == [n["component_id"] for n in crank["children"]]
     assert c.post(f"/api/work-sessions/{ws}/undo", json={"reason": "test"}).status_code == 200
-    assert c.get(f"/api/bikes/{b['id']}").json()["setup"] == []
+    assert setup() == []
 
 
 @pytest.mark.parametrize("code", sorted(gs.TEMPLATES))
