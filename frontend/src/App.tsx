@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { versionProblem } from './version'
-import { HashRouter, NavLink, Route, Routes } from 'react-router-dom'
+import { HashRouter, Link, NavLink, Route, Routes } from 'react-router-dom'
 import { ErrorBox, Loading } from './components/ui'
 import { Ctx } from './context'
 import { setTimezone } from './format'
@@ -77,6 +77,12 @@ export default function App() {
               </div>
             )}
             {meta.data.demo && <div className="demo-banner">Demo mode: sample data in a separate demo database. Your own data is not touched.</div>}
+            {meta.data.sample && !meta.data.demo && (
+              <div className="demo-banner" role="status">
+                <strong>Sample data.</strong> These two bikes, their rides and incidents are made up so you can look around. Ready for your own bikes?{' '}
+                <Link to="/settings?section=fresh-start">Settings → Fresh start</Link> removes all of it.
+              </div>
+            )}
             <Routes>
               <Route path="/" element={<OverviewPage />} />
               <Route path="/bikes" element={<BikesPage />} />

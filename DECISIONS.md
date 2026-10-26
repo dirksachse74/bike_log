@@ -233,6 +233,11 @@ you disagree. Dates are 2026-10-24 unless noted.
     retailers disagree on part numbers; nothing is marked verified without the maker's own documentation.
 73. **SRAM AXS batteries are parts of the derailleurs** (BATTERY may mount on a derailleur) and the
     template gives them a per-part charge rule in ride hours (55 h; SRAM: about 60 h).
+74. **Sample data only in a database the app has just created**: the launcher checks that the file did
+    not exist before opening it, and `seed_sample` refuses a database with any bike, part or ride. The whole
+    database is flagged (`sample_data` setting) and every record is logged with source SAMPLE; Fresh start
+    drops everything, flag included. Built from code with a fixed random seed (same sample every time),
+    dates relative to the first start. Command-line runs (backup, export, Strava, product import) never seed.
 
 ## Repository
 27. Pushed only to the feature branch `claude/project-thread-6y3mmh` of the private repository. Demo

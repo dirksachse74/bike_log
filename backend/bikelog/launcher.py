@@ -65,8 +65,10 @@ def _daily_backup(paths: DataPaths) -> None:
         backup_database(paths, "daily")
 
 
-def prepare(paths: DataPaths, *, demo: bool = False):
-    """Open (and if needed migrate) the database. Returns (engine, session factory, migration info)."""
+def prepare(paths: DataPaths, *, demo: bool = False, sample: bool = False):
+    """Open (and if needed migrate) the database. Returns (engine, session factory, migration info).
+    ``sample``: add the made-up sample data, but only when this call creates the database file."""
+    new_database = not paths.database.exists()
     engine = make_engine(paths.database)
     info = upgrade_database(engine, paths)
     factory = make_session_factory(engine)
@@ -77,6 +79,13 @@ def prepare(paths: DataPaths, *, demo: bool = False):
         if demo:
             demo_svc.mark_demo_database(s)
             demo_svc.seed(s)
+    if sample and new_database and not demo:
+        try:
+            with session_scope(factory) as s:
+                demo_svc.seed_sample(s)
+            log.info("New database: sample data added (Settings → Fresh start removes it)")
+        except Exception:  # noqa: BLE001 - the app must start even if the sample cannot be built
+            log.exception("Could not add the sample data; starting with an empty database")
     return engine, factory, info
 
 
@@ -86,6 +95,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--port", type=int, default=int(os.environ.get("BIKELOG_PORT", DEFAULT_PORT)))
     ap.add_argument("--no-browser", action="store_true", help="do not open the browser")
     ap.add_argument("--demo", action="store_true", help="start with sample data in a separate demo data directory")
+    ap.add_argument("--no-sample", action="store_true",
+                    help="a new database starts empty instead of with the made-up sample data")
     ap.add_argument("--backup", action="store_true", help="write a database backup and exit")
     ap.add_argument("--export", type=Path, nargs="?", const=Path(), help="write a full export (zip) and exit")
     ap.add_argument("--restore", type=Path, help="restore a full export (zip) and exit (app must be closed)")
@@ -137,7 +148,8 @@ def main(argv: list[str] | None = None) -> int:
             print(f"Restored export from {manifest.get('created_at')}. A safety backup of the previous data is in "
                   f"{paths.backups}.")
             return 0
-        engine, factory, info = prepare(paths, demo=args.demo)
+        only_cmd = bool(args.backup or args.export is not None or _strava_cmd(args) or args.import_products)
+        engine, factory, info = prepare(paths, demo=args.demo, sample=not (args.no_sample or only_cmd))
         if info["backup"]:
             log.info("Upgraded schema %s -> %s; pre-upgrade backup %s", info["from"], info["to"], info["backup"])
         if args.backup:

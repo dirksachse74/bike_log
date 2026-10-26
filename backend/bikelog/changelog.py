@@ -30,6 +30,7 @@ SOURCES = {
     "CSV_IMPORT": "CSV import",
     "PRODUCT_IMPORT": "JSON product import",
     "DEMO": "Demo data",
+    "SAMPLE": "Sample data",
     "SYSTEM": "Bike Log",
 }
 _ctx: contextvars.ContextVar[tuple[str, str | None]] = contextvars.ContextVar("bikelog_change_source",

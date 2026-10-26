@@ -54,6 +54,8 @@ On the build machine (Python present):
 - [ ] Install this version over an older version (upgrade): data kept, a `pre-upgrade` backup exists.
 - [ ] Uninstall removes the program but keeps `%LOCALAPPDATA%\BikeLog`.
 - [ ] Demo mode (`BikeLog.exe --demo`) uses `%LOCALAPPDATA%\BikeLog\demo` and never the real database.
+- [ ] Updating keeps your existing data (no sample banner). On a PC without Bike Log data the first start shows
+      the two sample bikes and the "Sample data" banner; Settings → Fresh start removes them.
 
 ## Files
 * `entry.py` – PyInstaller entry point (calls `bikelog.launcher.main`).

@@ -12,6 +12,7 @@ DEFAULTS = {
     "trainer_profile_for_virtual": "DIRECT_DRIVE_TRAINER",
     "duplicate_window_km_pct": "5",
     "demo_mode": "0",                 # set only in databases created by the demo launcher
+    "sample_data": "0",               # "1" = made-up sample data added on first start (until Fresh start)
     "default_tire_setup": "TUBE",     # used by reminders for wheels whose tube/tubeless is not set
 }
 

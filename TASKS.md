@@ -33,7 +33,7 @@ Status key: ✅ done and tested · 🟡 done, not verified where it matters · �
 - ✅ Bugs B1–B15 from the imaginary-bike test run (B5 was fixed with the quick-link carry-over).
 - ⏳ Bike installation history and a tire's change log could also list the bikes a wheel took its
   mounted parts to (UAT B6 second half; the km table already shows them).
-- ⏳ Sample database as the first-start default (wiped by Fresh start).
+- ✅ Sample database as the first-start default (wiped by Fresh start).
 
 ## P5 Chain rotation and brakes
 - ✅ Hot wax / liquid wax cycle, spare chain readiness, independent brake circuits, bleed vs fluid.

@@ -253,6 +253,7 @@ bike and default text from the ride; `entries(ride_id=)`, `incidents(bike_id, in
 | CSV ride import (generic + Strava export), resumable | imports.py | pages/Settings.tsx | docs/csv-import.md |
 | Strava API sync | connectors/strava/ | components/StravaSettings.tsx (Settings → Strava) | docs/strava.md, DECISIONS 26, 39, 42 |
 | Backups, export/restore, demo mode | backup.py, services/demo.py | Settings | DECISIONS 4–5 |
+| Sample database on first start (2 made-up bikes, rides, incidents; banner until Fresh start) | services/demo.py `seed_sample`, launcher.prepare(sample=), setting `sample_data` | App.tsx banner, components/FreshStart.tsx | DECISIONS 74 |
 | Fresh start (reset database) and restore of any backup while the app runs | reset.py, backup.KEPT_MARK | components/FreshStart.tsx, Settings → Backups "Restore" | DECISIONS 54 |
 
 Strava details: full API sync with permanent storage (Dirk's choice). Credentials and tokens live only in
@@ -303,11 +304,13 @@ cd backend && ../.venv/bin/python -m bikelog            # http://127.0.0.1:8765/
 Checks that must pass before every push:
 
 ```bash
-.venv/bin/python -m pytest -q backend/tests             # currently 163 passed
+.venv/bin/python -m pytest -q backend/tests             # currently 167 passed
 cd frontend && npx tsc -b && npx eslint . && npx vite build
 # browser test: start the app on a fresh data dir, then
 node e2e/smoke.cjs http://127.0.0.1:8790/ <screenshot-dir>   # currently 74/74 (the ride-form step can flake once; rerun)
-#   (cd backend && ../.venv/bin/python -m bikelog --no-browser --port 8790 --data-dir <fresh dir>)
+#   (cd backend && ../.venv/bin/python -m bikelog --no-browser --no-sample --port 8790 --data-dir <fresh dir>)
+# sample database: start on ANOTHER fresh dir WITHOUT --no-sample (port 8791), then
+node e2e/sample.cjs http://127.0.0.1:8791/ <screenshot-dir>  # banner, sample bikes, crash item, Fresh start
 ```
 
 The e2e script expects a fresh data directory. Playwright with Chromium must be available.
@@ -337,7 +340,7 @@ described for Dirk in `UPDATING.md`. Every change you push must keep that file c
 
 ## 8. Command line (the app must be closed for commands that change data)
 
-`--data-dir PATH`, `--port N`, `--no-browser`, `--demo`, `--backup`, `--export [FILE]`, `--restore FILE`,
+`--data-dir PATH`, `--port N`, `--no-browser`, `--no-sample` (a new database starts empty), `--demo`, `--backup`, `--export [FILE]`, `--restore FILE`,
 `--strava-connect`, `--strava-sync`, `--strava-rescan`, `--strava-disconnect`,
 `--import-products FILE... [--dry-run]`, `--write-product-templates DIR`, `--version`.
 Dirk prefers doing everything in the app UI; keep UI paths for every feature.

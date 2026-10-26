@@ -126,3 +126,136 @@ def seed(session: Session, today: date | None = None) -> bool:
                 old_outcome="AWAITING_SERVICE")
     session.flush()
     return True
+
+
+# ---------------------------------------------------------------- sample database (first start)
+
+SAMPLE_NOTE = "Sample data (made up). Settings → Fresh start removes it."
+
+
+def is_sample(session: Session) -> bool:
+    return settings.get(session, "sample_data") == "1"
+
+
+@from_source("SAMPLE")
+def seed_sample(session: Session, today: date | None = None) -> bool:
+    """Two made-up bikes with a few months of rides, maintenance and incidents, so a new user can look
+    around. Only for a brand-new, empty database (the launcher calls it when it has just created the
+    file); every record is logged with source SAMPLE and the database is flagged until Fresh start."""
+    if any(session.scalar(select(func.count()).select_from(t)) for t in (Bike, Component, Ride)):
+        raise Protected("This database already contains data; sample data is only added to a new database.")
+    import random
+
+    from bikelog.services import allocation, groupsets, journal, worksessions
+    settings.set_value(session, "sample_data", "1", internal=True)
+    today = today or date.today()
+    rnd = random.Random(2026)          # same sample every time
+
+    def d(days_ago: int) -> str:
+        return (today - timedelta(days=days_ago)).isoformat()
+
+    # Aurora SL: bought in spring, tracked from about two months ago with an estimated odometer
+    aurora = inv.create_bike(session, name="Aurora SL", maker="Sample", model="Aurora SL", year=2026,
+                             purchase_price_cents=249900, purchase_date=d(235), starting_km=850,
+                             starting_date=d(62), starting_is_estimate=True, notes=SAMPLE_NOTE)
+    winter = inv.create_bike(session, name="Winter Allroad", maker="Sample", model="Allroad", year=2023,
+                             shifting="MECHANICAL", starting_km=4200, starting_date=d(62),
+                             starting_is_estimate=True, notes=SAMPLE_NOTE)
+
+    def wheelset(bike, maker, used_km=None):
+        front = inv.create_component(session, component_type="FRONT_WHEEL", label=f"{maker} front ({bike.name})",
+                                     prior_usage="NEW", tire_setup="TUBE", purchase_date=d(70))
+        rear = inv.create_component(session, component_type="REAR_WHEEL", label=f"{maker} rear ({bike.name})",
+                                    prior_usage="UNKNOWN" if used_km else "NEW", tire_setup="TUBE",
+                                    purchase_date=d(70))
+        if used_km:
+            inv.set_starting_usage(session, component_id=rear.id, km=used_km, effective=d(62), is_estimate=True,
+                                   note="bought used; seller's estimate")
+        for wheel, slot in ((front, "FRONT_WHEEL"), (rear, "REAR_WHEEL")):
+            inv.install(session, wheel.id, bike_id=bike.id, at=d(62), reallocate=False)
+            for ctype, label in (("TIRE", "GP5000 32 mm"), ("INNER_TUBE", "tube")):
+                c = inv.create_component(session, component_type=ctype, prior_usage="NEW", purchase_date=d(70),
+                                         label=f"{label} {'front' if slot == 'FRONT_WHEEL' else 'rear'} "
+                                               f"({bike.name})")
+                inv.install(session, c.id, parent_component_id=wheel.id, at=d(62), reallocate=False)
+        return front, rear
+
+    a_front, a_rear = wheelset(aurora, "DT Swiss ARC 1400", used_km=1200)
+    w_front, w_rear = wheelset(winter, "Alloy")
+    inv.group_wheels(session, aurora.id, at=d(61), label="DT Swiss ARC 1400 wheelset")
+
+    ws = worksessions.begin(session, at=d(62), bike_id=aurora.id, title="Ultegra Di2 groupset")
+    gs_a = groupsets.import_groupset(session, "SHIMANO_ULTEGRA_DI2_R8100", at=d(62), bike_id=aurora.id,
+                                     work_session_id=ws.id, options={"gearing": "52-36", "cassette": "11-34"},
+                                     bundle={"price_cents": 165000, "merchant": "Sample shop", "purchased_on": d(70)})
+    ws = worksessions.begin(session, at=d(62), bike_id=winter.id, title="GRX 1×12 groupset")
+    gs_w = groupsets.import_groupset(session, "SHIMANO_GRX_RX820_1X12", at=d(62), bike_id=winter.id,
+                                     work_session_id=ws.id, prior_usage="UNKNOWN")
+    a_parts = {r["key"]: r["component_id"] for r in gs_a["items"]}
+    w_parts = {r["key"]: r["component_id"] for r in gs_w["items"]}
+
+    # supplies
+    wax = stock.add_consumable(session, kind="WAX", name="Hot wax (sample)", unit="g", track_stock=True)
+    stock.consumable_txn(session, wax.id, kind="PURCHASE", qty=500, on=d(65), cost_cents=3999)
+    drip = stock.add_consumable(session, kind="WAX", name="Wax drip (sample)", unit="ml")
+    tube_prod = inv.create_product(session, component_type="INNER_TUBE", maker="Sample", model="Road tube 700×28-32")
+    tubes = stock.add_consumable(session, product_id=tube_prod.id, storage_location="Garage shelf", min_stock=2)
+    stock.consumable_txn(session, tubes.id, kind="PURCHASE", qty=3, packages=3, on=d(65), cost_cents=2097)
+
+    m.log_event(session, action_code="WAX_HOT", component_id=a_parts["chain"], at=d(62),
+                consumable_id=wax.id, consumable_qty=30)
+    m.log_event(session, action_code="LUBE", component_id=w_parts["chain"], at=d(62), notes="wet lube for winter")
+    m.log_event(session, action_code="BATTERY_CHARGE", component_id=a_parts["battery"], at=d(62))
+
+    # rides: about three a week on the Aurora (some on Zwift), one a week on the Winter Allroad
+    names = ["Taunus loop", "Coffee ride", "River path", "Hill repeats", "Club ride", "After work", "Long Sunday",
+             "Vineyards", "Gravel detour", "Recovery spin"]
+    aurora_rides, winter_rides = [], []
+    for days_ago in range(60, 0, -1):
+        wd = (today - timedelta(days=days_ago)).weekday()
+        if wd in (1, 3, 5) and rnd.random() < 0.85:
+            if rnd.random() < 0.2:
+                aurora_rides.append(rides.add_manual_ride(
+                    session, bike_id=aurora.id, when=d(days_ago) + "T18:30", distance=round(rnd.uniform(25, 40), 1),
+                    duration_s=3600, name="Zwift workout", sport_type="VirtualRide"))
+            else:
+                aurora_rides.append(rides.add_manual_ride(
+                    session, bike_id=aurora.id, when=d(days_ago), distance=round(rnd.uniform(35, 120), 1),
+                    name=rnd.choice(names), conditions="WET" if rnd.random() < 0.15 else "DRY"))
+        elif wd == 6 and rnd.random() < 0.8:
+            winter_rides.append(rides.add_manual_ride(
+                session, bike_id=winter.id, when=d(days_ago), distance=round(rnd.uniform(40, 90), 1),
+                name=rnd.choice(names), conditions="WET" if rnd.random() < 0.5 else "DRY"))
+
+    # maintenance along the way
+    m.log_event(session, action_code="WAX_LIQUID", component_id=a_parts["chain"], at=d(45), consumable_id=drip.id)
+    m.log_event(session, action_code="WAX_HOT", component_id=a_parts["chain"], at=d(30),
+                consumable_id=wax.id, consumable_qty=30)
+    m.log_event(session, action_code="BATTERY_CHARGE", component_id=a_parts["battery"], at=d(30))
+    m.log_event(session, action_code="CHAIN_MEASURE_WEAR", component_id=a_parts["chain"], at=d(30),
+                measurement_value=0.1, measurement_unit="%")
+    m.log_event(session, action_code="PAD_MEASURE", component_id=w_parts["pads_rear"], at=d(20),
+                measurement_value=1.4, measurement_unit="mm", notes="gritty winter roads")
+    m.log_event(session, action_code="LUBE", component_id=w_parts["chain"], at=d(20))
+    m.log_event(session, action_code="FREEHUB_SERVICE", component_id=a_rear.id, at=d(75),
+                notes="done by the seller before the wheel was sold", cost_cents=4500)
+
+    # incidents on rides
+    flat_ride = next(r for r in aurora_rides if r.sport_type == "Ride" and r.ride_date <= d(40))
+    rear_tube = next(r["component_id"] for r in inv.bike_setup(session, aurora)
+                     if r["component_type"] == "INNER_TUBE" and r["parent_component_id"] == a_rear.id)
+    journal.add(session, text="Pinch flat on a pothole, swapped the tube at the roadside.", ride_id=flat_ride.id,
+                component_id=rear_tube, incident_type="FLAT", resolved_on=flat_ride.ride_date)
+    inv.replace(session, rear_tube, at=flat_ride.ride_date + "T12:00", from_stock_id=tubes.id, reason="pinch flat",
+                old_outcome="AWAITING_SERVICE")
+    crash_ride = next((r for r in reversed(winter_rides) if r.ride_date <= d(10)), winter_rides[-1])
+    journal.add(session, text="Slid out on wet leaves in a corner; scraped bar tape and rear derailleur.",
+                ride_id=crash_ride.id, incident_type="CRASH")
+    creak_ride = aurora_rides[-1] if aurora_rides[-1].sport_type == "Ride" else aurora_rides[-2]
+    journal.add(session, text="Creak under load from the bottom bracket area.", ride_id=creak_ride.id,
+                component_id=a_parts["crankset"], incident_type="DEFECT")
+    journal.add(session, text="Fitted 32 mm tires; clearance is fine.", on=d(62), bike_id=aurora.id)
+
+    session.flush()
+    allocation.rebuild_all(session, settings.tz(session))
+    return True

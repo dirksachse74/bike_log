@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { api } from '../api'
 import { useApp } from '../context'
 import { Card, Field, FormError } from './ui'
@@ -18,6 +19,12 @@ export default function FreshStart({ onChanged }: { onChanged: () => void }) {
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState<string | null>(null)
   const [done, setDone] = useState<ResetResult | null>(null)
+  const [params] = useSearchParams()
+  const ref = useRef<HTMLDivElement>(null)
+  // the "Sample data" banner links here
+  useEffect(() => {
+    if (params.get('section') === 'fresh-start') ref.current?.scrollIntoView({ block: 'start' })
+  }, [params])
 
   async function reset() {
     setBusy(true)
@@ -51,7 +58,8 @@ export default function FreshStart({ onChanged }: { onChanged: () => void }) {
     }
   }
   return (
-    <Card title="Fresh start">
+    <div ref={ref} id="fresh-start">
+      <Card title="Fresh start">
       {done ? (
         <div className="notice">
           <p>
@@ -89,6 +97,7 @@ export default function FreshStart({ onChanged }: { onChanged: () => void }) {
         </div>
       )}
       {done && <FormError error={err} />}
-    </Card>
+      </Card>
+    </div>
   )
 }

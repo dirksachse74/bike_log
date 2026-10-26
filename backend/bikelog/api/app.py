@@ -535,7 +535,8 @@ def create_app(factory: sessionmaker[Session], paths: DataPaths, *, token: str |
     @app.get("/api/meta")
     def meta(s: Session = Depends(db)):
         return {
-            "version": __version__, "demo": demo.is_demo(s), "safety_note": m.SAFETY_NOTE,
+            "version": __version__, "demo": demo.is_demo(s), "sample": demo.is_sample(s),
+            "safety_note": m.SAFETY_NOTE,
             "schema": head_revision(), "commit": buildinfo.commit(), "ui_commit": buildinfo.ui_commit(static),
             "full_version": buildinfo.full_version(), "release": buildinfo.is_release(),
             "ui_version": buildinfo.ui_version(static),

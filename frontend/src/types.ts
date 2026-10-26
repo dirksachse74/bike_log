@@ -299,6 +299,7 @@ export interface Meta {
   release: boolean
   ui_version: string
   demo: boolean
+  sample?: boolean
   safety_note: string
   settings: Record<string, string>
   component_types: ComponentType[]

@@ -52,6 +52,9 @@ UPDATING.md → "Making a release". New entries go under "Unreleased" as work is
 - A quick link on a chain in storage reads "on Chain A (not on a bike)" instead of "unmounted parent".
 - Ultegra R8100 groupset import adds upper and lower pulley wheels.
 
+- A brand-new database starts with made-up sample data (Aurora SL with Ultegra Di2, Winter Allroad with GRX
+  1×12, two months of rides, dry/wet, a flat, a crash and a creak) and a "Sample data" banner; Settings →
+  Fresh start removes it. An existing database is never touched. `--no-sample` starts a new one empty.
 - More groupsets to import (all 12 or 13 speed, hydraulic disc, specs marked unverified): Shimano Dura-Ace
   Di2 R9200, 105 Di2 R7150, 105 R7100 mechanical, GRX Di2 RX825 2×12, GRX RX820 1×12; SRAM RED AXS E1,
   Force AXS, Rival AXS, Apex XPLR 1×12 (AXS or mechanical), and the 13-speed RED XPLR and Force XPLR AXS.
