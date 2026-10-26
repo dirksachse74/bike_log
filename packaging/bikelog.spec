@@ -95,7 +95,7 @@ a = Analysis(
     pathex=[str(BACKEND)],
     datas=datas,
     hiddenimports=hiddenimports,
-    excludes=["tkinter", "pytest", "httpx"],
+    excludes=["tkinter", "pytest", "httpx", "httpx2"],
     noarchive=False,
 )
 pyz = PYZ(a.pure)

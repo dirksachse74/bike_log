@@ -41,7 +41,7 @@ async function request<T>(method: string, path: string, body?: unknown, opts: { 
     throw new ApiError(0, 'Cannot reach Bike Log. Is the app still running?', null)
   }
   const text = await res.text()
-  let data: unknown = null
+  let data: unknown
   try {
     data = text ? JSON.parse(text) : null
   } catch {

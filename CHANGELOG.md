@@ -68,6 +68,9 @@ UPDATING.md → "Making a release". New entries go under "Unreleased" as work is
   default tire setup in Settings (inner tube), so tubeless and cable reminders stay off where they don't apply.
 
 ### Changed
+- Build output is quiet again: tests use `httpx2` (Starlette deprecated `httpx` for its test client),
+  eslint 10 replaces the unsupported eslint 9 (same two hook rules as before), and esbuild's install
+  script is approved in `frontend/package.json` (`allowScripts`, npm 11).
 - Ride page in sections (Conditions, Incidents, Mileage given to parts); "Edit" is now "Edit ride".
 - Assioma power pedals: charge reminder every 80 ride hours instead of 50 (your choice). Existing
   databases are updated unless you had changed the value yourself.

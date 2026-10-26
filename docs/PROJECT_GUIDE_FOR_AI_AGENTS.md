@@ -332,6 +332,10 @@ cd frontend && npm ci && npm run build && cd ..
 cd backend && ../.venv/bin/python -m bikelog            # http://127.0.0.1:8765/
 ../.venv/bin/python -m bikelog --demo                   # separate demo database
 ```
+Tooling notes: the test client needs `httpx2` (requirements-dev.txt; plain httpx gives a Starlette
+deprecation warning). eslint 10 with react-hooks 7 runs only `rules-of-hooks` and `exhaustive-deps`.
+A dependency with an install script needs an `allowScripts` entry in frontend/package.json (npm 11
+warns, npm 12 blocks): run `npm install-scripts approve <pkg>`.
 
 Checks that must pass before every push:
 

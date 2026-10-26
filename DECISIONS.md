@@ -257,6 +257,9 @@ you disagree. Dates are 2026-10-24 unless noted.
 81. **Bike page groups are a display choice, not data**: "Installed now" is grouped by part category in
     the screen only (groupset = drivetrain, brakes, controls and the shifting battery), so no grouping has
     to be kept in sync when parts move. Groups start folded; due reminders stay in sight.
+82. **Lint upgrades keep the same rules**: with eslint-plugin-react-hooks 7 only `rules-of-hooks` and
+    `exhaustive-deps` are on (as with v5), not the React Compiler rules. esbuild's postinstall (it checks
+    the platform binary) is approved by `allowScripts` written by `npm install-scripts approve esbuild`.
 
 ## Repository
 27. Pushed only to the feature branch `claude/project-thread-6y3mmh` of the private repository. Demo
