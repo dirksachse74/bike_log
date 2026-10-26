@@ -43,7 +43,19 @@
         },
         "model": {
           "type": "string",
-          "description": "Spoke model and length"
+          "description": "Spoke model"
+        },
+        "length_mm": {
+          "type": "number",
+          "description": "Length (front, or both sides) (mm)"
+        },
+        "length_drive_mm": {
+          "type": "number",
+          "description": "Length, rear drive side (mm)"
+        },
+        "length_non_drive_mm": {
+          "type": "number",
+          "description": "Length, rear non-drive side (mm)"
         },
         "nipples": {
           "type": "string",

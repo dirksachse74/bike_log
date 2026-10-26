@@ -7,7 +7,10 @@
   "currency": "EUR",
   "specs": {
     "count": 24,
-    "model": "DT Aerolite 286 mm",
+    "model": "DT Aerolite",
+    "length_mm": 286,
+    "length_drive_mm": 288,
+    "length_non_drive_mm": 290,
     "nipples": "alloy, 14 mm",
     "weight_g": 250
   },

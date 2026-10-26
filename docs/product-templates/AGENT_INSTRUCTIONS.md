@@ -347,7 +347,10 @@ Template: `spokes.schema.json`, example: `spokes.example.json`
 | key | type | unit | meaning |
 |---|---|---|---|
 | `count` | number |  | Number of spokes |
-| `model` | string |  | Spoke model and length |
+| `model` | string |  | Spoke model |
+| `length_mm` | number | mm | Length (front, or both sides) |
+| `length_drive_mm` | number | mm | Length, rear drive side |
+| `length_non_drive_mm` | number | mm | Length, rear non-drive side |
 | `nipples` | string |  | Nipples |
 | `weight_g` | number | g | Weight |
 | `color` | string |  | Colour / finish |

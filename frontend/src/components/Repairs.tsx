@@ -23,12 +23,12 @@ function defaultSource(o: FixSourceOptions | null): Source | null {
 }
 
 // Where the new tube or tire comes from: stock, a stored spare, or a new one.
-function SourcePick({ name, options, isPart, value, onChange }: { name: string; options: FixSourceOptions; isPart: boolean; value: Source | null; onChange: (s: Source) => void }) {
+function SourcePick({ name, options, isPart, value, onChange, newLabel }: { name: string; options: FixSourceOptions; isPart: boolean; value: Source | null; onChange: (s: Source) => void; newLabel?: string }) {
   const picks: [Source, string, string][] = [
     ...options.stock.map((s): [Source, string, string] => [{ kind: 'stock', id: s.id }, `One from stock: ${s.name}`, `${s.qty} ${s.unit}${s.qty === 1 ? '' : 's'} left`]),
     ...options.spares.map((s): [Source, string, string] => [{ kind: 'spare', id: s.id }, s.label, 'stored spare']),
     ...(isPart ? [[{ kind: 'same' }, 'New item, same product', 'a new physical part'] as [Source, string, string]] : []),
-    [{ kind: 'new' }, isPart || options.tracks_new ? 'Newly bought item' : 'A new one', isPart || options.tracks_new ? 'tracked from now on' : 'not taken from stock, not tracked'],
+    [{ kind: 'new' }, newLabel ?? (isPart || options.tracks_new ? 'Newly bought item' : 'A new one'), newLabel ? 'not taken from stock' : isPart || options.tracks_new ? 'tracked from now on' : 'not taken from stock, not tracked'],
   ]
   return (
     <div className="pick-list">
@@ -122,7 +122,7 @@ export function FixForm({ group, onDone, onCancel }: { group: string; onDone: ()
         const f = fixes[p.entry_id]
         if (!f) return null
         const actions: [PartFix['action'], string][] = [
-          ...(p.options?.replace ? [['REPLACED', 'Replaced'] as [PartFix['action'], string]] : []),
+          ...(p.options?.replace ? [['REPLACED', p.kind === 'SPOKE' ? 'Replaced spoke' : 'Replaced'] as [PartFix['action'], string]] : []),
           ['REPAIRED', p.repair_label ?? 'Repaired'],
           ['NONE', 'Nothing yet'],
         ]
@@ -137,7 +137,8 @@ export function FixForm({ group, onDone, onCancel }: { group: string; onDone: ()
                 </label>
               ))}
             </div>
-            {f.action === 'REPLACED' && p.options && p.kind !== 'OTHER' && (
+            {f.action === 'REPLACED' && p.options && p.kind === 'SPOKE' && <SourcePick name={`src-${p.entry_id}`} options={p.options} isPart={false} newLabel="Spoke not from stock" value={f.source} onChange={(s) => set(p, { source: s })} />}
+            {f.action === 'REPLACED' && p.options && p.kind !== 'OTHER' && p.kind !== 'SPOKE' && (
               <>
                 <SourcePick name={`src-${p.entry_id}`} options={p.options} isPart={p.kind === 'PART'} value={f.source} onChange={(s) => set(p, { source: s })} />
                 {p.kind === 'POSITION' && p.damage === 'TIRE' && !p.options.wheel_label && <p className="small muted">No wheel recorded at this position, so stored spares cannot be put on it here.</p>}

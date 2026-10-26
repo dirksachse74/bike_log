@@ -289,6 +289,11 @@ you disagree. Dates are 2026-10-24 unless noted.
     every bike position and every part of a parent type (on active bikes, and off any bike), with the
     path (wheelset › wheel) and the occupant. Types with parent types go only on a part, except wheels,
     batteries, power meters and sensors (catalog.ON_BIKE_TOO), which may also sit on the bike itself.
+90. **Broken spokes count on the wheel, not as a service rule**: SPOKE_REPLACE events on a wheel since its
+    last WHEEL_RELACE (or since the spoke set was fitted) are counted by maintenance.spoke_info; the
+    "Re-lace" item is computed (like the hanger-after-crash item) with the threshold in the setting
+    spoke_relace_after (default 3), so no service_rule table rebuild was needed. A "Broken spoke"
+    incident is fixed on the wheel (repairs._fix_spoke), never by replacing the wheel.
 
 ## Repository
 27. Pushed only to the feature branch `claude/project-thread-6y3mmh` of the private repository. Demo

@@ -1116,3 +1116,11 @@ label.chip {
   margin: 0.75rem 0 0.25rem;
   font-weight: 500;
 }
+
+.spoke-line {
+  flex-basis: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+}

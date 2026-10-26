@@ -268,7 +268,7 @@ export function BikeDetailPage() {
   const { data, error, loading, reload } = useApi<BikeDetail>(`/bikes/${id}`)
   const incidents = useApi<RideIncident[]>(`/bikes/${id}/incidents`)
   const openIncidents = incidents.data?.filter((r) => r.open && !r.removed).length ?? 0
-  const [sheet, setSheet] = useState<null | { kind: 'install' } | { kind: 'groupset' } | { kind: 'wheelset' } | { kind: 'costs' } | { kind: 'part'; row: SetupRow } | { kind: 'swap'; title: string; rows: SetupRow[] } | { kind: 'log' }>(null)
+  const [sheet, setSheet] = useState<null | { kind: 'install' } | { kind: 'groupset' } | { kind: 'wheelset' } | { kind: 'costs' } | { kind: 'part'; row: SetupRow } | { kind: 'swap'; title: string; rows: SetupRow[] } | { kind: 'spokes'; row: SetupRow } | { kind: 'log' }>(null)
   if (loading && !data) return <Loading />
   if (error && !data) return <ErrorBox error={error} onRetry={reload} />
   if (!data) return null
@@ -338,7 +338,7 @@ export function BikeDetailPage() {
             {data.setup.length === 0 ? (
               <Empty title="Nothing installed yet">Install parts to track their usage.</Empty>
             ) : (
-              <SetupGroups setup={data.setup} onChange={(row) => setSheet({ kind: 'part', row })} reload={reload} />
+              <SetupGroups setup={data.setup} onChange={(row) => setSheet({ kind: 'part', row })} reload={reload} onAddSpokes={(row) => setSheet({ kind: 'spokes', row })} />
             )}
           </Card>
           <ServiceStatus tasks={data.queue} reload={reload} />
@@ -479,6 +479,18 @@ export function BikeDetailPage() {
           )}
         </Sheet>
       )}
+      {sheet?.kind === 'spokes' && (
+        <Sheet title={`Spokes · ${sheet.row.label}`} onClose={() => setSheet(null)}>
+          <SpokesForm
+            wheel={sheet.row}
+            onDone={() => {
+              setSheet(null)
+              toast('Spokes added.')
+              reload()
+            }}
+          />
+        </Sheet>
+      )}
       {sheet?.kind === 'log' && (
         <Sheet title={`Record work done · ${data.name}`} onClose={() => setSheet(null)}>
           <LogMaintenance
@@ -496,6 +508,78 @@ export function BikeDetailPage() {
 }
 
 const isWheel = (r: SetupRow) => r.component_type === 'FRONT_WHEEL' || r.component_type === 'REAR_WHEEL'
+
+// The spokes on a wheel as one part (a set): type, count and lengths (drive / non-drive side on the rear).
+function SpokesForm({ wheel, onDone }: { wheel: SetupRow; onDone: () => void }) {
+  const rear = wheel.component_type === 'REAR_WHEEL'
+  const [f, setF] = useState({ label: `Spokes ${wheel.label}`, model: '', count: '', length: '', drive: '', nondrive: '', nipples: '', at: wheel.since })
+  const [err, setErr] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [opId] = useState(newOpId)
+  const num = (v: string) => (v.trim() ? Number(v.replace(',', '.')) : undefined)
+  async function save() {
+    setErr(null)
+    setBusy(true)
+    try {
+      const specs = Object.fromEntries(
+        Object.entries({ model: f.model.trim() || undefined, count: num(f.count), length_mm: num(f.length), length_drive_mm: num(f.drive), length_non_drive_mm: num(f.nondrive), nipples: f.nipples.trim() || undefined }).filter(([, v]) => v !== undefined),
+      )
+      if (Object.values(specs).some((v) => typeof v === 'number' && Number.isNaN(v))) throw new Error('Count and lengths are numbers, e.g. 24 or 288')
+      await api.post('/components', { component_type: 'SPOKES', label: f.label, prior_usage: 'UNKNOWN', specs, install: { parent_component_id: wheel.component_id, slot: 'SPOKES', at: f.at } }, opId)
+      onDone()
+    } catch (e) {
+      setErr((e as Error).message)
+    } finally {
+      setBusy(false)
+    }
+  }
+  return (
+    <div className="form">
+      <div className="row">
+        <Field label="Name">
+          <input value={f.label} onChange={(e) => setF({ ...f, label: e.target.value })} />
+        </Field>
+        <Field label="Spoke model">
+          <input value={f.model} onChange={(e) => setF({ ...f, model: e.target.value })} placeholder="e.g. Sapim CX-Ray, DT Aerolite" />
+        </Field>
+      </div>
+      <div className="row">
+        <Field label="Number of spokes">
+          <input inputMode="numeric" value={f.count} onChange={(e) => setF({ ...f, count: e.target.value })} placeholder="e.g. 24" />
+        </Field>
+        {rear ? (
+          <>
+            <Field label="Length drive side (mm)">
+              <input inputMode="decimal" value={f.drive} onChange={(e) => setF({ ...f, drive: e.target.value })} />
+            </Field>
+            <Field label="Length non-drive side (mm)">
+              <input inputMode="decimal" value={f.nondrive} onChange={(e) => setF({ ...f, nondrive: e.target.value })} />
+            </Field>
+          </>
+        ) : (
+          <Field label="Length (mm)">
+            <input inputMode="decimal" value={f.length} onChange={(e) => setF({ ...f, length: e.target.value })} />
+          </Field>
+        )}
+      </div>
+      <div className="row">
+        <Field label="Nipples (optional)">
+          <input value={f.nipples} onChange={(e) => setF({ ...f, nipples: e.target.value })} placeholder="e.g. alloy, 14 mm" />
+        </Field>
+        <Field label="On the wheel since" hint="When the wheel was laced; broken spokes count from here.">
+          <input type="date" value={f.at} onChange={(e) => setF({ ...f, at: e.target.value })} />
+        </Field>
+      </div>
+      <p className="small muted">Leave what you don't know empty. Spare spokes for repairs go under Inventory → Add spare stock (type Spokes), so a broken spoke can take one from there.</p>
+      <FormError error={err} />
+      <div className="form-actions">
+        <button className="btn btn-primary" disabled={busy || !f.label.trim()} onClick={save}>
+          Add spokes
+        </button>
+      </div>
+    </div>
+  )
+}
 
 // Everyday part changes in one place. A swap opens the normal Replace dialog for the part of that type
 // on this bike (after a pick when there are several), so spares, stock and carried-over parts work as usual.
@@ -703,7 +787,42 @@ const CATEGORY_GROUP: Record<string, string> = {
   Electronics: 'ELECTRONICS',
 }
 
-function SetupGroups({ setup, onChange, reload }: { setup: SetupRow[]; onChange: (row: SetupRow) => void; reload: () => void }) {
+// One line under each wheel: its spokes (type, count, lengths) and the broken spokes since it was laced.
+function SpokeLine({ row, onAdd }: { row: SetupRow; onAdd: () => void }) {
+  const sp = row.spokes
+  if (!sp) return null
+  const s = sp.specs
+  const lengths = row.component_type === 'REAR_WHEEL' && (s.length_drive_mm || s.length_non_drive_mm)
+    ? `${s.length_drive_mm ?? '?'} mm drive side / ${s.length_non_drive_mm ?? '?'} mm non-drive`
+    : s.length_mm
+      ? `${s.length_mm} mm`
+      : null
+  const what = [s.count ? `${s.count} ×` : null, s.model ?? sp.product ?? sp.label, lengths].filter(Boolean).join(' ')
+  const tone = sp.broken >= sp.relace_after ? 'bad' : sp.broken === sp.relace_after - 1 ? 'warn' : 'neutral'
+  return (
+    <span className="spoke-line small">
+      Spokes:{' '}
+      {sp.component_id ? (
+        <>
+          <Link to={`/inventory/${sp.component_id}`}>{what}</Link>
+          {sp.from_product.length > 0 && <span className="muted"> (from product data, check)</span>}
+        </>
+      ) : (
+        <>
+          <span className="muted">not recorded</span>{' '}
+          <button className="btn btn-small" onClick={onAdd}>
+            Add spokes
+          </button>
+        </>
+      )}{' '}
+      <Tag tone={tone}>
+        {sp.broken} of {sp.relace_after} broken spokes{sp.since ? ` since ${when(sp.since)}` : ''}
+      </Tag>
+    </span>
+  )
+}
+
+function SetupGroups({ setup, onChange, reload, onAddSpokes }: { setup: SetupRow[]; onChange: (row: SetupRow) => void; reload: () => void; onAddSpokes: (row: SetupRow) => void }) {
   const { meta } = useApp()
   const groupOf = (type: string) => {
     if (type === 'BATTERY') return 'GROUPSET' // Di2 / AXS battery belongs to the shifting
@@ -741,6 +860,7 @@ function SetupGroups({ setup, onChange, reload }: { setup: SetupRow[]; onChange:
                   <button className="btn btn-small" onClick={() => onChange(s)}>
                     Change
                   </button>
+                  {s.spokes && <SpokeLine row={s} onAdd={() => onAddSpokes(s)} />}
                 </li>
               ))}
             </ul>

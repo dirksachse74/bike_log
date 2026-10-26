@@ -121,3 +121,41 @@ def test_swap_tube_at_a_wheel_takes_one_from_stock(session):
     worksessions.undo(session, ws.id)
     assert stock.level(session, tubes)["qty"] == 3
     assert session.query(JournalEntry).count() == 0
+
+
+def test_broken_spokes_count_per_wheel_until_a_relace(session):
+    """Dirk: after 3 broken spokes the wheel needs new spokes; a re-lace starts the count again."""
+    from bikelog.services import maintenance as m
+    from bikelog.services import settings
+    b, fw, rw, ft, tubes, r = setup(session)
+    spokes = part(session, "SPOKES", "Sapim CX-Ray rear", specs={"count": 24, "length_drive_mm": 288})
+    inv.install(session, spokes.id, at="2026-09-01", parent_component_id=rw.id)
+    spare = stock.add_consumable(session, name="Sapim CX-Ray 288", component_type="SPOKES", tracking_mode="COUNTED")
+    stock.consumable_txn(session, spare.id, kind="PURCHASE", qty=4, on="2026-09-01")
+    info = m.spoke_info(session, rw)
+    assert info["label"] == "Sapim CX-Ray rear" and info["specs"] == {"count": 24, "length_drive_mm": 288}
+    assert info["broken"] == 0 and info["relace_after"] == 3
+    assert "Rear wheel: Zipp rear" in [o["label"] for o in inc.choices(session, r, "SPOKE")]
+    texts = []
+    for n, day in enumerate(("2026-10-05", "2026-10-06", "2026-10-07"), start=1):
+        rr = ride(session, b, day, 30)
+        g = inc.log(session, rr.id, incident_type="SPOKE",
+                    affected=[{o["label"]: o["key"] for o in inc.choices(session, rr, "SPOKE")}["Rear wheel: Zipp rear"]])
+        p = entry(session, g, "Zipp rear")
+        assert p["kind"] == "SPOKE" and p["options"]["stock"][0]["id"] == spare.id
+        res = repairs.fix(session, g, at=day, parts=[
+            {"entry_id": p["entry_id"], "action": "REPLACED", "source": {"kind": "stock", "id": spare.id}}])
+        assert res["solved"]
+        texts.append(res["texts"][0])
+        relace = next(x for x in m.component_status(session, rw) if x["rule_code"] == "SPOKE_RELACE")
+        assert relace["status"] == {1: "OK", 2: "DUE_SOON", 3: "ATTENTION"}[n]
+    assert "spoke replaced (3 of 3 before a re-lace), one from stock (1 left)" in texts[-1]
+    assert any(x["rule_code"] == "SPOKE_RELACE" for x in m.queue(session, bike_id=b.id))
+    assert inv.location(session, rw)["state"] == "INSTALLED"                 # the wheel itself stays
+    m.log_event(session, action_code="WHEEL_RELACE", at="2026-10-08", component_id=rw.id)
+    assert m.spoke_info(session, rw)["broken"] == 0
+    assert not any(x["rule_code"] == "SPOKE_RELACE" for x in m.component_status(session, rw))
+    settings.set_value(session, "spoke_relace_after", "5")
+    assert m.spoke_info(session, rw)["relace_after"] == 5
+    with pytest.raises(DomainError):
+        settings.set_value(session, "spoke_relace_after", "0")

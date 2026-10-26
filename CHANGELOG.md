@@ -8,6 +8,13 @@ UPDATING.md → "Making a release". New entries go under "Unreleased" as work is
 ## Unreleased
 
 ### Added
+- Spokes per wheel: under Installed now each wheel shows its spokes (model, count, length; drive and
+  non-drive side on the rear) and "x of 3 broken spokes since it was laced". "Add spokes" records them.
+  New incident "Broken spoke" (pick the wheel); its Fix is "Replaced spoke" (one from spare-spoke stock
+  if you keep some) or "Trued / re-tensioned". After 3 broken spokes on one wheel the wheel asks for a
+  re-lace with new spokes (2 = coming up). Logging "Re-lace wheel with new spokes" or fitting a new spoke
+  set starts the count again. The number is editable under Settings. Values taken from product data are
+  marked "from product data, check".
 - Add part (and Install on the bike page) asks "Where does it go?": keep as a spare, a position on a
   bike, or on a part it mounts on. A hub, rim, spokes, rim tape or valve goes on a front or rear wheel
   (wheels inside a wheelset are listed with it, also stored ones); bearings on a hub; a chainring on the

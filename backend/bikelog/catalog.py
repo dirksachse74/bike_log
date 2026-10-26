@@ -149,6 +149,7 @@ OUT_OF_USE = ("RETIRED", "DISCARDED", "SOLD")
 # a pack of two quick links is two units (record packages separately on the purchase).
 STOCK_UNITS: dict[str, tuple[str, str]] = {
     "INNER_TUBE": ("tube", "one tube"),
+    "SPOKES": ("spoke", "one spoke (with nipple) for repairs"),
     "BRAKE_PADS": ("set", "one pad set for one caliper"),
     "BRAKE_ROTOR": ("rotor", "one rotor"),
     "CHAIN": ("chain", "one complete chain"),
@@ -202,6 +203,11 @@ ACTIONS: dict[str, Action] = {a.code: a for a in [
            quick=True, fields=("outcome",), outcomes=("OK", "OUT_OF_TRUE", "DAMAGE"),
            attention_outcomes=("OUT_OF_TRUE", "DAMAGE")),
     Action("WHEEL_TRUE", "True wheel", "SERVICE", ("FRONT_WHEEL", "REAR_WHEEL")),
+    # a broken spoke replaced (counts towards the re-lace reminder) and a full re-lace (resets the count)
+    Action("SPOKE_REPLACE", "Replace broken spoke", "REPAIR", ("FRONT_WHEEL", "REAR_WHEEL"),
+           fields=("work_done", "consumable")),
+    Action("WHEEL_RELACE", "Re-lace wheel with new spokes", "SERVICE", ("FRONT_WHEEL", "REAR_WHEEL"),
+           fields=("work_done",)),
     Action("HUB_BEARING_SERVICE", "Service hub bearings", "SERVICE", ("FRONT_WHEEL", "REAR_WHEEL"),
            fields=("work_done", "consumable")),
     Action("FREEHUB_SERVICE", "Service freehub", "SERVICE", ("REAR_WHEEL",), fields=("work_done", "consumable")),
@@ -475,7 +481,8 @@ INCIDENT_TYPES: dict[str, str] = {
     "BATTERY": "Empty battery",
     "LOOSE": "Loose or slipping part",
     "NOISE": "Creak or noise",
-    "WHEEL": "Wheel problem (spoke, out of true)",
+    "SPOKE": "Broken spoke",
+    "WHEEL": "Wheel problem (out of true, rim, hub)",
     "PEDAL": "Pedal or cleat problem",
     "FIT": "Fitting problem (rider)",
     "CRASH": "Crash",
@@ -550,6 +557,9 @@ INCIDENT_OPTIONS: dict[str, tuple[IncidentOption, ...]] = {
               _o("REAR_HUB", "Rear hub / freehub", ("HUB", "HUB_BEARINGS"), ("REAR_WHEEL",)),
               _o("CHAIN", "Chain", ("CHAIN",)),
               _o("SEATPOST", "Seatpost / saddle", ("SEATPOST", "SADDLE"))),
+    # a broken spoke counts on the wheel (after N, re-lace it): pick the wheel
+    "SPOKE": (_o("FRONT_WHEEL", "Front wheel", ("FRONT_WHEEL",)),
+              _o("REAR_WHEEL", "Rear wheel", ("REAR_WHEEL",))),
     "WHEEL": (_o("FRONT_WHEEL", "Front wheel", ("FRONT_WHEEL",)),
               _o("REAR_WHEEL", "Rear wheel", ("REAR_WHEEL",)),
               _o("FRONT_SPOKES", "Front spokes", ("SPOKES",), ("FRONT_WHEEL",)),

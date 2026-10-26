@@ -26,6 +26,7 @@ async function openGroups(page) {
 
 // waits until a part shows in "Installed now" (unfolding groups that appear after a reload)
 async function setupItem(page, text) {
+  await page.waitForLoadState('networkidle')   // a late reload re-renders the groups folded
   for (let i = 0; i < 100; i++) {
     await page.locator('details.setup-group').evaluateAll((ds) => ds.forEach((d) => { d.open = true }))
     const li = page.locator('.list.setup li').filter({ hasText: text })
@@ -592,6 +593,18 @@ async function bikeTab(page, name) {
     check('hub mounted on the front wheel', /TIME NXR → Test wheelset → Zipp 303 front/.test(await page.locator('main').innerText()))
     await page.goto(BASE + '#/bikes')
     await page.getByRole('link', { name: /TIME NXR/ }).click()
+    // spokes on each wheel: add them, then the wheel shows type, count, length and broken spokes
+    const wheelRow = await setupItem(page, 'Zipp 303 front')
+    await wheelRow.getByRole('button', { name: 'Add spokes' }).click()
+    await page.locator('.sheet').getByLabel('Spoke model').fill('Sapim CX-Ray')
+    await page.locator('.sheet').getByLabel('Number of spokes').fill('24')
+    await page.locator('.sheet').getByLabel('Length (mm)').fill('286')
+    await sheetButton(page, 'Add spokes')
+    await page.locator('.toast').filter({ hasText: 'Spokes added.' }).waitFor()
+    const spokeLine = (await setupItem(page, 'Zipp 303 front')).locator('.spoke-line')
+    await spokeLine.getByText('24 × Sapim CX-Ray 286 mm').waitFor()
+    check('wheel shows its spokes and broken spokes since lacing', /0 of 3 broken spokes/.test(await spokeLine.innerText()), await spokeLine.innerText())
+    await page.screenshot({ path: path.join(OUT, '11c-spokes.png'), fullPage: true })
   } else {
     check('wheels grouped into a wheelset', false, 'button not shown')
   }

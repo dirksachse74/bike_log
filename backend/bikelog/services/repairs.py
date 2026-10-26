@@ -69,6 +69,14 @@ def describe(session: Session, e: JournalEntry) -> dict:
     out = {"entry_id": e.id, "label": comp.label if comp else (e.affected or "Whole bike"),
            "component_id": e.component_id, "damage": None, "wheel": None, "installed": False,
            "repair": e.repair, "repair_text": e.repair_text, "repaired_on": e.repaired_on}
+    if e.incident_type == "SPOKE":       # a broken spoke: repaired on the wheel, counted there
+        wheel = comp if comp is not None and comp.component_type in WHEEL_TYPES else None
+        if wheel is None and e.affected in ("Front wheel", "Rear wheel"):
+            out["wheel"] = "FRONT_WHEEL" if e.affected == "Front wheel" else "REAR_WHEEL"
+        else:
+            out["wheel"] = wheel.component_type if wheel else None
+        out["kind"], out["wheel_id"] = "SPOKE", wheel.id if wheel else None
+        return out
     if comp is not None:
         out["damage"] = {"INNER_TUBE": "TUBE", "TIRE": "TIRE"}.get(comp.component_type)
         loc = inv.location(session, comp)
@@ -113,6 +121,14 @@ def fix_options(session: Session, group: str) -> dict:
         d = describe(session, e)
         if d["repair"]:
             parts.append({**d, "options": None})
+            continue
+        if d["kind"] == "SPOKE":
+            if d["wheel_id"] is None and d["wheel"]:
+                w = wheel_on_bike(session, bike_id, d["wheel"])
+                d["wheel_id"] = w.id if w else None
+            d["options"] = {"replace": True, "spoke": True, "stock": _stock_lines(session, "SPOKES"), "spares": []}
+            d["repair_label"] = "Trued / re-tensioned"
+            parts.append(d)
             continue
         if d["kind"] == "PART" and d["installed"]:
             o = spares_svc.replace_options(session, e.component_id)
@@ -197,6 +213,34 @@ def _replace_part(session: Session, comp: Component, *, at: str, source: dict, o
     return f"replaced with {res['new_label']}"
 
 
+def _fix_spoke(session: Session, d: dict, bike_id: int | None, p: dict, *, at: str, note: str | None,
+               ws_id: int) -> str:
+    """A broken spoke: replaced (counts towards re-lacing; one spoke from stock when picked) or the wheel
+    trued / re-tensioned. Logged on the wheel; without a recorded wheel only the text is kept."""
+    wheel = session.get(Component, d["wheel_id"]) if d.get("wheel_id") else \
+        (wheel_on_bike(session, bike_id, d["wheel"]) if d.get("wheel") else None)
+    if p["action"] == "REPAIRED":
+        if wheel is not None:
+            m.log_event(session, action_code="WHEEL_TRUE", at=at, component_id=wheel.id, notes=note,
+                        work_session_id=ws_id)
+        return "wheel trued / re-tensioned"
+    source = p.get("source") or {}
+    line_id = int(source["id"]) if source.get("kind") == "stock" else None
+    if line_id is not None and stock.get(session, line_id).component_type != "SPOKES":
+        raise DomainError("Pick spare spokes from stock, or a spoke not from stock")
+    if wheel is None:
+        if line_id is not None:
+            stock.use(session, line_id, qty=1, on=at, note="broken spoke", work_session_id=ws_id)
+        return "spoke replaced (wheel not recorded, not counted)"
+    m.log_event(session, action_code="SPOKE_REPLACE", at=at, component_id=wheel.id, notes=note,
+                consumable_id=line_id, consumable_qty=1 if line_id else None, work_session_id=ws_id)
+    info = m.spoke_info(session, wheel)
+    text = f"spoke replaced ({info['broken']} of {info['relace_after']} before a re-lace)"
+    if line_id is not None:
+        text += f", one from stock ({stock.level(session, stock.get(session, line_id))['qty']:g} left)"
+    return text
+
+
 def fix(session: Session, group: str, *, at: str, parts: list[dict], note: str | None = None) -> dict:
     """Record what was done about each affected part (``parts``: entry_id, action REPLACED / REPAIRED /
     NONE, source for a replacement, old_outcome). Solves the incident when every part is handled."""
@@ -223,7 +267,9 @@ def fix(session: Session, group: str, *, at: str, parts: list[dict], note: str |
             raise DomainError(f"{describe(session, e)['label']} is already {REPAIRS[e.repair]}; undo that fix first")
         d = describe(session, e)
         comp = session.get(Component, e.component_id) if e.component_id else None
-        if p["action"] == "REPAIRED":
+        if d["kind"] == "SPOKE":
+            text = _fix_spoke(session, d, bike_id, p, at=at, note=note, ws_id=ws.id)
+        elif p["action"] == "REPAIRED":
             if comp is not None and comp.component_type == "INNER_TUBE":
                 m.log_event(session, action_code="TUBE_PATCH", at=at, component_id=comp.id, notes=note,
                             work_session_id=ws.id)

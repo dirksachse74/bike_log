@@ -459,6 +459,7 @@ export interface SetupRow {
   depth: number
   parent_component_id: number | null
   tire_setup: TireSetup | null
+  spokes?: SpokeInfo
   pressure_note: string | null
 }
 
@@ -518,7 +519,7 @@ export interface FixPartOption {
   entry_id: number
   label: string
   component_id: number | null
-  kind: 'PART' | 'POSITION' | 'OTHER'
+  kind: 'PART' | 'POSITION' | 'OTHER' | 'SPOKE'
   damage: 'TUBE' | 'TIRE' | null
   repair: string | null
   repair_text: string | null
@@ -532,4 +533,16 @@ export interface FixOptions {
   ride_date: string
   bike_id: number | null
   parts: FixPartOption[]
+}
+
+export interface SpokeInfo {
+  wheel_id: number
+  component_id: number | null
+  label: string | null
+  product?: string | null
+  specs: { count?: number; model?: string; length_mm?: number; length_drive_mm?: number; length_non_drive_mm?: number; nipples?: string }
+  from_product: string[]
+  broken: number
+  since: string | null
+  relace_after: number
 }

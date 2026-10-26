@@ -33,7 +33,7 @@ interface Batch {
 
 export default function SettingsPage() {
   const { meta, reloadMeta, toast } = useApp()
-  const [f, setF] = useState({ timezone: meta.settings.timezone, import_start_date: meta.settings.import_start_date, trainer_profile_for_virtual: meta.settings.trainer_profile_for_virtual, default_tire_setup: meta.settings.default_tire_setup ?? 'TUBE' })
+  const [f, setF] = useState({ timezone: meta.settings.timezone, import_start_date: meta.settings.import_start_date, trainer_profile_for_virtual: meta.settings.trainer_profile_for_virtual, default_tire_setup: meta.settings.default_tire_setup ?? 'TUBE', spoke_relace_after: meta.settings.spoke_relace_after ?? '3' })
   const [err, setErr] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const batches = useApi<Batch[]>('/imports')
@@ -110,6 +110,9 @@ export default function SettingsPage() {
                 </option>
               ))}
             </select>
+          </Field>
+          <Field label="Re-lace a wheel after this many broken spokes" hint="Broken spokes replaced on one wheel since it was laced. Logging a re-lace (or fitting a new spoke set) starts again.">
+            <input inputMode="numeric" aria-label="Re-lace after broken spokes" value={f.spoke_relace_after} onChange={(e) => setF({ ...f, spoke_relace_after: e.target.value })} />
           </Field>
           <Field label="Setup for indoor (Virtual) rides">
             <select value={f.trainer_profile_for_virtual} onChange={(e) => setF({ ...f, trainer_profile_for_virtual: e.target.value })}>

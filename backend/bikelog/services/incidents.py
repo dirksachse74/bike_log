@@ -240,7 +240,7 @@ def _group_row(session: Session, rows: list[JournalEntry], *, removed: bool) -> 
     fixable = False
     for e in rows:
         d = repairs.describe(session, e)
-        fixable = fixable or (d["kind"] in ("PART", "POSITION") and not e.repair)
+        fixable = fixable or (d["kind"] in ("PART", "POSITION", "SPOKE") and not e.repair)
         affected.append({"key": _key(e, opts), "component_id": e.component_id, "label": d["label"],
                          "repair": e.repair, "repair_text": e.repair_text, "repaired_on": e.repaired_on})
     detail = None if first.text == INCIDENT_TYPES.get(first.incident_type) else first.text

@@ -827,11 +827,62 @@ def _last_crash(session: Session, bike_id: int | None, after_utc: str | None = N
     return session.scalar(q.order_by(JournalEntry.entry_on.desc(), JournalEntry.id.desc()))
 
 
+def spoke_info(session: Session, wheel: Component) -> dict:
+    """A wheel's spokes: the spoke set on it (type, count, lengths; values from the product are marked as
+    such) and the broken spokes replaced since it was laced (a re-lace or a new spoke set resets the count)."""
+    spokes = None
+    for i in session.scalars(select(Installation).where(Installation.parent_component_id == wheel.id,
+                                                        Installation.removed_utc.is_(None),
+                                                        Installation.voided_at.is_(None))):
+        c = session.get(Component, i.component_id)
+        if c.component_type == "SPOKES":
+            spokes = (c, i)
+    since_utc, since = "", None
+    out: dict = {"wheel_id": wheel.id, "component_id": None, "label": None, "specs": {}, "from_product": []}
+    if spokes:
+        c, inst = spokes
+        prod = json.loads(c.product.specs_json or "{}") if c.product else {}
+        own = json.loads(c.specs_json or "{}")
+        keys = ("count", "model", "length_mm", "length_drive_mm", "length_non_drive_mm", "nipples")
+        out.update({"component_id": c.id, "label": c.label,
+                    "product": f"{c.product.maker or ''} {c.product.model}".strip() if c.product else None,
+                    "specs": {k: own.get(k, prod.get(k)) for k in keys if own.get(k, prod.get(k)) not in (None, "")},
+                    "from_product": [k for k in keys if k not in own and prod.get(k) not in (None, "")]})
+        since_utc, since = inst.installed_utc, inst.installed_at[:10]
+    relace = _last_event(session, wheel.id, ["WHEEL_RELACE"])
+    if relace and relace.sort_utc > since_utc:
+        since_utc, since = relace.sort_utc, relace.performed_on
+    broken = list(session.scalars(select(MaintenanceEvent).where(
+        MaintenanceEvent.component_id == wheel.id, MaintenanceEvent.action_code == "SPOKE_REPLACE",
+        MaintenanceEvent.voided_at.is_(None), MaintenanceEvent.sort_utc > since_utc)))
+    out.update({"broken": len(broken), "since": since,
+                "relace_after": int(settings.get(session, "spoke_relace_after") or 3)})
+    return out
+
+
+def _spoke_items(session: Session, comp: Component) -> list[dict]:
+    info = spoke_info(session, comp)
+    n, limit = info["broken"], info["relace_after"]
+    if n == 0:
+        return []
+    status = "ATTENTION" if n >= limit else "DUE_SOON" if n == limit - 1 else "OK"
+    since = f"since it was laced ({info['since']})" if info["since"] else "since tracking started"
+    advice = (f"time to re-lace it with new spokes (your setting: after {limit}, under Settings)" if n >= limit
+              else f"re-lace with new spokes after {limit}")
+    return [{"rule_code": "SPOKE_RELACE", "name": "Re-lace wheel with new spokes", "action_code": "WHEEL_RELACE",
+             "component_id": comp.id, "component": comp.label, "component_type": comp.component_type,
+             "status": status, "broken_spokes": n,
+             "explanation": f"{n} broken spoke{'' if n == 1 else 's'} replaced on {comp.label} {since}: {advice}. "
+                            "Logging a re-lace (or fitting a new spoke set) starts the count again."}]
+
+
 def _event_based_items(session: Session, comp: Component) -> list[dict]:
     """Attention raised by something that happened elsewhere: a crash (hanger), a worn chain (cassette,
-    chainrings). Each stays until the part's own check is logged after it."""
+    chainrings), broken spokes (wheel). Each stays until the part's own check is logged after it."""
     out: list[dict] = []
     t = comp.component_type
+    if t in ("FRONT_WHEEL", "REAR_WHEEL"):
+        return _spoke_items(session, comp)
     if t not in ("DERAILLEUR_HANGER", "CASSETTE", "CHAINRING"):
         return out
     loc = location(session, comp)

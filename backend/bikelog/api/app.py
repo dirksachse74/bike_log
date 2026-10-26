@@ -488,6 +488,7 @@ class SettingsPatch(Body):
     trainer_profile_for_virtual: str | None = None
     default_tire_setup: str | None = None
     spare_minimums: str | None = None
+    spoke_relace_after: str | None = None
 
 
 class ProfileIn(Body):
@@ -627,7 +628,11 @@ def create_app(factory: sessionmaker[Session], paths: DataPaths, *, token: str |
     @app.get("/api/bikes/{bike_id}")
     def bike_detail(bike_id: int, s: Session = Depends(db)):
         b = inv.get_bike(s, bike_id)
-        return {**_bike_summary(s, b), "setup": inv.bike_setup(s, b), "history": inv.bike_installation_history(s, b),
+        setup = inv.bike_setup(s, b)
+        for row in setup:      # each wheel's spokes and broken spokes since lacing
+            if row["component_type"] in ("FRONT_WHEEL", "REAR_WHEEL"):
+                row["spokes"] = m.spoke_info(s, inv.get_component(s, row["component_id"]))
+        return {**_bike_summary(s, b), "setup": setup, "history": inv.bike_installation_history(s, b),
                 "queue": m.queue(s, bike_id=b.id, include_ok=True), "brakes": m.brake_overview(s, bike_id=b.id),
                 "rides": rides_svc.list_rides(s, bike_id=b.id, limit=20),
                 "events": m.events_for(s, bike_id=b.id, limit=20),
