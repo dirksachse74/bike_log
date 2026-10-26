@@ -16,7 +16,8 @@ UPDATING.md → "Making a release". New entries go under "Unreleased" as work is
   chains" records a hot wax for all ticked chains at once (dirty ones ticked) and can put one on the bike
   in the same step. A swap or wax counts after that day's rides. "Rotation history" lists each turn on
   the bike with its km and every wax. A chain joins the rotation of the bike it first goes on, or by
-  choice on its page, which also lists its wax cycles with the km ridden on each.
+  choice on its page, which also lists its wax cycles with the km ridden on each. With only one chain in
+  the rotation the card says so and offers the stored chains to add ("Add a chain to rotate with").
 - Mark: Edit details → Mark, a short note on how a part is marked ("1 punch dot"), shown next to its name
   on its page, in the chain lists, the rotation and the Replace dialog.
 - Drill down into parts made of parts. A part's page has "Parts on it": a wheelset lists its front and

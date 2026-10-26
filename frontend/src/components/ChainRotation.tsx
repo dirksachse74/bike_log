@@ -49,7 +49,7 @@ export default function ChainRotation({ bikeId, refresh, onChanged }: { bikeId: 
   }, [refresh])
   if (loading && !data) return <Loading />
   if (error) return <ErrorBox error={error} onRetry={reload} />
-  if (!data || data.chains.length < 2) return null
+  if (!data || data.chains.length === 0) return null
   const done = (text: string) => {
     toast(text)
     reload()
@@ -63,6 +63,41 @@ export default function ChainRotation({ bikeId, refresh, onChanged }: { bikeId: 
       setErr((e as Error).message)
     }
   }
+  async function add(id: string) {
+    if (!id) return
+    setErr(null)
+    try {
+      await api.patch(`/components/${id}`, { rotation_bike_id: bikeId })
+      done(`${data!.candidates.find((c) => c.component_id === Number(id))?.label} joined the chain rotation.`)
+    } catch (e) {
+      setErr((e as Error).message)
+    }
+  }
+  const addPicker = (
+    <label className="inline-field small">
+      {data.chains.length < 2 ? 'Add a chain to rotate with: ' : 'Add a chain: '}
+      <select aria-label="Add a chain to the rotation" value="" onChange={(e) => add(e.target.value)}>
+        <option value="">{data.candidates.length ? 'pick a stored chain' : 'no stored chain (Inventory → Add part)'}</option>
+        {data.candidates.map((c) => (
+          <option key={c.component_id} value={c.component_id}>
+            {c.label}
+            {c.mark ? ` (${c.mark})` : ''}
+          </option>
+        ))}
+      </select>
+    </label>
+  )
+  if (data.chains.length < 2)
+    return (
+      <Card title="Chain rotation" className="span-2">
+        <p className="small muted">
+          Only {data.chains[0].label} rotates on this bike. With two or more chains, this card shows which one is on, which are
+          waxed and ready, and when to swap.
+        </p>
+        {addPicker}
+        <FormError error={err} />
+      </Card>
+    )
   const p = data.prompt
   return (
     <Card title="Chain rotation" className="span-2" actions={<button className="btn btn-small" onClick={() => setWaxing(true)}>Wax chains</button>}>
@@ -130,7 +165,8 @@ export default function ChainRotation({ bikeId, refresh, onChanged }: { bikeId: 
           ))}
         </ul>
       </details>
-      <p className="small muted">A chain joins this rotation when it first goes on this bike, or on its page (Chain rotation). Give each chain a mark under Edit details so you can tell them apart.</p>
+      {data.candidates.length > 0 && <p>{addPicker}</p>}
+      <p className="small muted">A chain joins this rotation when it first goes on this bike, or here. Give each chain a mark under Edit details so you can tell them apart.</p>
       {waxing && (
         <Sheet title="Wax chains" onClose={() => setWaxing(false)}>
           <WaxForm data={data} onDone={(t) => (setWaxing(false), done(t))} />

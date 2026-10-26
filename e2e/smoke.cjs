@@ -190,6 +190,8 @@ async function bikeTab(page, name) {
   const rowA = await rotation.locator('li[data-chain="Chain A"]').innerText()
   const rowB = await rotation.locator('li[data-chain="Chain B"]').innerText()
   check('rotation card: Chain A (with its mark) dirty, Chain B on the bike', /1 punch dot/.test(rowA) && /dirty, waiting for wax/.test(rowA) && /on the bike/.test(rowB), `${rowA} | ${rowB}`.replace(/\s+/g, ' '))
+  const addOpts = await rotation.getByLabel('Add a chain to the rotation').locator('option').allInnerTexts()
+  check('rotation card offers stored chains to add (Chain C)', addOpts.includes('Chain C'), addOpts.join(' | '))
   await rotation.getByRole('button', { name: 'Wax chains' }).first().click()
   const waxSheet = page.locator('.sheet')
   const ticked = await waxSheet.locator('input[type=checkbox]:checked').count()

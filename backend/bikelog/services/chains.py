@@ -71,7 +71,18 @@ def rotation(session: Session, bike_id: int) -> dict:
             "next_ready": ready[0]["component_id"] if ready else None,
             # the chain on the bike counts as dirty once ridden since its last hot wax (or never hot waxed)
             "dirty": [r["component_id"] for r in dirty] + ([on["component_id"]] if on and on["km_since_hot_wax"] != 0 else []),
-            "prompt": prompt, "timeline": timeline(session, bike.id, [c.id for c in comps])}
+            "prompt": prompt, "timeline": timeline(session, bike.id, [c.id for c in comps]),
+            "candidates": candidates(session, bike.id)}
+
+
+def candidates(session: Session, bike_id: int) -> list[dict]:
+    """Chains that could join this bike's rotation: active, in no rotation and not on another bike."""
+    out = []
+    for c in session.scalars(select(Component).where(Component.component_type == "CHAIN", Component.status == "ACTIVE",
+                                                     Component.rotation_bike_id.is_(None)).order_by(Component.label)):
+        if inv.open_installation(session, c.id) is None:
+            out.append({"component_id": c.id, "label": c.label, "mark": c.mark})
+    return out
 
 
 def timeline(session: Session, bike_id: int, chain_ids: list[int]) -> list[dict]:

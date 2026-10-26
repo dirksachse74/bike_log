@@ -27,6 +27,11 @@ def test_rotation_states_prompts_and_one_click_swap(session):
     assert a.rotation_bike_id == b.id                      # joined by going on the bike
     rot = chains.rotation(session, b.id)
     assert rot["on"] == a.id and rot["next_ready"] == c.id and rot["prompt"] is None
+    spare = part(session, "CHAIN", "Chain C")
+    assert [x["label"] for x in chains.rotation(session, b.id)["candidates"]] == ["Chain C"]
+    inv.update_component(session, spare.id, rotation_bike_id=b.id)
+    assert chains.rotation(session, b.id)["candidates"] == []
+    inv.update_component(session, spare.id, rotation_bike_id=None)
     assert {r["label"]: r["mark"] for r in rot["chains"]}["Chain B"] == "2 punch dots"
     ride(session, b, "2026-09-10", 460)                    # within the 50 km warning of 500
     rot = chains.rotation(session, b.id)
