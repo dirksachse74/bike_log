@@ -203,6 +203,9 @@ def _after_flush(session: Session, _ctx_flush) -> None:
             elif isinstance(obj, Installation) and not obj.voided_at:
                 rows += _installation_rows(session, obj, True)
         for obj in list(session.deleted):
+            if isinstance(obj, Bike):     # only bikes without any history can be deleted (created by mistake)
+                rows.append({"bike_id": obj.id, "component_id": None, "action": "DELETED", "field": None,
+                             "old_value": obj.name, "new_value": None})
             if isinstance(obj, Component):  # only parts without any history can be deleted (typos)
                 rows.append({"bike_id": None, "component_id": obj.id, "action": "DELETED", "field": None,
                              "old_value": obj.label, "new_value": None})

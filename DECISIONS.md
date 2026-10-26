@@ -319,6 +319,13 @@ you disagree. Dates are 2026-10-24 unless noted.
     part by part (Change parts → Change a groupset part = normal Replace) or as a whole (Replace whole
     groupset = the same import with occupied positions replaced, old parts stored with their km).
     Manage parts is grouped Add / Remove / Change; Remove a part reuses RemoveForm.
+95. **Delete only what has no history; everything else is retired** (inv.delete_bike / retire_bike /
+    restore_bike): a bike counts as empty when it has no rides, installations, maintenance events,
+    journal entries or usage (inv.bike_history_counts), which matches the trg_bike_no_delete trigger.
+    Deleting removes its own settings rows (starting km, bike rules, snoozes, compatibility), unlinks work
+    sessions and chain rotations, writes a DELETED change-log row, and adds its Strava gear id to the
+    setting strava_ignored_gear, which the gear mapper skips so a sync never re-creates it. Retiring can
+    take the parts off into storage in one work session.
 
 ## Repository
 27. Pushed only to the feature branch `claude/project-thread-6y3mmh` of the private repository. Demo

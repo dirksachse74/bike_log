@@ -14,6 +14,7 @@ Behaviour (tested against tests/fake_strava.py):
 """
 from __future__ import annotations
 
+import json
 import os
 from datetime import datetime
 from zoneinfo import ZoneInfo
@@ -90,6 +91,9 @@ def _gear_mapper(client: StravaClient, counts: dict):
                 seen[strava_gear_id] = client.get_gear(strava_gear_id)
             except Exception:  # gear lookup is a convenience; the ride is still imported (flagged: no bike)
                 seen[strava_gear_id] = None
+        from bikelog.services import settings
+        if _gear(strava_gear_id) in json.loads(settings.get(session, "strava_ignored_gear") or "[]"):
+            return None  # its bike was deleted here: the ride comes in without a bike
         g = seen[strava_gear_id]
         name = (g or {}).get("name") or " ".join(x for x in ((g or {}).get("brand_name"), (g or {}).get("model_name")) if x)
         if not name:

@@ -111,7 +111,7 @@ export function BikesPage() {
       {data && data.length === 0 && <Empty title="No bikes yet">Add a bike to start logging rides and parts.</Empty>}
       {data && data.length > 0 && (
         <div className="cards">
-          {data.map((b) => (
+          {data.filter((b) => b.status !== 'RETIRED').map((b) => (
             <Link key={b.id} to={`/bikes/${b.id}`} className="tile">
               <strong>{b.name}</strong>
               <span title={certaintyLabel(b.usage)}>{usageText(b.usage)}</span>
@@ -123,10 +123,29 @@ export function BikesPage() {
                 {euro(b.costs.running_cents)}
               </span>
               {b.open_tasks > 0 && <Tag tone="warn">{b.open_tasks} due</Tag>}
-              {b.status === 'RETIRED' && <Tag>retired</Tag>}
             </Link>
           ))}
         </div>
+      )}
+      {data && data.some((b) => b.status === 'RETIRED') && (
+        <details className="task-group" data-group="retired-bikes">
+          <summary>
+            <strong>Retired bikes</strong>
+            <span className="muted small">{data.filter((b) => b.status === 'RETIRED').length}</span>
+          </summary>
+          <ul className="list">
+            {data
+              .filter((b) => b.status === 'RETIRED')
+              .map((b) => (
+                <li key={b.id}>
+                  <Link to={`/bikes/${b.id}`}>{b.name}</Link>
+                  <span className="muted small">
+                    {usageText(b.usage)} · {b.usage.ride_count} {b.usage.ride_count === 1 ? 'ride' : 'rides'}
+                  </span>
+                </li>
+              ))}
+          </ul>
+        </details>
       )}
       {adding && (
         <Sheet title="Add bike" onClose={() => setAdding(false)}>
@@ -140,6 +159,7 @@ export function BikesPage() {
 interface BikeDetail extends Bike {
   cost_detail: BikeCosts
   setup: SetupRow[]
+  history_counts: { rides: number; installations: number; maintenance: number; journal: number; usage: number }
   history: { id: number; component_id: number; label: string; slot: string; installed_at: string; removed_at: string | null; removal_reason: string | null; voided: boolean }[]
   queue: Task[]
   brakes: BrakeRow[]
@@ -270,7 +290,7 @@ export function BikeDetailPage() {
   const { data, error, loading, reload } = useApi<BikeDetail>(`/bikes/${id}`)
   const incidents = useApi<RideIncident[]>(`/bikes/${id}/incidents`)
   const openIncidents = incidents.data?.filter((r) => r.open && !r.removed).length ?? 0
-  const [sheet, setSheet] = useState<null | { kind: 'install' } | { kind: 'groupset'; replace?: boolean } | { kind: 'wheelset' } | { kind: 'costs' } | { kind: 'part'; row: SetupRow } | { kind: 'swap'; title: string; rows: SetupRow[]; remove?: boolean } | { kind: 'spokes'; row: SetupRow } | { kind: 'log' }>(params.get('add') === 'groupset' ? { kind: 'groupset', replace: true } : null)
+  const [sheet, setSheet] = useState<null | { kind: 'install' } | { kind: 'groupset'; replace?: boolean } | { kind: 'wheelset' } | { kind: 'costs' } | { kind: 'part'; row: SetupRow } | { kind: 'swap'; title: string; rows: SetupRow[]; remove?: boolean } | { kind: 'spokes'; row: SetupRow } | { kind: 'log' } | { kind: 'retire' }>(params.get('add') === 'groupset' ? { kind: 'groupset', replace: true } : null)
   if (loading && !data) return <Loading />
   if (error && !data) return <ErrorBox error={error} onRetry={reload} />
   if (!data) return null
@@ -286,9 +306,27 @@ export function BikeDetailPage() {
         className="span-2"
         actions={
           <>
-            <button className="btn btn-primary" title="Cleaning, lubing, waxing, charging, checks, bleeds, repairs: anything you did to the bike or a part" onClick={() => setSheet({ kind: 'log' })}>
-              Record work done
-            </button>
+            {data.status === 'RETIRED' ? (
+              <button
+                className="btn btn-primary"
+                onClick={async () => {
+                  await api.post(`/bikes/${data.id}/restore`, {})
+                  toast(`${data.name} is active again.`)
+                  reload()
+                }}
+              >
+                Restore bike
+              </button>
+            ) : (
+              <button className="btn btn-primary" title="Cleaning, lubing, waxing, charging, checks, bleeds, repairs: anything you did to the bike or a part" onClick={() => setSheet({ kind: 'log' })}>
+                Record work done
+              </button>
+            )}
+            {data.status !== 'RETIRED' && (
+              <button className="btn" onClick={() => setSheet({ kind: 'retire' })}>
+                Retire or delete
+              </button>
+            )}
           </>
         }
       >
@@ -317,6 +355,7 @@ export function BikeDetailPage() {
             {data.usage.starting_is_estimate ? ' (estimate)' : ''}, plus {km(data.usage.ride_km)} from rides since.
           </p>
         )}
+        {data.status === 'RETIRED' && <p className="small"><Tag>retired</Tag> Hidden from the bike list; its rides, km and history are kept. Restore brings it back.</p>}
         <ShiftingSelect bike={data} onSaved={reload} />
       </Card>
       <div className="tabs span-2" role="tablist" aria-label="Bike sections">
@@ -507,6 +546,11 @@ export function BikeDetailPage() {
           />
         </Sheet>
       )}
+      {sheet?.kind === 'retire' && (
+        <Sheet title={`Retire or delete · ${data.name}`} onClose={() => setSheet(null)}>
+          <RetireBike bike={data} onRetired={() => (setSheet(null), toast(`${data.name} retired. Bikes → Retired bikes shows it; Restore brings it back.`), reload())} />
+        </Sheet>
+      )}
       {sheet?.kind === 'log' && (
         <Sheet title={`Record work done · ${data.name}`} onClose={() => setSheet(null)}>
           <LogMaintenance
@@ -591,6 +635,73 @@ function SpokesForm({ wheel, onDone }: { wheel: SetupRow; onDone: () => void }) 
       <div className="form-actions">
         <button className="btn btn-primary" disabled={busy || !f.label.trim()} onClick={save}>
           Add spokes
+        </button>
+      </div>
+    </div>
+  )
+}
+
+// A bike created by mistake (nothing recorded on it) is deleted for good; any other bike is retired:
+// hidden from the list, rides and km kept, restorable. Its parts can come off into storage.
+function RetireBike({ bike, onRetired }: { bike: BikeDetail; onRetired: () => void }) {
+  const nav = useNavigate()
+  const { toast } = useApp()
+  const c = bike.history_counts
+  const empty = Object.values(c).every((n) => n === 0)
+  const [partsOff, setPartsOff] = useState(bike.setup.length > 0)
+  const [at, setAt] = useState(today())
+  const [err, setErr] = useState<string | null>(null)
+  const [opId] = useState(newOpId)
+  async function retire() {
+    setErr(null)
+    try {
+      await api.post(`/bikes/${bike.id}/retire`, partsOff ? { parts_off_at: at } : {}, opId)
+      onRetired()
+    } catch (e) {
+      setErr((e as Error).message)
+    }
+  }
+  async function del() {
+    if (!window.confirm(`Delete ${bike.name} for good? This cannot be undone.`)) return
+    try {
+      await api.del(`/bikes/${bike.id}`)
+      toast(`${bike.name} deleted.`)
+      nav('/bikes')
+    } catch (e) {
+      setErr((e as Error).message)
+    }
+  }
+  return (
+    <div className="form">
+      {empty ? (
+        <>
+          <p>Nothing is recorded on {bike.name} yet (no rides, parts, maintenance or notes), so it can be deleted for good.{bike.strava_gear_id ? ' Strava sync will not create it again; its rides come in without a bike.' : ''}</p>
+          <div className="form-actions">
+            <button className="btn btn-danger" onClick={del}>
+              Delete bike
+            </button>
+          </div>
+          <p className="small muted">Or retire it below if you want to keep it.</p>
+        </>
+      ) : (
+        <p className="small muted">
+          {bike.name} has {c.rides} ride{c.rides === 1 ? '' : 's'} and {c.installations} part installation{c.installations === 1 ? '' : 's'} on record, so it is retired instead of deleted: hidden from the bike list, with its rides, km and history kept. You can restore it any time.
+        </p>
+      )}
+      {bike.setup.length > 0 && (
+        <label className="check">
+          <input type="checkbox" checked={partsOff} onChange={(e) => setPartsOff(e.target.checked)} /> Take its parts off and store them (they keep their km)
+        </label>
+      )}
+      {partsOff && bike.setup.length > 0 && (
+        <Field label="Parts off on">
+          <input type="date" value={at} onChange={(e) => setAt(e.target.value)} />
+        </Field>
+      )}
+      <FormError error={err} />
+      <div className="form-actions">
+        <button className="btn btn-primary" onClick={retire}>
+          Retire bike
         </button>
       </div>
     </div>

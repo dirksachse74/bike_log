@@ -183,3 +183,17 @@ def test_removed_rides_view(session, world):
     assert [x["id"] for x in removed] == [r.id] and removed[0]["removed"]
     assert r.id not in {x["id"] for x in active}
     session.commit()
+
+
+def test_deleted_strava_bike_is_not_created_again(session, engine, tmp_path):
+    from bikelog.models import Bike
+    from bikelog.services import settings
+    settings.set_value(session, "strava_ignored_gear", '["7001"]', internal=True)   # as after deleting it
+    session.commit()
+    fake = FakeStrava([act(1, "2026-10-02T08:00:00Z", 40, gear="b7001")],
+                      gear={"b7001": {"id": "b7001", "name": "Cannondale Synapse Di2"}})
+    res = strava.sync(make_session_factory(engine), client_for(fake, tmp_path), force=True)
+    session.expire_all()
+    assert "BIKES_CREATED" not in res["counts"]
+    assert session.scalar(select(func.count()).select_from(Bike)) == 0
+    assert [r.bike_id for r in session.scalars(select(Ride))] == [None]   # the ride still comes in, without a bike

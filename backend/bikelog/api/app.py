@@ -152,6 +152,10 @@ class ComponentPatch(Body):
     rotation_bike_id: int | None = None
 
 
+class RetireBikeIn(Body):
+    parts_off_at: str | None = None   # take the parts off on this date and store them
+
+
 class ChainSwapIn(Body):
     to_component_id: int
     at: str
@@ -653,7 +657,8 @@ def create_app(factory: sessionmaker[Session], paths: DataPaths, *, token: str |
                 "queue": m.queue(s, bike_id=b.id, include_ok=True), "brakes": m.brake_overview(s, bike_id=b.id),
                 "rides": rides_svc.list_rides(s, bike_id=b.id, limit=20),
                 "events": m.events_for(s, bike_id=b.id, limit=20),
-                "cost_detail": costs_svc.bike_costs(s, b), "groupset": assemblies.groupset_summary(s, b)}
+                "cost_detail": costs_svc.bike_costs(s, b), "groupset": assemblies.groupset_summary(s, b),
+                "history_counts": inv.bike_history_counts(s, b.id)}
 
     @app.get("/api/bikes/{bike_id}/chains")
     def bike_chains(bike_id: int, s: Session = Depends(db)):
@@ -686,8 +691,22 @@ def create_app(factory: sessionmaker[Session], paths: DataPaths, *, token: str |
         return _bike_summary(s, inv.update_bike(s, bike_id, **body.model_dump(exclude_unset=True)))
 
     @app.post("/api/bikes/{bike_id}/retire")
-    def retire_bike(bike_id: int, s: Session = Depends(db)):
-        return _bike_summary(s, inv.retire_bike(s, bike_id))
+    def retire_bike(bike_id: int, body: RetireBikeIn | None = None, s: Session = Depends(db),
+                    op_id: str | None = OpId):
+        at = body.parts_off_at if body else None
+
+        def fn():
+            ws = ws_svc.begin(s, at=at, bike_id=bike_id, title="Retire bike: parts off") if at else None
+            return _bike_summary(s, inv.retire_bike(s, bike_id, parts_off_at=at, work_session_id=ws.id if ws else None))
+        return run_once(s, op_id, "bike.retire", fn)
+
+    @app.post("/api/bikes/{bike_id}/restore")
+    def restore_bike(bike_id: int, s: Session = Depends(db)):
+        return _bike_summary(s, inv.restore_bike(s, bike_id))
+
+    @app.delete("/api/bikes/{bike_id}")
+    def delete_bike(bike_id: int, s: Session = Depends(db)):
+        return {"deleted": bike_id, "name": inv.delete_bike(s, bike_id)}
 
     @app.post("/api/bikes/{bike_id}/starting-usage")
     def bike_start(bike_id: int, body: StartingIn, s: Session = Depends(db)):

@@ -88,11 +88,63 @@ def _check_price(cents: int | None) -> None:
         raise DomainError("A price cannot be negative")
 
 
-def retire_bike(session: Session, bike_id: int) -> Bike:
+def retire_bike(session: Session, bike_id: int, *, parts_off_at: str | None = None,
+                work_session_id: int | None = None) -> Bike:
+    """Retire (sold, archived): hidden from the active lists, rides and km kept, can be restored.
+    ``parts_off_at`` takes the parts off on that date and stores them (they keep their km)."""
     bike = get_bike(session, bike_id)
+    if parts_off_at:
+        for i in list(session.scalars(select(Installation).where(
+                Installation.bike_id == bike.id, Installation.removed_utc.is_(None), Installation.voided_at.is_(None)))):
+            remove(session, i.component_id, at=parts_off_at, reason=f"{bike.name} retired", outcome="STORED",
+                   reallocate=False, work_session_id=work_session_id)
+        _reallocate(session)
+        for c in session.scalars(select(Component).where(Component.rotation_bike_id == bike.id)):
+            c.rotation_bike_id = None
     bike.status = "RETIRED"
     session.flush()
     return bike
+
+
+def restore_bike(session: Session, bike_id: int) -> Bike:
+    bike = get_bike(session, bike_id)
+    bike.status = "ACTIVE"
+    session.flush()
+    return bike
+
+
+def bike_history_counts(session: Session, bike_id: int) -> dict:
+    """What a bike has recorded; a bike with none of it (created by mistake) may be deleted."""
+    from bikelog.models import JournalEntry, MaintenanceEvent, Ride
+    def n(model, col=None):
+        return session.scalar(select(func.count()).select_from(model).where((col or model.bike_id) == bike_id)) or 0
+    return {"rides": n(Ride), "installations": n(Installation), "maintenance": n(MaintenanceEvent),
+            "journal": n(JournalEntry), "usage": n(UsageContribution)}
+
+
+def delete_bike(session: Session, bike_id: int) -> str:
+    """Delete a bike that has no history at all (created by mistake). Anything with history is retired
+    instead. Its Strava gear id is remembered so a sync does not create it again."""
+    from bikelog.models import ProductCompatibility, ReminderSnooze, ServiceRule, WorkSession
+    from bikelog.services import settings
+    bike = get_bike(session, bike_id)
+    counts = bike_history_counts(session, bike_id)
+    if any(counts.values()):
+        what = ", ".join(f"{v} {k}" for k, v in counts.items() if v)
+        raise Protected(f"{bike.name} has history ({what}). Retire it instead: it is hidden, keeps its rides "
+                        "and can be restored.")
+    if bike.strava_gear_id:
+        ignored = set(json.loads(settings.get(session, "strava_ignored_gear") or "[]"))
+        ignored.add(bike.strava_gear_id)
+        settings.set_value(session, "strava_ignored_gear", json.dumps(sorted(ignored)), internal=True)
+    for model in (UsageAdjustment, ServiceRule, ReminderSnooze, ProductCompatibility):
+        session.query(model).filter(model.bike_id == bike_id).delete()
+    session.query(WorkSession).filter(WorkSession.bike_id == bike_id).update({"bike_id": None})
+    session.query(Component).filter(Component.rotation_bike_id == bike_id).update({"rotation_bike_id": None})
+    name = bike.name
+    session.delete(bike)
+    session.flush()
+    return name
 
 
 # ---------------------------------------------------------------- products & components

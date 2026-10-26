@@ -8,6 +8,11 @@ UPDATING.md → "Making a release". New entries go under "Unreleased" as work is
 ## Unreleased
 
 ### Changed
+- Bike page → "Retire or delete". A bike with nothing recorded (no rides, parts, maintenance or notes,
+  e.g. created by mistake) can be deleted for good after a confirmation; a Strava sync does not create it
+  again (its rides come in without a bike). Any other bike is retired: hidden in a folded "Retired bikes"
+  list under Bikes, rides, km and history kept, optionally with its parts taken off into storage (they
+  keep their km). "Restore bike" brings it back.
 - Bike page → Manage parts is now Add parts (Install a part, Group wheels), Remove parts (Remove a part:
   pick it, say what happened to it) and Change parts (the swaps, plus a Groupset group: "Change a
   groupset part", e.g. an Ultegra crankset for a Dura-Ace one, and "Replace whole groupset", which opens

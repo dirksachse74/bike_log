@@ -15,7 +15,8 @@ DEFAULTS = {
     "sample_data": "0",               # "1" = made-up sample data added on first start (until Fresh start)
     "default_tire_setup": "TUBE",     # used by reminders for wheels whose tube/tubeless is not set
     "spare_minimums": '{"INNER_TUBE": 2, "TIRE": 1}',   # spares to keep per part type (JSON); 0 = no check
-    "spoke_relace_after": "3",        # broken spokes on one wheel before re-lacing it with new spokes
+    "spoke_relace_after": "3",
+    "strava_ignored_gear": "[]",      # gear ids of bikes deleted here: a sync does not create them again        # broken spokes on one wheel before re-lacing it with new spokes
 }
 
 EDITABLE = {"timezone", "import_start_date", "trainer_profile_for_virtual", "default_tire_setup", "spare_minimums",
