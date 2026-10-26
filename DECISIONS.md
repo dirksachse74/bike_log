@@ -336,6 +336,17 @@ you disagree. Dates are 2026-10-24 unless noted.
     frame/fork are left out of unpriced-part warnings (they came with the bike) and of change notices when
     other parts changed. Retire with parts off keeps them on the bike. `frame_history` lists bike-level
     FRAME_INSPECT events and CRASH incidents inside the part's installation periods.
+97. **Sending a part away is a service order, for any part** (Dirk 2026-10-26, services/service_orders.py,
+    migration 0015): service_order keeps where the part came from (bike or parent part and slot), shop,
+    reason, linked incident, and the return (outcome, cost, receipt, notes, replacement). Sending removes
+    it with outcome AWAITING_SERVICE (no km while away). Four outcomes are kept apart: REPAIRED_PAID,
+    REPAIRED_WARRANTY, REPLACED_WARRANTY (new part created in the return session; old part
+    WARRANTY_RETURN, keeps its km), NOT_REPAIRED (stored or discarded). The cost is a REPAIR maintenance
+    event with the bike it came from, so bike costs count it once. Putting it back replaces a part fitted
+    meanwhile (stored). The linked incident's entries for the part (or the whole-bike entry) get the fix;
+    it is solved when every entry is fixed. Both steps are work sessions; undo voids or reopens the order
+    (clear_for_session). Rides on a bike that had a frame/fork but has none that day get NO_FRAME/NO_FORK
+    flags; the bike is not blocked (the ride date may simply be wrong).
 
 ## Repository
 27. Pushed only to the feature branch `claude/project-thread-6y3mmh` of the private repository. Demo

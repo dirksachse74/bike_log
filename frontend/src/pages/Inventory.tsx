@@ -6,6 +6,7 @@ import Journal from '../components/Journal'
 import LogMaintenance from '../components/LogMaintenance'
 import MountPicker, { type MountTarget } from '../components/MountPicker'
 import PartTree from '../components/PartTree'
+import { RepairsCard, ReturnForm, SendOutForm, type IncidentPick } from '../components/ServiceOrders'
 import ProductImport from '../components/ProductImport'
 import { DispositionForm, MoveForm, OutcomeChoice, RemoveForm, ReplaceForm } from '../components/PartChange'
 import TaskList from '../components/TaskList'
@@ -14,7 +15,7 @@ import { Card, ChangeNotice, Empty, ErrorBox, Field, FormError, Loading, Sheet, 
 import { useApp } from '../context'
 import { centsInput, certaintyLabel, euro, km, setupLabel, slotName, toCents, today, usageText, when } from '../format'
 import { useApi } from '../hooks'
-import type { Bike, Change, ChainRow, ComponentSummary, EventRow, OpResult, PartNode, Rule, ShoppingItem, Task } from '../types'
+import type { Bike, Change, ChainRow, ComponentSummary, EventRow, OpResult, PartNode, Rule, ServiceOrder, ShoppingItem, Task } from '../types'
 
 const SUPPLY_KINDS: Record<string, string> = { WAX: 'Chain wax', LUBE: 'Chain lube', SEALANT: 'Tubeless sealant', BRAKE_FLUID: 'Brake fluid', GREASE: 'Grease', OTHER: 'Other' }
 // "g" and "ml" stay as they are; "tube" becomes "tubes"
@@ -808,6 +809,8 @@ interface ComponentDetail extends ComponentSummary {
   groupset_bike_id: number | null
   chain: (ChainRow & { cycles: { cycle: number; waxed_on: string; km: number; current: boolean }[] }) | null
   frame_history: FrameHistory | null
+  service_orders: ServiceOrder[]
+  incident_choices: IncidentPick[]
 }
 
 interface FrameHistory {
@@ -946,7 +949,7 @@ export function ComponentDetailPage() {
   const { toast, meta } = useApp()
   const actionName = (code: string | null) => (meta.actions.find((a) => a.code === code)?.name ?? code ?? '').toLowerCase()
   const { data, error, loading, reload } = useApi<ComponentDetail>(`/components/${id}`)
-  const [sheet, setSheet] = useState<null | 'log' | 'details' | 'start' | 'retire' | 'rule' | 'replace' | 'remove' | 'move' | 'disposition' | 'inuse' | { rule: Rule } | { correct: number }>(null)
+  const [sheet, setSheet] = useState<null | 'log' | 'details' | 'start' | 'retire' | 'rule' | 'replace' | 'remove' | 'move' | 'disposition' | 'inuse' | 'sendout' | { rule: Rule } | { correct: number } | { back: ServiceOrder }>(null)
   const [f, setF] = useState({ km: '', date: today(), estimate: true, reason: '', installed_at: '', removed_at: '', action_code: 'INSPECT', interval_km: '', interval_months: '', interval_hours: '', retire_as: '' })
   const [preview, setPreview] = useState<Change | null>(null)
   const [err, setErr] = useState<string | null>(null)
@@ -985,6 +988,7 @@ export function ComponentDetailPage() {
   const ctype = meta.component_types.find((t) => t.code === data.component_type)
   const canMove = !!ctype && (ctype.parent_types.length > 0 || ctype.slots.length > 1)
   const inv = data.inventory
+  const away = data.service_orders.find((o) => o.status === 'OUT' && o.component_id === data.id)
   const changed = (c: Change) => {
     toast(c.notice)
     close()
@@ -1037,6 +1041,17 @@ export function ComponentDetailPage() {
                   Change status
                 </button>
               )}
+              {away ? (
+                <button className="btn btn-primary" onClick={() => setSheet({ back: away })}>
+                  Back from repair
+                </button>
+              ) : (
+                !ctype?.rider_gear && (
+                  <button className="btn" onClick={() => setSheet('sendout')}>
+                    Send away for repair
+                  </button>
+                )
+              )}
               <button className="btn" onClick={() => setSheet('details')}>
                 Edit details
               </button>
@@ -1067,7 +1082,7 @@ export function ComponentDetailPage() {
           </div>
           <div>
             <span className="stat">{inv.state_text}</span>
-            <span className="muted small">{installed ? data.location.text : [inv.readiness_text, data.storage_location].filter(Boolean).join(' · ')}</span>
+            <span className="muted small">{installed || away ? data.location.text : [inv.readiness_text, data.storage_location].filter(Boolean).join(' · ')}</span>
           </div>
         </div>
         <p className="small">{u.summary}</p>
@@ -1128,6 +1143,7 @@ export function ComponentDetailPage() {
           )}
         </p>
       </Card>
+      <RepairsCard orders={data.service_orders} componentId={data.id} onBack={(o) => setSheet({ back: o })} />
       {data.frame_history && <FrameHistoryCard h={data.frame_history} kind={data.type_name} />}
       {data.chain && <ChainCard comp={data} chain={data.chain} onChanged={reload} />}
       {data.parts.length > 0 && (
@@ -1306,6 +1322,16 @@ export function ComponentDetailPage() {
       {sheet === 'disposition' && (
         <Sheet title={`Status of ${data.label}`} onClose={close}>
           <DispositionForm componentId={data.id} current={data.disposition} onDone={() => { close(); toast('Saved.'); reload() }} />
+        </Sheet>
+      )}
+      {sheet === 'sendout' && (
+        <Sheet title={`Send ${data.label} away for repair`} onClose={close}>
+          <SendOutForm componentId={data.id} label={data.label} incidents={data.incident_choices} onDone={(msg) => { close(); toast(msg); reload() }} />
+        </Sheet>
+      )}
+      {sheet && typeof sheet === 'object' && 'back' in sheet && (
+        <Sheet title={`Back from repair: ${data.label}`} onClose={close}>
+          <ReturnForm order={sheet.back} onDone={(msg) => { close(); toast(msg); reload() }} />
         </Sheet>
       )}
       {sheet === 'details' && (

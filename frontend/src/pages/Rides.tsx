@@ -104,7 +104,7 @@ export function RideForm({
       }));
   }, [bikes.data, ride, f.bike_id]);
   const set = <K extends keyof FormState>(k: K, v: FormState[K]) =>
-    setF({ ...f, [k]: v });
+    setF((x) => ({ ...x, [k]: v }));
 
   function body(): Record<string, unknown> {
     const whenValue = f.time ? `${f.date}T${f.time}` : f.date;

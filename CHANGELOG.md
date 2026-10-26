@@ -16,6 +16,16 @@ UPDATING.md → "Making a release". New entries go under "Unreleased" as work is
   total goes on. A frame moved to a new build takes its km along. The part page of a frame or fork shows
   "Frame history" (inspections and crashes while it was on a bike). Retiring a bike with "take parts
   off" leaves the frame and fork on it.
+- Send a part away for repair (any part: frame, wheel, Di2 derailleur…). Part page → "Send away for
+  repair": date, shop or maker, what is wrong, and optionally the incident that caused it. The part comes
+  off the bike after that day's rides and collects no km while away; the bike page shows it under "Away
+  for repair", and rides logged while the frame or fork is away get a "No frame/fork" flag. "Back from
+  repair" records what came back: repaired (paid), repaired under warranty, replaced under warranty (new
+  part at 0 km with its own serial and warranty date; the old one is "returned under warranty" and keeps
+  its km) or not repaired (stored or discarded), with cost, receipt/reference and notes. The cost counts
+  once in the bike's costs; the part can go straight back where it was (a spare fitted meanwhile is
+  stored); a linked incident gets the fix recorded and is solved. The part page lists the whole story
+  under "Sent away for repair". Undo works on both steps. Crash incidents now offer the frame and fork.
 
 ### Fixed
 - Two fields side by side (Add bike: "Purchase price" and "Bought on"; the same in every other form) now

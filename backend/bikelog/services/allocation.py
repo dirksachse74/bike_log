@@ -173,6 +173,11 @@ def _plan(index: AllocationIndex, ride: Ride, explicit: dict[str, int | None]) -
         flags.append(("NO_WHEELS", None,
                       "No wheels on this bike on the ride day, so no wheel, tire or rotor gets these km. "
                       "Install the wheels with the day they were fitted, or set them on this ride."))
+    for slot, word in (("FRAME", "frame"), ("FORK", "fork")):
+        if any(i.slot == slot for i in bike_insts) and not any(u.slot == slot for u in uses):
+            flags.append((f"NO_{slot}", slot,
+                          f"No {word} on this bike on the ride day (away for repair?). Check the date or the bike, "
+                          f"or put the {word} back on from the day it returned."))
     if ride.usage_profile_id and ride.usage_profile_id in index.profiles:
         ex_slots, ex_types = index.profiles[ride.usage_profile_id]
         uses = [u for u in uses if u.root_slot not in ex_slots and u.slot not in ex_slots

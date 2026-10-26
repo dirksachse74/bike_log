@@ -456,6 +456,30 @@ export interface ChangeRow {
   component: string | null
 }
 
+export interface ServiceOrder {
+  id: number
+  component_id: number
+  label: string
+  type_name: string
+  bike_id: number | null
+  bike: string | null
+  from: string | null
+  from_slot: string | null
+  sent_on: string
+  shop: string | null
+  reason: string | null
+  status: 'OUT' | 'BACK'
+  returned_on: string | null
+  outcome: string | null
+  outcome_text: string | null
+  cost_cents: number | null
+  receipt_ref: string | null
+  notes: string | null
+  replacement_id: number | null
+  replacement: string | null
+  incident: { group: string; label: string; on: string; ride_id: number | null; open: boolean } | null
+}
+
 export interface SetupRow {
   component_id: number
   label: string

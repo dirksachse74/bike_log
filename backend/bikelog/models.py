@@ -219,6 +219,40 @@ class ProductCompatibility(Base):
     created_at: Mapped[str] = mapped_column(String(20), default=utc_now)
 
 
+class ServiceOrder(Base):
+    """A part sent away for service or repair (a shop, the maker): where it came from, why, and what came
+    back. While it is away it is off the bike (no km). The return records the outcome, the cost (as a
+    REPAIR maintenance event, so it counts in the bike's costs once) and, for a warranty replacement, the
+    new part. Never deleted; undoing the send or return work session voids or reopens it."""
+    __tablename__ = "service_order"
+    __table_args__ = (CheckConstraint("status IN ('OUT','BACK','VOIDED')", name="ck_service_order_status"),
+                      CheckConstraint("cost_cents IS NULL OR cost_cents >= 0", name="ck_service_order_cost"))
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    uuid: Mapped[str] = mapped_column(String(36), unique=True, default=new_uuid)
+    component_id: Mapped[int] = mapped_column(ForeignKey("component.id"), index=True)
+    bike_id: Mapped[int | None] = mapped_column(ForeignKey("bike.id"))           # the bike it came from
+    from_bike_id: Mapped[int | None] = mapped_column(ForeignKey("bike.id"))      # its position: on a bike ...
+    from_parent_id: Mapped[int | None] = mapped_column(ForeignKey("component.id"))  # ... or on a part
+    from_slot: Mapped[str | None] = mapped_column(String(40))
+    sent_at: Mapped[str] = mapped_column(String(20))
+    sent_on: Mapped[str] = mapped_column(String(10))
+    shop: Mapped[str | None] = mapped_column(Text)
+    reason: Mapped[str | None] = mapped_column(Text)
+    incident_group: Mapped[str | None] = mapped_column(String(36))
+    send_session_id: Mapped[int | None] = mapped_column(ForeignKey("work_session.id"))
+    status: Mapped[str] = mapped_column(String(8), default="OUT")
+    returned_at: Mapped[str | None] = mapped_column(String(20))
+    returned_on: Mapped[str | None] = mapped_column(String(10))
+    outcome: Mapped[str | None] = mapped_column(String(20))
+    cost_cents: Mapped[int | None] = mapped_column(Integer)
+    receipt_ref: Mapped[str | None] = mapped_column(Text)
+    return_notes: Mapped[str | None] = mapped_column(Text)
+    return_session_id: Mapped[int | None] = mapped_column(ForeignKey("work_session.id"))
+    event_id: Mapped[int | None] = mapped_column(ForeignKey("maintenance_event.id"))
+    replacement_id: Mapped[int | None] = mapped_column(ForeignKey("component.id"))
+    created_at: Mapped[str] = mapped_column(String(20), default=utc_now)
+
+
 class WorkSession(Base):
     """One maintenance session at the bench. Groups the separate transactions it produced (purchases,
     supplies used, installs, removals, dispositions, service events) without merging them, so stock

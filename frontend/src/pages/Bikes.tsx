@@ -11,6 +11,7 @@ import { MoveForm, RemoveForm, ReplaceForm } from '../components/PartChange'
 import { SwapTube } from '../components/Repairs'
 import MountPicker, { type MountTarget } from '../components/MountPicker'
 import ChainRotation from '../components/ChainRotation'
+import { AwayCard } from '../components/ServiceOrders'
 import TaskList from '../components/TaskList'
 import { PressureNote, TireSetupSelect } from '../components/TireSetup'
 import { Card, ChangeNotice, Empty, ErrorBox, Field, FormError, Loading, Sheet, StatusBadge, Tag } from '../components/ui'
@@ -18,7 +19,7 @@ import { useApp } from '../context'
 import { centsInput, certaintyLabel, duration, euro, km, slotName, toCents, today, usageText, when } from '../format'
 import { useApi } from '../hooks'
 import { RideDetailView } from './Rides'
-import type { Bike, BikeCosts, BrakeRow, Change, ComponentSummary, EventRow, GroupsetSummary, OpResult, RideIncident, RideRow, SetupRow, Task } from '../types'
+import type { Bike, BikeCosts, BrakeRow, Change, ComponentSummary, EventRow, GroupsetSummary, OpResult, RideIncident, RideRow, ServiceOrder, SetupRow, Task } from '../types'
 
 export function BikeForm({ onSaved }: { onSaved: (b: Bike) => void }) {
   const { meta } = useApp()
@@ -166,6 +167,7 @@ interface BikeDetail extends Bike {
   rides: RideRow[]
   events: EventRow[]
   groupset: GroupsetSummary | null
+  away: ServiceOrder[]
 }
 
 export function InstallForm({ bikeId, onDone }: { bikeId: number; onDone: (c: Change) => void }) {
@@ -368,6 +370,7 @@ export function BikeDetailPage() {
       </div>
       {tab === 'overview' && (
         <>
+          <AwayCard orders={data.away} onChanged={reload} />
           <ManageParts
             setup={data.setup}
             onSwap={(title, rows) => setSheet({ kind: 'swap', title, rows })}

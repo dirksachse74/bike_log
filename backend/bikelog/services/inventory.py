@@ -811,8 +811,11 @@ def location(session: Session, comp: Component) -> dict:
             return {"state": "IN_USE", "disposition": comp.disposition, "bike_id": None, "bike": None,
                     "text": f"In use since {comp.disposition_on} (counts every ride)"}
         if comp.disposition == "AWAITING_SERVICE":
-            return {"state": "AWAITING_SERVICE", "disposition": comp.disposition,
-                    "text": "Awaiting inspection or repair"}
+            from bikelog.services.service_orders import open_order
+            o = open_order(session, comp.id)
+            text = (f"Away for repair{' at ' + o.shop if o.shop else ''} since {o.sent_on}" if o
+                    else "Awaiting inspection or repair")
+            return {"state": "AWAITING_SERVICE", "disposition": comp.disposition, "text": text}
         return {"state": "STORED", "disposition": comp.disposition, "text": "In storage (spare)"}
     path = []
     cur, top = inst, None

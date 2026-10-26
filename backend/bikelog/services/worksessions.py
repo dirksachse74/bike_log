@@ -156,6 +156,8 @@ def undo(session: Session, ws_id: int, reason: str | None = None) -> dict:
         b.voided_at, b.void_reason = now, f"undone: {reason}"
     from bikelog.services import repairs
     repairs.clear_for_session(session, ws.id)          # an incident fixed in this session is open again
+    from bikelog.services import service_orders
+    service_orders.clear_for_session(session, ws.id)   # sent away: voided; back from repair: away again
     ws.undone_at, ws.undo_reason = now, reason
     session.flush()
     allocation.rebuild_all(session, settings.tz(session))

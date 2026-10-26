@@ -34,6 +34,7 @@ from bikelog.paths import DataPaths, resource_root
 from bikelog.services import assemblies
 from bikelog.services import chains as chains_svc
 from bikelog.services import frames as frames_svc
+from bikelog.services import service_orders as orders_svc
 from bikelog.services import costs as costs_svc
 from bikelog.services import bundles as bundles_svc
 from bikelog.services import demo, diagnostics, groupsets, imports, journal, product_import, spares, stock
@@ -152,6 +153,26 @@ class ComponentPatch(Body):
     mark: str | None = None
     rotation_bike_id: int | None = None
     warranty_until: str | None = None
+
+
+class SendOutIn(Body):
+    at: str
+    shop: str | None = None
+    reason: str | None = None
+    incident_group: str | None = None
+
+
+class ReturnIn(Body):
+    at: str
+    outcome: str
+    cost_cents: int | None = None
+    receipt_ref: str | None = None
+    notes: str | None = None
+    put_back: bool = True
+    keep_as: str = "STORED"
+    new_label: str | None = None
+    new_serial: str | None = None
+    new_warranty_until: str | None = None
 
 
 class RetireBikeIn(Body):
@@ -660,7 +681,7 @@ def create_app(factory: sessionmaker[Session], paths: DataPaths, *, token: str |
                 "rides": rides_svc.list_rides(s, bike_id=b.id, limit=20),
                 "events": m.events_for(s, bike_id=b.id, limit=20),
                 "cost_detail": costs_svc.bike_costs(s, b), "groupset": assemblies.groupset_summary(s, b),
-                "history_counts": inv.bike_history_counts(s, b.id)}
+                "history_counts": inv.bike_history_counts(s, b.id), "away": orders_svc.away(s, b.id)}
 
     @app.get("/api/bikes/{bike_id}/chains")
     def bike_chains(bike_id: int, s: Session = Depends(db)):
@@ -780,7 +801,25 @@ def create_app(factory: sessionmaker[Session], paths: DataPaths, *, token: str |
                 "chain": ({**m.chain_row(s, c), "cycles": chains_svc.chain_history(s, c)}
                           if c.component_type == "CHAIN" else None),
                 "frame_history": frames_svc.frame_history(s, c) if c.component_type in ("FRAME", "FORK") else None,
+                "service_orders": orders_svc.for_component(s, c),
+                "incident_choices": orders_svc.incident_choices(s, c) if c.status == "ACTIVE" else [],
                 "suggested_outcome": COMPONENT_TYPES[c.component_type].removed_default}
+
+    @app.post("/api/components/{component_id}/send-out")
+    def send_out(component_id: int, body: SendOutIn, dry_run: bool = False, s: Session = Depends(db),
+                 op_id: str | None = OpId):
+        return op(s, op_id, "component.send_out",
+                  lambda: orders_svc.send_out(s, component_id, **body.model_dump()), dry_run)
+
+    @app.post("/api/service-orders/{order_id}/return")
+    def service_return(order_id: int, body: ReturnIn, dry_run: bool = False, s: Session = Depends(db),
+                       op_id: str | None = OpId):
+        return op(s, op_id, "service_order.return",
+                  lambda: orders_svc.return_part(s, order_id, **body.model_dump()), dry_run)
+
+    @app.get("/api/service-orders")
+    def service_orders_away(bike_id: int | None = None, s: Session = Depends(db)):
+        return orders_svc.away(s, bike_id)
 
     @app.patch("/api/components/{component_id}")
     def patch_component(component_id: int, body: ComponentPatch, s: Session = Depends(db)):
