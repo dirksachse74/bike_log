@@ -314,6 +314,11 @@ you disagree. Dates are 2026-10-24 unless noted.
 93. **Swaps and waxes from the rotation count after that day's rides**: a date alone means the start of
     the day, which would move that day's rides to the new chain. The one-click swap sends the current time;
     the Wax chains form sends the end of the chosen day (now, for today).
+94. **Groupset actions follow how a bike is built** (Dirk 2026-10-26): Add groupset is a first-setup
+    shortcut (Installed now, only while the bike has no groupset parts); afterwards a groupset is changed
+    part by part (Change parts → Change a groupset part = normal Replace) or as a whole (Replace whole
+    groupset = the same import with occupied positions replaced, old parts stored with their km).
+    Manage parts is grouped Add / Remove / Change; Remove a part reuses RemoveForm.
 
 ## Repository
 27. Pushed only to the feature branch `claude/project-thread-6y3mmh` of the private repository. Demo

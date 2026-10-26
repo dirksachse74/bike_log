@@ -51,6 +51,9 @@ export function GroupsetPage() {
             <span className="muted small">need attention</span>
           </div>
         </div>
+        <p className="small">
+          <Link to={`/bikes/${data.bike_id}?add=groupset`}>Replace whole groupset</Link> · change single parts under the bike's Manage parts
+        </p>
         <p className="small muted">Each part keeps its own km (a chain swapped in later has fewer); open a part for its own numbers.</p>
       </Card>
       <Card title="Parts" className="span-2">

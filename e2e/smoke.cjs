@@ -132,6 +132,27 @@ async function bikeTab(page, name) {
   await page.getByRole('link', { name: /TIME NXR/ }).click()
   await setupItem(page, 'Chain A')
   check('header keeps only "Record work done"', (await page.locator('.card').first().getByRole('button', { name: 'Install a part' }).count()) === 0)
+  const manage = page.locator('.card').filter({ has: page.getByRole('heading', { name: 'Manage parts' }) })
+  check('Manage parts: Add, Remove and Change parts (with Replace whole groupset); no Add groupset there',
+    (await manage.getByRole('button', { name: 'Add groupset' }).count()) === 0 && (await manage.getByRole('button', { name: 'Replace whole groupset' }).count()) === 1 && (await manage.getByRole('button', { name: 'Remove a part' }).count()) === 1 &&
+    (await manage.getByText('Change parts').count()) === 1)
+  {
+    const tok = await page.locator('meta[name="bikelog-token"]').getAttribute('content')
+    const nb = await (await page.request.post(BASE + 'api/bikes', { headers: { 'X-BikeLog-Token': tok }, data: { name: 'Empty test bike' } })).json()
+    await page.goto(BASE + `#/bikes/${nb.id}`)
+    const inst = page.locator('.card').filter({ has: page.getByRole('heading', { name: 'Installed now' }) })
+    await inst.getByRole('button', { name: 'Add groupset' }).waitFor()
+    check('a new bike offers Add groupset under Installed now', true)
+    await page.request.post(BASE + `api/bikes/${nb.id}/retire`, { headers: { 'X-BikeLog-Token': tok } })
+    await page.goto(BASE + '#/bikes')
+    await page.getByRole('link', { name: /TIME NXR/ }).click()
+    await setupItem(page, 'Chain A')
+  }
+  await manage.getByRole('button', { name: 'Remove a part' }).click()
+  await page.locator('.sheet').getByLabel('Chain A').check().catch(() => {})
+  await page.locator('.sheet').getByText(/What happened to Chain A|What happened/).first().waitFor()
+  check('Remove a part: pick the part, then say what happened to it', true)
+  await page.locator('.sheet').getByRole('button', { name: 'Close' }).click()
   await page.getByRole('button', { name: 'Swap chain' }).click()
   await page.locator('.sheet').getByText('Outgoing:').filter({ hasText: 'Chain A' }).waitFor()
   await page.locator('.sheet .pick').filter({ hasText: 'Chain B' }).click()
@@ -314,7 +335,8 @@ async function bikeTab(page, name) {
   // groupset import: whole Ultegra Di2 R8100 group in one action, then undo
   await page.goto(BASE + '#/bikes')
   await page.getByRole('link', { name: /TIME NXR/ }).click()
-  await page.getByRole('button', { name: 'Add groupset' }).click()
+  await page.getByRole('button', { name: 'Replace whole groupset' }).click()
+  await page.locator('.sheet').getByText('Keep the current part; the new one becomes a spare').click()
   // other groupsets: SRAM RED E1 puts an AXS battery on each derailleur; then back to Ultegra
   await page.locator('.sheet').getByLabel('Groupset').selectOption('SRAM_RED_AXS_E1_2X12')
   await page.locator('.sheet .groupset-items li').filter({ hasText: 'AXS battery (front derailleur)' }).waitFor()
@@ -353,7 +375,8 @@ async function bikeTab(page, name) {
   await bikeTab(page, 'Parts and service')
 
   // groupset bought as one bundle; the BSA bottom bracket goes to storage; km from before on a part
-  await page.getByRole('button', { name: 'Add groupset' }).click()
+  await page.getByRole('button', { name: 'Replace whole groupset' }).click()
+  await page.locator('.sheet').getByText('Keep the current part; the new one becomes a spare').click()
   await page.locator('.sheet').getByLabel('Bundle price').fill('1899')
   await page.locator('.sheet').getByLabel('Shop').fill('bike-components.de')
   await page.locator('.sheet').getByLabel('Keep bottom bracket as spare').check()
@@ -465,6 +488,8 @@ async function bikeTab(page, name) {
   const fixedRow = sheet.locator('.incident-row').filter({ hasText: 'glass shard' })
   await fixedRow.getByText(/Rear tube: replaced with one from stock \(Conti Race 28, 2 left\)/).waitFor()
   check('Fix: rear tube replaced from stock, incident solved', /solved/.test(await fixedRow.innerText()), (await fixedRow.innerText()).replace(/\s+/g, ' '))
+  const btnTops = await fixedRow.locator('.incident-actions .btn').evaluateAll((bs) => bs.map((b) => [Math.round(b.getBoundingClientRect().top), b.scrollHeight <= parseFloat(getComputedStyle(b).lineHeight) * 1.6 + 16]))
+  check('incident buttons sit on one line, no text wrapped inside a button', new Set(btnTops.map((t) => t[0])).size === 1 && btnTops.every((t) => t[1]), JSON.stringify(btnTops))
   await fixedRow.getByRole('button', { name: 'Undo fix' }).click()
   await fixedRow.getByText('open', { exact: true }).waitFor()
   check('Undo fix opens the incident again', (await fixedRow.getByRole('button', { name: 'Fix' }).count()) === 1)

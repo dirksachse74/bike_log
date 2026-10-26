@@ -7,6 +7,15 @@ UPDATING.md → "Making a release". New entries go under "Unreleased" as work is
 
 ## Unreleased
 
+### Changed
+- Bike page → Manage parts is now Add parts (Install a part, Group wheels), Remove parts (Remove a part:
+  pick it, say what happened to it) and Change parts (the swaps, plus a Groupset group: "Change a
+  groupset part", e.g. an Ultegra crankset for a Dura-Ace one, and "Replace whole groupset", which opens
+  the groupset import with "replace the current part" preselected; old parts keep their km).
+- "Add groupset" is for setting up a bike: it sits on Installed now while the bike has no groupset parts.
+  The groupset page links to Replace whole groupset.
+- Incident lists keep the action buttons (Fix, Solved / Re-open, Undo fix, Edit, Remove) on one line.
+
 ### Added
 - Chain rotation (two or more chains taking turns on a bike, swapped at the 500 km hot-wax interval).
   The bike page has a "Chain rotation" card: which chain is on, which are "waxed, ready" and which are

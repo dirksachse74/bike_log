@@ -9,14 +9,14 @@ const ACTION_TEXT: Record<string, string> = { INSTALL: 'install', REPLACE: 'repl
 
 // Adds every part of a groupset in one step. All logic (positions, occupied slots, products) is in
 // the backend; this form only collects the choices and shows the plan before anything is saved.
-export default function GroupsetImport({ bikeId, onDone }: { bikeId?: number; onDone: (msg: string) => void }) {
+export default function GroupsetImport({ bikeId, onDone, initialOccupied = 'KEEP' }: { bikeId?: number; onDone: (msg: string) => void; initialOccupied?: 'KEEP' | 'REPLACE' }) {
   const templates = useApi<GroupsetTemplate[]>('/groupsets')
   const bikes = useApi<Bike[]>('/bikes')
   const [code, setCode] = useState('')
   const [bike, setBike] = useState(bikeId ? String(bikeId) : '')
   const [options, setOptions] = useState<Record<string, string>>({})
   const [include, setInclude] = useState<Set<string>>(new Set())
-  const [occupied, setOccupied] = useState('KEEP')
+  const [occupied, setOccupied] = useState<string>(initialOccupied)
   const [at, setAt] = useState(today())
   const [priorUsage, setPriorUsage] = useState('NEW')
   const [prices, setPrices] = useState<Record<string, string>>({})

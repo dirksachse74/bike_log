@@ -270,7 +270,7 @@ export function BikeDetailPage() {
   const { data, error, loading, reload } = useApi<BikeDetail>(`/bikes/${id}`)
   const incidents = useApi<RideIncident[]>(`/bikes/${id}/incidents`)
   const openIncidents = incidents.data?.filter((r) => r.open && !r.removed).length ?? 0
-  const [sheet, setSheet] = useState<null | { kind: 'install' } | { kind: 'groupset' } | { kind: 'wheelset' } | { kind: 'costs' } | { kind: 'part'; row: SetupRow } | { kind: 'swap'; title: string; rows: SetupRow[] } | { kind: 'spokes'; row: SetupRow } | { kind: 'log' }>(null)
+  const [sheet, setSheet] = useState<null | { kind: 'install' } | { kind: 'groupset'; replace?: boolean } | { kind: 'wheelset' } | { kind: 'costs' } | { kind: 'part'; row: SetupRow } | { kind: 'swap'; title: string; rows: SetupRow[]; remove?: boolean } | { kind: 'spokes'; row: SetupRow } | { kind: 'log' }>(params.get('add') === 'groupset' ? { kind: 'groupset', replace: true } : null)
   if (loading && !data) return <Loading />
   if (error && !data) return <ErrorBox error={error} onRetry={reload} />
   if (!data) return null
@@ -333,13 +333,25 @@ export function BikeDetailPage() {
             setup={data.setup}
             onSwap={(title, rows) => setSheet({ kind: 'swap', title, rows })}
             onInstall={() => setSheet({ kind: 'install' })}
-            onGroupset={() => setSheet({ kind: 'groupset' })}
+            onRemove={(rows) => setSheet({ kind: 'swap', title: 'Remove a part', rows, remove: true })}
+            onReplaceGroupset={() => setSheet({ kind: 'groupset', replace: true })}
             onWheelset={() => setSheet({ kind: 'wheelset' })}
           />
           <ChainRotation bikeId={data.id} refresh={data} onChanged={reload} />
-          <Card title="Installed now" className="span-2">
+          <Card
+            title="Installed now"
+            className="span-2"
+            actions={
+              // first setup of a bike: all parts of a groupset in one go; later changes are under Manage parts
+              !data.groupset && (
+                <button className="btn btn-small" title="Set up the bike: all parts of a groupset template in one go" onClick={() => setSheet({ kind: 'groupset' })}>
+                  Add groupset
+                </button>
+              )
+            }
+          >
             {data.setup.length === 0 ? (
-              <Empty title="Nothing installed yet">Install parts to track their usage.</Empty>
+              <Empty title="Nothing installed yet">Tell the app what is on the bike: Add groupset puts a whole group on in one go; Manage parts → Install a part adds single parts.</Empty>
             ) : (
               <SetupGroups setup={data.setup} groupset={data.groupset} bikeId={data.id} onChange={(row) => setSheet({ kind: 'part', row })} reload={reload} onAddSpokes={(row) => setSheet({ kind: 'spokes', row })} />
             )}
@@ -445,9 +457,10 @@ export function BikeDetailPage() {
         </Sheet>
       )}
       {sheet?.kind === 'groupset' && (
-        <Sheet title={`Add a groupset · ${data.name}`} onClose={() => setSheet(null)}>
+        <Sheet title={`${sheet.replace ? 'Replace whole groupset' : 'Add a groupset'} · ${data.name}`} onClose={() => setSheet(null)}>
           <GroupsetImport
             bikeId={data.id}
+            initialOccupied={sheet.replace ? 'REPLACE' : 'KEEP'}
             onDone={(msg) => {
               setSheet(null)
               toast(msg)
@@ -478,7 +491,7 @@ export function BikeDetailPage() {
               }}
             />
           ) : (
-            <SwapPart rows={sheet.rows} setup={data.setup} onDone={done} />
+            <SwapPart rows={sheet.rows} setup={data.setup} remove={sheet.remove} onDone={done} />
           )}
         </Sheet>
       )}
@@ -586,7 +599,10 @@ function SpokesForm({ wheel, onDone }: { wheel: SetupRow; onDone: () => void }) 
 
 // Everyday part changes in one place. A swap opens the normal Replace dialog for the part of that type
 // on this bike (after a pick when there are several), so spares, stock and carried-over parts work as usual.
-function ManageParts({ setup, onSwap, onInstall, onGroupset, onWheelset }: { setup: SetupRow[]; onSwap: (title: string, rows: SetupRow[]) => void; onInstall: () => void; onGroupset: () => void; onWheelset: () => void }) {
+function ManageParts({ setup, onSwap, onRemove, onInstall, onWheelset, onReplaceGroupset }: { setup: SetupRow[]; onSwap: (title: string, rows: SetupRow[]) => void; onRemove: (rows: SetupRow[]) => void; onInstall: () => void; onWheelset: () => void; onReplaceGroupset: () => void }) {
+  const { meta } = useApp()
+  // same grouping as Installed now: drivetrain, brakes, controls and the Di2 / AXS battery
+  const groupsetParts = setup.filter((r) => r.component_type === 'BATTERY' || CATEGORY_GROUP[meta.component_types.find((t) => t.code === r.component_type)?.category ?? ''] === 'GROUPSET')
   const of = (t: string) => setup.filter((r) => r.component_type === t)
   const wheelsets = of('WHEELSET')
   const looseWheels = setup.filter((r) => r.depth === 0 && isWheel(r))
@@ -603,13 +619,22 @@ function ManageParts({ setup, onSwap, onInstall, onGroupset, onWheelset }: { set
     <Card title="Manage parts" className="span-2">
       <div className="manage-parts">
         <div>
-          <h3 className="small muted">Swap what is on the bike</h3>
+          <h3 className="small muted">Change parts</h3>
           <div className="chips">
             {swaps.map(([label, title, rows, none]) => (
               <button key={label} className="btn" disabled={rows.length === 0 && label !== 'Swap tube'} title={rows.length === 0 ? none || undefined : undefined} onClick={() => onSwap(title, rows)}>
                 {label}
               </button>
             ))}
+          </div>
+          <h4 className="small muted sub-head">Groupset</h4>
+          <div className="chips">
+            <button className="btn" disabled={groupsetParts.length === 0} title={groupsetParts.length === 0 ? 'No groupset parts on this bike' : 'Change one part, e.g. an Ultegra crankset for a Dura-Ace one'} onClick={() => onSwap('Change a groupset part', groupsetParts)}>
+              Change a groupset part
+            </button>
+            <button className="btn" disabled={groupsetParts.length === 0} title="Put a different groupset on: the old parts come off and keep their km" onClick={onReplaceGroupset}>
+              Replace whole groupset
+            </button>
           </div>
         </div>
         <div>
@@ -618,14 +643,19 @@ function ManageParts({ setup, onSwap, onInstall, onGroupset, onWheelset }: { set
             <button className="btn" onClick={onInstall}>
               Install a part
             </button>
-            <button className="btn" onClick={onGroupset}>
-              Add groupset
-            </button>
             {looseWheels.length > 0 && (
               <button className="btn" onClick={onWheelset}>
                 Group wheels into a wheelset
               </button>
             )}
+          </div>
+        </div>
+        <div>
+          <h3 className="small muted">Remove parts</h3>
+          <div className="chips">
+            <button className="btn" disabled={setup.length === 0} title={setup.length === 0 ? 'Nothing installed yet' : 'Take a part off without putting another one on'} onClick={() => onRemove(setup)}>
+              Remove a part
+            </button>
           </div>
         </div>
       </div>
@@ -637,7 +667,8 @@ function ManageParts({ setup, onSwap, onInstall, onGroupset, onWheelset }: { set
   )
 }
 
-function SwapPart({ rows, setup, onDone }: { rows: SetupRow[]; setup: SetupRow[]; onDone: (c: Change) => void }) {
+function SwapPart({ rows, setup, remove, onDone }: { rows: SetupRow[]; setup: SetupRow[]; remove?: boolean; onDone: (c: Change) => void }) {
+  const { meta } = useApp()
   const [picked, setPicked] = useState<number | null>(rows.length === 1 ? rows[0].component_id : null)
   const where = (r: SetupRow) => {
     const parent = setup.find((p) => p.component_id === r.parent_component_id)
@@ -660,7 +691,12 @@ function SwapPart({ rows, setup, onDone }: { rows: SetupRow[]; setup: SetupRow[]
           </div>
         </fieldset>
       )}
-      {picked !== null && <ReplaceForm key={picked} componentId={picked} onDone={(c) => onDone(c)} />}
+      {picked !== null &&
+        (remove ? (
+          <RemoveForm key={picked} componentId={picked} suggested={meta.component_types.find((t) => t.code === rows.find((r) => r.component_id === picked)?.component_type)?.removed_default ?? 'STORED'} onDone={(c) => onDone(c)} />
+        ) : (
+          <ReplaceForm key={picked} componentId={picked} onDone={(c) => onDone(c)} />
+        ))}
     </div>
   )
 }
