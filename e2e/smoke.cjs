@@ -412,6 +412,15 @@ async function bikeTab(page, name) {
   await page.locator('.incident-form').getByRole('button', { name: 'Cancel' }).click()
   check('bike page lists its incidents with the ride, Solved and Edit work there', /Rear tire/.test(bikeIncText) && /Ride/.test(bikeIncText), bikeIncText.replace(/\s+/g, ' ').slice(0, 140))
   await page.screenshot({ path: path.join(OUT, '09e-bike-incidents.png'), fullPage: true })
+  await bikeTab(page, 'Rides')
+  const bikeRides = page.locator('table.bike-rides tbody tr')
+  await bikeRides.first().waitFor()
+  const rideCount = await bikeRides.count()
+  const rideNotes = await bikeRides.filter({ hasText: 'incident' }).count()
+  await bikeRides.first().click()
+  await page.locator('.sheet .ride-stats').waitFor()
+  check('bike page lists its rides; a ride opens in place', rideCount >= 3 && rideNotes === 1, `${rideCount} rides`)
+  await page.keyboard.press('Escape')
   await page.screenshot({ path: path.join(OUT, '09c-incidents.png'), fullPage: true })
 
   // JSON product import: check, see errors per file, import valid file, re-import changes nothing

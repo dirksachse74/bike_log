@@ -321,7 +321,7 @@ function RideSummaryStats({ summary }: { summary: RideDetail["summary"] }) {
   );
 }
 
-function RideDetailView({
+export function RideDetailView({
   id,
   onChanged,
 }: {

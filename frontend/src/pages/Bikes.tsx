@@ -12,8 +12,9 @@ import TaskList from '../components/TaskList'
 import { PressureNote, TireSetupSelect } from '../components/TireSetup'
 import { Card, ChangeNotice, Empty, ErrorBox, Field, FormError, Loading, Sheet, StatusBadge, Tag } from '../components/ui'
 import { useApp } from '../context'
-import { centsInput, certaintyLabel, euro, km, slotName, toCents, today, usageText, when } from '../format'
+import { centsInput, certaintyLabel, duration, euro, km, slotName, toCents, today, usageText, when } from '../format'
 import { useApi } from '../hooks'
+import { RideDetailView } from './Rides'
 import type { Bike, BikeCosts, BrakeRow, Change, ComponentSummary, EventRow, OpResult, RideIncident, RideRow, SetupRow, Task } from '../types'
 
 export function BikeForm({ onSaved }: { onSaved: (b: Bike) => void }) {
@@ -268,6 +269,7 @@ function PartActions({ row, onDone }: { row: SetupRow; onDone: (c: Change) => vo
 
 const BIKE_TABS: [string, string][] = [
   ['overview', 'Parts and service'],
+  ['rides', 'Rides'],
   ['incidents', 'Incidents'],
   ['maintenance', 'Maintenance'],
   ['costs', 'Costs'],
@@ -367,6 +369,7 @@ export function BikeDetailPage() {
           <ServiceStatus tasks={data.queue} reload={reload} />
         </>
       )}
+      {tab === 'rides' && <BikeRides bikeId={data.id} onChanged={reload} />}
       {tab === 'incidents' && (
         <Card title="Incidents" className="span-2">
           <BikeIncidents incidents={incidents.data} error={incidents.error} loading={incidents.loading} reload={incidents.reload} bikeName={data.name} />
@@ -498,6 +501,73 @@ export function BikeDetailPage() {
         </Sheet>
       )}
     </div>
+  )
+}
+
+// The bike's rides, newest first; a click opens the ride (same view as Rides → ride).
+function BikeRides({ bikeId, onChanged }: { bikeId: number; onChanged: () => void }) {
+  const { toast } = useApp()
+  const { data, error, loading, reload } = useApi<RideRow[]>(`/rides?limit=1000&view=active&bike_id=${bikeId}`)
+  const [open, setOpen] = useState<number | null>(null)
+  if (loading && !data) return <Loading />
+  if (error) return <ErrorBox error={error} onRetry={reload} />
+  const rides = data ?? []
+  const totalKm = rides.reduce((a, r) => a + (r.distance_km ?? 0), 0)
+  const totalS = rides.reduce((a, r) => a + (r.duration_s ?? 0), 0)
+  return (
+    <Card title="Rides" className="span-2">
+      {rides.length === 0 ? (
+        <Empty title="No rides on this bike yet">Add a ride, import a CSV or sync Strava under Rides.</Empty>
+      ) : (
+        <>
+          <p className="small muted">
+            {rides.length} ride{rides.length === 1 ? '' : 's'} · {km(totalKm, 0)} · {duration(totalS)} recorded ride time
+            {rides.length >= 1000 ? ' (latest 1000 shown)' : ''}
+          </p>
+          <table className="table rides bike-rides">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Name</th>
+                <th className="num">Distance</th>
+                <th className="num">Time</th>
+                <th>Notes</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rides.map((r) => (
+                <tr key={r.id} onClick={() => setOpen(r.id)}>
+                  <td>{when(r.start_time_utc ?? r.ride_date)}</td>
+                  <td>
+                    <button className="linklike">{r.name || 'Ride'}</button>
+                  </td>
+                  <td className="num">{km(r.distance_km)}</td>
+                  <td className="num">{duration(r.duration_s)}</td>
+                  <td>
+                    {r.sport_type === 'VirtualRide' && <Tag>indoor</Tag>}
+                    {r.conditions === 'WET' && <Tag tone="info">wet</Tag>}
+                    {r.incidents > 0 && <Tag tone="bad">{r.incidents} incident{r.incidents === 1 ? '' : 's'}</Tag>}
+                    {r.flags.length > 0 && <Tag tone="warn">{r.flags[0].code.replace(/_/g, ' ').toLowerCase()}</Tag>}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </>
+      )}
+      {open !== null && (
+        <Sheet title="Ride" onClose={() => setOpen(null)}>
+          <RideDetailView
+            id={open}
+            onChanged={(c) => {
+              if (c?.notice) toast(c.notice)
+              reload()
+              onChanged()
+            }}
+          />
+        </Sheet>
+      )}
+    </Card>
   )
 }
 

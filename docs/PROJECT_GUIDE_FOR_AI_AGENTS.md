@@ -248,7 +248,8 @@ total km from `bike_usage` incl. starting value, hours from recorded ride time, 
 month in the app timezone via `_period`) and `hours` per equipment row (contribution `duration_s`). UI:
 `RideSummaryStats` in pages/Rides.tsx; the parts table is behind "Show details".
 **Bike page layout.** pages/Bikes.tsx `BikeDetailPage`: header card, then tabs (`?tab=` overview |
-incidents | maintenance | costs | history). `SetupGroups` folds "Installed now" into `<details
+rides | incidents | maintenance | costs | history; Rides = `BikeRides`, GET `rides?view=active&bike_id=`,
+a click opens `RideDetailView` (exported from pages/Rides.tsx) in a Sheet). `SetupGroups` folds "Installed now" into `<details
 class="setup-group" data-group=…>` by the category of each top-level part (Drivetrain/Brakes/Controls and
 BATTERY → GROUPSET, Wheels, Cockpit, Contact points, Frame, Electronics, Other); parts mounted on parts stay
 with their root. `ServiceStatus` shows OVERDUE/DUE/DUE_SOON/ATTENTION/SNOOZED, and folds INSUFFICIENT_INFO
@@ -343,7 +344,7 @@ Checks that must pass before every push:
 .venv/bin/python -m pytest -q backend/tests             # currently 179 passed
 cd frontend && npx tsc -b && npx eslint . && npx vite build
 # browser test: start the app on a fresh data dir, then
-node e2e/smoke.cjs http://127.0.0.1:8790/ <screenshot-dir>   # currently 85/85 (the ride-form step can flake once; rerun)
+node e2e/smoke.cjs http://127.0.0.1:8790/ <screenshot-dir>   # currently 86/86 (the ride-form step can flake once; rerun)
 #   (cd backend && ../.venv/bin/python -m bikelog --no-browser --no-sample --port 8790 --data-dir <fresh dir>)
 # sample database: start on ANOTHER fresh dir WITHOUT --no-sample (port 8791), then
 node e2e/sample.cjs http://127.0.0.1:8791/ <screenshot-dir>  # banner, sample bikes, crash item, Fresh start

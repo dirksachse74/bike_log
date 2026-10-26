@@ -22,6 +22,8 @@ UPDATING.md → "Making a release". New entries go under "Unreleased" as work is
   Costs, Journal and history. "Installed now" shows one line per group (groupset, wheels and tires,
   cockpit, contact points, frame, electronics) that unfolds with the triangle. Service status shows what
   is due first; "Need a first entry" and "Up to date" fold away.
+- Bike page → Rides: the bike's rides (date, name, distance, time, wet / incidents / indoor), with a
+  total line; click a ride to open it right there.
 - Bike page → Incidents: every incident on the bike with its ride, and the same Solved / Re-open, Edit,
   Remove and Restore as on the ride.
 - Yearly full service: a whole-bike reminder every 12 months. "Log done" shows a checklist of the big jobs
