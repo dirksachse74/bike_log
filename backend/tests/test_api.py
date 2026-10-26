@@ -196,5 +196,11 @@ def test_incidents_over_http(client):
     group = made.json()["group"]
     assert client.patch(f"/api/incidents/{group}", json={"affected": ["FRONT_TIRE", "REAR_TIRE"]}).status_code == 200
     assert len(client.get(f"/api/rides/{rid}/incidents").json()["incidents"][0]["affected"]) == 2
+    # Solved stamps a date; Reopen clears it
+    client.patch(f"/api/incidents/{group}", json={"resolved_on": "2026-09-11"})
+    assert client.get(f"/api/rides/{rid}/incidents").json()["incidents"][0]["open"] is False
+    client.patch(f"/api/incidents/{group}", json={"resolved_on": None})
+    row = client.get(f"/api/rides/{rid}/incidents").json()["incidents"][0]
+    assert row["open"] is True and len(row["affected"]) == 2
     assert client.post(f"/api/incidents/{group}/remove").json()["removed"] is True
     assert client.post(f"/api/incidents/{group}/restore").json()["removed"] is False

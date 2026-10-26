@@ -132,7 +132,7 @@ function IncidentEditor({
           checked={f.fixed}
           onChange={(e) => setF({ ...f, fixed: e.target.checked })}
         />{" "}
-        Already fixed
+        Already solved
       </label>
       <FormError error={err} />
       <div className="form-actions">
@@ -206,6 +206,18 @@ export function RideIncidents({
       setErr((e as Error).message);
     }
   }
+  // Solved stamps today's date; Re-open clears it (the incident is open again)
+  async function setSolved(r: RideIncident, solved: boolean) {
+    setErr(null);
+    try {
+      await api.patch(`/incidents/${r.group}`, {
+        resolved_on: solved ? today() : null,
+      });
+      changed();
+    } catch (e) {
+      setErr((e as Error).message);
+    }
+  }
   const live = data?.incidents.filter((r) => !r.removed) ?? [];
   const removed = data?.incidents.filter((r) => r.removed) ?? [];
   return (
@@ -260,9 +272,25 @@ export function RideIncidents({
                 </div>
                 <div className="incident-actions">
                   {r.open ? (
-                    <Tag tone="warn">open</Tag>
+                    <>
+                      <Tag tone="warn">open</Tag>
+                      <button
+                        className="btn btn-small btn-primary"
+                        onClick={() => setSolved(r, true)}
+                      >
+                        Solved
+                      </button>
+                    </>
                   ) : (
-                    <Tag tone="good">fixed {when(r.resolved_on)}</Tag>
+                    <>
+                      <Tag tone="good">solved {when(r.resolved_on)}</Tag>
+                      <button
+                        className="btn btn-small"
+                        onClick={() => setSolved(r, false)}
+                      >
+                        Re-open
+                      </button>
+                    </>
                   )}
                   <button
                     className="btn btn-small"
@@ -423,11 +451,11 @@ export function IncidentList({ bikes }: { bikes: Bike[] }) {
                       className="btn btn-small"
                       onClick={() => resolve(r)}
                     >
-                      Mark fixed
+                      Solved
                     </button>
                   ) : (
                     <span className="small muted">
-                      fixed {when(r.resolved_on)}
+                      solved {when(r.resolved_on)}
                     </span>
                   )}
                 </td>
