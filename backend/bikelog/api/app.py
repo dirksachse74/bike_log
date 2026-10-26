@@ -31,6 +31,7 @@ from bikelog.connectors.strava import sync as strava
 from bikelog.migrate import head_revision
 from bikelog.models import Bike, Component, Product, ServiceRule, UsageProfile
 from bikelog.paths import DataPaths, resource_root
+from bikelog.services import assemblies
 from bikelog.services import costs as costs_svc
 from bikelog.services import bundles as bundles_svc
 from bikelog.services import demo, diagnostics, groupsets, imports, journal, product_import, spares, stock
@@ -636,7 +637,11 @@ def create_app(factory: sessionmaker[Session], paths: DataPaths, *, token: str |
                 "queue": m.queue(s, bike_id=b.id, include_ok=True), "brakes": m.brake_overview(s, bike_id=b.id),
                 "rides": rides_svc.list_rides(s, bike_id=b.id, limit=20),
                 "events": m.events_for(s, bike_id=b.id, limit=20),
-                "cost_detail": costs_svc.bike_costs(s, b)}
+                "cost_detail": costs_svc.bike_costs(s, b), "groupset": assemblies.groupset_summary(s, b)}
+
+    @app.get("/api/bikes/{bike_id}/groupset")
+    def bike_groupset(bike_id: int, s: Session = Depends(db)):
+        return assemblies.groupset(s, bike_id)
 
     @app.patch("/api/bikes/{bike_id}")
     def patch_bike(bike_id: int, body: BikePatch, s: Session = Depends(db)):
@@ -712,6 +717,7 @@ def create_app(factory: sessionmaker[Session], paths: DataPaths, *, token: str |
                             for a in ACTIONS.values() if action_applies(a, c.component_type)],
                 "product_detail": _product(c.product) if c.product else None, "specs": json.loads(c.specs_json or "{}"),
                 "dispositions": inv.disposition_history(s, c), "inventory": spares.item_row(s, c),
+                "parts": assemblies.tree(s, c), "groupset_bike_id": assemblies.groupset_bike(s, c),
                 "suggested_outcome": COMPONENT_TYPES[c.component_type].removed_default}
 
     @app.patch("/api/components/{component_id}")

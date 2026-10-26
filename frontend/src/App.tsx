@@ -6,6 +6,7 @@ import { Ctx } from './context'
 import { setTimezone } from './format'
 import { useApi } from './hooks'
 import { BikeDetailPage, BikesPage } from './pages/Bikes'
+import { GroupsetPage } from './pages/Groupset'
 import InventoryPage, { ComponentDetailPage } from './pages/Inventory'
 import MaintenancePage from './pages/Maintenance'
 import OverviewPage from './pages/Overview'
@@ -87,6 +88,7 @@ export default function App() {
               <Route path="/" element={<OverviewPage />} />
               <Route path="/bikes" element={<BikesPage />} />
               <Route path="/bikes/:id" element={<BikeDetailPage />} />
+              <Route path="/bikes/:id/groupset" element={<GroupsetPage />} />
               <Route path="/maintenance" element={<MaintenancePage />} />
               <Route path="/rides" element={<RidesPage />} />
               <Route path="/inventory" element={<InventoryPage />} />

@@ -8,6 +8,15 @@ UPDATING.md → "Making a release". New entries go under "Unreleased" as work is
 ## Unreleased
 
 ### Added
+- Drill down into parts made of parts. A part's page has "Parts on it": a wheelset lists its front and
+  rear wheel, each unfolds to its hub, spokes, tire, rotor, cassette ..., and every name opens that part.
+  The same works for a crankset (chainrings), rear derailleur (pulley wheels) and hub (bearings).
+- The groupset is one line under Installed now ("Groupset · <name> · n parts · k need attention").
+  Its name opens the groupset page: km and ride time on the bike, number of parts, service tasks,
+  incidents, maintenance log and journal of all its parts together, and the parts as an unfoldable tree.
+  The groupset is the parts in the groupset positions now (drivetrain, shifting, brakes, the Di2 / AXS
+  battery, and the cassette and rotors on the wheels); a new chain joins it when installed. Its name comes
+  from the bundle it was bought in, otherwise from the maker. A groupset part's page links back to it.
 - Spokes per wheel: under Installed now each wheel shows its spokes (model, count, length; drive and
   non-drive side on the rear) and "x of 3 broken spokes since it was laced". "Add spokes" records them.
   New incident "Broken spoke" (pick the wheel); its Fix is "Replaced spoke" (one from spare-spoke stock

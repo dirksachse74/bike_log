@@ -1124,3 +1124,25 @@ label.chip {
   align-items: center;
   gap: 0.35rem;
 }
+
+/* parts made of parts: each level unfolds (wheelset → wheels → hub ...) */
+.part-tree {
+  list-style: none;
+  margin: 0.2rem 0 0;
+  padding-left: 0;
+}
+.part-tree .part-tree {
+  padding-left: 1.2rem;
+  border-left: 1px solid var(--line);
+  margin-left: 0.35rem;
+}
+.part-tree li {
+  padding: 0.2rem 0;
+}
+.part-tree summary {
+  cursor: pointer;
+  display: list-item;
+}
+.part-tree > li:not(:has(> details)) {
+  padding-left: 1.05rem; /* lines up with the text after a triangle */
+}

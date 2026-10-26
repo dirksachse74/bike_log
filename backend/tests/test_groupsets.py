@@ -172,7 +172,14 @@ def test_groupset_import_over_http(engine, paths):
     assert c.get(f"/api/bikes/{b['id']}").json()["setup"] == []   # dry run changed nothing
     r = c.post(f"/api/groupsets/{R8100}/import", json={**body, "at": "2026-10-25"}).json()
     ws = r["result"]["work_session_id"]
-    assert len(c.get(f"/api/bikes/{b['id']}").json()["setup"]) == r["result"]["counts"]["INSTALL"]
+    detail = c.get(f"/api/bikes/{b['id']}").json()
+    assert len(detail["setup"]) == r["result"]["counts"]["INSTALL"]
+    # the bike shows the groupset as one line; its page lists the parts as a tree
+    assert detail["groupset"]["parts"] == r["result"]["counts"]["INSTALL"]
+    page = c.get(f"/api/bikes/{b['id']}/groupset").json()
+    crank = next(n for n in page["parts"] if n["component_type"] == "CRANKSET")
+    own = c.get(f"/api/components/{crank['component_id']}").json()["parts"]
+    assert crank["children"] and [n["component_id"] for n in own] == [n["component_id"] for n in crank["children"]]
     assert c.post(f"/api/work-sessions/{ws}/undo", json={"reason": "test"}).status_code == 200
     assert c.get(f"/api/bikes/{b['id']}").json()["setup"] == []
 

@@ -294,6 +294,16 @@ you disagree. Dates are 2026-10-24 unless noted.
     "Re-lace" item is computed (like the hanger-after-crash item) with the threshold in the setting
     spoke_relace_after (default 3), so no service_rule table rebuild was needed. A "Broken spoke"
     incident is fixed on the wheel (repairs._fix_spoke), never by replacing the wheel.
+91. **The groupset is a view, not a stored record** (services/assemblies.py): it is the parts in groupset
+    positions on the bike now (categories Drivetrain, Brakes, Controls and BATTERY, the same grouping as
+    "Installed now"), plus groupset-type parts mounted on a non-groupset part (cassette and rotors on the
+    wheels). Parts are swapped one at a time (chains every few thousand km, pads, cassette), so a stored
+    groupset would need its own install/remove history and could drift from what is really on the bike.
+    As a view a new chain joins by being installed and the old one leaves by being removed, with nothing
+    to keep in sync. The name comes from the purchase bundle (groupset import), otherwise the most common
+    maker; the price stays on the bundle (DECISIONS 51). Its km are bike km since the earliest groupset
+    part still on it was installed; each part keeps its own km. Wheelsets stay a real part (they carry
+    wheels and move between bikes as one). Part trees come from `assemblies.tree` (open installations).
 
 ## Repository
 27. Pushed only to the feature branch `claude/project-thread-6y3mmh` of the private repository. Demo

@@ -546,3 +546,39 @@ export interface SpokeInfo {
   since: string | null
   relace_after: number
 }
+
+// A part with the parts mounted on it now (wheelset → wheels → hub, tire ...), for drilling down.
+export interface PartNode {
+  component_id: number
+  label: string
+  component_type: string
+  type_name: string
+  slot: string
+  since: string
+  usage: Usage
+  due: number
+  depth: number
+  on?: string | null
+  children: PartNode[]
+}
+
+export interface GroupsetSummary {
+  name: string
+  parts: number
+  due: number
+  top: string[]
+  since: string
+}
+
+export interface GroupsetPageData {
+  bike_id: number
+  bike: string
+  name: string | null
+  since: string | null
+  stats: { km: number; hours: number; rides_without_time: number; parts: number; due: number }
+  parts: PartNode[]
+  events: EventRow[]
+  journal: JournalRow[]
+  incidents: RideIncident[]
+  tasks: Task[]
+}

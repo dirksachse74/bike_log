@@ -5,6 +5,7 @@ import ChangeLog from '../components/ChangeLog'
 import Journal from '../components/Journal'
 import LogMaintenance from '../components/LogMaintenance'
 import MountPicker, { type MountTarget } from '../components/MountPicker'
+import PartTree from '../components/PartTree'
 import ProductImport from '../components/ProductImport'
 import { DispositionForm, MoveForm, OutcomeChoice, RemoveForm, ReplaceForm } from '../components/PartChange'
 import TaskList from '../components/TaskList'
@@ -13,7 +14,7 @@ import { Card, ChangeNotice, Empty, ErrorBox, Field, FormError, Loading, Sheet, 
 import { useApp } from '../context'
 import { centsInput, certaintyLabel, euro, km, setupLabel, slotName, toCents, today, usageText, when } from '../format'
 import { useApi } from '../hooks'
-import type { Bike, Change, ChainRow, ComponentSummary, EventRow, OpResult, Rule, ShoppingItem, Task } from '../types'
+import type { Bike, Change, ChainRow, ComponentSummary, EventRow, OpResult, PartNode, Rule, ShoppingItem, Task } from '../types'
 
 const SUPPLY_KINDS: Record<string, string> = { WAX: 'Chain wax', LUBE: 'Chain lube', SEALANT: 'Tubeless sealant', BRAKE_FLUID: 'Brake fluid', GREASE: 'Grease', OTHER: 'Other' }
 // "g" and "ml" stay as they are; "tube" becomes "tubes"
@@ -800,6 +801,8 @@ interface ComponentDetail extends ComponentSummary {
   dispositions: { id: number; disposition: string; label: string; effective_on: string; note: string | null; voided: boolean }[]
   inventory: ItemRow
   suggested_outcome: string
+  parts: PartNode[]
+  groupset_bike_id: number | null
 }
 
 function RuleEditor({ rule, componentId, onDone }: { rule: Rule; componentId: number; onDone: () => void }) {
@@ -1036,6 +1039,11 @@ export function ComponentDetailPage() {
             <span className="muted">A note, shown on the bike page. No reminder.</span>
           </p>
         )}
+        {data.groupset_bike_id && (
+          <p className="small">
+            Part of the groupset of this bike: <Link to={`/bikes/${data.groupset_bike_id}/groupset`}>open the groupset page</Link>
+          </p>
+        )}
         <p className="small muted">
           {data.bundle ? (
             <>
@@ -1054,6 +1062,12 @@ export function ComponentDetailPage() {
           {data.serial_number ? ` · serial ${data.serial_number}` : ''}
         </p>
       </Card>
+      {data.parts.length > 0 && (
+        <Card title="Parts on it" className="span-2">
+          <p className="small muted">What is mounted on {data.label} now. Unfold a part to see what sits on it; open any part for its km, service and history.</p>
+          <PartTree nodes={data.parts} />
+        </Card>
+      )}
       <Card title="Service status" className="span-2">
         <TaskList tasks={data.service_status} onChange={reload} emptyText="No service rules for this part." />
         <div className="form-actions">

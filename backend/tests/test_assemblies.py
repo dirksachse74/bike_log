@@ -215,3 +215,44 @@ def test_where_a_new_part_can_go(session):
     chain = spares.mount_targets(session, "CHAIN")
     assert chain["targets"] == [{"group": "TIME NXR", "bike_id": b.id, "parent_component_id": None, "slot": "CHAIN",
                                  "text": "On the bike · chain", "occupied_by": None}]
+
+
+def test_part_tree_and_groupset_page(session):
+    """Drill down: wheelset → front / rear wheel → hub, tire ...; the groupset as one thing with its parts,
+    including the cassette and rotors that sit on the wheels."""
+    from bikelog.services import assemblies
+    from bikelog.services import groupsets as gs
+    from bikelog.services import worksessions as ws_svc
+    b = bike(session)
+    front, rear = wheels(session, b)
+    hub = part(session, "HUB", "DT 240 front hub")
+    inv.install(session, hub.id, at="2026-09-01", parent_component_id=front.id, slot="HUB")
+    ws = inv.get_component(session, inv.group_wheels(session, b.id, at="2026-09-02", label="Reynolds AR58")["wheelset_id"])
+    tree = assemblies.tree(session, ws)
+    assert [n["label"] for n in tree] == ["Reynolds front", "Reynolds rear"]
+    assert [c["label"] for c in tree[0]["children"]] == ["DT 240 front hub"]
+    assert assemblies.groupset_summary(session, b) is None
+    work = ws_svc.begin(session, at="2026-10-01", bike_id=b.id, title="Groupset")
+    gs.import_groupset(session, "SHIMANO_ULTEGRA_DI2_R8100", at="2026-10-01", bike_id=b.id, work_session_id=work.id,
+                       bundle={"name": "Ultegra Di2 R8100 groupset", "price_cents": 150000})
+    ride(session, b, "2026-10-05", 60)
+    summary = assemblies.groupset_summary(session, b)
+    assert summary["name"] == "Ultegra Di2 R8100 groupset" and summary["parts"] >= 19
+    page = assemblies.groupset(session, b.id)
+    labels = {n["label"] for n in assemblies._flatten(page["parts"])}
+    assert {"Ultegra crankset", "Ultegra quick link"} <= labels
+    crank = next(n for n in page["parts"] if n["component_type"] == "CRANKSET")
+    assert {c["component_type"] for c in crank["children"]} >= {"CHAINRING"}   # crankset unfolds to its rings
+    cassette = next(n for n in page["parts"] if n["component_type"] == "CASSETTE")
+    assert cassette["on"] == "Reynolds rear"                     # on the wheel, still part of the groupset
+    assert "DT 240 front hub" not in labels and "Reynolds front" not in labels
+    assert assemblies.groupset_bike(session, inv.get_component(session, cassette["component_id"])) == b.id
+    assert assemblies.groupset_bike(session, hub) is None
+    assert page["stats"]["km"] == 60 and page["stats"]["parts"] == summary["parts"]
+    assert all(t["component_id"] in {n["component_id"] for n in assemblies._flatten(page["parts"])} for t in page["tasks"])
+    # a new chain joins the groupset by being installed; the old one leaves it
+    chain = next(n for n in page["parts"] if n["component_type"] == "CHAIN")
+    new = part(session, "CHAIN", "KMC spare chain")
+    inv.replace(session, chain["component_id"], at="2026-10-06", new_component_id=new.id)
+    labels = {n["label"] for n in assemblies._flatten(assemblies.groupset(session, b.id)["parts"])}
+    assert "KMC spare chain" in labels and chain["label"] not in labels

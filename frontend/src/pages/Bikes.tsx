@@ -17,7 +17,7 @@ import { useApp } from '../context'
 import { centsInput, certaintyLabel, duration, euro, km, slotName, toCents, today, usageText, when } from '../format'
 import { useApi } from '../hooks'
 import { RideDetailView } from './Rides'
-import type { Bike, BikeCosts, BrakeRow, Change, ComponentSummary, EventRow, OpResult, RideIncident, RideRow, SetupRow, Task } from '../types'
+import type { Bike, BikeCosts, BrakeRow, Change, ComponentSummary, EventRow, GroupsetSummary, OpResult, RideIncident, RideRow, SetupRow, Task } from '../types'
 
 export function BikeForm({ onSaved }: { onSaved: (b: Bike) => void }) {
   const { meta } = useApp()
@@ -144,6 +144,7 @@ interface BikeDetail extends Bike {
   brakes: BrakeRow[]
   rides: RideRow[]
   events: EventRow[]
+  groupset: GroupsetSummary | null
 }
 
 export function InstallForm({ bikeId, onDone }: { bikeId: number; onDone: (c: Change) => void }) {
@@ -338,7 +339,7 @@ export function BikeDetailPage() {
             {data.setup.length === 0 ? (
               <Empty title="Nothing installed yet">Install parts to track their usage.</Empty>
             ) : (
-              <SetupGroups setup={data.setup} onChange={(row) => setSheet({ kind: 'part', row })} reload={reload} onAddSpokes={(row) => setSheet({ kind: 'spokes', row })} />
+              <SetupGroups setup={data.setup} groupset={data.groupset} bikeId={data.id} onChange={(row) => setSheet({ kind: 'part', row })} reload={reload} onAddSpokes={(row) => setSheet({ kind: 'spokes', row })} />
             )}
           </Card>
           <ServiceStatus tasks={data.queue} reload={reload} />
@@ -822,7 +823,7 @@ function SpokeLine({ row, onAdd }: { row: SetupRow; onAdd: () => void }) {
   )
 }
 
-function SetupGroups({ setup, onChange, reload, onAddSpokes }: { setup: SetupRow[]; onChange: (row: SetupRow) => void; reload: () => void; onAddSpokes: (row: SetupRow) => void }) {
+function SetupGroups({ setup, groupset, bikeId, onChange, reload, onAddSpokes }: { setup: SetupRow[]; groupset: GroupsetSummary | null; bikeId: number; onChange: (row: SetupRow) => void; reload: () => void; onAddSpokes: (row: SetupRow) => void }) {
   const { meta } = useApp()
   const groupOf = (type: string) => {
     if (type === 'BATTERY') return 'GROUPSET' // Di2 / AXS battery belongs to the shifting
@@ -842,13 +843,29 @@ function SetupGroups({ setup, onChange, reload, onAddSpokes }: { setup: SetupRow
         const top = rows.filter((r) => r.depth === 0).map((r) => r.label)
         return (
           <details key={k} className="setup-group" data-group={k}>
-            <summary>
-              <strong>{label}</strong>
-              <span className="muted small">
-                {rows.length} part{rows.length === 1 ? '' : 's'} · {top.slice(0, 3).join(', ')}
-                {top.length > 3 ? ', …' : ''}
-              </span>
-            </summary>
+            {k === 'GROUPSET' && groupset ? (
+              // the groupset as one line; its page has the combined km, tasks, log, journal and the parts tree
+              <summary>
+                <strong>Groupset</strong> <Link to={`/bikes/${bikeId}/groupset`}>{groupset.name}</Link>{' '}
+                <span className="muted small">
+                  {groupset.parts} part{groupset.parts === 1 ? '' : 's'}
+                </span>
+                {groupset.due > 0 && (
+                  <>
+                    {' '}
+                    <Tag tone="warn">{groupset.due} need attention</Tag>
+                  </>
+                )}
+              </summary>
+            ) : (
+              <summary>
+                <strong>{label}</strong>
+                <span className="muted small">
+                  {rows.length} part{rows.length === 1 ? '' : 's'} · {top.slice(0, 3).join(', ')}
+                  {top.length > 3 ? ', …' : ''}
+                </span>
+              </summary>
+            )}
             <ul className="list setup">
               {rows.map((s) => (
                 <li key={s.installation_id} style={{ paddingLeft: `${s.depth * 1.2}rem` }}>
