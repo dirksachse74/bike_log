@@ -143,6 +143,8 @@ export interface Location {
 export interface ComponentSummary {
   id: number
   label: string
+  mark?: string | null
+  rotation_bike_id?: number | null
   component_type: string
   type_name: string
   category: string | null
@@ -229,6 +231,7 @@ export interface Task {
   due_date?: string
   snooze_id?: number
   origin?: string
+  rotation?: { kind: 'SWAP' | 'WAX' | 'INSTALL'; text: string; to?: number; to_label?: string; bike_id: number }
 }
 
 export interface Flag {
@@ -309,6 +312,10 @@ export interface OpResult<T> {
 export interface ChainRow {
   component_id: number
   label: string
+  mark: string | null
+  wax_cycles: number
+  rotation_bike_id: number | null
+  wax_status?: Task | null
   state: string
   text: string
   lifetime_km: number
@@ -581,4 +588,15 @@ export interface GroupsetPageData {
   journal: JournalRow[]
   incidents: RideIncident[]
   tasks: Task[]
+}
+
+export interface ChainRotationData {
+  bike_id: number
+  bike: string
+  chains: ChainRow[]
+  on: number | null
+  next_ready: number | null
+  dirty: number[]
+  prompt: { kind: 'SWAP' | 'WAX' | 'INSTALL'; text: string; to?: number; to_label?: string } | null
+  timeline: { kind: 'ON' | 'WAX'; date: string; until: string | null; component_id: number; label: string; km: number | null }[]
 }

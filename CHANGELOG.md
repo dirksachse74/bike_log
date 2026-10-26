@@ -8,6 +8,17 @@ UPDATING.md → "Making a release". New entries go under "Unreleased" as work is
 ## Unreleased
 
 ### Added
+- Chain rotation (two or more chains taking turns on a bike, swapped at the 500 km hot-wax interval).
+  The bike page has a "Chain rotation" card: which chain is on, which are "waxed, ready" and which are
+  "dirty, waiting for wax", with km since hot wax, lifetime km, wax cycles and the last wear check.
+  When the chain on the bike nears 500 km it says "Swap to Chain B" with a one-click button (also on the
+  hot-wax task in Overview and Service status); when no waxed chain is ready it says to wax them. "Wax
+  chains" records a hot wax for all ticked chains at once (dirty ones ticked) and can put one on the bike
+  in the same step. A swap or wax counts after that day's rides. "Rotation history" lists each turn on
+  the bike with its km and every wax. A chain joins the rotation of the bike it first goes on, or by
+  choice on its page, which also lists its wax cycles with the km ridden on each.
+- Mark: Edit details → Mark, a short note on how a part is marked ("1 punch dot"), shown next to its name
+  on its page, in the chain lists, the rotation and the Replace dialog.
 - Drill down into parts made of parts. A part's page has "Parts on it": a wheelset lists its front and
   rear wheel, each unfolds to its hub, spokes, tire, rotor, cassette ..., and every name opens that part.
   The same works for a crankset (chainrings), rear derailleur (pulley wheels) and hub (bearings).

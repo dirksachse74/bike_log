@@ -132,6 +132,7 @@ export default function OverviewPage() {
             {data.chains.map((c) => (
               <li key={c.component_id}>
                 <Link to={`/inventory/${c.component_id}`}>{c.label}</Link>
+                {c.mark && <span className="mark">{c.mark}</span>}
                 <ChainStateTag state={c.state} />
                 <span className="muted small">{c.text}</span>
               </li>

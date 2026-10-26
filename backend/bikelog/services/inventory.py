@@ -216,8 +216,16 @@ def update_component(session: Session, component_id: int, **fields) -> Component
             raise DomainError("A tire pressure note goes on a tire")
         if fields["pressure_note"] and len(fields["pressure_note"]) > 80:
             raise DomainError("Keep the tire pressure note short (80 characters at most)")
+    if "mark" in fields:
+        fields["mark"] = (fields["mark"] or "").strip() or None
+        if fields["mark"] and len(fields["mark"]) > 80:
+            raise DomainError("Keep the mark short (80 characters at most)")
+    if fields.get("rotation_bike_id") is not None:
+        if comp.component_type != "CHAIN":
+            raise DomainError("Only chains go in a chain rotation")
+        get_bike(session, fields["rotation_bike_id"])
     for k in ("label", "serial_number", "purchase_date", "price_cents", "notes", "product_id", "prior_usage",
-              "storage_location", "tire_setup", "pressure_note"):
+              "storage_location", "tire_setup", "pressure_note", "mark", "rotation_bike_id"):
         if k in fields:
             setattr(comp, k, fields[k])
     if "specs" in fields:
@@ -493,6 +501,8 @@ def install(session: Session, component_id: int, *, at: str, bike_id: int | None
         session.flush()
     except IntegrityError as e:  # DB-level guard (partial unique index / overlap trigger)
         raise Conflict(f"Conflicting installation: {e.orig}") from e
+    if comp.component_type == "CHAIN" and bike_id is not None and comp.rotation_bike_id is None and wu is None:
+        comp.rotation_bike_id = bike_id      # a chain joins the rotation of the bike it first goes on
     if reallocate:
         _reallocate(session)
     return inst

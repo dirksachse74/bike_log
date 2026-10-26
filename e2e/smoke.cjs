@@ -175,6 +175,38 @@ async function bikeTab(page, name) {
   check('ledger lists contributions', ledgerRows === 1, `${ledgerRows} rows`)
   await page.screenshot({ path: path.join(OUT, '03-component-detail.png'), fullPage: true })
 
+  // chain rotation: a mark tells identical chains apart; the bike shows which is on, ready or dirty
+  await page.getByRole('button', { name: 'Edit details' }).click()
+  await page.locator('.sheet').getByLabel('Mark').fill('1 punch dot')
+  await sheetButton(page, 'Save')
+  await page.locator('h2 .mark, .card-title .mark, .mark').filter({ hasText: '1 punch dot' }).first().waitFor()
+  const chainCard = page.locator('.card').filter({ has: page.getByRole('heading', { name: 'Chain rotation and wax cycles' }) })
+  check('chain page: in the rotation of the bike it went on, with its wax cycles',
+    (await chainCard.getByLabel('Chain rotation').locator('option:checked').innerText()) === 'TIME NXR' && (await chainCard.locator('tbody tr').count()) === 1)
+  await page.goto(BASE + '#/bikes')
+  await page.getByRole('link', { name: /TIME NXR/ }).click()
+  const rotation = page.locator('.card').filter({ has: page.getByRole('heading', { name: 'Chain rotation' }) })
+  await rotation.locator('li[data-chain="Chain A"]').waitFor()
+  const rowA = await rotation.locator('li[data-chain="Chain A"]').innerText()
+  const rowB = await rotation.locator('li[data-chain="Chain B"]').innerText()
+  check('rotation card: Chain A (with its mark) dirty, Chain B on the bike', /1 punch dot/.test(rowA) && /dirty, waiting for wax/.test(rowA) && /on the bike/.test(rowB), `${rowA} | ${rowB}`.replace(/\s+/g, ' '))
+  await rotation.getByRole('button', { name: 'Wax chains' }).first().click()
+  const waxSheet = page.locator('.sheet')
+  const ticked = await waxSheet.locator('input[type=checkbox]:checked').count()
+  check('Wax chains ticks every dirty chain', ticked === 2, `${ticked} ticked`)
+  await waxSheet.locator('label.check').filter({ hasText: 'Chain B' }).locator('input').uncheck()
+  await waxSheet.getByLabel('Waxed on').fill('2026-10-04')
+  check('unticking the chain on the bike keeps it on', /Keep Chain B on/.test(await waxSheet.getByLabel('Then put on the bike').locator('option:checked').innerText()))
+  await waxSheet.getByRole('button', { name: 'Hot wax 1 chain' }).click()
+  await page.locator('.toast').filter({ hasText: 'Hot waxed Chain A.' }).waitFor()
+  await rotation.locator('li[data-chain="Chain A"]').filter({ hasText: 'waxed, ready' }).getByRole('button', { name: 'Put on' }).waitFor()
+  check('after waxing, Chain A is waxed and ready with a one-click "Put on"', true)
+  check('a wax on a ride day comes after that ride (Chain B keeps its 40 km)', /40 km lifetime/.test(await rotation.locator('li[data-chain="Chain B"]').innerText()))
+  await rotation.getByText('Rotation history').click()
+  const hist = await rotation.locator('[data-group=rotation-history]').innerText()
+  check('rotation history lists turns on the bike with km and the waxes', /Chain A on until/.test(hist) && /Chain A hot waxed/.test(hist), hist.replace(/\s+/g, ' ').slice(0, 200))
+  await page.screenshot({ path: path.join(OUT, '03b-chain-rotation.png'), fullPage: true })
+
   // CSV import twice
   await page.goto(BASE + '#/settings')
   const csv = 'source_id,date,distance_km,bike\nx-1,2026-10-05,30,TIME NXR\nx-2,2026-10-06,20,TIME NXR\n'

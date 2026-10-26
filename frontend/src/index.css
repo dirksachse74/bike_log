@@ -1146,3 +1146,26 @@ label.chip {
 .part-tree > li:not(:has(> details)) {
   padding-left: 1.05rem; /* lines up with the text after a triangle */
 }
+
+/* chain rotation: physical mark next to a part's name, the swap / wax prompt */
+.mark {
+  font-size: 0.8rem;
+  color: var(--muted);
+  border: 1px dashed var(--line);
+  border-radius: 4px;
+  padding: 0 0.3rem;
+  margin-left: 0.35rem;
+}
+.rotation-prompt {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1rem;
+  padding: 0.6rem 0.75rem;
+  border-radius: 8px;
+  background: var(--info-bg, rgba(40, 100, 200, 0.08));
+  margin-bottom: 0.6rem;
+}
+.rotation-prompt.warn {
+  background: var(--warn-bg, rgba(200, 140, 20, 0.12));
+}

@@ -44,7 +44,7 @@ LABELS = {
     "purchase_date": "purchase date", "label": "label", "product_id": "product", "serial_number": "serial number",
     "prior_usage": "history before tracking", "price_cents": "price", "retired_on": "retired on",
     "retire_reason": "retire reason", "disposition": "state when not installed", "storage_location": "stored at",
-    "tire_setup": "tire setup", "pressure_note": "tire pressure", "bundle_id": "bought in bundle", "component_type": "type",
+    "tire_setup": "tire setup", "pressure_note": "tire pressure", "bundle_id": "bought in bundle", "mark": "mark", "rotation_bike_id": "chain rotation of bike", "component_type": "type",
 }
 _SETUP = {"TUBE": "inner tube", "TUBELESS": "tubeless (sealant)", "TUBULAR": "tubular"}
 _PRIOR = {"NEW": "new", "RECORDED": "recorded", "UNKNOWN": "unknown"}

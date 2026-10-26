@@ -140,8 +140,11 @@ def test_change_log_over_http_names_the_operation_and_dry_runs_leave_no_trace(cl
     assert r.status_code == 200
     assert [x["action"] for x in client.get(f"/api/changes?component_id={chain['id']}").json()] == ["CREATED"]
     client.post(f"/api/components/{chain['id']}/install", json={"at": "2026-10-01", "bike_id": b["id"]})
-    top = client.get(f"/api/changes?component_id={chain['id']}").json()[0]
-    assert top["action"] == "INSTALLED" and top["via"] == "component.install" and top["who"] == "You (app)"
+    rows = client.get(f"/api/changes?component_id={chain['id']}").json()
+    top = next(x for x in rows if x["action"] == "INSTALLED")
+    assert top["via"] == "component.install" and top["who"] == "You (app)"
+    # a chain joins the chain rotation of the bike it first goes on, logged by the same operation
+    assert any(x.get("field") == "chain rotation of bike" and x["via"] == "component.install" for x in rows)
     wheel = client.post("/api/components", json={"component_type": "FRONT_WHEEL", "label": "Front wheel",
                                                  "tire_setup": "TUBELESS"}).json()
     assert wheel["tire_setup"] == "TUBELESS"

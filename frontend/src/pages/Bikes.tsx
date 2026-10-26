@@ -10,6 +10,7 @@ import LogMaintenance from '../components/LogMaintenance'
 import { MoveForm, RemoveForm, ReplaceForm } from '../components/PartChange'
 import { SwapTube } from '../components/Repairs'
 import MountPicker, { type MountTarget } from '../components/MountPicker'
+import ChainRotation from '../components/ChainRotation'
 import TaskList from '../components/TaskList'
 import { PressureNote, TireSetupSelect } from '../components/TireSetup'
 import { Card, ChangeNotice, Empty, ErrorBox, Field, FormError, Loading, Sheet, StatusBadge, Tag } from '../components/ui'
@@ -335,6 +336,7 @@ export function BikeDetailPage() {
             onGroupset={() => setSheet({ kind: 'groupset' })}
             onWheelset={() => setSheet({ kind: 'wheelset' })}
           />
+          <ChainRotation bikeId={data.id} refresh={data} onChanged={reload} />
           <Card title="Installed now" className="span-2">
             {data.setup.length === 0 ? (
               <Empty title="Nothing installed yet">Install parts to track their usage.</Empty>
@@ -846,7 +848,7 @@ function SetupGroups({ setup, groupset, bikeId, onChange, reload, onAddSpokes }:
             {k === 'GROUPSET' && groupset ? (
               // the groupset as one line; its page has the combined km, tasks, log, journal and the parts tree
               <summary>
-                <strong>Groupset</strong> <Link to={`/bikes/${bikeId}/groupset`}>{groupset.name}</Link>{' '}
+                <strong>Groupset</strong> <Link to={`/bikes/${bikeId}/groupset`}>{groupset.name === 'Groupset' ? 'open' : groupset.name}</Link>{' '}
                 <span className="muted small">
                   {groupset.parts} part{groupset.parts === 1 ? '' : 's'}
                 </span>

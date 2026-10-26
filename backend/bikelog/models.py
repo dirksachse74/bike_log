@@ -130,6 +130,10 @@ class Component(Base):
     pressure_note: Mapped[str | None] = mapped_column(Text)
     # Bought together with other parts at one price (e.g. a groupset); the bundle carries the price.
     bundle_id: Mapped[int | None] = mapped_column(ForeignKey("purchase_bundle.id"), index=True)
+    # How the part is marked physically, to tell identical parts apart (Chain A: "1 punch dot").
+    mark: Mapped[str | None] = mapped_column(Text)
+    # Chains only: the bike whose chain rotation this chain is in (services/chains.py); NULL = none.
+    rotation_bike_id: Mapped[int | None] = mapped_column(ForeignKey("bike.id"))
 
     product: Mapped[Product | None] = relationship()
 

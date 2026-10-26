@@ -75,7 +75,7 @@ def item_row(session: Session, comp: Component, chains: dict[int, dict] | None =
     return {"id": comp.id, "label": comp.label, "component_type": comp.component_type, "type_name": t.name,
             "product_id": comp.product_id, "product": product, "state": state, "state_text": state_text,
             "readiness": readiness, "readiness_text": readiness_text, "condition": "USED" if used else "NEW",
-            "storage_location": comp.storage_location, "location": loc, "usage": usage,
+            "storage_location": comp.storage_location, "mark": comp.mark, "location": loc, "usage": usage,
             "compatibility": compatibility(session, comp.product_id), "price_cents": comp.price_cents}
 
 

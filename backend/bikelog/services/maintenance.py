@@ -12,7 +12,7 @@ import uuid
 from dataclasses import dataclass
 from datetime import date
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from bikelog.catalog import (
@@ -986,44 +986,66 @@ def queue(session: Session, *, bike_id: int | None = None, include_ok: bool = Fa
             if row["status"] in hidden or (row["status"] == "OK" and not include_ok):
                 continue
             out.append({**row, "slot": None})
+    _add_chain_swaps(session, out)
     return sorted(out, key=lambda r: (SEVERITY[r["status"]], r.get("bike") or "", r["component"] or ""))
+
+
+def _add_chain_swaps(session: Session, rows: list[dict]) -> None:
+    """A hot-wax task on a chain in a rotation says what to do instead: swap to the next waxed chain, or wax
+    the dirty ones (services/chains.py)."""
+    from bikelog.services import chains
+    rotations: dict[int, dict] = {}
+    for r in rows:
+        if r.get("action_code") != "WAX_HOT" or r["status"] not in chains.SOON or not r.get("bike_id"):
+            continue
+        rot = rotations.get(r["bike_id"]) or rotations.setdefault(r["bike_id"], chains.rotation(session, r["bike_id"]))
+        p = rot["prompt"]
+        if p and rot["on"] == r["component_id"] and len(rot["chains"]) > 1:
+            r["rotation"] = p | {"bike_id": r["bike_id"]}
+            r["explanation"] += f" Chain rotation: {p['text']}"
 
 
 # ---------------------------------------------------------------- chains & brakes
 
 def chain_overview(session: Session) -> list[dict]:
-    out = []
-    for comp in session.scalars(select(Component).where(Component.component_type == "CHAIN")
-                                .order_by(Component.label)):
-        loc = location(session, comp)
-        lifetime = usage_since(session, comp.id, None)
-        hot = _last_event(session, comp.id, ["WAX_HOT"])
-        since_hot = usage_since(session, comp.id, hot.sort_utc) if hot else None
-        wear = _last_event(session, comp.id, ["CHAIN_MEASURE_WEAR"])
-        worn = bool(wear and wear.outcome == "AT_LIMIT")
-        if comp.status == "RETIRED":
-            state, text = "RETIRED", loc["text"]
-        elif loc["state"] == "INSTALLED":
-            state, text = "INSTALLED", f"On {loc['text']}"
-        elif worn:
-            state, text = "WORN", f"Wear at limit on {wear.performed_on}; do not install"
-        elif comp.disposition == "AWAITING_SERVICE":
-            state, text = "AWAITING_SERVICE", "Awaiting preparation or repair"
-        elif hot and since_hot == 0:
-            state, text = "READY_TO_INSTALL", f"Hot waxed on {hot.performed_on}, 0 km since"
-        elif hot:
-            state, text = "NEEDS_HOT_WAX", f"{since_hot:,.0f} km since hot wax on {hot.performed_on}"
-        elif comp.prior_usage == "NEW":
-            state, text = "NEW_UNWAXED", "New chain, not hot waxed yet (factory grease)"
-        else:
-            state, text = "UNKNOWN", "No hot wax recorded"
-        out.append({"component_id": comp.id, "label": comp.label, "state": state, "text": text,
-                    "lifetime_km": lifetime, "km_since_hot_wax": since_hot,
-                    "last_hot_wax": hot.performed_on if hot else None,
-                    "last_wear": {"date": wear.performed_on, "value": wear.measurement_value,
-                                  "unit": wear.measurement_unit, "outcome": wear.outcome} if wear else None,
-                    "location": loc})
-    return out
+    return [chain_row(session, comp) for comp in session.scalars(
+        select(Component).where(Component.component_type == "CHAIN").order_by(Component.label))]
+
+
+def chain_row(session: Session, comp: Component) -> dict:
+    """One chain's state for the chain list and the rotation (services/chains.py)."""
+    loc = location(session, comp)
+    lifetime = usage_since(session, comp.id, None)
+    hot = _last_event(session, comp.id, ["WAX_HOT"])
+    since_hot = usage_since(session, comp.id, hot.sort_utc) if hot else None
+    wear = _last_event(session, comp.id, ["CHAIN_MEASURE_WEAR"])
+    worn = bool(wear and wear.outcome == "AT_LIMIT")
+    if comp.status == "RETIRED":
+        state, text = "RETIRED", loc["text"]
+    elif loc["state"] == "INSTALLED":
+        state, text = "INSTALLED", f"On {loc['text']}"
+    elif worn:
+        state, text = "WORN", f"Wear at limit on {wear.performed_on}; do not install"
+    elif comp.disposition == "AWAITING_SERVICE":
+        state, text = "AWAITING_SERVICE", "Awaiting preparation or repair"
+    elif hot and since_hot == 0:
+        state, text = "READY_TO_INSTALL", f"Hot waxed on {hot.performed_on}, 0 km since"
+    elif hot:
+        state, text = "NEEDS_HOT_WAX", f"{since_hot:,.0f} km since hot wax on {hot.performed_on}"
+    elif comp.prior_usage == "NEW":
+        state, text = "NEW_UNWAXED", "New chain, not hot waxed yet (factory grease)"
+    else:
+        state, text = "UNKNOWN", "No hot wax recorded"
+    waxes = session.scalar(select(func.count()).select_from(MaintenanceEvent).where(
+        MaintenanceEvent.component_id == comp.id, MaintenanceEvent.action_code == "WAX_HOT",
+        MaintenanceEvent.voided_at.is_(None)))
+    return {"component_id": comp.id, "label": comp.label, "mark": comp.mark, "state": state, "text": text,
+            "lifetime_km": lifetime, "km_since_hot_wax": since_hot,
+            "last_hot_wax": hot.performed_on if hot else None, "wax_cycles": waxes,
+            "rotation_bike_id": comp.rotation_bike_id,
+            "last_wear": {"date": wear.performed_on, "value": wear.measurement_value,
+                          "unit": wear.measurement_unit, "outcome": wear.outcome} if wear else None,
+            "location": loc}
 
 
 def brake_overview(session: Session, bike_id: int | None = None) -> list[dict]:

@@ -304,6 +304,16 @@ you disagree. Dates are 2026-10-24 unless noted.
     maker; the price stays on the bundle (DECISIONS 51). Its km are bike km since the earliest groupset
     part still on it was installed; each part keeps its own km. Wheelsets stay a real part (they carry
     wheels and move between bikes as one). Part trees come from `assemblies.tree` (open installations).
+92. **Chain rotation keeps almost nothing of its own** (services/chains.py, migration 0013): only
+    component.rotation_bike_id (set when a chain first goes on a bike, or by hand) and component.mark.
+    "On / waxed, ready / dirty" comes from maintenance.chain_row (hot wax and wear events); the prompt
+    comes from the hot-wax rule of the chain on the bike (DUE_SOON or worse: swap to the ready chain that
+    rested longest, or wax when none is ready); the timeline from installations and WAX_HOT events. A swap
+    is inv.replace (old chain stored, keeps its km) in its own work session, so Undo works as everywhere.
+    The hot-wax task of a rotation chain carries the prompt (`rotation`) and hides "Log done".
+93. **Swaps and waxes from the rotation count after that day's rides**: a date alone means the start of
+    the day, which would move that day's rides to the new chain. The one-click swap sends the current time;
+    the Wax chains form sends the end of the chosen day (now, for today).
 
 ## Repository
 27. Pushed only to the feature branch `claude/project-thread-6y3mmh` of the private repository. Demo

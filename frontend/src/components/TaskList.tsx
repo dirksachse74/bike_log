@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { api } from '../api'
+import { api, newOpId } from '../api'
 import { useApp } from '../context'
 import { today } from '../format'
 import type { Task } from '../types'
@@ -19,6 +19,16 @@ export default function TaskList({ tasks, onChange, emptyText = 'Nothing due by 
       const who = t.component_id ? { component_id: t.component_id } : { bike_id: t.bike_id }
       await api.post('/maintenance/snooze', { ...who, rule_code: t.rule_code, ...body })
       toast(`Snoozed "${t.name}" for ${t.component ?? t.bike}. No maintenance recorded.`)
+      onChange()
+    } catch (e) {
+      setError((e as Error).message)
+    }
+  }
+  async function swap(t: Task) {
+    if (!t.rotation?.to) return
+    try {
+      const r = await api.post<{ result: { text: string } }>(`/bikes/${t.rotation.bike_id}/chains/swap`, { to_component_id: t.rotation.to, at: new Date().toISOString() }, newOpId())
+      toast(r.result.text)
       onChange()
     } catch (e) {
       setError((e as Error).message)
@@ -56,7 +66,17 @@ export default function TaskList({ tasks, onChange, emptyText = 'Nothing due by 
               </div>
             </div>
             <div className="task-actions">
-              {(t.status !== 'ATTENTION' || !t.component_id) && t.status !== 'NOT_APPLICABLE' && (
+              {t.rotation?.to && (
+                <button className="btn btn-small btn-primary" onClick={() => swap(t)}>
+                  Swap to {t.rotation.to_label}
+                </button>
+              )}
+              {t.rotation?.kind === 'WAX' && (
+                <Link className="btn btn-small btn-primary" to={`/bikes/${t.rotation.bike_id}`}>
+                  Wax chains
+                </Link>
+              )}
+              {!t.rotation && (t.status !== 'ATTENTION' || !t.component_id) && t.status !== 'NOT_APPLICABLE' && (
                 <button className="btn btn-small btn-primary" onClick={() => setLogging(t)}>
                   Log done
                 </button>

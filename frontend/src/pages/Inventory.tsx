@@ -721,7 +721,10 @@ export default function InventoryPage() {
           <div className="cards">
             {chains.data?.map((c) => (
               <Link to={`/inventory/${c.component_id}`} key={c.component_id} className="tile">
-                <strong>{c.label}</strong>
+                <strong>
+                  {c.label}
+                  {c.mark && <span className="mark">{c.mark}</span>}
+                </strong>
                 <ChainStateTag state={c.state} />
                 <span className="small">{c.text}</span>
                 <span className="muted small">
@@ -803,6 +806,7 @@ interface ComponentDetail extends ComponentSummary {
   suggested_outcome: string
   parts: PartNode[]
   groupset_bike_id: number | null
+  chain: (ChainRow & { cycles: { cycle: number; waxed_on: string; km: number; current: boolean }[] }) | null
 }
 
 function RuleEditor({ rule, componentId, onDone }: { rule: Rule; componentId: number; onDone: () => void }) {
@@ -945,7 +949,7 @@ export function ComponentDetailPage() {
         className="span-2"
         title={
           <>
-            {data.label} <span className="muted small">{data.type_name}</span>
+            {data.label} {data.mark && <span className="mark">{data.mark}</span>} <span className="muted small">{data.type_name}</span>
           </>
         }
         actions={
@@ -1062,6 +1066,7 @@ export function ComponentDetailPage() {
           {data.serial_number ? ` · serial ${data.serial_number}` : ''}
         </p>
       </Card>
+      {data.chain && <ChainCard comp={data} chain={data.chain} onChanged={reload} />}
       {data.parts.length > 0 && (
         <Card title="Parts on it" className="span-2">
           <p className="small muted">What is mounted on {data.label} now. Unfold a part to see what sits on it; open any part for its km, service and history.</p>
@@ -1378,15 +1383,79 @@ export function ComponentDetailPage() {
   )
 }
 
+// A chain's place in a rotation and its wax cycles (km ridden on each hot wax).
+function ChainCard({ comp, chain, onChanged }: { comp: ComponentSummary; chain: NonNullable<ComponentDetail['chain']>; onChanged: () => void }) {
+  const { toast } = useApp()
+  const bikes = useApi<Bike[]>('/bikes')
+  async function setRotation(v: string) {
+    try {
+      await api.patch(`/components/${comp.id}`, { rotation_bike_id: v ? Number(v) : null })
+      toast(v ? `${comp.label} is in the chain rotation of ${bikes.data?.find((b) => b.id === Number(v))?.name}.` : `${comp.label} left the chain rotation.`)
+      onChanged()
+    } catch (e) {
+      toast((e as Error).message)
+    }
+  }
+  return (
+    <Card title="Chain rotation and wax cycles" className="span-2">
+      <p className="small">
+        <ChainStateTag state={chain.state} /> {chain.text}
+      </p>
+      <label className="inline-field small">
+        Chain rotation of{' '}
+        <select aria-label="Chain rotation" value={chain.rotation_bike_id ?? ''} onChange={(e) => setRotation(e.target.value)}>
+          <option value="">No rotation</option>
+          {bikes.data?.filter((b) => b.status === 'ACTIVE').map((b) => (
+            <option key={b.id} value={b.id}>
+              {b.name}
+            </option>
+          ))}
+        </select>
+      </label>
+      {chain.rotation_bike_id && (
+        <span className="small">
+          {' '}
+          · <Link to={`/bikes/${chain.rotation_bike_id}`}>open the bike for swaps and waxing</Link>
+        </span>
+      )}
+      {chain.cycles.length === 0 ? (
+        <p className="small muted">No hot wax recorded yet.</p>
+      ) : (
+        <table className="table">
+          <thead>
+            <tr>
+              <th>Wax cycle</th>
+              <th>Hot waxed</th>
+              <th className="num">Km on that wax</th>
+            </tr>
+          </thead>
+          <tbody>
+            {[...chain.cycles].reverse().map((c) => (
+              <tr key={c.cycle}>
+                <td>{c.cycle}</td>
+                <td>{when(c.waxed_on)}</td>
+                <td className="num">
+                  {km(c.km, 0)}
+                  {c.current ? ' (current)' : ''}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </Card>
+  )
+}
+
 function DetailsForm({ comp, onDone }: { comp: ComponentSummary; onDone: () => void }) {
-  const [f, setF] = useState({ label: comp.label, price: centsInput(comp.price_cents), purchase_date: comp.purchase_date ?? '', serial_number: comp.serial_number ?? '', notes: comp.notes ?? '' })
+  const [f, setF] = useState({ label: comp.label, mark: comp.mark ?? '', price: centsInput(comp.price_cents), purchase_date: comp.purchase_date ?? '', serial_number: comp.serial_number ?? '', notes: comp.notes ?? '' })
   const [err, setErr] = useState<string | null>(null)
   async function save() {
     setErr(null)
     const price = toCents(f.price)
     if (Number.isNaN(price)) return setErr('Price: enter an amount such as 49,90')
     try {
-      await api.patch(`/components/${comp.id}`, { label: f.label, price_cents: price, purchase_date: f.purchase_date || null, serial_number: f.serial_number || null, notes: f.notes || null })
+      await api.patch(`/components/${comp.id}`, { label: f.label, mark: f.mark || null, price_cents: price, purchase_date: f.purchase_date || null, serial_number: f.serial_number || null, notes: f.notes || null })
       onDone()
     } catch (e) {
       setErr((e as Error).message)
@@ -1411,6 +1480,9 @@ function DetailsForm({ comp, onDone }: { comp: ComponentSummary; onDone: () => v
           <input type="date" value={f.purchase_date} onChange={(e) => setF({ ...f, purchase_date: e.target.value })} />
         </Field>
       </div>
+      <Field label="Mark" hint={comp.component_type === 'CHAIN' ? 'How you tell it apart from identical chains, e.g. "1 punch dot next to the quick link". Paint and nail polish come off in hot wax; a punch or engraver mark on an outer plate stays.' : 'How you tell it apart from identical parts (e.g. a dot, a sticker, a colour).'}>
+        <input value={f.mark} maxLength={80} onChange={(e) => setF({ ...f, mark: e.target.value })} />
+      </Field>
       <Field label="Serial number">
         <input value={f.serial_number} onChange={(e) => setF({ ...f, serial_number: e.target.value })} />
       </Field>

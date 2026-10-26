@@ -32,6 +32,7 @@ from bikelog.migrate import head_revision
 from bikelog.models import Bike, Component, Product, ServiceRule, UsageProfile
 from bikelog.paths import DataPaths, resource_root
 from bikelog.services import assemblies
+from bikelog.services import chains as chains_svc
 from bikelog.services import costs as costs_svc
 from bikelog.services import bundles as bundles_svc
 from bikelog.services import demo, diagnostics, groupsets, imports, journal, product_import, spares, stock
@@ -147,6 +148,21 @@ class ComponentPatch(Body):
     storage_location: str | None = None
     tire_setup: str | None = None
     pressure_note: str | None = None
+    mark: str | None = None
+    rotation_bike_id: int | None = None
+
+
+class ChainSwapIn(Body):
+    to_component_id: int
+    at: str
+
+
+class ChainWaxIn(Body):
+    component_ids: list[int]
+    at: str
+    consumable_id: int | None = None
+    consumable_qty: float | None = None
+    then_install: int | None = None
 
 
 class RemoveIn(Body):
@@ -639,6 +655,28 @@ def create_app(factory: sessionmaker[Session], paths: DataPaths, *, token: str |
                 "events": m.events_for(s, bike_id=b.id, limit=20),
                 "cost_detail": costs_svc.bike_costs(s, b), "groupset": assemblies.groupset_summary(s, b)}
 
+    @app.get("/api/bikes/{bike_id}/chains")
+    def bike_chains(bike_id: int, s: Session = Depends(db)):
+        return chains_svc.rotation(s, bike_id)
+
+    @app.post("/api/bikes/{bike_id}/chains/swap")
+    def bike_chain_swap(bike_id: int, body: ChainSwapIn, dry_run: bool = False, s: Session = Depends(db),
+                        op_id: str | None = OpId):
+        def fn():
+            ws = ws_svc.begin(s, at=body.at, bike_id=bike_id, title="Chain rotation: swap chain")
+            return {**chains_svc.swap(s, bike_id, to_component_id=body.to_component_id, at=body.at,
+                                      work_session_id=ws.id), "work_session_id": ws.id}
+        return op(s, op_id, "bike.chain_swap", fn, dry_run)
+
+    @app.post("/api/bikes/{bike_id}/chains/wax")
+    def bike_chain_wax(bike_id: int, body: ChainWaxIn, dry_run: bool = False, s: Session = Depends(db),
+                       op_id: str | None = OpId):
+        def fn():
+            ws = ws_svc.begin(s, at=body.at, bike_id=bike_id, title="Chain rotation: hot wax chains")
+            return {**chains_svc.wax(s, bike_id, work_session_id=ws.id, **body.model_dump()),
+                    "work_session_id": ws.id}
+        return op(s, op_id, "bike.chain_wax", fn, dry_run)
+
     @app.get("/api/bikes/{bike_id}/groupset")
     def bike_groupset(bike_id: int, s: Session = Depends(db)):
         return assemblies.groupset(s, bike_id)
@@ -718,6 +756,8 @@ def create_app(factory: sessionmaker[Session], paths: DataPaths, *, token: str |
                 "product_detail": _product(c.product) if c.product else None, "specs": json.loads(c.specs_json or "{}"),
                 "dispositions": inv.disposition_history(s, c), "inventory": spares.item_row(s, c),
                 "parts": assemblies.tree(s, c), "groupset_bike_id": assemblies.groupset_bike(s, c),
+                "chain": ({**m.chain_row(s, c), "cycles": chains_svc.chain_history(s, c)}
+                          if c.component_type == "CHAIN" else None),
                 "suggested_outcome": COMPONENT_TYPES[c.component_type].removed_default}
 
     @app.patch("/api/components/{component_id}")
@@ -1401,6 +1441,7 @@ def _component_summary(s: Session, c: Component) -> dict:
             "price_cents": c.price_cents, "serial_number": c.serial_number, "notes": c.notes,
             "retired_on": c.retired_on, "retire_reason": c.retire_reason, "disposition": c.disposition,
             "storage_location": c.storage_location, "tire_setup": c.tire_setup, "pressure_note": c.pressure_note,
+            "mark": c.mark, "rotation_bike_id": c.rotation_bike_id,
             "bundle": _bundle_ref(s, c),
             "effective_tire_setup": setup, "tire_setup_from": wheel.label if wheel is not None and wheel.id != c.id else None,
             "location": inv.location(s, c), "usage": component_usage(s, c)}

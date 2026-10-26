@@ -12,6 +12,7 @@ Status key: ✅ done and tested · 🟡 done, not verified where it matters · �
 - ✅ Products vs physical components; install/remove/replace/reinstall with effective dates.
 - ✅ Conflicting installations refused (service and database triggers); lifetime usage kept.
 - ✅ Replacement workflow with removed-item outcomes, move/swap positions, undo per work session.
+- ✅ Chain rotation: mark per part, rotation card on the bike (on / waxed, ready / dirty), swap prompt from the 500 km hot-wax rule with one-click swap, Wax chains batch, rotation history, wax cycles per chain.
 - ✅ Drill-down: part page "Parts on it" tree (wheelset → wheels → hub/spokes/tire, crankset → chainrings); groupset one line on the bike + groupset page (stats, tasks, incidents, log, journal, parts tree).
 - ✅ Spokes per wheel with broken-spoke count, "Broken spoke" incident and fix, re-lace reminder after 3 (Settings).
 - ✅ Add part / Install: "Where does it go?" (spare, bike position, or on a part: wheelset › wheel › hub, crankset › chainring, RD › pulleys); Rim type.
