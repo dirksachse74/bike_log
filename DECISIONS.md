@@ -260,6 +260,11 @@ you disagree. Dates are 2026-10-24 unless noted.
 82. **Lint upgrades keep the same rules**: with eslint-plugin-react-hooks 7 only `rules-of-hooks` and
     `exhaustive-deps` are on (as with v5), not the React Compiler rules. esbuild's postinstall (it checks
     the platform binary) is approved by `allowScripts` written by `npm install-scripts approve esbuild`.
+83. **Swaps are shortcuts to Replace, not a new operation**: Manage parts → Swap chain / wheels / wheelset
+    / tire opens the existing Replace dialog for the installed part of that type, so spares, stock, the
+    old part's outcome and carried-over parts behave exactly as before. A spare that already has parts in
+    a position (a stored wheelset with its wheels) keeps them: those children of the old part are not
+    ticked to move, and replace() refuses to carry a part into a taken position.
 
 ## Repository
 27. Pushed only to the feature branch `claude/project-thread-6y3mmh` of the private repository. Demo

@@ -432,6 +432,7 @@ export interface SetupRow {
   since: string
   installation_id: number
   depth: number
+  parent_component_id: number | null
   tire_setup: TireSetup | null
   pressure_note: string | null
 }

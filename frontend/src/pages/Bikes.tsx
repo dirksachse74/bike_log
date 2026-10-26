@@ -284,7 +284,7 @@ export function BikeDetailPage() {
   const { data, error, loading, reload } = useApi<BikeDetail>(`/bikes/${id}`)
   const incidents = useApi<RideIncident[]>(`/bikes/${id}/incidents`)
   const openIncidents = incidents.data?.filter((r) => r.open && !r.removed).length ?? 0
-  const [sheet, setSheet] = useState<null | { kind: 'install' } | { kind: 'groupset' } | { kind: 'wheelset' } | { kind: 'costs' } | { kind: 'part'; row: SetupRow } | { kind: 'log' }>(null)
+  const [sheet, setSheet] = useState<null | { kind: 'install' } | { kind: 'groupset' } | { kind: 'wheelset' } | { kind: 'costs' } | { kind: 'part'; row: SetupRow } | { kind: 'swap'; title: string; rows: SetupRow[] } | { kind: 'log' }>(null)
   if (loading && !data) return <Loading />
   if (error && !data) return <ErrorBox error={error} onRetry={reload} />
   if (!data) return null
@@ -300,14 +300,8 @@ export function BikeDetailPage() {
         className="span-2"
         actions={
           <>
-            <button className="btn btn-primary" onClick={() => setSheet({ kind: 'log' })}>
-              Log maintenance
-            </button>
-            <button className="btn" onClick={() => setSheet({ kind: 'install' })}>
-              Install part
-            </button>
-            <button className="btn" onClick={() => setSheet({ kind: 'groupset' })}>
-              Add groupset
+            <button className="btn btn-primary" title="Cleaning, lubing, waxing, charging, checks, bleeds, repairs: anything you did to the bike or a part" onClick={() => setSheet({ kind: 'log' })}>
+              Record work done
             </button>
           </>
         }
@@ -349,17 +343,14 @@ export function BikeDetailPage() {
       </div>
       {tab === 'overview' && (
         <>
-          <Card
-            title="Installed now"
-            className="span-2"
-            actions={
-              data.setup.some((s) => s.depth === 0 && (s.component_type === 'FRONT_WHEEL' || s.component_type === 'REAR_WHEEL')) ? (
-                <button className="btn btn-small" onClick={() => setSheet({ kind: 'wheelset' })}>
-                  Group wheels into a wheelset
-                </button>
-              ) : undefined
-            }
-          >
+          <ManageParts
+            setup={data.setup}
+            onSwap={(title, rows) => setSheet({ kind: 'swap', title, rows })}
+            onInstall={() => setSheet({ kind: 'install' })}
+            onGroupset={() => setSheet({ kind: 'groupset' })}
+            onWheelset={() => setSheet({ kind: 'wheelset' })}
+          />
+          <Card title="Installed now" className="span-2">
             {data.setup.length === 0 ? (
               <Empty title="Nothing installed yet">Install parts to track their usage.</Empty>
             ) : (
@@ -488,8 +479,13 @@ export function BikeDetailPage() {
           <PartActions row={sheet.row} onDone={done} />
         </Sheet>
       )}
+      {sheet?.kind === 'swap' && (
+        <Sheet title={`${sheet.title} · ${data.name}`} onClose={() => setSheet(null)}>
+          <SwapPart rows={sheet.rows} setup={data.setup} onDone={done} />
+        </Sheet>
+      )}
       {sheet?.kind === 'log' && (
-        <Sheet title={`Log maintenance · ${data.name}`} onClose={() => setSheet(null)}>
+        <Sheet title={`Record work done · ${data.name}`} onClose={() => setSheet(null)}>
           <LogMaintenance
             bikeId={data.id}
             onDone={(msg) => {
@@ -500,6 +496,88 @@ export function BikeDetailPage() {
           />
         </Sheet>
       )}
+    </div>
+  )
+}
+
+const isWheel = (r: SetupRow) => r.component_type === 'FRONT_WHEEL' || r.component_type === 'REAR_WHEEL'
+
+// Everyday part changes in one place. A swap opens the normal Replace dialog for the part of that type
+// on this bike (after a pick when there are several), so spares, stock and carried-over parts work as usual.
+function ManageParts({ setup, onSwap, onInstall, onGroupset, onWheelset }: { setup: SetupRow[]; onSwap: (title: string, rows: SetupRow[]) => void; onInstall: () => void; onGroupset: () => void; onWheelset: () => void }) {
+  const of = (t: string) => setup.filter((r) => r.component_type === t)
+  const wheelsets = of('WHEELSET')
+  const looseWheels = setup.filter((r) => r.depth === 0 && isWheel(r))
+  const swaps: [string, string, SetupRow[], string][] = [
+    ['Swap chain', 'Swap chain', of('CHAIN'), 'No chain installed'],
+    wheelsets.length > 0
+      ? ['Swap wheelset', 'Swap wheelset', wheelsets, '']
+      : ['Swap wheels', 'Swap a wheel', setup.filter(isWheel), 'No wheels installed'],
+    ['Swap tire', 'Swap a tire', of('TIRE'), 'No tires installed'],
+    ['Swap another part', 'Swap a part', setup, 'Nothing installed yet'],
+  ]
+  return (
+    <Card title="Manage parts" className="span-2">
+      <div className="manage-parts">
+        <div>
+          <h3 className="small muted">Swap what is on the bike</h3>
+          <div className="chips">
+            {swaps.map(([label, title, rows, none]) => (
+              <button key={label} className="btn" disabled={rows.length === 0} title={rows.length === 0 ? none : undefined} onClick={() => onSwap(title, rows)}>
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div>
+          <h3 className="small muted">Add parts</h3>
+          <div className="chips">
+            <button className="btn" onClick={onInstall}>
+              Install a part
+            </button>
+            <button className="btn" onClick={onGroupset}>
+              Add groupset
+            </button>
+            {looseWheels.length > 0 && (
+              <button className="btn" onClick={onWheelset}>
+                Group wheels into a wheelset
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+      <p className="small muted">
+        A swap takes a stored spare, one from stock or a new item, and the old part keeps its km for next time.
+        {wheelsets.length === 0 && looseWheels.length > 0 && ' Wheels swap one at a time; group them into a wheelset to swap both in one go.'} To change one particular part, you can also click it under Installed now.
+      </p>
+    </Card>
+  )
+}
+
+function SwapPart({ rows, setup, onDone }: { rows: SetupRow[]; setup: SetupRow[]; onDone: (c: Change) => void }) {
+  const [picked, setPicked] = useState<number | null>(rows.length === 1 ? rows[0].component_id : null)
+  const where = (r: SetupRow) => {
+    const parent = setup.find((p) => p.component_id === r.parent_component_id)
+    return parent ? `on ${parent.label}` : slotName(r.slot)
+  }
+  return (
+    <div className="form">
+      {rows.length > 1 && (
+        <fieldset className="field">
+          <legend className="field-label">Which one?</legend>
+          <div className="pick-list">
+            {rows.map((r) => (
+              <label key={r.component_id} className={`pick ${picked === r.component_id ? 'pick-on' : ''}`}>
+                <input type="radio" name="swap-pick" checked={picked === r.component_id} onChange={() => setPicked(r.component_id)} />
+                <span>
+                  <strong>{r.label}</strong> <span className="small muted">· {r.type_name} · {where(r)}</span>
+                </span>
+              </label>
+            ))}
+          </div>
+        </fieldset>
+      )}
+      {picked !== null && <ReplaceForm key={picked} componentId={picked} onDone={(c) => onDone(c)} />}
     </div>
   )
 }

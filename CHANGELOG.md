@@ -8,6 +8,12 @@ UPDATING.md → "Making a release". New entries go under "Unreleased" as work is
 ## Unreleased
 
 ### Added
+- Bike page: a "Manage parts" section with one-click Swap chain, Swap wheels (Swap wheelset once the
+  wheels are grouped), Swap tire and Swap another part, plus Install a part, Add groupset and Group wheels
+  into a wheelset. A swap opens the usual Replace dialog for that part. The bike header keeps only
+  "Record work done".
+- "Log maintenance" is now called "Record work done" everywhere (cleaning, lubing, waxing, charging,
+  checks, bleeds, repairs).
 - Ride incidents reworked: each kind of incident offers only what it can affect, taken from the parts on
   the bike that day (flat tire → front / rear tire; shifting → front / rear derailleur, shifters ...;
   empty battery → Di2, power meter, head unit, speed or cadence sensor ...; fitting problem → numb hands,
@@ -92,6 +98,11 @@ UPDATING.md → "Making a release". New entries go under "Unreleased" as work is
   Di2 R9200, 105 Di2 R7150, 105 R7100 mechanical, GRX Di2 RX825 2×12, GRX RX820 1×12; SRAM RED AXS E1,
   Force AXS, Rival AXS, Apex XPLR 1×12 (AXS or mechanical), and the 13-speed RED XPLR and Force XPLR AXS.
   SRAM AXS batteries sit on the derailleurs and are charged every 55 ride hours.
+
+### Fixed
+- Swapping to a stored wheelset (or a spare wheel with its own tire) no longer suggests moving the old
+  wheels (or tire) over: the spare keeps the parts already on it, and the dialog says so. Moving a part
+  into a position the spare already fills is refused with a clear message.
 
 ### Fixed (imaginary-bike test run, B1–B15)
 - A road ride on a bike with no wheels is flagged ("No wheels on this bike on the ride day").

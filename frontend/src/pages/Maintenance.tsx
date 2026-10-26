@@ -28,8 +28,8 @@ export default function MaintenancePage() {
         title="Maintenance"
         className="span-2"
         actions={
-          <button className="btn btn-primary" onClick={() => setLogging(true)}>
-            Log maintenance
+          <button className="btn btn-primary" onClick={() => setLogging(true)} title="Cleaning, lubing, waxing, charging, checks, bleeds, repairs: anything you did to the bike or a part">
+            Record work done
           </button>
         }
       >
@@ -54,7 +54,7 @@ export default function MaintenancePage() {
       <Card title="Recently logged">
         {events.loading && !events.data && <Loading />}
         {events.error && <ErrorBox error={events.error} onRetry={events.reload} />}
-        {events.data?.length === 0 && <Empty title="Nothing logged yet">Use “Log maintenance”: pick the bike, tap what you did, and the installed parts are preselected.</Empty>}
+        {events.data?.length === 0 && <Empty title="Nothing logged yet">Use “Record work done”: pick the bike, tap what you did, and the installed parts are preselected.</Empty>}
         <ul className="list">
           {events.data?.map((e) => (
             <li key={e.id} className={e.voided ? 'excluded' : ''}>
@@ -94,7 +94,7 @@ export default function MaintenancePage() {
         <p className="small muted">Change an interval from any part's page (for that part or for all parts of its type).</p>
       </Card>
       {logging && (
-        <Sheet title="Log maintenance" onClose={() => setLogging(false)}>
+        <Sheet title="Record work done" onClose={() => setLogging(false)}>
           <LogMaintenance
             bikeId={bike ? Number(bike) : null}
             onDone={(msg) => {

@@ -546,7 +546,7 @@ def replace(session: Session, old_component_id: int, *, at: str, new_component_i
     if new_component_id is not None:
         new_comp = get_component(session, new_component_id)
         if new_comp.id == old.id:
-            raise DomainError("Pick a different part; to service the same item, log maintenance on it instead")
+            raise DomainError("Pick a different part; to service the same item, use “Record work done” on it instead")
         if new_comp.component_type != old.component_type:
             raise DomainError(f"{new_comp.label} is a {new_comp.component_type}, not a {old.component_type}")
         other = open_installation(session, new_comp.id)
@@ -580,6 +580,16 @@ def replace(session: Session, old_component_id: int, *, at: str, new_component_i
     unknown = set(carry_over or []) - set(children)
     if unknown:
         raise DomainError("Only parts mounted on the old part can be moved to the new one")
+    if carry_over and new_component_id is not None:
+        taken = {i.slot: i for i in session.scalars(select(Installation).where(
+            Installation.parent_component_id == new_comp.id, Installation.removed_utc.is_(None),
+            Installation.voided_at.is_(None)))}
+        for cid in carry_over:
+            if children[cid].slot in taken:
+                there = get_component(session, taken[children[cid].slot].component_id)
+                raise DomainError(f"{new_comp.label} already has {there.label} in that position. Leave "
+                                  f"{get_component(session, cid).label} on {old.label} (untick it), or take "
+                                  f"{there.label} off {new_comp.label} first")
     for cid in carry_over or []:
         remove(session, cid, at=at, reason=f"moved from {old.label} to {new_comp.label}", outcome="MOVED",
                reallocate=False, work_session_id=work_session_id)

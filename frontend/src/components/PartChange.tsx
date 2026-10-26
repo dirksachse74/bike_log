@@ -24,6 +24,7 @@ interface SpareRow {
   usage: { total_km: number } & Parameters<typeof usageText>[0]
   storage_location: string | null
   fit: 'VERIFIED' | 'UNVERIFIED' | 'SAME_PRODUCT' | 'UNKNOWN'
+  mounted: { component_id: number; label: string; slot: string }[]
 }
 
 interface StockRow {
@@ -91,10 +92,21 @@ export function ReplaceForm({ componentId, onDone }: { componentId: number; onDo
   useEffect(() => {
     const d = opts.data
     if (!d) return
-    setCarry((c) => c ?? new Set(d.children.filter((x) => x.carry_over).map((x) => x.component_id)))
     setF((x) => (x.outcome ? x : { ...x, outcome: d.suggested_outcome }))
     setSource((s) => s ?? (d.stock[0] ? { kind: 'stock', id: d.stock[0].id } : d.spares[0] ? { kind: 'spare', id: d.spares[0].id } : { kind: 'same' }))
   }, [opts.data])
+  // A spare that brings its own parts (a stored wheelset with its wheels, a spare wheel with its tire)
+  // keeps them: the old part's children whose position is taken there stay behind by default.
+  const spare = source?.kind === 'spare' ? opts.data?.spares.find((s) => s.id === source.id) : undefined
+  const taken = new Map((spare?.mounted ?? []).map((m) => [m.slot, m.label]))
+  const sourceKey = source ? `${source.kind}${'id' in source ? source.id : ''}` : ''
+  useEffect(() => {
+    const d = opts.data
+    if (!d || !sourceKey) return
+    const s = sourceKey.startsWith('spare') ? d.spares.find((x) => `spare${x.id}` === sourceKey) : undefined
+    const busySlots = new Set((s?.mounted ?? []).map((m) => m.slot))
+    setCarry(new Set(d.children.filter((x) => x.carry_over && !busySlots.has(x.slot)).map((x) => x.component_id)))
+  }, [opts.data, sourceKey])
   if (opts.loading && !opts.data) return <Loading />
   if (opts.error) return <ErrorBox error={opts.error} onRetry={opts.reload} />
   const d = opts.data
@@ -156,6 +168,7 @@ export function ReplaceForm({ componentId, onDone }: { componentId: number; onDo
                 <br />
                 <span className="small">
                   {s.state_text} · {s.readiness_text} · {usageText(s.usage)} lifetime
+                  {s.mounted.length > 0 && ` · comes with ${s.mounted.map((m) => m.label).join(', ')}`}
                 </span>{' '}
                 <FitTag fit={s.fit} />
                 {s.readiness !== 'READY' && <Tag tone="warn">not ready</Tag>}
@@ -230,10 +243,11 @@ export function ReplaceForm({ componentId, onDone }: { componentId: number; onDo
                   setCarry(next)
                 }}
               />{' '}
-              {c.label} <span className="small muted">({c.type_name}){c.note ? ` · ${c.note}` : ''}</span>
+              {c.label} <span className="small muted">({c.type_name}){c.note ? ` · ${c.note}` : ''}{taken.has(c.slot) ? ` · ${spare?.label} already has ${taken.get(c.slot)} there` : ''}</span>
             </label>
           ))}
           <p className="small muted">Ticked parts move over and keep their own km. Unticked parts stay with the old part.</p>
+          {taken.size > 0 && <p className="small muted">{spare?.label} comes with its own parts, so the parts on {d.component.label} stay with it.</p>}
         </fieldset>
       )}
       <ChangeNotice change={preview} />

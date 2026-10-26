@@ -12,6 +12,7 @@ Status key: ✅ done and tested · 🟡 done, not verified where it matters · �
 - ✅ Products vs physical components; install/remove/replace/reinstall with effective dates.
 - ✅ Conflicting installations refused (service and database triggers); lifetime usage kept.
 - ✅ Replacement workflow with removed-item outcomes, move/swap positions, undo per work session.
+- ✅ Bike page "Manage parts": Swap chain / wheels or wheelset / tire / another part (shortcuts to Replace), Install a part, Add groupset, Group wheels; a stored wheelset keeps its own wheels on a swap.
 
 ## P3 Rides and usage
 - ✅ Manual rides add/edit/exclude/restore, exactly-once totals, starting mileage, flags, ledger.

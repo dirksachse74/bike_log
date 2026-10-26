@@ -134,3 +134,27 @@ def test_mounted_parts_show_when_they_arrived_on_the_bike(session):
     inv.move(session, wheel.id, bike_id=b.id, at="2026-10-10")
     rows = {r["label"]: r for r in inv.bike_setup(session, b)}
     assert rows["GP5000 rear"]["since"] == "2026-10-10" and rows["GP5000 rear"]["mounted_since"] == "2026-09-01"
+
+
+def test_swap_to_a_stored_wheelset_keeps_each_wheelsets_own_wheels(session):
+    """Swap wheelset: the stored wheelset brings its own wheels; the old wheels stay on the old wheelset."""
+    b, b2 = bike(session), bike(session, "Winter Allroad")
+    summer = wheels(session, b)
+    ws1 = inv.get_component(session, inv.group_wheels(session, b.id, at="2026-09-02", label="Summer")["wheelset_id"])
+    f2, r2 = part(session, "FRONT_WHEEL", "Winter front"), part(session, "REAR_WHEEL", "Winter rear")
+    inv.install(session, f2.id, at="2026-09-01", bike_id=b2.id)
+    inv.install(session, r2.id, at="2026-09-01", bike_id=b2.id)
+    ws2 = inv.get_component(session, inv.group_wheels(session, b2.id, at="2026-09-02", label="Winter")["wheelset_id"])
+    inv.remove(session, ws2.id, at="2026-09-03", outcome="STORED")
+    opts = spares.replace_options(session, ws1.id)
+    spare = next(s for s in opts["spares"] if s["id"] == ws2.id)
+    assert {m_["label"] for m_ in spare["mounted"]} == {"Winter front", "Winter rear"}
+    # carrying the old wheels into positions the stored wheelset already fills is refused with a clear message
+    with pytest.raises(DomainError, match="already has Winter front"):
+        inv.replace(session, ws1.id, at="2026-10-01", new_component_id=ws2.id,
+                    carry_over=[c.id for c in summer], old_outcome="STORED")
+    inv.replace(session, ws1.id, at="2026-10-01", new_component_id=ws2.id, carry_over=[], old_outcome="STORED")
+    ride(session, b, "2026-10-02", 30)
+    assert km(session, f2) == 30 and km(session, summer[0]) == 0
+    assert inv.location(session, summer[0])["parent_component_id"] == ws1.id
+    assert {r["label"] for r in inv.bike_setup(session, b)} == {"Winter", "Winter front", "Winter rear"}

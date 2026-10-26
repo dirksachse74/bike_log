@@ -247,13 +247,13 @@ ride's incident count counts groups. Solved / Re-open on the ride = PATCH `incid
 total km from `bike_usage` incl. starting value, hours from recorded ride time, and this calendar year and
 month in the app timezone via `_period`) and `hours` per equipment row (contribution `duration_s`). UI:
 `RideSummaryStats` in pages/Rides.tsx; the parts table is behind "Show details".
-**Bike page layout.** pages/Bikes.tsx `BikeDetailPage`: header card, then tabs (`?tab=` overview |
+**Bike page layout.** pages/Bikes.tsx `BikeDetailPage`: header card (only "Record work done" = LogMaintenance), then tabs (`?tab=` overview |
 rides | incidents | maintenance | costs | history; Rides = `BikeRides`, GET `rides?view=active&bike_id=`,
 a click opens `RideDetailView` (exported from pages/Rides.tsx) in a Sheet). `SetupGroups` folds "Installed now" into `<details
 class="setup-group" data-group=…>` by the category of each top-level part (Drivetrain/Brakes/Controls and
 BATTERY → GROUPSET, Wheels, Cockpit, Contact points, Frame, Electronics, Other); parts mounted on parts stay
 with their root. `ServiceStatus` shows OVERDUE/DUE/DUE_SOON/ATTENTION/SNOOZED, and folds INSUFFICIENT_INFO
-and the rest into `details.task-group`. Incidents tab: GET `bikes/{id}/incidents`
+and the rest into `details.task-group`. `ManageParts` (top of the overview tab) holds the swaps (Swap chain/wheels or wheelset/tire/another part → `SwapPart` picks the installed row, then `ReplaceForm`), Install a part, Add groupset and Group wheels. replace-options gives each spare `mounted` (parts already on it); ReplaceForm leaves children whose slot is taken there unticked (DECISIONS 83). Incidents tab: GET `bikes/{id}/incidents`
 (`incidents.bike_incidents`, open first) rendered by `BikeIncidents` (shared `IncidentRows`; Edit loads
 the choices of the incident's ride). e2e helpers `setupItem`, `openGroups`, `openTaskGroups`, `bikeTab`. UI: components/Incidents.tsx (`RideIncidents`, `IncidentEditor`).
 

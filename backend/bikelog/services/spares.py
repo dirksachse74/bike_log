@@ -124,6 +124,10 @@ def replace_options(session: Session, component_id: int) -> dict:
         row["fit"] = ("VERIFIED" if any(x["bike_id"] == bike_id and x["verified"] for x in compat)
                       else "UNVERIFIED" if any(x["bike_id"] == bike_id for x in compat)
                       else "SAME_PRODUCT" if c.product_id and c.product_id == comp.product_id else "UNKNOWN")
+        # parts already on the spare (a stored wheelset with its own wheels, a spare wheel with its tire):
+        # the dialog does not carry the old part's children into positions that are taken
+        row["mounted"] = [{"component_id": ch.component_id, "label": session.get(Component, ch.component_id).label,
+                           "slot": ch.slot} for ch in _open_children(session, c.id)]
         spares.append(row)
     lines = []
     for line in stock.consumable_stock(session):
@@ -143,16 +147,18 @@ def replace_options(session: Session, component_id: int) -> dict:
             "children": _children_to_carry(session, comp)}
 
 
+def _open_children(session: Session, component_id: int) -> list[Installation]:
+    return list(session.scalars(select(Installation).where(Installation.parent_component_id == component_id,
+                                                           Installation.removed_utc.is_(None),
+                                                           Installation.voided_at.is_(None))
+                                .order_by(Installation.slot)))
+
+
 def _children_to_carry(session: Session, comp) -> list[dict]:
     """Parts mounted on the outgoing part, and whether they move to the new one by default. A part whose
     own rule says it should be replaced now (e.g. a quick link that has served its chains) stays behind."""
-    from sqlalchemy import select
-
-    from bikelog.models import Component, Installation
     out = []
-    for i in session.scalars(select(Installation).where(Installation.parent_component_id == comp.id,
-                                                        Installation.removed_utc.is_(None),
-                                                        Installation.voided_at.is_(None))):
+    for i in _open_children(session, comp.id):
         child = session.get(Component, i.component_id)
         due = [r for r in m.component_status(session, child)
                if r.get("trigger") == "PARENT_COUNT" and r["status"] in ("DUE_SOON", "DUE", "OVERDUE")]

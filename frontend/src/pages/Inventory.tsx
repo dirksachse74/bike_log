@@ -962,8 +962,8 @@ export function ComponentDetailPage() {
                   Replace
                 </button>
               )}
-              <button className={installed ? 'btn' : 'btn btn-primary'} onClick={() => setSheet('log')}>
-                Log maintenance
+              <button className={installed ? 'btn' : 'btn btn-primary'} onClick={() => setSheet('log')} title="Cleaning, lubing, waxing, charging, checks, bleeds, repairs: anything you did to the bike or a part">
+                Record work done
               </button>
               {installed && (
                 <button className="btn" onClick={() => setSheet('remove')}>
@@ -1206,7 +1206,7 @@ export function ComponentDetailPage() {
         )}
       </Card>
       {sheet === 'log' && (
-        <Sheet title={`Log maintenance · ${data.label}`} onClose={close}>
+        <Sheet title={`Record work done · ${data.label}`} onClose={close}>
           <LogMaintenance componentId={data.id} onDone={(msg) => { close(); toast(msg); reload() }} />
         </Sheet>
       )}
