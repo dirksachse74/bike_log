@@ -1104,3 +1104,15 @@ label.chip {
   min-width: 9rem;
   font-weight: 500;
 }
+
+.fix-part {
+  border-top: 1px solid var(--line);
+  padding-top: 0.5rem;
+}
+.fix-done {
+  color: var(--ok);
+}
+.open-incidents h3 {
+  margin: 0.75rem 0 0.25rem;
+  font-weight: 500;
+}

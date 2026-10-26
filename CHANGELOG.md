@@ -8,6 +8,13 @@ UPDATING.md → "Making a release". New entries go under "Unreleased" as work is
 ## Unreleased
 
 ### Added
+- Fix an incident: an open incident has a "Fix" button that asks, for each damaged part, what you did:
+  Replaced (one from stock, a stored spare or a new one; the old part is removed and keeps its km, and
+  stock goes down so the spares check works by itself), Patched / Repaired, or Nothing yet. On the road
+  the fix takes the ride date, at home today's date. When every part is handled the incident is solved;
+  otherwise it stays open and is listed under Upcoming tasks on the Overview. "Undo fix" takes it all back
+  (also via Inventory → History). Tubes can stay stock items; tubes tracked one by one count their patches.
+- Bike page → Manage parts → Swap tube: pick the wheel and take a tube from stock (or a stored or new one).
 - Flat tire: per wheel, say what was damaged: not affected, tube only, or tube and tire (tubeless or
   tubular wheels: the tire). It stays one incident with one or two damaged parts. The form shows the
   spare tubes and tires at home and flags when they are low.

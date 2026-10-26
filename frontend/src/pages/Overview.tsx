@@ -1,9 +1,10 @@
 import { Link } from 'react-router-dom'
 import { Card, Empty, ErrorBox, Loading, StatusBadge, Tag } from '../components/ui'
+import { IncidentRows } from '../components/Incidents'
 import TaskList from '../components/TaskList'
 import { certaintyLabel, km, usageText, when } from '../format'
 import { useApi } from '../hooks'
-import type { Bike, BrakeRow, ChainRow, RideRow, ShoppingItem, SpareCheck, Task } from '../types'
+import type { Bike, BrakeRow, ChainRow, RideIncident, RideRow, ShoppingItem, SpareCheck, Task } from '../types'
 import { ChainStateTag } from './Inventory'
 
 interface Overview {
@@ -17,10 +18,11 @@ interface Overview {
   safety_note: string
   shopping_list: ShoppingItem[]
   spares: SpareCheck[]
+  open_incidents: RideIncident[]
 }
 
 // Upcoming tasks: what is due now stays open; coming soon, snoozed and "needs a first entry" fold away.
-function UpcomingTasks({ tasks, note, reload }: { tasks: Task[]; note: string; reload: () => void }) {
+function UpcomingTasks({ tasks, incidents, note, reload }: { tasks: Task[]; incidents: RideIncident[]; note: string; reload: () => void }) {
   const now = tasks.filter((t) => ['OVERDUE', 'DUE', 'ATTENTION'].includes(t.status))
   const soon = tasks.filter((t) => t.status === 'DUE_SOON')
   const snoozed = tasks.filter((t) => t.status === 'SNOOZED')
@@ -36,7 +38,13 @@ function UpcomingTasks({ tasks, note, reload }: { tasks: Task[]; note: string; r
     )
   return (
     <Card title="Upcoming tasks" className="span-2">
-      {now.length ? <TaskList tasks={now} onChange={reload} /> : <p className="small muted">Nothing due right now.</p>}
+      {now.length ? <TaskList tasks={now} onChange={reload} /> : incidents.length === 0 && <p className="small muted">Nothing due right now.</p>}
+      {incidents.length > 0 && (
+        <div className="open-incidents">
+          <h3 className="small muted">Open incidents</h3>
+          <IncidentRows incidents={incidents} bikeName={null} showRide showBike onChanged={reload} />
+        </div>
+      )}
       {fold('soon', 'Coming up soon', `${soon.length} reminder${soon.length === 1 ? '' : 's'}`, soon)}
       {fold('snoozed', 'Snoozed', `${snoozed.length}`, snoozed)}
       {fold('first', 'Need a first entry', `${first.length} reminders start counting once you log the last time it was done`, first)}
@@ -97,7 +105,7 @@ export default function OverviewPage() {
   const spare = data.chains.filter((c) => c.location.state !== 'INSTALLED' && c.state !== 'RETIRED')
   return (
     <div className="grid">
-      <UpcomingTasks tasks={data.queue} note={data.safety_note} reload={reload} />
+      <UpcomingTasks tasks={data.queue} incidents={data.open_incidents} note={data.safety_note} reload={reload} />
       <ShoppingCard items={data.shopping_list} spares={data.spares} />
       <Card title="Bikes">
         <ul className="list">

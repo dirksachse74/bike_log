@@ -80,6 +80,10 @@ def summary(session: Session, ws_id: int) -> dict:
                      "event_id": e.id, "cost_cents": e.cost_cents, "voided": bool(e.voided_at)})
         if not e.voided_at:
             cost += e.cost_cents or 0
+    from bikelog.models import JournalEntry
+    for j in session.scalars(select(JournalEntry).where(JournalEntry.repair_session_id == ws.id)):
+        rows.append({"kind": "INCIDENT_FIX", "text": f"Incident fixed: {_label(session, j.component_id) or j.affected}: "
+                     f"{j.repair_text}"})
     return {"id": ws.id, "uuid": ws.uuid, "performed_at": ws.performed_at, "bike_id": ws.bike_id,
             "title": ws.title, "notes": ws.notes, "undone_at": ws.undone_at, "undo_reason": ws.undo_reason,
             "transactions": rows, "cost_cents": cost}
@@ -150,6 +154,8 @@ def undo(session: Session, ws_id: int, reason: str | None = None) -> dict:
     for b in session.scalars(select(PurchaseBundle).where(PurchaseBundle.work_session_id == ws.id,
                                                           PurchaseBundle.voided_at.is_(None))):
         b.voided_at, b.void_reason = now, f"undone: {reason}"
+    from bikelog.services import repairs
+    repairs.clear_for_session(session, ws.id)          # an incident fixed in this session is open again
     ws.undone_at, ws.undo_reason = now, reason
     session.flush()
     allocation.rebuild_all(session, settings.tz(session))

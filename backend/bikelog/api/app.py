@@ -36,6 +36,7 @@ from bikelog.services import bundles as bundles_svc
 from bikelog.services import demo, diagnostics, groupsets, imports, journal, product_import, spares, stock
 from bikelog.services import worksessions as ws_svc
 from bikelog.services import incidents as incidents_svc
+from bikelog.services import repairs as repairs_svc
 from bikelog.services import inventory as inv
 from bikelog.services import maintenance as m
 from bikelog.services import rides as rides_svc
@@ -294,6 +295,26 @@ class IncidentIn(Body):
     affected: list[str] = []
     text: str | None = None
     resolved_on: str | None = None
+
+
+class FixPart(Body):
+    entry_id: int
+    action: str | None = None              # REPLACED, REPAIRED or NONE
+    source: dict | None = None             # {kind: spare|stock|same|new|untracked, id?, label?}
+    old_outcome: str | None = None
+
+
+class FixIn(Body):
+    at: str
+    parts: list[FixPart]
+    note: str | None = None
+
+
+class PositionSwapIn(Body):
+    wheel: str
+    damage: str = "TUBE"
+    at: str
+    source: dict
 
 
 class IncidentPatch(Body):
@@ -589,7 +610,8 @@ def create_app(factory: sessionmaker[Session], paths: DataPaths, *, token: str |
         return {"bikes": bikes, "queue": m.queue(s), "chains": m.chain_overview(s), "brakes": m.brake_overview(s),
                 "recent_rides": recent, "flagged_rides": flagged[:20], "flagged_count": len(flagged),
                 "safety_note": m.SAFETY_NOTE, "demo": demo.is_demo(s),
-                "shopping_list": stock.shopping_list(s), "spares": stock.spare_check(s)}
+                "shopping_list": stock.shopping_list(s), "spares": stock.spare_check(s),
+                "open_incidents": incidents_svc.all_incidents(s, open_only=True)}
 
     # ------------------------------------------------------------ bikes
 
@@ -1014,6 +1036,39 @@ def create_app(factory: sessionmaker[Session], paths: DataPaths, *, token: str |
     def incident_restore(group: str, s: Session = Depends(db)):
         incidents_svc.restore(s, group)
         return {"group": group, "removed": False}
+
+    @app.get("/api/incidents/{group}/fix-options")
+    def incident_fix_options(group: str, s: Session = Depends(db)):
+        return repairs_svc.fix_options(s, group)
+
+    @app.post("/api/incidents/{group}/fix")
+    def incident_fix(group: str, body: FixIn, s: Session = Depends(db), op_id: str | None = OpId):
+        return run_once(s, op_id, "incident.fix", lambda: repairs_svc.fix(
+            s, group, at=body.at, note=body.note, parts=[p.model_dump() for p in body.parts]))
+
+    @app.post("/api/incidents/{group}/undo-fix")
+    def incident_undo_fix(group: str, s: Session = Depends(db)):
+        return repairs_svc.undo_fix(s, group)
+
+    @app.get("/api/bikes/{bike_id}/position-options")
+    def bike_position_options(bike_id: int, wheel: str, damage: str = "TUBE", s: Session = Depends(db)):
+        inv.get_bike(s, bike_id)
+        if wheel not in repairs_svc.WHEEL_NAMES or damage not in repairs_svc.DAMAGE_TYPES:
+            raise DomainError("wheel must be FRONT_WHEEL or REAR_WHEEL, damage TUBE or TIRE")
+        return repairs_svc.position_options(s, bike_id, wheel, damage)
+
+    @app.post("/api/bikes/{bike_id}/swap-position")
+    def bike_swap_position(bike_id: int, body: PositionSwapIn, s: Session = Depends(db), op_id: str | None = OpId):
+        def go():
+            b = inv.get_bike(s, bike_id)
+            if body.wheel not in repairs_svc.WHEEL_NAMES or body.damage not in repairs_svc.DAMAGE_TYPES:
+                raise DomainError("wheel must be FRONT_WHEEL or REAR_WHEEL, damage TUBE or TIRE")
+            what = "tube" if body.damage == "TUBE" else "tire"
+            w = ws_svc.begin(s, at=body.at, bike_id=b.id, title=f"Swap {what}")
+            text = repairs_svc.replace_at_position(s, bike_id=b.id, wheel=body.wheel, damage=body.damage, at=body.at,
+                                                   source=body.source, work_session_id=w.id, reason=f"swap {what}")
+            return {"work_session_id": w.id, "text": f"{repairs_svc.WHEEL_NAMES[body.wheel].capitalize()} {what}: {text}"}
+        return run_once(s, op_id, "position.swap", go)
 
     @app.post("/api/journal", status_code=201)
     def journal_add(body: JournalIn, s: Session = Depends(db), op_id: str | None = OpId):

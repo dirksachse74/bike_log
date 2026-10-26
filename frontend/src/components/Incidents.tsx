@@ -11,6 +11,7 @@ import type {
   RideIncident,
   SpareCheck,
 } from "../types";
+import { FixForm } from "./Repairs";
 import { Empty, ErrorBox, Field, FormError, Loading, Tag } from "./ui";
 
 // An incident (flat, shifting problem, empty battery, numb hands ...) is stored as one journal issue per
@@ -250,7 +251,7 @@ type Choices = Record<string, IncidentChoice[]>;
 
 // The incident rows with Solved / Re-open, Edit and Remove, plus the removed ones with Restore. Used on the
 // ride (choices already loaded) and on the bike (choices of the incident's ride are loaded on Edit).
-function IncidentRows({
+export function IncidentRows({
   incidents,
   choices,
   bikeName,
@@ -270,12 +271,14 @@ function IncidentRows({
     group: string;
     choices: Choices;
   } | null>(null);
+  const [fixing, setFixing] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   async function run(fn: () => Promise<unknown>) {
     setErr(null);
     try {
       await fn();
       setEditing(null);
+      setFixing(null);
       onChanged();
     } catch (e) {
       setErr((e as Error).message);
@@ -315,7 +318,22 @@ function IncidentRows({
       {live.length > 0 && (
         <ul className="incident-list">
           {live.map((r) =>
-            editing?.group === r.group ? (
+            fixing === r.group ? (
+              <li key={r.group}>
+                <div className="small">
+                  <strong>Fix: {r.label.toLowerCase()}</strong> ·{" "}
+                  {r.affected.map((a) => a.label).join(" + ")}
+                </div>
+                <FixForm
+                  group={r.group}
+                  onCancel={() => setFixing(null)}
+                  onDone={() => {
+                    setFixing(null);
+                    onChanged();
+                  }}
+                />
+              </li>
+            ) : editing?.group === r.group ? (
               <li key={r.group}>
                 <IncidentEditor
                   bikeName={bikeName}
@@ -351,6 +369,14 @@ function IncidentRows({
                     ))}
                   </div>
                   {r.text && <div className="small">{r.text}</div>}
+                  {r.affected
+                    .filter((a) => a.repair)
+                    .map((a) => (
+                      <div key={a.key} className="small fix-done">
+                        ✓ {a.label}: {a.repair_text}
+                        {a.repaired_on && a.repaired_on !== r.on ? ` (${when(a.repaired_on)})` : ""}
+                      </div>
+                    ))}
                   {showRide && r.ride_id && (
                     <div className="small muted">
                       {showBike && r.bike ? `${r.bike} · ` : ""}
@@ -372,10 +398,22 @@ function IncidentRows({
                   )}
                 </div>
                 <div className="incident-actions">
+                  {r.open && r.fixable && (
+                    <button
+                      className="btn btn-small btn-primary"
+                      title="Say what you did: replaced, patched, or nothing yet"
+                      onClick={() => {
+                        setEditing(null);
+                        setFixing(r.group);
+                      }}
+                    >
+                      Fix
+                    </button>
+                  )}
                   {r.open ? (
                     <>
                       <button
-                        className="btn btn-small btn-primary"
+                        className={`btn btn-small ${r.fixable ? "" : "btn-primary"}`}
                         onClick={() =>
                           run(() =>
                             api.patch(`/incidents/${r.group}`, {
@@ -402,6 +440,20 @@ function IncidentRows({
                         Re-open
                       </button>
                     </>
+                  )}
+                  {r.has_fix && (
+                    <button
+                      className="btn btn-small"
+                      title="Takes back the part change, stock use or patch, and opens the incident again"
+                      onClick={() =>
+                        run(async () => {
+                          await api.post(`/incidents/${r.group}/undo-fix`, {});
+                          toast(`Fix undone. ${r.label} is open again.`);
+                        })
+                      }
+                    >
+                      Undo fix
+                    </button>
                   )}
                   {r.ride_id && (
                     <button className="btn btn-small" onClick={() => edit(r)}>

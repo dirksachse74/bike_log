@@ -12,6 +12,7 @@ Status key: ✅ done and tested · 🟡 done, not verified where it matters · �
 - ✅ Products vs physical components; install/remove/replace/reinstall with effective dates.
 - ✅ Conflicting installations refused (service and database triggers); lifetime usage kept.
 - ✅ Replacement workflow with removed-item outcomes, move/swap positions, undo per work session.
+- ✅ Fix button on incidents (replaced from stock/spare/new, patched, nothing yet; auto-solve; Undo fix) and Manage parts → Swap tube; tubes as stock items.
 - ✅ Flat tire per wheel: tube only / tube and tire (one incident); spares to keep (2 tubes, 1 tire, editable) on the shopping list; Overview = Upcoming tasks + Shopping list, rest folded.
 - ✅ Bike page "Manage parts": Swap chain / wheels or wheelset / tire / another part (shortcuts to Replace), Install a part, Add groupset, Group wheels; a stored wheelset keeps its own wheels on a swap.
 

@@ -397,6 +397,23 @@ async function bikeTab(page, name) {
   await sheet.getByRole('button', { name: 'Restore' }).click()
   await sheet.locator('.incident-row').filter({ hasText: 'glass shard' }).getByRole('button', { name: 'Remove' }).waitFor()
   check('incident removed and restored (never deleted)', true)
+  // fix: the rear tube replaced with one from stock on the road; undo brings the tube back
+  {
+    const token = await page.locator('meta[name="bikelog-token"]').getAttribute('content')
+    const line = await (await page.request.post(BASE + 'api/consumables', { headers: { 'X-BikeLog-Token': token }, data: { name: 'Conti Race 28', component_type: 'INNER_TUBE', tracking_mode: 'COUNTED' } })).json()
+    await page.request.post(BASE + `api/consumables/${line.id}/txn`, { headers: { 'X-BikeLog-Token': token }, data: { kind: 'PURCHASE', qty: 3, on: '2026-10-01' } })
+  }
+  await sheet.locator('.incident-row').filter({ hasText: 'glass shard' }).getByRole('button', { name: 'Fix' }).click()
+  await sheet.getByRole('radiogroup', { name: 'Fix Rear tube' }).getByText('Replaced').click()
+  await sheet.locator('.fix-form .pick').filter({ hasText: 'One from stock: Conti Race 28' }).waitFor()
+  await page.screenshot({ path: path.join(OUT, '09g-fix-form.png'), fullPage: true })
+  await sheet.getByRole('button', { name: 'Save fix' }).click()
+  const fixedRow = sheet.locator('.incident-row').filter({ hasText: 'glass shard' })
+  await fixedRow.getByText(/Rear tube: replaced with one from stock \(Conti Race 28, 2 left\)/).waitFor()
+  check('Fix: rear tube replaced from stock, incident solved', /solved/.test(await fixedRow.innerText()), (await fixedRow.innerText()).replace(/\s+/g, ' '))
+  await fixedRow.getByRole('button', { name: 'Undo fix' }).click()
+  await fixedRow.getByText('open', { exact: true }).waitFor()
+  check('Undo fix opens the incident again', (await fixedRow.getByRole('button', { name: 'Fix' }).count()) === 1)
   await page.screenshot({ path: path.join(OUT, '09b-ride-incidents.png'), fullPage: true })
   // distance and time: short summary; the parts list unfolds on "Show details"
   const stats = await sheet.locator('.ride-stats').innerText()
@@ -554,6 +571,12 @@ async function bikeTab(page, name) {
     const wheelsOn = await page.locator('.sheet .check input').count()
     check('Swap wheelset opens the replace dialog for the wheelset, its wheels ticked to move to a new one', carried > 0 && carried === wheelsOn, `${carried}/${wheelsOn}`)
     await page.locator('.sheet').getByRole('button', { name: 'Close' }).click()
+    await page.getByRole('button', { name: 'Swap tube' }).click()
+    await page.locator('.sheet').getByText('Rear wheel').click()
+    await page.locator('.sheet .pick').filter({ hasText: 'One from stock' }).waitFor()
+    await page.locator('.sheet').getByRole('button', { name: 'Swap tube' }).click()
+    await page.locator('.toast').filter({ hasText: 'Rear tube: replaced with one from stock (Conti Race 28, 2 left)' }).waitFor()
+    check('Manage parts → Swap tube takes one from stock', true)
   } else {
     check('wheels grouped into a wheelset', false, 'button not shown')
   }

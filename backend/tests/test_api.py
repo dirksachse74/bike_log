@@ -204,3 +204,31 @@ def test_incidents_over_http(client):
     assert row["open"] is True and len(row["affected"]) == 2
     assert client.post(f"/api/incidents/{group}/remove").json()["removed"] is True
     assert client.post(f"/api/incidents/{group}/restore").json()["removed"] is False
+
+
+def test_incident_fix_and_swap_tube_over_http(client):
+    b = client.post("/api/bikes", json={"name": "TIME NXR"}).json()
+    line = client.post("/api/consumables", json={"name": "Conti Race 28", "component_type": "INNER_TUBE",
+                                                 "tracking_mode": "COUNTED"})
+    assert line.status_code == 201, line.text
+    lid = line.json()["id"]
+    assert client.post(f"/api/consumables/{lid}/txn", json={"kind": "PURCHASE", "qty": 2, "on": "2026-09-01"}).status_code == 201
+    r = client.post("/api/rides", json={"bike_id": b["id"], "when": "2026-09-10", "distance": 50}).json()
+    rid = r["result"]["id"] if "result" in r else r["id"]
+    group = client.post(f"/api/rides/{rid}/incidents", json={"incident_type": "FLAT", "affected": ["REAR_TUBE"]}).json()["group"]
+    assert client.get("/api/overview").json()["open_incidents"][0]["group"] == group
+    opts = client.get(f"/api/incidents/{group}/fix-options").json()
+    part = opts["parts"][0]
+    assert opts["ride_date"] == "2026-09-10" and part["options"]["stock"][0]["id"] == lid
+    fixed = client.post(f"/api/incidents/{group}/fix", json={"at": "2026-09-10", "parts": [
+        {"entry_id": part["entry_id"], "action": "REPLACED", "source": {"kind": "stock", "id": lid}}]})
+    assert fixed.status_code == 200, fixed.text
+    assert fixed.json()["result"]["solved"] if "result" in fixed.json() else fixed.json()["solved"]
+    assert client.get("/api/overview").json()["open_incidents"] == []
+    assert client.post(f"/api/incidents/{group}/undo-fix").status_code == 200
+    swap = client.post(f"/api/bikes/{b['id']}/swap-position", json={
+        "wheel": "FRONT_WHEEL", "damage": "TUBE", "at": "2026-09-12", "source": {"kind": "stock", "id": lid}})
+    assert swap.status_code == 200, swap.text
+    body = swap.json().get("result", swap.json())
+    assert "Front tube: replaced with one from stock" in body["text"] and "1 left" in body["text"]
+    assert client.get(f"/api/bikes/{b['id']}/position-options?wheel=REAR_WHEEL&damage=TUBE").json()["stock"][0]["qty"] == 1

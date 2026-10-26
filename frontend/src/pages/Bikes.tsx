@@ -8,6 +8,7 @@ import ChangeLog from '../components/ChangeLog'
 import Journal from '../components/Journal'
 import LogMaintenance from '../components/LogMaintenance'
 import { MoveForm, RemoveForm, ReplaceForm } from '../components/PartChange'
+import { SwapTube } from '../components/Repairs'
 import TaskList from '../components/TaskList'
 import { PressureNote, TireSetupSelect } from '../components/TireSetup'
 import { Card, ChangeNotice, Empty, ErrorBox, Field, FormError, Loading, Sheet, StatusBadge, Tag } from '../components/ui'
@@ -481,7 +482,18 @@ export function BikeDetailPage() {
       )}
       {sheet?.kind === 'swap' && (
         <Sheet title={`${sheet.title} · ${data.name}`} onClose={() => setSheet(null)}>
-          <SwapPart rows={sheet.rows} setup={data.setup} onDone={done} />
+          {sheet.title === 'Swap tube' ? (
+            <SwapTube
+              bikeId={data.id}
+              onDone={(text) => {
+                setSheet(null)
+                toast(text)
+                reload()
+              }}
+            />
+          ) : (
+            <SwapPart rows={sheet.rows} setup={data.setup} onDone={done} />
+          )}
         </Sheet>
       )}
       {sheet?.kind === 'log' && (
@@ -514,6 +526,7 @@ function ManageParts({ setup, onSwap, onInstall, onGroupset, onWheelset }: { set
       ? ['Swap wheelset', 'Swap wheelset', wheelsets, '']
       : ['Swap wheels', 'Swap a wheel', setup.filter(isWheel), 'No wheels installed'],
     ['Swap tire', 'Swap a tire', of('TIRE'), 'No tires installed'],
+    ['Swap tube', 'Swap tube', [], ''],
     ['Swap another part', 'Swap a part', setup, 'Nothing installed yet'],
   ]
   return (
@@ -523,7 +536,7 @@ function ManageParts({ setup, onSwap, onInstall, onGroupset, onWheelset }: { set
           <h3 className="small muted">Swap what is on the bike</h3>
           <div className="chips">
             {swaps.map(([label, title, rows, none]) => (
-              <button key={label} className="btn" disabled={rows.length === 0} title={rows.length === 0 ? none : undefined} onClick={() => onSwap(title, rows)}>
+              <button key={label} className="btn" disabled={rows.length === 0 && label !== 'Swap tube'} title={rows.length === 0 ? none || undefined : undefined} onClick={() => onSwap(title, rows)}>
                 {label}
               </button>
             ))}

@@ -170,6 +170,12 @@ class JournalEntry(Base):
     # What was affected when it is not a recorded part: a body area ("Numb hands") or a position whose part
     # is not in Bike Log ("Front tire"). NULL with no component_id = the whole bike.
     affected: Mapped[str | None] = mapped_column(Text)
+    # What was done about this affected part (incidents): REPLACED or REPAIRED (patched, adjusted); NULL =
+    # nothing yet. The work session holds the part change / stock use / patch event and undoes the fix.
+    repair: Mapped[str | None] = mapped_column(String(12))
+    repair_text: Mapped[str | None] = mapped_column(Text)
+    repaired_on: Mapped[str | None] = mapped_column(String(10))
+    repair_session_id: Mapped[int | None] = mapped_column(ForeignKey("work_session.id"))
     created_at: Mapped[str] = mapped_column(String(20), default=utc_now)
     updated_at: Mapped[str | None] = mapped_column(String(20))
     voided_at: Mapped[str | None] = mapped_column(String(20))

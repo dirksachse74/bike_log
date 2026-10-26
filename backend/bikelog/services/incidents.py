@@ -235,11 +235,14 @@ def _group_row(session: Session, rows: list[JournalEntry], *, removed: bool) -> 
     first = rows[0]
     ride = session.get(Ride, first.ride_id) if first.ride_id else None
     opts = choices(session, ride, first.incident_type) if ride is not None else []
+    from bikelog.services import repairs
     affected = []
+    fixable = False
     for e in rows:
-        comp = session.get(Component, e.component_id) if e.component_id else None
-        affected.append({"key": _key(e, opts), "component_id": e.component_id,
-                         "label": comp.label if comp else (e.affected or "Whole bike")})
+        d = repairs.describe(session, e)
+        fixable = fixable or (d["kind"] in ("PART", "POSITION") and not e.repair)
+        affected.append({"key": _key(e, opts), "component_id": e.component_id, "label": d["label"],
+                         "repair": e.repair, "repair_text": e.repair_text, "repaired_on": e.repaired_on})
     detail = None if first.text == INCIDENT_TYPES.get(first.incident_type) else first.text
     bike = session.get(Bike, first.bike_id) if first.bike_id else None
     return {"group": first.incident_group, "incident_type": first.incident_type,
@@ -248,7 +251,8 @@ def _group_row(session: Session, rows: list[JournalEntry], *, removed: bool) -> 
             "affected": affected, "removed": removed, "ride_id": first.ride_id,
             "ride_label": journal._ride_label(ride), "ride_conditions": ride.conditions if ride else None,
             "bike_id": first.bike_id, "bike": bike.name if bike else None,
-            "edited": any(e.updated_at for e in rows)}
+            "edited": any(e.updated_at for e in rows),
+            "fixable": fixable and not removed, "has_fix": any(e.repair_session_id for e in rows)}
 
 
 def _grouped(session: Session, q) -> list[dict]:

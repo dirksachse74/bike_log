@@ -116,9 +116,11 @@ export interface RideIncident {
   text: string | null
   resolved_on: string | null
   open: boolean
-  affected: { key: string; component_id: number | null; label: string }[]
+  affected: { key: string; component_id: number | null; label: string; repair: 'REPLACED' | 'REPAIRED' | null; repair_text: string | null; repaired_on: string | null }[]
   removed: boolean
   edited: boolean
+  fixable: boolean
+  has_fix: boolean
   ride_id: number | null
   ride_label: string | null
   ride_conditions: 'DRY' | 'WET' | null
@@ -499,4 +501,35 @@ export interface GroupsetPlan {
   items: GroupsetPlanItem[]
   counts: { INSTALL: number; REPLACE: number; SPARE: number }
   new_products: number
+}
+
+export interface FixSourceOptions {
+  replace: boolean
+  stock: { id: number; name: string; unit: string; qty: number }[]
+  spares: { id: number; label: string }[]
+  suggested_outcome?: string
+  outcomes?: { code: string; label: string }[]
+  wheel_label?: string | null
+  installed_component_id?: number | null
+  tracks_new?: boolean
+}
+
+export interface FixPartOption {
+  entry_id: number
+  label: string
+  component_id: number | null
+  kind: 'PART' | 'POSITION' | 'OTHER'
+  damage: 'TUBE' | 'TIRE' | null
+  repair: string | null
+  repair_text: string | null
+  repair_label?: string
+  options: FixSourceOptions | null
+}
+
+export interface FixOptions {
+  group: string
+  label: string
+  ride_date: string
+  bike_id: number | null
+  parts: FixPartOption[]
 }

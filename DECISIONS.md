@@ -276,6 +276,15 @@ you disagree. Dates are 2026-10-24 unless noted.
 86. **Overview shows what to act on and folds the rest**: Upcoming tasks keeps OVERDUE/DUE/ATTENTION
     open and folds DUE_SOON, SNOOZED and INSUFFICIENT_INFO; chains, brakes and recent rides are one folded
     line each.
+87. **Incident = what happened, repair = what you did** (Dirk 2026-10-26): repairs are stored per affected
+    entry (journal_entry.repair REPLACED/REPAIRED, repair_text, repaired_on, repair_session_id; migration
+    0012). Each fix is one work session holding the replace, stock use, install or TUBE_PATCH event;
+    undoing that session (Undo fix, or Inventory → History) clears the repair and reopens the incident.
+    The incident is solved, on the latest fix date, only when every affected entry has a repair.
+88. **Tubes default to stock items**: replacing an untracked tube position uses one unit of a counted
+    INNER_TUBE stock line (no new part). Tires taken from stock, stored spares and newly bought tires are
+    installed on the wheel at that position when the wheel is recorded. Body areas and whole-bike
+    incidents have no Fix; Solved stays for those.
 
 ## Repository
 27. Pushed only to the feature branch `claude/project-thread-6y3mmh` of the private repository. Demo
