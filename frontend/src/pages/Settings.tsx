@@ -138,6 +138,7 @@ export default function SettingsPage() {
           </div>
         </div>
       </Card>
+      <SpareMinimums />
       <Card title="Import rides (CSV)">
         <p className="small">
           Bike Log CSV: columns <code>source_id, date, distance_km</code> (or <code>distance_mi</code>), optional <code>duration_min, name, bike, sport_type, trainer</code>.{' '}
@@ -230,5 +231,79 @@ export default function SettingsPage() {
       <FreshStart onChanged={backups.reload} />
       <Diagnostics />
     </div>
+  )
+}
+
+// How many spares of a part type to keep at home (default 2 tubes, 1 tire). Below that the type goes on
+// the shopping list (Overview and Inventory). Counted stock and stored individual spares both count.
+function SpareMinimums() {
+  const { meta, reloadMeta, toast } = useApp()
+  const parse = (): [string, string][] => {
+    try {
+      return Object.entries(JSON.parse(meta.settings.spare_minimums || '{}') as Record<string, number>).map(([k, v]) => [k, String(v)])
+    } catch {
+      return []
+    }
+  }
+  const [rows, setRows] = useState<[string, string][]>(parse)
+  const [add, setAdd] = useState('')
+  const [err, setErr] = useState<string | null>(null)
+  const name = (code: string) => meta.component_types.find((t) => t.code === code)?.name ?? code
+  async function save() {
+    setErr(null)
+    const data: Record<string, number> = {}
+    for (const [k, v] of rows) {
+      const n = Number(v || '0')
+      if (!Number.isInteger(n) || n < 0) return setErr(`Enter a whole number for ${name(k)}.`)
+      data[k] = n
+    }
+    try {
+      await api.patch('/settings', { spare_minimums: JSON.stringify(data) })
+      reloadMeta()
+      toast('Spares to keep saved.')
+    } catch (e) {
+      setErr((e as Error).message)
+    }
+  }
+  return (
+    <Card title="Spares to keep">
+      <p className="small muted">When you have fewer spares than this, the part goes on the shopping list. 0 turns the check off.</p>
+      <div className="form">
+        {rows.map(([k, v], i) => (
+          <Field key={k} label={name(k)}>
+            <input
+              inputMode="numeric"
+              aria-label={`Spares to keep: ${name(k)}`}
+              value={v}
+              onChange={(e) => setRows(rows.map((r, j) => (j === i ? [k, e.target.value] : r)))}
+            />
+          </Field>
+        ))}
+        <Field label="Add a part type">
+          <select
+            value={add}
+            onChange={(e) => {
+              if (e.target.value) setRows([...rows, [e.target.value, '1']])
+              setAdd('')
+            }}
+          >
+            <option value="">Choose…</option>
+            {meta.component_types
+              .filter((t) => !rows.some(([k]) => k === t.code))
+              .map((t) => (
+                <option key={t.code} value={t.code}>
+                  {t.name}
+                </option>
+              ))}
+          </select>
+        </Field>
+        <FormError error={err} />
+        <div className="form-actions">
+          <button className="btn btn-primary" onClick={save}>
+            Save spares to keep
+          </button>
+        </div>
+      </div>
+    </Card>
   )
 }

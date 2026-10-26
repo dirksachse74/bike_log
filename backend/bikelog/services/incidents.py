@@ -10,9 +10,9 @@ from __future__ import annotations
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from bikelog.catalog import COMPONENT_TYPES, INCIDENT_OPTIONS, INCIDENT_TYPES, WHOLE_BIKE, IncidentOption
+from bikelog.catalog import COMPONENT_TYPES, INCIDENT_OPTIONS, INCIDENT_TYPES, WHEEL_TYPES, WHOLE_BIKE, IncidentOption
 from bikelog.models import Bike, Component, Installation, JournalEntry, Ride, UsageContribution, new_uuid
-from bikelog.services import journal
+from bikelog.services import journal, settings
 from bikelog.services.errors import DomainError, NotFound
 
 REMOVED = "incident removed"            # void reason of a removed incident (Restore brings these back)
@@ -78,7 +78,10 @@ def choices(session: Session, ride: Ride, incident_type: str) -> list[dict]:
                           "affected": None, "recorded": True} for p in parts]
     out: list[dict] = []
     seen: set[int] = set()
+    no_tube = _wheels_without_tube(session, parts) if incident_type == "FLAT" else set()
     for opt in opts:
+        if "INNER_TUBE" in opt.types and set(opt.within) & no_tube:
+            continue
         if opt.key == WHOLE_BIKE:
             out.append({**bike, "label": opt.label})
             continue
@@ -94,6 +97,33 @@ def choices(session: Session, ride: Ride, incident_type: str) -> list[dict]:
         if not found:        # not recorded in Bike Log: the position itself can still be picked
             out.append({"key": opt.key, "label": opt.label, "component_id": None, "affected": opt.label,
                         "recorded": False})
+    if incident_type == "FLAT":      # the form asks per wheel: tube only, or tube and tire
+        for o, opt in zip(out, _flat_opts(out, opts, parts)):
+            o["wheel"], o["damage"] = opt.within[0], "TUBE" if "INNER_TUBE" in opt.types else "TIRE"
+    return out
+
+
+def _flat_opts(out: list[dict], opts, parts: list[dict]) -> list:
+    """The catalog option each FLAT choice came from (by part type and position, or by the position name)."""
+    by_id = {p["component_id"]: p for p in parts}
+    res = []
+    for o in out:
+        if o["component_id"] is not None:
+            res.append(next(opt for opt in opts if _matches(opt, by_id[o["component_id"]])))
+        else:
+            res.append(next(opt for opt in opts if opt.key == o["key"]))
+    return res
+
+
+def _wheels_without_tube(session: Session, parts: list[dict]) -> set[str]:
+    """Wheel positions run tubeless or tubular that day: a flat there is the tire, no tube to pick."""
+    out = set()
+    for p in parts:
+        if p["component_type"] in WHEEL_TYPES:
+            c = session.get(Component, p["component_id"])
+            setup = c.tire_setup or settings.get(session, "default_tire_setup")
+            if setup in ("TUBELESS", "TUBULAR"):
+                out.update(s for s in p["slots"] if s in WHEEL_TYPES)
     return out
 
 

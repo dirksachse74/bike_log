@@ -33,6 +33,7 @@ def test_flat_on_a_ride_shows_on_ride_part_bike_and_incident_list(session):
     assert [x["id"] for x in journal.incidents(session, bike_id=b.id)] == [e.id]
     assert journal.incidents(session, incident_type="CRASH") == []
     assert rides_svc.ride_row(session, r)["incidents"] == 1
+    assert next(x for x in rides_svc.list_rides(session) if x["id"] == r.id)["incidents"] == 1   # Rides list Notes
     # fixed on the road: resolved, no longer in "open only"
     journal.update(session, e.id, resolved_on="2026-10-20")
     assert journal.incidents(session, open_only=True) == []
@@ -92,8 +93,12 @@ def test_flat_offers_front_and_rear_tire_only(session):
     b, p = setup_bike(session)
     r = ride(session, b, "2026-09-10", 60)
     opts = inc.choices(session, r, "FLAT")
-    assert labels(opts) == ["Front tire: GP5000 front", "Rear tire: GP5000 rear"]
-    assert [o["component_id"] for o in opts] == [p["ft"].id, p["rt"].id]
+    # per wheel the tube (not recorded here: offered by name) and the tire; the form asks "tube only" or
+    # "tube and tire" and turns the answer into these choices
+    assert labels(opts) == ["Front tube", "Front tire: GP5000 front", "Rear tube", "Rear tire: GP5000 rear"]
+    assert [o["component_id"] for o in opts] == [None, p["ft"].id, None, p["rt"].id]
+    assert [(o["wheel"], o["damage"]) for o in opts] == [("FRONT_WHEEL", "TUBE"), ("FRONT_WHEEL", "TIRE"),
+                                                         ("REAR_WHEEL", "TUBE"), ("REAR_WHEEL", "TIRE")]
     shifting = labels(inc.choices(session, r, "SHIFTING"))
     assert shifting[:2] == ["Front derailleur: FD-R8150", "Rear derailleur: RD-R8150"]
     assert "Shifters" in shifting                    # not recorded: offered by name
@@ -109,7 +114,7 @@ def test_flat_without_tires_recorded_offers_the_positions(session):
     b = bike(session)
     r = ride(session, b, "2026-09-10", 60)
     opts = inc.choices(session, r, "FLAT")
-    assert labels(opts) == ["Front tire", "Rear tire"] and not any(o["recorded"] for o in opts)
+    assert labels(opts) == ["Front tube", "Front tire", "Rear tube", "Rear tire"] and not any(o["recorded"] for o in opts)
     group = inc.log(session, r.id, incident_type="FLAT", affected=["FRONT_TIRE", "REAR_TIRE"], text="glass")
     row = inc.ride_incidents(session, r.id)[0]
     assert row["group"] == group and [a["label"] for a in row["affected"]] == ["Front tire", "Rear tire"]
@@ -198,7 +203,7 @@ def test_flat_on_tire_and_tube_is_one_incident_everywhere(session):
     tube = part(session, "INNER_TUBE", "tube front")
     inv.install(session, tube.id, at="2026-09-01", parent_component_id=p["fw"].id)
     r = ride(session, b, "2026-09-10", 60)
-    keys = [o["key"] for o in inc.choices(session, r, "FLAT") if o["label"].startswith("Front tire")]
+    keys = [o["key"] for o in inc.choices(session, r, "FLAT") if o["wheel"] == "FRONT_WHEEL"]
     assert len(keys) == 2                                   # the tire and the tube
     inc.log(session, r.id, incident_type="FLAT", affected=keys, text="cut tire, punctured tube")
     assert len(inc.ride_incidents(session, r.id)) == 1
@@ -208,3 +213,24 @@ def test_flat_on_tire_and_tube_is_one_incident_everywhere(session):
     assert len(inc.all_incidents(session, component_id=tube.id)[0]["affected"]) == 2
     assert inc.all_incidents(session, open_only=True)[0]["bike"] == "TIME NXR"
     assert rides_svc.ride_row(session, r)["incidents"] == 1
+    assert next(x for x in rides_svc.list_rides(session) if x["id"] == r.id)["incidents"] == 1   # Rides list Notes
+
+
+def test_flat_tube_only_or_tube_and_tire_is_one_incident(session):
+    """Dirk: a flat is the tube only, or the tube and the tire; one incident with one or two damaged parts."""
+    b, p = setup_bike(session)
+    r = ride(session, b, "2026-09-10", 60)
+    opts = {o["label"]: o["key"] for o in inc.choices(session, r, "FLAT")}
+    inc.log(session, r.id, incident_type="FLAT", affected=[opts["Rear tube"]], text="thorn")
+    inc.log(session, r.id, incident_type="FLAT", affected=[opts["Front tube"], opts["Front tire: GP5000 front"]],
+            text="cut tire")
+    rows = sorted(inc.ride_incidents(session, r.id), key=lambda x: len(x["affected"]))
+    assert [[a["label"] for a in x["affected"]] for x in rows] == [["Rear tube"], ["Front tube", "GP5000 front"]]
+    assert next(x for x in rides_svc.list_rides(session) if x["id"] == r.id)["incidents"] == 2
+    # a tubeless wheel has no tube to pick: a flat there is the tire
+    p["rw"].tire_setup = "TUBELESS"
+    session.flush()
+    assert "Rear tube" not in labels(inc.choices(session, r, "FLAT"))
+    # an incident logged before tubes were offered (tire position by name) still reads and edits
+    old = inc.log(session, r.id, incident_type="FLAT", affected=["x:Rear tire"])
+    inc.update(session, old, text="older entry", fields={"text"})

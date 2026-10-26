@@ -12,7 +12,7 @@ import { Card, ChangeNotice, Empty, ErrorBox, Field, FormError, Loading, Sheet, 
 import { useApp } from '../context'
 import { centsInput, certaintyLabel, euro, km, setupLabel, slotName, toCents, today, usageText, when } from '../format'
 import { useApi } from '../hooks'
-import type { Bike, Change, ChainRow, ComponentSummary, EventRow, OpResult, Rule, Task } from '../types'
+import type { Bike, Change, ChainRow, ComponentSummary, EventRow, OpResult, Rule, ShoppingItem, Task } from '../types'
 
 const SUPPLY_KINDS: Record<string, string> = { WAX: 'Chain wax', LUBE: 'Chain lube', SEALANT: 'Tubeless sealant', BRAKE_FLUID: 'Brake fluid', GREASE: 'Grease', OTHER: 'Other' }
 // "g" and "ml" stay as they are; "tube" becomes "tubes"
@@ -204,7 +204,7 @@ interface InventoryView {
   needs_service: ItemRow[]
   installed: ItemRow[]
   out_of_use: ItemRow[]
-  shopping_list: { consumable_id: number; name: string; unit: string; available: number; min_stock: number; suggested_qty: number; text: string }[]
+  shopping_list: ShoppingItem[]
   history: { component_id: number; label: string; text: string; on: string; note: string | null; voided: boolean }[]
   sessions: WorkSessionRow[]
 }
@@ -665,13 +665,13 @@ export default function InventoryPage() {
       {tab === 'installed' && v && <ItemList rows={v.installed} empty="Nothing installed yet." />}
       {tab === 'shopping' && v && (
         <>
-          <p className="small muted">Suggestions only, from the minimum stock you set. Nothing is ordered.</p>
+          <p className="small muted">Suggestions only, from the minimum stock you set and the spares to keep (Settings). Nothing is ordered.</p>
           {v.shopping_list.length === 0 ? (
             <Empty title="Nothing below minimum">Set a minimum on a stock line to get reminders.</Empty>
           ) : (
             <ul className="list rows">
               {v.shopping_list.map((s) => (
-                <li key={s.consumable_id}>
+                <li key={s.consumable_id ?? s.component_type}>
                   <span>
                     <strong>{s.name}</strong>
                     <br />

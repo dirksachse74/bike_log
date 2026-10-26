@@ -8,6 +8,15 @@ UPDATING.md → "Making a release". New entries go under "Unreleased" as work is
 ## Unreleased
 
 ### Added
+- Flat tire: per wheel, say what was damaged: not affected, tube only, or tube and tire (tubeless or
+  tubular wheels: the tire). It stays one incident with one or two damaged parts. The form shows the
+  spare tubes and tires at home and flags when they are low.
+- Spares to keep: the shopping list warns when there are fewer than 2 spare tubes or fewer than 1 spare
+  tire (counted stock plus stored individual spares). Change the numbers, or add other part types, under
+  Settings → Spares to keep.
+- Overview reorganised: "Upcoming tasks" (what is due stays open; coming soon, snoozed and first entries
+  fold away) and a "Shopping list" with the spares at home. Chains, brakes and recent rides fold to one
+  line each.
 - Bike page: a "Manage parts" section with one-click Swap chain, Swap wheels (Swap wheelset once the
   wheels are grouped), Swap tire and Swap another part, plus Install a part, Add groupset and Group wheels
   into a wheelset. A swap opens the usual Replace dialog for that part. The bike header keeps only
@@ -100,6 +109,8 @@ UPDATING.md → "Making a release". New entries go under "Unreleased" as work is
   SRAM AXS batteries sit on the derailleurs and are charged every 55 ride hours.
 
 ### Fixed
+- The Rides list "Notes" column counted journal entries, so a flat on tire and tube showed as 2 incidents.
+  It now counts incidents.
 - Swapping to a stored wheelset (or a spare wheel with its own tire) no longer suggests moving the old
   wheels (or tire) over: the spare keeps the parts already on it, and the dialog says so. Moving a part
   into a position the spare already fills is refused with a clear message.

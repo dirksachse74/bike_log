@@ -349,7 +349,8 @@ def list_rides(session: Session, *, bike_id: int | None = None, include_excluded
         q = q.where((Ride.inclusion == "EXCLUDED") | (Ride.status != "ACTIVE"))
     q = q.order_by(Ride.sort_utc.desc(), Ride.id.desc()).limit(limit).offset(offset)
     bikes = dict(session.execute(select(Bike.id, Bike.name)).all())
-    counts = dict(session.execute(select(JournalEntry.ride_id, func.count(JournalEntry.id)).where(
+    counts = dict(session.execute(select(JournalEntry.ride_id, func.count(func.distinct(func.coalesce(
+        JournalEntry.incident_group, JournalEntry.uuid)))).where(
         JournalEntry.ride_id.is_not(None), JournalEntry.voided_at.is_(None)).group_by(JournalEntry.ride_id)).all())
     rows = [ride_row(session, r, bikes, counts) for r in session.scalars(q)]
     if flagged_only:

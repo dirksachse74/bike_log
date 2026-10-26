@@ -500,8 +500,11 @@ WHOLE_BIKE = "BIKE"   # choice key: the bike as a whole (no single part)
 # Per incident type, what it can affect. Several can be picked (two flats, both derailleurs).
 # Types not listed here (DEFECT, OTHER) offer every part that was on the bike.
 INCIDENT_OPTIONS: dict[str, tuple[IncidentOption, ...]] = {
-    "FLAT": (_o("FRONT_TIRE", "Front tire", ("TIRE", "INNER_TUBE"), ("FRONT_WHEEL",)),
-             _o("REAR_TIRE", "Rear tire", ("TIRE", "INNER_TUBE"), ("REAR_WHEEL",))),
+    # a flat: per wheel, the tube only or the tube and the tire (tubeless and tubular wheels: the tire)
+    "FLAT": (_o("FRONT_TUBE", "Front tube", ("INNER_TUBE",), ("FRONT_WHEEL",)),
+             _o("FRONT_TIRE", "Front tire", ("TIRE",), ("FRONT_WHEEL",)),
+             _o("REAR_TUBE", "Rear tube", ("INNER_TUBE",), ("REAR_WHEEL",)),
+             _o("REAR_TIRE", "Rear tire", ("TIRE",), ("REAR_WHEEL",))),
     "SHIFTING": (_o("FD", "Front derailleur", ("FRONT_DERAILLEUR",)),
                  _o("RD", "Rear derailleur", ("REAR_DERAILLEUR",)),
                  _o("SHIFTERS", "Shifters", ("SHIFTERS",)),

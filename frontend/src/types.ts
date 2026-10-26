@@ -83,6 +83,29 @@ export interface IncidentChoice {
   label: string
   component_id: number | null
   recorded: boolean
+  wheel?: 'FRONT_WHEEL' | 'REAR_WHEEL'
+  damage?: 'TUBE' | 'TIRE'
+}
+
+export interface SpareCheck {
+  component_type: string
+  type_name: string
+  unit: string
+  have: number
+  minimum: number
+  low: boolean
+  text: string
+}
+
+export interface ShoppingItem {
+  consumable_id: number | null
+  component_type?: string
+  name: string
+  unit: string
+  available: number
+  min_stock: number
+  suggested_qty: number
+  text: string
 }
 
 export interface RideIncident {

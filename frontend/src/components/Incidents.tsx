@@ -9,6 +9,7 @@ import type {
   IncidentChoice,
   RideDetail,
   RideIncident,
+  SpareCheck,
 } from "../types";
 import { Empty, ErrorBox, Field, FormError, Loading, Tag } from "./ui";
 
@@ -86,6 +87,13 @@ function IncidentEditor({
           ))}
         </select>
       </Field>
+      {f.incident_type === "FLAT" && options.some((o) => o.wheel) ? (
+        <FlatDamage
+          options={options}
+          affected={f.affected}
+          onChange={(affected) => setF({ ...f, affected })}
+        />
+      ) : (
       <fieldset className="incident-affected">
         <legend className="field-label">
           {forRider ? "Where (tick all that apply)" : "Affected (tick all that apply)"}
@@ -117,6 +125,7 @@ function IncidentEditor({
           </span>
         )}
       </fieldset>
+      )}
       <Field label="Details (optional)">
         <input
           aria-label="Incident details"
@@ -145,6 +154,95 @@ function IncidentEditor({
         </button>
       </div>
     </div>
+  );
+}
+
+// A flat, per wheel: not affected, the tube only, or the tube and the tire (a tubeless or tubular wheel:
+// the tire). Still one incident; the answer becomes the affected tube and/or tire of that wheel.
+const WHEELS: [string, string][] = [
+  ["FRONT_WHEEL", "Front wheel"],
+  ["REAR_WHEEL", "Rear wheel"],
+];
+
+function FlatDamage({
+  options,
+  affected,
+  onChange,
+}: {
+  options: IncidentChoice[];
+  affected: string[];
+  onChange: (affected: string[]) => void;
+}) {
+  const spares = useApi<SpareCheck[]>("/spares/check");
+  const shown = (spares.data ?? []).filter(
+    (r) => r.component_type === "INNER_TUBE" || r.component_type === "TIRE",
+  );
+  return (
+    <fieldset className="incident-affected">
+      <legend className="field-label">What was damaged?</legend>
+      {WHEELS.map(([wheel, name]) => {
+        const tubes = options.filter((o) => o.wheel === wheel && o.damage === "TUBE");
+        const tires = options.filter((o) => o.wheel === wheel && o.damage === "TIRE");
+        if (!tubes.length && !tires.length) return null;
+        const hasTube = tubes.some((o) => affected.includes(o.key));
+        const hasTire = tires.some((o) => affected.includes(o.key));
+        const value = hasTube && hasTire ? "both" : hasTube ? "tube" : hasTire ? "tire" : "none";
+        const picks: [string, string][] = tubes.length
+          ? [
+              ["none", "Not affected"],
+              ["tube", "Tube only"],
+              ["both", "Tube and tire"],
+              ...(value === "tire" ? [["tire", "Tire only"] as [string, string]] : []),
+            ]
+          : [
+              ["none", "Not affected"],
+              ["tire", "Tire"],
+            ];
+        const mine = new Set([...tubes, ...tires].map((o) => o.key));
+        const set = (v: string) =>
+          onChange([
+            ...affected.filter((k) => !mine.has(k)),
+            ...(v === "tube" || v === "both" ? tubes.map((o) => o.key) : []),
+            ...(v === "tire" || v === "both" ? tires.map((o) => o.key) : []),
+          ]);
+        const recorded = [...tubes, ...tires].filter((o) => o.recorded).map((o) => o.label.split(": ").pop());
+        return (
+          <div key={wheel} className="flat-wheel" role="radiogroup" aria-label={name}>
+            <span className="flat-wheel-name">
+              {name}
+              {recorded.length > 0 && <span className="small muted"> · {recorded.join(", ")}</span>}
+              {!tubes.length && <span className="small muted"> · tubeless or tubular</span>}
+            </span>
+            <div className="chips">
+              {picks.map(([v, label]) => (
+                <label key={v} className={`chip ${value === v ? "chip-on" : ""}`}>
+                  <input
+                    type="radio"
+                    className="sr-only"
+                    name={`flat-${wheel}`}
+                    checked={value === v}
+                    onChange={() => set(v)}
+                  />
+                  {label}
+                </label>
+              ))}
+            </div>
+          </div>
+        );
+      })}
+      {shown.length > 0 && (
+        <p className="small spare-hint">
+          Spares at home:{" "}
+          {shown.map((r, i) => (
+            <span key={r.component_type}>
+              {i > 0 && " · "}
+              {r.text} {r.low && <Tag tone="warn">low</Tag>}
+            </span>
+          ))}{" "}
+          <Link to="/inventory?tab=shopping">Shopping list</Link>
+        </p>
+      )}
+    </fieldset>
   );
 }
 

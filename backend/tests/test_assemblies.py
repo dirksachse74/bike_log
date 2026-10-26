@@ -158,3 +158,29 @@ def test_swap_to_a_stored_wheelset_keeps_each_wheelsets_own_wheels(session):
     assert km(session, f2) == 30 and km(session, summer[0]) == 0
     assert inv.location(session, summer[0])["parent_component_id"] == ws1.id
     assert {r["label"] for r in inv.bike_setup(session, b)} == {"Winter", "Winter front", "Winter rear"}
+
+
+def test_spare_tubes_and_tires_to_keep(session):
+    """Dirk: remind when fewer than 2 spare tubes or fewer than 1 spare tire; the numbers are editable."""
+    from bikelog.services import settings
+    from bikelog.services import stock
+    check = {r["component_type"]: r for r in stock.spare_check(session)}
+    assert check["INNER_TUBE"]["low"] and check["TIRE"]["low"] and check["INNER_TUBE"]["minimum"] == 2
+    tubes = stock.add_consumable(session, name="Conti Race 28", component_type="INNER_TUBE",
+                                 tracking_mode="COUNTED", track_stock=True)
+    stock.consumable_txn(session, tubes.id, kind="PURCHASE", qty=1, on="2026-10-01")
+    part(session, "TIRE", "GP5000 spare")                   # a stored individual spare counts too
+    check = {r["component_type"]: r for r in stock.spare_check(session)}
+    assert check["INNER_TUBE"]["have"] == 1 and check["INNER_TUBE"]["low"]
+    assert check["TIRE"]["have"] == 1 and not check["TIRE"]["low"]
+    shop = stock.shopping_list(session)
+    assert [x["name"] for x in shop if x["consumable_id"] is None] == ["Spare tubes"]
+    assert "Buy 1 tube: 1 spare tube, keep at least 2" in shop[-1]["text"]
+    stock.consumable_txn(session, tubes.id, kind="PURCHASE", qty=1, on="2026-10-02")
+    assert not any(x["consumable_id"] is None for x in stock.shopping_list(session))
+    settings.set_value(session, "spare_minimums", '{"INNER_TUBE": 4, "TIRE": 0, "CHAIN": 1}')
+    assert {r["component_type"]: r["minimum"] for r in stock.spare_check(session)} == {"INNER_TUBE": 4, "CHAIN": 1}
+    with pytest.raises(DomainError):
+        settings.set_value(session, "spare_minimums", '{"INNER_TUBE": -1}')
+    with pytest.raises(DomainError):
+        settings.set_value(session, "spare_minimums", '{"SPOON": 1}')

@@ -190,7 +190,7 @@ def test_incidents_over_http(client):
     r = client.post("/api/rides", json={"bike_id": b["id"], "when": "2026-09-10", "distance": 50}).json()
     rid = r["result"]["id"] if "result" in r else r["id"]
     data = client.get(f"/api/rides/{rid}/incidents").json()
-    assert [c["label"] for c in data["choices"]["FLAT"]] == ["Front tire", "Rear tire"]
+    assert [c["label"] for c in data["choices"]["FLAT"]] == ["Front tube", "Front tire", "Rear tube", "Rear tire"]
     made = client.post(f"/api/rides/{rid}/incidents", json={"incident_type": "FLAT", "affected": ["REAR_TIRE"]})
     assert made.status_code == 201
     group = made.json()["group"]

@@ -212,9 +212,38 @@ def consumable_stock(session: Session) -> list[dict]:
     return out
 
 
-def shopping_list(session: Session) -> list[dict]:
-    """Suggestions only: stock lines below their optional minimum."""
+def spare_check(session: Session) -> list[dict]:
+    """Spares kept per part type (settings "spare_minimums", default 2 tubes and 1 tire): counted stock of
+    that type plus stored individual spares, whatever the product."""
+    from bikelog.services import settings
     out = []
+    for ctype, minimum in settings.spare_minimums(session).items():
+        if ctype not in COMPONENT_TYPES:
+            continue
+        in_stock = sum(level(session, c)["qty"] for c in session.scalars(select(Consumable).where(
+            Consumable.component_type == ctype, Consumable.tracking_mode == "COUNTED", Consumable.track_stock)))
+        individual = len(individual_spares(session, ctype, None))
+        have = int(in_stock) + individual
+        name = COMPONENT_TYPES[ctype].name.lower()
+        unit = STOCK_UNITS.get(ctype, (name, ""))[0]
+        out.append({"component_type": ctype, "type_name": COMPONENT_TYPES[ctype].name, "unit": unit,
+                    "have": have, "in_stock": int(in_stock), "individual": individual, "minimum": minimum,
+                    "low": have < minimum,
+                    "text": f"{have} spare {unit if have == 1 else unit + 's'}, keep at least {minimum}"})
+    return out
+
+
+def shopping_list(session: Session) -> list[dict]:
+    """Suggestions only: spare part types below the number to keep, and stock lines below their minimum."""
+    out = []
+    spares = []
+    for row in spare_check(session):
+        if row["low"]:
+            need = row["minimum"] - row["have"]
+            spares.append({"consumable_id": None, "component_type": row["component_type"],
+                        "name": f"Spare {row['unit']}s", "unit": row["unit"], "available": row["have"],
+                        "min_stock": row["minimum"], "suggested_qty": need,
+                        "text": f"Buy {need} {row['unit']}{'' if need == 1 else 's'}: {row['text']}"})
     for row in consumable_stock(session):
         if row["low"]:
             need = row["min_stock"] - row["available_total"]
@@ -223,7 +252,7 @@ def shopping_list(session: Session) -> list[dict]:
                         "suggested_qty": need if row["tracking_mode"] != "COUNTED" else int(-(-need // 1)),
                         "text": f"Buy {need:g} {row['unit']}(s) of {row['name']}: {row['available_total']:g} "
                                 f"available, minimum {row['min_stock']:g}"})
-    return out
+    return out + spares
 
 
 def txn_history(session: Session, consumable_id: int) -> list[dict]:

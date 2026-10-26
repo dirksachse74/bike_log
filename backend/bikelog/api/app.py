@@ -466,6 +466,7 @@ class SettingsPatch(Body):
     import_start_date: str | None = None
     trainer_profile_for_virtual: str | None = None
     default_tire_setup: str | None = None
+    spare_minimums: str | None = None
 
 
 class ProfileIn(Body):
@@ -587,7 +588,8 @@ def create_app(factory: sessionmaker[Session], paths: DataPaths, *, token: str |
         flagged = [r for r in rides_svc.list_rides(s, limit=500, flagged_only=True) if r["inclusion"] == "INCLUDED"]
         return {"bikes": bikes, "queue": m.queue(s), "chains": m.chain_overview(s), "brakes": m.brake_overview(s),
                 "recent_rides": recent, "flagged_rides": flagged[:20], "flagged_count": len(flagged),
-                "safety_note": m.SAFETY_NOTE, "demo": demo.is_demo(s)}
+                "safety_note": m.SAFETY_NOTE, "demo": demo.is_demo(s),
+                "shopping_list": stock.shopping_list(s), "spares": stock.spare_check(s)}
 
     # ------------------------------------------------------------ bikes
 
@@ -956,6 +958,10 @@ def create_app(factory: sessionmaker[Session], paths: DataPaths, *, token: str |
     @app.get("/api/inventory")
     def inventory_view(s: Session = Depends(db)):
         return spares.inventory(s)
+
+    @app.get("/api/spares/check")
+    def spares_check(s: Session = Depends(db)):
+        return stock.spare_check(s)
 
     @app.get("/api/shopping-list")
     def shopping_list(s: Session = Depends(db)):

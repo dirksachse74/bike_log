@@ -265,6 +265,17 @@ you disagree. Dates are 2026-10-24 unless noted.
     old part's outcome and carried-over parts behave exactly as before. A spare that already has parts in
     a position (a stored wheelset with its wheels) keeps them: those children of the old part are not
     ticked to move, and replace() refuses to carry a part into a taken position.
+84. **A flat names the tube and/or the tire per wheel**: FLAT options are front/rear tube and front/rear
+    tire (catalog.INCIDENT_OPTIONS); choices carry `wheel` and `damage` so the form asks "tube only" or
+    "tube and tire" per wheel. Wheels set (or defaulting) to tubeless or tubular offer no tube. Older
+    incidents on "Front tire"/"Rear tire" by name keep their text and still edit.
+85. **Spares to keep are per part type, not per product**: setting `spare_minimums` (JSON, default
+    {"INNER_TUBE": 2, "TIRE": 1}; 0 removes a type) is checked against counted stock of that type plus
+    stored individual spares, whatever the brand. Below it, the type goes on the shopping list with the
+    per-line minimums. Suggestions only; nothing is ordered.
+86. **Overview shows what to act on and folds the rest**: Upcoming tasks keeps OVERDUE/DUE/ATTENTION
+    open and folds DUE_SOON, SNOOZED and INSUFFICIENT_INFO; chains, brakes and recent rides are one folded
+    line each.
 
 ## Repository
 27. Pushed only to the feature branch `claude/project-thread-6y3mmh` of the private repository. Demo
