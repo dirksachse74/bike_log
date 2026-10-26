@@ -285,6 +285,10 @@ you disagree. Dates are 2026-10-24 unless noted.
     INNER_TUBE stock line (no new part). Tires taken from stock, stored spares and newly bought tires are
     installed on the wheel at that position when the wheel is recorded. Body areas and whole-bike
     incidents have no Fix; Solved stays for those.
+89. **One "Where does it go?" list, built by the backend** (spares.mount_targets, GET /api/mount-targets):
+    every bike position and every part of a parent type (on active bikes, and off any bike), with the
+    path (wheelset › wheel) and the occupant. Types with parent types go only on a part, except wheels,
+    batteries, power meters and sensors (catalog.ON_BIKE_TOO), which may also sit on the bike itself.
 
 ## Repository
 27. Pushed only to the feature branch `claude/project-thread-6y3mmh` of the private repository. Demo

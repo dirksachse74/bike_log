@@ -184,3 +184,34 @@ def test_spare_tubes_and_tires_to_keep(session):
         settings.set_value(session, "spare_minimums", '{"INNER_TUBE": -1}')
     with pytest.raises(DomainError):
         settings.set_value(session, "spare_minimums", '{"SPOON": 1}')
+
+
+def test_where_a_new_part_can_go(session):
+    """Dirk: a hub (spokes, rim ...) goes on a front or rear wheel, which may sit in a wheelset; chainrings on
+    the crankset, pulleys on the rear derailleur. Parts off the bike are offered too; spare stays possible."""
+    b = bike(session)
+    front, rear = wheels(session, b)
+    inv.group_wheels(session, b.id, at="2026-09-02", label="Reynolds AR58")
+    spare_front = part(session, "FRONT_WHEEL", "Winter front")
+    hub = part(session, "HUB", "DT 240 front")
+    inv.install(session, hub.id, at="2026-09-01", parent_component_id=front.id)
+    t = spares.mount_targets(session, "HUB")
+    assert t["needs_parent"] and not any(x["bike_id"] for x in t["targets"])
+    texts = {x["text"]: x for x in t["targets"]}
+    assert texts["Reynolds AR58 › Reynolds front (front wheel)"]["occupied_by"] == "DT 240 front"
+    assert texts["Reynolds AR58 › Reynolds rear (rear wheel)"]["occupied_by"] is None
+    assert texts["Winter front (front wheel)"]["group"] == "Not on a bike (stored)"
+    rim = spares.mount_targets(session, "RIM")["targets"]
+    assert len(rim) == 3
+    bearings = spares.mount_targets(session, "HUB_BEARINGS")["targets"]
+    assert [x["text"] for x in bearings] == ["Reynolds AR58 › Reynolds front › DT 240 front (hub)"]
+    crank = part(session, "CRANKSET", "Ultegra 172.5")
+    inv.install(session, crank.id, at="2026-09-01", bike_id=b.id)
+    rings = spares.mount_targets(session, "CHAINRING", bike_id=b.id)["targets"]
+    assert [x["text"] for x in rings] == ["Ultegra 172.5 (crankset) · chainring outer",
+                                          "Ultegra 172.5 (crankset) · chainring inner"]
+    sensor = spares.mount_targets(session, "SENSOR", bike_id=b.id)
+    assert sensor["on_bike"] and any(x["bike_id"] == b.id for x in sensor["targets"])
+    chain = spares.mount_targets(session, "CHAIN")
+    assert chain["targets"] == [{"group": "TIME NXR", "bike_id": b.id, "parent_component_id": None, "slot": "CHAIN",
+                                 "text": "On the bike · chain", "occupied_by": None}]

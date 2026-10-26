@@ -64,6 +64,10 @@ FULL_SERVICE_CHECKLIST = (
 # actions that charge a battery: a charge reminder needs one logged charge before it can count
 CHARGE_ACTIONS = ("BATTERY_CHARGE", "POWER_CHARGE")
 
+# Types with parent_types that can also sit on the bike itself (a wheel without a wheelset, a seatpost
+# battery, a spider power meter, a fork-mounted sensor). Others with parent_types go on a part only.
+ON_BIKE_TOO = ("FRONT_WHEEL", "REAR_WHEEL", "BATTERY", "POWER_METER", "SENSOR")
+
 COMPONENT_TYPES: dict[str, ComponentType] = {t.code: t for t in [
     ComponentType("CHAIN", "Chain", "Drivetrain", ("CHAIN",)),
     ComponentType("DERAILLEUR_HANGER", "Derailleur hanger", "Frame", ("HANGER",), torque=True),
@@ -89,6 +93,7 @@ COMPONENT_TYPES: dict[str, ComponentType] = {t.code: t for t in [
     ComponentType("HUB", "Hub", "Wheels", ("HUB",), ("FRONT_WHEEL", "REAR_WHEEL")),
     ComponentType("HUB_BEARINGS", "Hub bearings (set)", "Wheels", ("BEARINGS",), ("HUB",), removed_default="DISCARDED"),
     ComponentType("SPOKES", "Spokes (set)", "Wheels", ("SPOKES",), ("FRONT_WHEEL", "REAR_WHEEL")),
+    ComponentType("RIM", "Rim", "Wheels", ("RIM",), ("FRONT_WHEEL", "REAR_WHEEL")),
     ComponentType("RIM_TAPE", "Rim tape", "Wheels", ("RIM_TAPE",), ("FRONT_WHEEL", "REAR_WHEEL"),
                   removed_default="DISCARDED"),
     ComponentType("TUBELESS_VALVE", "Tubeless valve", "Wheels", ("VALVE",), ("FRONT_WHEEL", "REAR_WHEEL")),

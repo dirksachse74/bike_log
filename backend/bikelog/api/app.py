@@ -1037,6 +1037,10 @@ def create_app(factory: sessionmaker[Session], paths: DataPaths, *, token: str |
         incidents_svc.restore(s, group)
         return {"group": group, "removed": False}
 
+    @app.get("/api/mount-targets")
+    def mount_targets(component_type: str, bike_id: int | None = None, s: Session = Depends(db)):
+        return spares.mount_targets(s, component_type, bike_id)
+
     @app.get("/api/incidents/{group}/fix-options")
     def incident_fix_options(group: str, s: Session = Depends(db)):
         return repairs_svc.fix_options(s, group)

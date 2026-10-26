@@ -4,6 +4,7 @@ import { api, newOpId } from '../api'
 import ChangeLog from '../components/ChangeLog'
 import Journal from '../components/Journal'
 import LogMaintenance from '../components/LogMaintenance'
+import MountPicker, { type MountTarget } from '../components/MountPicker'
 import ProductImport from '../components/ProductImport'
 import { DispositionForm, MoveForm, OutcomeChoice, RemoveForm, ReplaceForm } from '../components/PartChange'
 import TaskList from '../components/TaskList'
@@ -34,13 +35,11 @@ export function ChainStateTag({ state }: { state: string }) {
 
 export function ComponentForm({ onSaved, presetType }: { onSaved: (c: ComponentSummary) => void; presetType?: string }) {
   const { meta } = useApp()
-  const bikes = useApi<Bike[]>('/bikes')
-  const [f, setF] = useState({ component_type: presetType ?? 'CHAIN', label: '', history: 'NEW', start_km: '', start_date: today(), start_estimate: true, install_bike: '', install_slot: '', install_at: today(), notes: '', price: '', purchase_date: '' })
+  const [f, setF] = useState({ component_type: presetType ?? 'CHAIN', label: '', history: 'NEW', start_km: '', start_date: today(), start_estimate: true, install_slot: '', install_at: today(), notes: '', price: '', purchase_date: '' })
+  const [mount, setMount] = useState<MountTarget | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [opId] = useState(newOpId)
-  const ctype = meta.component_types.find((t) => t.code === f.component_type)
-  const canInstallOnBike = ctype && !['TIRE', 'BRAKE_ROTOR'].includes(ctype.code)
   async function save() {
     setBusy(true)
     setError(null)
@@ -52,7 +51,11 @@ export function ComponentForm({ onSaved, presetType }: { onSaved: (c: ComponentS
       if (price !== null) body.price_cents = price
       if (f.purchase_date) body.purchase_date = f.purchase_date
       if (f.history === 'KNOWN') Object.assign(body, { starting_km: Number(f.start_km || 0), starting_date: f.start_date, starting_is_estimate: f.start_estimate })
-      if (f.install_bike) body.install = { bike_id: Number(f.install_bike), at: f.install_at, ...(f.install_slot ? { slot: f.install_slot } : {}) }
+      if (mount) {
+        const slot = mount.slot ?? f.install_slot.trim().toUpperCase().replace(/\s+/g, '_')
+        if (!slot) throw new Error('Name the position on the bike, e.g. bottle cage 1')
+        body.install = { at: f.install_at, slot, ...(mount.parent_component_id ? { parent_component_id: mount.parent_component_id } : { bike_id: mount.bike_id }) }
+      }
       onSaved(await api.post<ComponentSummary>('/components', body, opId))
     } catch (e) {
       setError((e as Error).message)
@@ -64,7 +67,13 @@ export function ComponentForm({ onSaved, presetType }: { onSaved: (c: ComponentS
     <div className="form">
       <div className="row">
         <Field label="Type">
-          <select value={f.component_type} onChange={(e) => setF({ ...f, component_type: e.target.value, install_slot: '' })}>
+          <select
+            value={f.component_type}
+            onChange={(e) => {
+              setF({ ...f, component_type: e.target.value, install_slot: '' })
+              setMount(null)
+            }}
+          >
             {meta.component_types.map((t) => (
               <option key={t.code} value={t.code}>
                 {t.name}
@@ -106,37 +115,19 @@ export function ComponentForm({ onSaved, presetType }: { onSaved: (c: ComponentS
           </label>
         </>
       )}
-      {canInstallOnBike && (
-        <div className="row">
-          <Field label="Install on (optional)">
-            <select value={f.install_bike} onChange={(e) => setF({ ...f, install_bike: e.target.value })}>
-              <option value="">Keep in storage</option>
-              {bikes.data?.filter((b) => b.status === 'ACTIVE').map((b) => (
-                <option key={b.id} value={b.id}>
-                  {b.name}
-                </option>
-              ))}
-            </select>
+      <MountPicker key={f.component_type} componentType={f.component_type} value={mount} onChange={setMount} allowSpare />
+      <div className="row">
+        {mount && mount.slot === null && (
+          <Field label="Position name">
+            <input value={f.install_slot} onChange={(e) => setF({ ...f, install_slot: e.target.value })} placeholder="e.g. bottle cage 1" />
           </Field>
-          {f.install_bike && ctype && ctype.slots.length > 1 && (
-            <Field label="Position">
-              <select value={f.install_slot} onChange={(e) => setF({ ...f, install_slot: e.target.value })}>
-                <option value="">Pick…</option>
-                {ctype.slots.map((s) => (
-                  <option key={s} value={s}>
-                    {slotName(s)}
-                  </option>
-                ))}
-              </select>
-            </Field>
-          )}
-          {f.install_bike && (
-            <Field label="Since">
-              <input type="date" value={f.install_at} onChange={(e) => setF({ ...f, install_at: e.target.value })} />
-            </Field>
-          )}
-        </div>
-      )}
+        )}
+        {mount && (
+          <Field label="Since">
+            <input type="date" value={f.install_at} onChange={(e) => setF({ ...f, install_at: e.target.value })} />
+          </Field>
+        )}
+      </div>
       <FormError error={error} />
       <div className="form-actions">
         <button className="btn btn-primary" disabled={busy || !f.label.trim()} onClick={save}>

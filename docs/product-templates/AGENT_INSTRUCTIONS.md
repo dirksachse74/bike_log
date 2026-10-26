@@ -80,6 +80,7 @@ error; put extra data under `specs`.
 | `HUB` | Hub | Wheels |
 | `HUB_BEARINGS` | Hub bearings (set) | Wheels |
 | `SPOKES` | Spokes (set) | Wheels |
+| `RIM` | Rim | Wheels |
 | `RIM_TAPE` | Rim tape | Wheels |
 | `TUBELESS_VALVE` | Tubeless valve | Wheels |
 | `TIRE` | Tire | Wheels |
@@ -348,6 +349,19 @@ Template: `spokes.schema.json`, example: `spokes.example.json`
 | `count` | number |  | Number of spokes |
 | `model` | string |  | Spoke model and length |
 | `nipples` | string |  | Nipples |
+| `weight_g` | number | g | Weight |
+| `color` | string |  | Colour / finish |
+| `material` | string |  | Main material |
+### Rim (`RIM`)
+
+Template: `rim.schema.json`, example: `rim.example.json`
+
+| key | type | unit | meaning |
+|---|---|---|---|
+| `inner_width_mm` | number | mm | Inner width |
+| `depth_mm` | number | mm | Rim depth |
+| `spoke_holes` | number |  | Spoke holes |
+| `brake` | one of `disc`, `rim` |  | Brake type |
 | `weight_g` | number | g | Weight |
 | `color` | string |  | Colour / finish |
 | `material` | string |  | Main material |

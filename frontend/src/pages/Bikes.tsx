@@ -9,6 +9,7 @@ import Journal from '../components/Journal'
 import LogMaintenance from '../components/LogMaintenance'
 import { MoveForm, RemoveForm, ReplaceForm } from '../components/PartChange'
 import { SwapTube } from '../components/Repairs'
+import MountPicker, { type MountTarget } from '../components/MountPicker'
 import TaskList from '../components/TaskList'
 import { PressureNote, TireSetupSelect } from '../components/TireSetup'
 import { Card, ChangeNotice, Empty, ErrorBox, Field, FormError, Loading, Sheet, StatusBadge, Tag } from '../components/ui'
@@ -148,19 +149,18 @@ interface BikeDetail extends Bike {
 export function InstallForm({ bikeId, onDone }: { bikeId: number; onDone: (c: Change) => void }) {
   const { meta } = useApp()
   const stored = useApi<ComponentSummary[]>('/components?state=STORED')
-  const setupQ = useApi<BikeDetail>(`/bikes/${bikeId}`)
-  const [f, setF] = useState({ component_id: '', slot: '', parent_component_id: '', at: today(), until: '' })
+  const [f, setF] = useState({ component_id: '', slot: '', at: today(), until: '' })
+  const [mount, setMount] = useState<MountTarget | null>(null)
   const [preview, setPreview] = useState<Change | null>(null)
   const [error, setError] = useState<string | null>(null)
   const comp = stored.data?.find((c) => String(c.id) === f.component_id)
   const ctype = meta.component_types.find((t) => t.code === comp?.component_type)
-  const parents = (setupQ.data?.setup ?? []).filter((s) => ctype?.parent_types.includes(s.component_type))
-  const needsParent = ['TIRE', 'BRAKE_ROTOR'].includes(ctype?.code ?? '')
   const body = () => {
     const b: Record<string, unknown> = { at: f.at }
-    if (f.parent_component_id) b.parent_component_id = Number(f.parent_component_id)
+    if (mount?.parent_component_id) b.parent_component_id = mount.parent_component_id
     else b.bike_id = bikeId
-    if (f.slot) b.slot = f.slot
+    const slot = mount?.slot ?? f.slot
+    if (slot) b.slot = slot
     if (f.until) b.until = f.until
     return b
   }
@@ -180,7 +180,13 @@ export function InstallForm({ bikeId, onDone }: { bikeId: number; onDone: (c: Ch
   return (
     <div className="form">
       <Field label="Part from storage">
-        <select value={f.component_id} onChange={(e) => setF({ ...f, component_id: e.target.value, slot: '', parent_component_id: '' })}>
+        <select
+          value={f.component_id}
+          onChange={(e) => {
+            setF({ ...f, component_id: e.target.value, slot: '' })
+            setMount(null)
+          }}
+        >
           <option value="">Pick a part…</option>
           {stored.data.map((c) => (
             <option key={c.id} value={c.id}>
@@ -189,32 +195,9 @@ export function InstallForm({ bikeId, onDone }: { bikeId: number; onDone: (c: Ch
           ))}
         </select>
       </Field>
-      {ctype && ctype.parent_types.length > 0 && (
-        <Field label="Mount on" hint="Tires and rotors go on a wheel; the cassette can go on the rear wheel.">
-          <select value={f.parent_component_id} onChange={(e) => setF({ ...f, parent_component_id: e.target.value })}>
-            {needsParent ? <option value="">Pick a wheel…</option> : <option value="">the bike itself</option>}
-            {parents.map((p) => (
-              <option key={p.component_id} value={p.component_id}>
-                {p.label}
-              </option>
-            ))}
-          </select>
-        </Field>
-      )}
-      {ctype && ctype.slots.length > 1 && !f.parent_component_id && (
-        <Field label="Position">
-          <select value={f.slot} onChange={(e) => setF({ ...f, slot: e.target.value })}>
-            <option value="">Pick…</option>
-            {ctype.slots.map((s) => (
-              <option key={s} value={s}>
-                {slotName(s)}
-              </option>
-            ))}
-          </select>
-        </Field>
-      )}
-      {ctype && ctype.slots.length === 0 && (
-        <Field label="Slot name">
+      {ctype && <MountPicker key={ctype.code} componentType={ctype.code} bikeId={bikeId} value={mount} onChange={setMount} />}
+      {mount && mount.slot === null && (
+        <Field label="Position name">
           <input value={f.slot} onChange={(e) => setF({ ...f, slot: e.target.value.toUpperCase().replace(/\s+/g, '_') })} placeholder="e.g. BOTTLE_CAGE_1" />
         </Field>
       )}
@@ -229,10 +212,10 @@ export function InstallForm({ bikeId, onDone }: { bikeId: number; onDone: (c: Ch
       <ChangeNotice change={preview} />
       <FormError error={error} />
       <div className="form-actions">
-        <button className="btn" disabled={!f.component_id} onClick={() => run(true)}>
+        <button className="btn" disabled={!f.component_id || !mount} onClick={() => run(true)}>
           Preview mileage impact
         </button>
-        <button className="btn btn-primary" disabled={!f.component_id} onClick={() => run(false)}>
+        <button className="btn btn-primary" disabled={!f.component_id || !mount} onClick={() => run(false)}>
           Install
         </button>
       </div>

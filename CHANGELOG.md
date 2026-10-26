@@ -8,6 +8,11 @@ UPDATING.md → "Making a release". New entries go under "Unreleased" as work is
 ## Unreleased
 
 ### Added
+- Add part (and Install on the bike page) asks "Where does it go?": keep as a spare, a position on a
+  bike, or on a part it mounts on. A hub, rim, spokes, rim tape or valve goes on a front or rear wheel
+  (wheels inside a wheelset are listed with it, also stored ones); bearings on a hub; a chainring on the
+  crankset; pulley wheels on the rear derailleur. Taken positions are shown with what is there.
+- New part type: Rim (on a front or rear wheel).
 - Fix an incident: an open incident has a "Fix" button that asks, for each damaged part, what you did:
   Replaced (one from stock, a stored spare or a new one; the old part is removed and keeps its km, and
   stock goes down so the spares check works by itself), Patched / Repaired, or Nothing yet. On the road

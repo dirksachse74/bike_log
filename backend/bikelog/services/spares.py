@@ -8,7 +8,7 @@ from __future__ import annotations
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from bikelog.catalog import COMPONENT_TYPES, DISPOSITIONS, OUT_OF_USE
+from bikelog.catalog import COMPONENT_TYPES, DISPOSITIONS, ON_BIKE_TOO, OUT_OF_USE
 from bikelog.models import Bike, Component, ComponentDisposition, Installation, ProductCompatibility
 from bikelog.services import maintenance as m
 from bikelog.services import stock
@@ -194,3 +194,74 @@ def move_targets(session: Session, component_id: int) -> list[dict]:
             out.append({"parent_component_id": None, "bike_id": loc["bike_id"], "slot": slot,
                         "text": slot.replace("_", " ").title(), "occupied_by": occ["label"] if occ else None})
     return out
+
+
+def _slot_text(slot: str) -> str:
+    return slot.replace("_", " ").lower()
+
+
+def mount_targets(session: Session, component_type: str, bike_id: int | None = None) -> dict:
+    """Where a new or stored part of this type can go: positions on a bike, or on a part it mounts on
+    (wheelset → front/rear wheel → hub → bearings; crankset → chainring; rear derailleur → pulleys), with
+    the path to it and what already sits there. With ``bike_id`` only that bike's positions and parts."""
+    from bikelog.services.inventory import bike_setup, get_bike
+    if component_type not in COMPONENT_TYPES:
+        raise DomainError(f"Unknown part type {component_type}")
+    t = COMPONENT_TYPES[component_type]
+    on_bike = not t.parent_types or component_type in ON_BIKE_TOO
+    bikes = [get_bike(session, bike_id)] if bike_id is not None else list(
+        session.scalars(select(Bike).where(Bike.status == "ACTIVE").order_by(Bike.name)))
+    out: list[dict] = []
+    seen: set[int] = set()
+
+    def occupant(parent_id: int | None, bid: int | None, slot: str) -> str | None:
+        q = select(Installation).where(Installation.slot == slot, Installation.removed_utc.is_(None),
+                                       Installation.voided_at.is_(None))
+        q = q.where(Installation.parent_component_id == parent_id) if parent_id is not None \
+            else q.where(Installation.bike_id == bid, Installation.parent_component_id.is_(None))
+        i = session.scalar(q.limit(1))
+        return session.get(Component, i.component_id).label if i else None
+
+    def add_parent(c: Component, group: str, path: list[str]) -> None:
+        seen.add(c.id)
+        name = f"{' › '.join(path + [c.label])} ({COMPONENT_TYPES[c.component_type].name.lower()})"
+        for slot in t.slots:
+            out.append({"group": group, "bike_id": None, "parent_component_id": c.id, "slot": slot,
+                        "text": name + (f" · {_slot_text(slot)}" if len(t.slots) > 1 else ""),
+                        "occupied_by": occupant(c.id, None, slot)})
+
+    for b in bikes:
+        if on_bike and not t.slots:      # free positions (bottle cage, accessory): named when installing
+            out.append({"group": b.name, "bike_id": b.id, "parent_component_id": None, "slot": None,
+                        "text": "On the bike (name the position)", "occupied_by": None})
+        if on_bike:
+            for slot in t.slots:
+                out.append({"group": b.name, "bike_id": b.id, "parent_component_id": None, "slot": slot,
+                            "text": f"On the bike · {_slot_text(slot)}", "occupied_by": occupant(None, b.id, slot)})
+        rows = bike_setup(session, b)
+        labels = {r["component_id"]: r for r in rows}
+        for r in rows:
+            if r["component_type"] in t.parent_types:
+                path, p = [], labels.get(r["parent_component_id"])
+                while p is not None:
+                    path.insert(0, p["label"])
+                    p = labels.get(p["parent_component_id"])
+                add_parent(session.get(Component, r["component_id"]), b.name, path)
+    if bike_id is None and t.parent_types:
+        # parents off the bikes: a stored wheelset's wheels, a spare wheel, a crankset on the shelf
+        for c in session.scalars(select(Component).where(Component.component_type.in_(t.parent_types),
+                                                         Component.status == "ACTIVE").order_by(Component.label)):
+            if c.id in seen or c.disposition == "IN_USE":
+                continue
+            loc = location(session, c)
+            if loc["state"] == "INSTALLED" and loc.get("bike_id"):
+                continue          # on a retired bike
+            path = []
+            inst = open_installation(session, c.id)
+            while inst is not None and inst.parent_component_id is not None:
+                parent = session.get(Component, inst.parent_component_id)
+                path.insert(0, parent.label)
+                inst = open_installation(session, parent.id)
+            add_parent(c, "Not on a bike (stored)", path)
+    return {"component_type": component_type, "on_bike": on_bike, "needs_parent": not on_bike,
+            "targets": out}
