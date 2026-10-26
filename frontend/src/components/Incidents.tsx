@@ -7,7 +7,6 @@ import { useApi } from "../hooks";
 import type {
   Bike,
   IncidentChoice,
-  JournalRow,
   RideDetail,
   RideIncident,
 } from "../types";
@@ -158,12 +157,14 @@ function IncidentRows({
   choices,
   bikeName,
   showRide,
+  showBike,
   onChanged,
 }: {
   incidents: RideIncident[];
   choices?: Choices;
   bikeName: string | null;
   showRide?: boolean;
+  showBike?: boolean;
   onChanged: () => void;
 }) {
   const { toast } = useApp();
@@ -234,29 +235,47 @@ function IncidentRows({
               </li>
             ) : (
               <li key={r.group} className="incident-row">
-                <div>
-                  <Tag tone="bad">{r.label.toLowerCase()}</Tag>{" "}
-                  {r.affected.map((a, i) => (
-                    <span key={a.key}>
-                      {i > 0 && ", "}
-                      {a.component_id ? (
-                        <Link to={`/inventory/${a.component_id}`}>{a.label}</Link>
-                      ) : (
-                        a.label
-                      )}
-                    </span>
-                  ))}
+                <div className="incident-type">
+                  <Tag tone="bad">{r.label.toLowerCase()}</Tag>
+                  <div className="small muted">{when(r.on)}</div>
+                </div>
+                <div className="incident-what">
+                  <div>
+                    {r.affected.map((a, i) => (
+                      <span key={a.key}>
+                        {i > 0 && " + "}
+                        {a.component_id ? (
+                          <Link to={`/inventory/${a.component_id}`}>{a.label}</Link>
+                        ) : (
+                          a.label
+                        )}
+                      </span>
+                    ))}
+                  </div>
                   {r.text && <div className="small">{r.text}</div>}
                   {showRide && r.ride_id && (
                     <div className="small muted">
+                      {showBike && r.bike ? `${r.bike} · ` : ""}
                       <Link to={`/rides?open=${r.ride_id}`}>{r.ride_label}</Link>
+                      {r.ride_conditions === "WET" && (
+                        <>
+                          {" "}
+                          <Tag tone="info">wet</Tag>
+                        </>
+                      )}
                     </div>
+                  )}
+                </div>
+                <div className="incident-status">
+                  {r.open ? (
+                    <Tag tone="warn">open</Tag>
+                  ) : (
+                    <Tag tone="good">solved {when(r.resolved_on)}</Tag>
                   )}
                 </div>
                 <div className="incident-actions">
                   {r.open ? (
                     <>
-                      <Tag tone="warn">open</Tag>
                       <button
                         className="btn btn-small btn-primary"
                         onClick={() =>
@@ -272,7 +291,6 @@ function IncidentRows({
                     </>
                   ) : (
                     <>
-                      <Tag tone="good">solved {when(r.resolved_on)}</Tag>
                       <button
                         className="btn btn-small"
                         onClick={() =>
@@ -316,7 +334,7 @@ function IncidentRows({
           <summary>Removed incidents ({removed.length})</summary>
           <ul className="incident-list">
             {removed.map((r) => (
-              <li key={r.group} className="incident-row muted">
+              <li key={r.group} className="incident-removed muted">
                 <span>
                   {r.label}: {r.affected.map((a) => a.label).join(", ")}
                   {showRide && r.ride_label ? ` · ${r.ride_label}` : ""}
@@ -380,7 +398,7 @@ export function RideIncidents({
         <h3>Incidents</h3>
         {!adding && data && (
           <button className="btn btn-small" onClick={() => setAdding(true)}>
-            Log incident
+            Add incident
           </button>
         )}
       </div>
@@ -401,7 +419,7 @@ export function RideIncidents({
           bikeName={ride.bike}
           choices={data.choices}
           initial={{ incident_type: "FLAT", affected: [], text: "", fixed: false }}
-          submitLabel="Log incident"
+          submitLabel="Add incident"
           onSubmit={add}
           onCancel={() => setAdding(false)}
         />
@@ -430,7 +448,7 @@ export function BikeIncidents({
     return (
       <Empty title="No incidents on this bike">
         Log a flat, a shifting problem or anything else on the ride it
-        happened (Rides → open the ride → Log incident).
+        happened (Rides → open the ride → Add incident).
       </Empty>
     );
   return (
@@ -453,16 +471,9 @@ export function IncidentList({ bikes }: { bikes: Bike[] }) {
   if (bike) q.set("bike_id", bike);
   if (type) q.set("incident_type", type);
   if (openOnly) q.set("open_only", "true");
-  const { data, error, loading, reload } = useApi<JournalRow[]>(
+  const { data, error, loading, reload } = useApi<RideIncident[]>(
     `/incidents?${q.toString()}`,
   );
-  async function resolve(r: JournalRow) {
-    // the whole incident is fixed (both tires of a double flat), not just this row
-    if (r.incident_group)
-      await api.patch(`/incidents/${r.incident_group}`, { resolved_on: today() });
-    else await api.patch(`/journal/${r.id}`, { resolved_on: today() });
-    reload();
-  }
   return (
     <>
       <div className="row filters">
@@ -503,65 +514,17 @@ export function IncidentList({ bikes }: { bikes: Bike[] }) {
       {error && <ErrorBox error={error} onRetry={reload} />}
       {data && data.length === 0 && (
         <Empty title="No incidents">
-          Open a ride and use "Log incident" for a flat, a shifting problem, an empty battery or anything else that happened.
+          Open a ride and use "Add incident" for a flat, a shifting problem, an empty battery or anything else that happened.
         </Empty>
       )}
       {data && data.length > 0 && (
-        <table className="table incidents-table">
-          <thead>
-            <tr>
-              <th>Date</th>
-              <th>What</th>
-              <th>Part</th>
-              <th>Ride</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {data.map((r) => (
-              <tr key={r.id}>
-                <td>{when(r.on)}</td>
-                <td>
-                  <Tag tone="bad">{(r.incident_label ?? "").toLowerCase()}</Tag>{" "}
-                  <span className="small">
-                    {r.text !== r.incident_label ? r.text : ""}
-                  </span>
-                </td>
-                <td>
-                  {r.component_id ? (
-                    <Link to={`/inventory/${r.component_id}`}>
-                      {r.component_label}
-                    </Link>
-                  ) : (
-                    (r.affected ?? r.bike)
-                  )}
-                </td>
-                <td>
-                  {r.ride_id ? (
-                    <Link to={`/rides?open=${r.ride_id}`}>{r.ride_label}</Link>
-                  ) : (
-                    "—"
-                  )}
-                  {r.ride_conditions === "WET" && <Tag tone="info">wet</Tag>}
-                </td>
-                <td>
-                  {r.open_issue ? (
-                    <button
-                      className="btn btn-small"
-                      onClick={() => resolve(r)}
-                    >
-                      Solved
-                    </button>
-                  ) : (
-                    <span className="small muted">
-                      solved {when(r.resolved_on)}
-                    </span>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <IncidentRows
+          incidents={data}
+          bikeName={null}
+          showRide
+          showBike
+          onChanged={reload}
+        />
       )}
     </>
   );

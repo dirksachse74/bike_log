@@ -965,18 +965,62 @@ label.chip {
   flex-direction: column;
   gap: 0.4rem;
 }
+/* one row per incident, same columns on every row: type | what was affected | status | buttons */
+.incident-list {
+  width: 100%;
+  container-type: inline-size;
+}
 .incident-row {
+  display: grid;
+  grid-template-columns: 9rem minmax(0, 1fr) 9rem 13rem;
+  grid-template-areas: "type what status actions";
+  gap: 0.25rem 0.6rem;
+  align-items: center;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--line);
+}
+.incident-row:last-child {
+  border-bottom: 0;
+}
+.incident-type {
+  grid-area: type;
+}
+.incident-what {
+  grid-area: what;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.incident-status {
+  grid-area: status;
+}
+.incident-actions {
+  grid-area: actions;
+  display: flex;
+  gap: 0.35rem;
+  justify-content: flex-end;
+}
+.incident-removed {
   display: flex;
   justify-content: space-between;
   align-items: center;
   gap: 0.5rem;
-  flex-wrap: wrap;
 }
-.incident-actions {
-  display: flex;
-  gap: 0.35rem;
-  align-items: center;
-  flex-wrap: wrap;
+/* narrower boxes (the ride window): the status goes under the type, still one row per incident */
+@container (max-width: 760px) {
+  .incident-row {
+    grid-template-columns: 8.5rem minmax(0, 1fr) auto;
+    grid-template-areas: "type what actions" "status what actions";
+  }
+}
+@container (max-width: 460px) {
+  .incident-row {
+    grid-template-columns: 7.5rem minmax(0, 1fr);
+    grid-template-areas: "type what" "status what" "actions actions";
+  }
+  .incident-actions {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
 }
 .row.conditions > * {
   flex: 0 0 auto;

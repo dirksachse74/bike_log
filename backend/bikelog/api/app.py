@@ -977,8 +977,8 @@ def create_app(factory: sessionmaker[Session], paths: DataPaths, *, token: str |
     @app.get("/api/incidents")
     def incident_list(bike_id: int | None = None, component_id: int | None = None, incident_type: str | None = None,
                       open_only: bool = False, s: Session = Depends(db)):
-        return journal.incidents(s, bike_id=bike_id, component_id=component_id, incident_type=incident_type,
-                                 open_only=open_only)
+        return incidents_svc.all_incidents(s, bike_id=bike_id, component_id=component_id,
+                                           incident_type=incident_type, open_only=open_only)
 
     @app.get("/api/rides/{ride_id}/incidents")
     def ride_incident_list(ride_id: int, s: Session = Depends(db)):

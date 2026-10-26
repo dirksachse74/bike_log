@@ -341,7 +341,7 @@ warns, npm 12 blocks): run `npm install-scripts approve <pkg>`.
 Checks that must pass before every push:
 
 ```bash
-.venv/bin/python -m pytest -q backend/tests             # currently 179 passed
+.venv/bin/python -m pytest -q backend/tests             # currently 180 passed
 cd frontend && npx tsc -b && npx eslint . && npx vite build
 # browser test: start the app on a fresh data dir, then
 node e2e/smoke.cjs http://127.0.0.1:8790/ <screenshot-dir>   # currently 86/86 (the ride-form step can flake once; rerun)
@@ -398,7 +398,7 @@ Stock: `consumables` (GET/POST/PATCH), `/txns`, `/txn`, `/install`; `inventory`;
 Work sessions: `work-sessions`, `/{id}`, `/{id}/undo`. Journal: `journal` (GET/POST), `/{id}` PATCH,
 `/{id}/void`; `journal?ride_id=`; `incidents` (GET `bike_id`, `incident_type`, `open_only`);
 `rides/{id}/incidents` (GET incidents + choices per type, POST `incident_type`, `affected` keys, `text`,
-`resolved_on`), `bikes/{id}/incidents` (GET), `incidents/{group}` (PATCH), `incidents/{group}/remove|restore` (POST); `bikes/{id}/group-wheels` (POST);
+`resolved_on`), `bikes/{id}/incidents` (GET), GET `incidents` returns one row per incident (`incidents.all_incidents`; a bike/part filter picks incidents touching it, the row lists everything affected), `incidents/{group}` (PATCH), `incidents/{group}/remove|restore` (POST); `bikes/{id}/group-wheels` (POST);
 `bikes/{id}/rules` (GET, bike-level rules with status), `bikes/{id}/rules/{rule_code}` (PATCH, per bike);
 `maintenance/snooze` takes `bike_id` for a bike-level reminder; bikes take `shifting`. Groupsets: `groupsets`, `/{code}/plan`, `/{code}/import`. Bundles: `bundles` (GET `bike_id`, `include_voided`; POST),
 `bundles/candidates`, `bundles/{id}` (GET/PATCH), `/members` (POST), `/members/{cid}` (DELETE), `/void`. Imports: `imports/csv`,

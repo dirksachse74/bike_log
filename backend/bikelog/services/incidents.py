@@ -11,7 +11,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from bikelog.catalog import COMPONENT_TYPES, INCIDENT_OPTIONS, INCIDENT_TYPES, WHOLE_BIKE, IncidentOption
-from bikelog.models import Component, Installation, JournalEntry, Ride, UsageContribution, new_uuid
+from bikelog.models import Bike, Component, Installation, JournalEntry, Ride, UsageContribution, new_uuid
 from bikelog.services import journal
 from bikelog.services.errors import DomainError, NotFound
 
@@ -211,11 +211,13 @@ def _group_row(session: Session, rows: list[JournalEntry], *, removed: bool) -> 
         affected.append({"key": _key(e, opts), "component_id": e.component_id,
                          "label": comp.label if comp else (e.affected or "Whole bike")})
     detail = None if first.text == INCIDENT_TYPES.get(first.incident_type) else first.text
+    bike = session.get(Bike, first.bike_id) if first.bike_id else None
     return {"group": first.incident_group, "incident_type": first.incident_type,
             "label": INCIDENT_TYPES.get(first.incident_type, first.incident_type), "on": first.entry_on,
             "text": detail, "resolved_on": first.resolved_on, "open": not first.resolved_on,
             "affected": affected, "removed": removed, "ride_id": first.ride_id,
-            "ride_label": journal._ride_label(ride),
+            "ride_label": journal._ride_label(ride), "ride_conditions": ride.conditions if ride else None,
+            "bike_id": first.bike_id, "bike": bike.name if bike else None,
             "edited": any(e.updated_at for e in rows)}
 
 
@@ -247,6 +249,28 @@ def bike_incidents(session: Session, bike_id: int) -> list[dict]:
     out = _grouped(session, select(JournalEntry).where(JournalEntry.bike_id == bike_id))
     out.sort(key=lambda r: r["on"], reverse=True)
     return sorted(out, key=lambda r: (r["removed"], not r["open"]))
+
+
+def all_incidents(session: Session, *, bike_id: int | None = None, component_id: int | None = None,
+                  incident_type: str | None = None, open_only: bool = False) -> list[dict]:
+    """Every incident (one row per incident, with all it affected), newest first, for Rides → Incidents.
+    A filter on a part or bike picks the incidents that touch it; the row still lists everything affected."""
+    q = select(JournalEntry.incident_group).where(JournalEntry.incident_type.is_not(None),
+                                                  JournalEntry.voided_at.is_(None))
+    if bike_id is not None:
+        q = q.where(JournalEntry.bike_id == bike_id)
+    if component_id is not None:
+        q = q.where(JournalEntry.component_id == component_id)
+    if incident_type:
+        q = q.where(JournalEntry.incident_type == incident_type)
+    if open_only:
+        q = q.where(JournalEntry.resolved_on.is_(None))
+    groups = set(session.scalars(q))
+    if not groups:
+        return []
+    out = [r for r in _grouped(session, select(JournalEntry).where(JournalEntry.incident_group.in_(groups)))
+           if not r["removed"]]
+    return sorted(out, key=lambda r: r["on"], reverse=True)
 
 
 def count_for_ride(session: Session, ride_id: int) -> int:

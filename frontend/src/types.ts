@@ -98,6 +98,9 @@ export interface RideIncident {
   edited: boolean
   ride_id: number | null
   ride_label: string | null
+  ride_conditions: 'DRY' | 'WET' | null
+  bike_id: number | null
+  bike: string | null
 }
 
 export interface Location {

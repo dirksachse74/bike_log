@@ -22,6 +22,10 @@ UPDATING.md → "Making a release". New entries go under "Unreleased" as work is
   Costs, Journal and history. "Installed now" shows one line per group (groupset, wheels and tires,
   cockpit, contact points, frame, electronics) that unfolds with the triangle. Service status shows what
   is due first; "Need a first entry" and "Up to date" fold away.
+- Incidents are listed as one row per incident everywhere (ride, bike, Rides → Incidents), in fixed
+  columns: type and date, what was affected (e.g. "GP5000 front + tube front"), status, buttons. A flat
+  with a damaged tire and a punctured tube is one incident. Rides → Incidents has the same Solved /
+  Re-open, Edit and Remove buttons. "Log incident" is now "Add incident".
 - Bike page → Rides: the bike's rides (date, name, distance, time, wet / incidents / indoor), with a
   total line; click a ride to open it right there.
 - Bike page → Incidents: every incident on the bike with its ride, and the same Solved / Re-open, Edit,

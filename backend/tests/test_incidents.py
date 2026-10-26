@@ -191,3 +191,20 @@ def test_bike_lists_its_incidents_open_first(session):
     assert [r["group"] for r in rows] == [g1, g2, g3]          # open, solved, removed
     assert rows[0]["ride_label"].startswith("Ride (2026-09-10") and len(rows[0]["affected"]) == 2
     assert rows[2]["removed"]
+
+
+def test_flat_on_tire_and_tube_is_one_incident_everywhere(session):
+    b, p = setup_bike(session)
+    tube = part(session, "INNER_TUBE", "tube front")
+    inv.install(session, tube.id, at="2026-09-01", parent_component_id=p["fw"].id)
+    r = ride(session, b, "2026-09-10", 60)
+    keys = [o["key"] for o in inc.choices(session, r, "FLAT") if o["label"].startswith("Front tire")]
+    assert len(keys) == 2                                   # the tire and the tube
+    inc.log(session, r.id, incident_type="FLAT", affected=keys, text="cut tire, punctured tube")
+    assert len(inc.ride_incidents(session, r.id)) == 1
+    assert len(inc.bike_incidents(session, b.id)) == 1
+    rows = inc.all_incidents(session)
+    assert len(rows) == 1 and {a["label"] for a in rows[0]["affected"]} == {"GP5000 front", "tube front"}
+    assert len(inc.all_incidents(session, component_id=tube.id)[0]["affected"]) == 2
+    assert inc.all_incidents(session, open_only=True)[0]["bike"] == "TIME NXR"
+    assert rides_svc.ride_row(session, r)["incidents"] == 1
