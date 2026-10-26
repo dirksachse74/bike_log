@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "bikelog/product-templates/frame.schema.json",
-  "title": "Bike Log product: Frame",
+  "title": "Bike Log product: Frame and fork",
   "description": "One product (what you can buy) and optionally physical items you own. Only component_type, maker and model are required. Unlisted spec keys are imported too.",
   "type": "object",
   "required": [

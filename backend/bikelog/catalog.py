@@ -106,10 +106,11 @@ COMPONENT_TYPES: dict[str, ComponentType] = {t.code: t for t in [
     ComponentType("BRAKE_PADS", "Brake pads", "Brakes", ("FRONT_PADS", "REAR_PADS"), removed_default="DISCARDED"),
     ComponentType("POWER_METER", "Power meter", "Drivetrain", ("POWER_METER",), ("CRANKSET",)),
     ComponentType("HEADSET", "Headset", "Frame", ("HEADSET",), torque=True),
-    # the bike is the build (name, Strava gear, rides); frame and fork are parts so a warranty swap or a
-    # frame moving to another build keeps km, serial number and crash history with the right frame
-    ComponentType("FRAME", "Frame", "Frame", ("FRAME",)),
-    ComponentType("FORK", "Fork", "Frame", ("FORK",)),
+    # the bike is the build (name, Strava gear, rides); the frame (with its fork, one piece: Dirk
+    # 2026-10-26) is a part so a warranty swap or a frame moving to another build keeps km, serial number
+    # and crash history with the right frame. FORK stays only as an optional separate part type.
+    ComponentType("FRAME", "Frame and fork", "Frame", ("FRAME",)),
+    ComponentType("FORK", "Fork (separate)", "Frame", ("FORK",)),
     ComponentType("PEDALS", "Pedals", "Contact points", ("PEDALS",), torque=True),
     ComponentType("POWER_METER_PEDALS", "Power-meter pedals", "Contact points", ("PEDALS",), torque=True),
     # shoes are worn, not mounted: while in use they count every ride on any bike; cleats sit on the shoes
@@ -576,8 +577,7 @@ INCIDENT_OPTIONS: dict[str, tuple[IncidentOption, ...]] = {
             _o("BACK_PAIN", "Back pain"), _o("NECK_PAIN", "Neck pain"), _o("SHOULDER_PAIN", "Shoulder pain"),
             _o("KNEE_PAIN", "Knee pain"), _o("LEG_PAIN", "Leg pain"), _o("CRAMPS", "Cramps")),
     "CRASH": (_o(WHOLE_BIKE, "Whole bike"),
-              _o("FRAME", "Frame", ("FRAME",)),
-              _o("FORK", "Fork", ("FORK",)),
+              _o("FRAME", "Frame and fork", ("FRAME",)),
               _o("RIDER", "Rider (injury)"),
               _o("FRONT_WHEEL", "Front wheel", ("FRONT_WHEEL",)),
               _o("REAR_WHEEL", "Rear wheel", ("REAR_WHEEL",)),

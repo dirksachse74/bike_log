@@ -8,6 +8,10 @@ UPDATING.md → "Making a release". New entries go under "Unreleased" as work is
 ## Unreleased
 
 ### Added
+- Frame and fork are one piece (Dirk 2026-10-26): every bike gets a single "Frame and fork" part; the
+  separate fork parts the previous build added automatically are removed on the next start (a fork with
+  anything entered on it stays). Rides are flagged only for "no frame"; crash incidents offer "Frame and
+  fork". The details below now read "frame" for the one piece.
 - Frame and fork are parts (Dirk 2026-10-26). The bike is the build (name, Strava gear, rides, total km);
   its frame and fork are parts with their own km, serial number, purchase date and a new "Warranty until"
   date (Edit details; the part page shows it, with "expired" once past). Every bike gets them

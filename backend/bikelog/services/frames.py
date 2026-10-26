@@ -1,9 +1,10 @@
-"""Every bike has a frame and a fork, as parts (DECISIONS 96).
+"""Every bike has a frame (with its fork, one piece) as a part (DECISIONS 96 and 98).
 
-The bike is the build: its name, Strava gear, rides and total km. The frame and fork are parts on it with
-their own km, serial number and warranty date, so a warranty frame (Replace, old one "returned under
-warranty") starts at 0 km while the bike keeps its history, and a frame moved to another build takes its km
-along. Bikes get both parts automatically: from the bike's first day (purchase date, starting km or first
+The bike is the build: its name, Strava gear, rides and total km. The frame is a part on it with its own
+km, serial number and warranty date, so a warranty frame (Replace, old one "returned under warranty")
+starts at 0 km while the bike keeps its history, and a frame moved to another build takes its km along.
+Dirk keeps frame and fork as one piece; the separate fork parts an earlier build added automatically are
+removed again when nothing was recorded on them (drop_auto_forks). Bikes get the frame automatically: from the bike's first day (purchase date, starting km or first
 ride, whichever is earliest), with the bike's starting km. While such an automatic installation is the
 only one, it follows the bike's start when older rides arrive later (a Strava sync, a CSV import).
 """
@@ -18,7 +19,7 @@ from bikelog.services import settings
 from bikelog.timeutil import local_date_of, parse_when
 
 AUTO_NOTE = "Added with the bike (frame and fork are parts)"
-PARTS = (("FRAME", "frame"), ("FORK", "fork"))
+PARTS = (("FRAME", "frame"),)
 
 
 def _start(session: Session, bike: Bike) -> str:
@@ -54,7 +55,7 @@ def _label(session: Session, ctype: str, base: str) -> str:
 def ensure_frames(session: Session, bike_id: int | None = None) -> int:
     """Add the missing frame / fork parts and move automatic ones back to the bike's start. Returns how
     many parts were added or moved. A bike that ever had a frame (or fork) installed is left alone for it."""
-    changed = 0
+    changed = drop_auto_forks(session)
     q = select(Bike).where(Bike.status == "ACTIVE")
     if bike_id is not None:
         q = q.where(Bike.id == bike_id)
@@ -120,3 +121,37 @@ def frame_history(session: Session, comp: Component) -> dict:
     inspections.sort(key=lambda e: e["performed_at"], reverse=True)
     crashes.sort(key=lambda r: r["on"], reverse=True)
     return {"inspections": inspections, "crashes": crashes}
+
+
+def drop_auto_forks(session: Session) -> int:
+    """Remove fork parts that were only ever the automatic one on a bike (commit 9842a2a added them; Dirk
+    keeps frame and fork as one piece). A fork with anything of its own (another installation, work, a
+    note, a status change, a repair, a price, serial or warranty) stays."""
+    from bikelog.models import (ComponentDisposition, JournalEntry, MaintenanceEvent, ServiceOrder,
+                                UsageContribution)
+    dropped = 0
+    for comp in list(session.scalars(select(Component).where(Component.component_type == "FORK"))):
+        insts = list(session.scalars(select(Installation).where(Installation.component_id == comp.id)))
+        if len(insts) != 1 or insts[0].note != AUTO_NOTE or insts[0].removed_utc or insts[0].voided_at:
+            continue
+        if comp.price_cents is not None or comp.serial_number or comp.warranty_until or comp.bundle_id \
+                or comp.product_id or comp.notes or comp.mark:
+            continue
+        owned = any(session.scalar(select(func.count()).select_from(model).where(col == comp.id))
+                    for model, col in ((MaintenanceEvent, MaintenanceEvent.component_id),
+                                       (JournalEntry, JournalEntry.component_id),
+                                       (ComponentDisposition, ComponentDisposition.component_id),
+                                       (ServiceOrder, ServiceOrder.component_id),
+                                       (ServiceOrder, ServiceOrder.replacement_id),
+                                       (Installation, Installation.parent_component_id)))
+        if owned:
+            continue
+        session.query(UsageContribution).filter(UsageContribution.component_id == comp.id).delete()
+        session.query(UsageAdjustment).filter(UsageAdjustment.component_id == comp.id).delete()
+        session.delete(insts[0])
+        session.flush()
+        session.delete(comp)
+        dropped += 1
+    if dropped:
+        session.flush()
+    return dropped

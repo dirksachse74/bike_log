@@ -150,8 +150,8 @@ def test_options_and_item_selection(session):
         gs.plan(session, R8100, options={"cassette": "11-36"})
     with pytest.raises(DomainError, match="Unknown items"):
         gs.plan(session, R8100, include=["saddle"])
-    # planning changes nothing (the bike's own frame and fork are its only installations)
-    assert session.scalar(select(func.count(Installation.id))) == 2
+    # planning changes nothing (the bike's own frame is its only installation)
+    assert session.scalar(select(func.count(Installation.id))) == 1
 
 
 def test_groupset_import_over_http(engine, paths):

@@ -1,4 +1,4 @@
-"""Frame and fork are parts (DECISIONS 96): every bike gets them automatically, they keep their own km,
+"""The frame (with its fork, one piece) is a part (DECISIONS 96, 98): every bike gets one automatically, they keep their own km,
 a warranty frame starts at 0 km while the bike's total goes on, and a frame moved to a new build takes its
 km along."""
 import pytest
@@ -25,12 +25,12 @@ def frame_of(session, b, ctype="FRAME"):
                                  Component.component_type == ctype))
 
 
-def test_new_bike_gets_frame_and_fork_that_count_every_ride(session):
+def test_new_bike_gets_one_frame_part_that_counts_every_ride(session):
     b = bike(session, purchase_date="2026-03-01")
-    fr, fo = frame_of(session, b), frame_of(session, b, "FORK")
-    assert fr.label == "TIME NXR frame" and fo.label == "TIME NXR fork"
+    fr = frame_of(session, b)
+    assert fr.label == "TIME NXR frame" and frame_of(session, b, "FORK") is None
     ride(session, b, "2026-04-01", 80)
-    assert km(session, fr) == 80 and km(session, fo) == 80
+    assert km(session, fr) == 80
     assert frames.ensure_frames(session) == 0                               # nothing twice
 
 
@@ -41,7 +41,7 @@ def test_existing_bike_gets_frame_with_starting_km_and_follows_older_rides(sessi
     session.flush()
     inv.set_starting_usage(session, bike_id=b.id, km=3000, effective="2026-05-01", is_estimate=True)
     assert frame_of(session, b) is None
-    assert frames.ensure_frames(session) == 2                               # what the app does on start
+    assert frames.ensure_frames(session) == 1                               # what the app does on start
     fr = frame_of(session, b)
     ride(session, b, "2026-05-10", 50)
     assert km(session, fr) == 3050
@@ -50,7 +50,7 @@ def test_existing_bike_gets_frame_with_starting_km_and_follows_older_rides(sessi
     # without starting km, an older ride arriving later (Strava, CSV) moves the automatic frame back
     b2 = bike(session, "Cube SL Road", purchase_date="2026-05-01")
     ride(session, b2, "2026-04-20", 30)
-    assert km(session, frame_of(session, b2)) == 30 and km(session, frame_of(session, b2, "FORK")) == 30
+    assert km(session, frame_of(session, b2)) == 30
 
 
 def test_warranty_frame_starts_at_zero_and_bike_total_goes_on(session):
@@ -124,10 +124,29 @@ def test_warranty_over_http(engine, paths):
     assert c.patch(f"/api/components/{fr['component_id']}", json={"warranty_until": "soon"}).status_code in (400, 422)
 
 
-def test_retiring_with_parts_off_keeps_frame_and_fork_on_the_bike(session):
+def test_retiring_with_parts_off_keeps_the_frame_on_the_bike(session):
     b = bike(session, purchase_date="2026-03-01")
     chain = part(session, "CHAIN", "Chain A")
     inv.install(session, chain.id, at="2026-03-01", bike_id=b.id, slot="CHAIN")
     inv.retire_bike(session, b.id, parts_off_at="2026-03-01T12:00")
     assert inv.open_installation(session, chain.id) is None
-    assert frame_of(session, b) is not None and frame_of(session, b, "FORK") is not None
+    assert frame_of(session, b) is not None
+
+
+def test_automatic_forks_from_the_earlier_build_are_removed_unless_something_was_recorded(session):
+    b = bike(session, purchase_date="2026-03-01")
+    ride(session, b, "2026-04-01", 50)
+    b2 = bike(session, "Cube SL Road", purchase_date="2026-03-01")
+    forks = []
+    for name, on in (("TIME NXR fork", b), ("Noted fork", b2)):      # what commit 9842a2a added to every bike
+        f = inv.create_component(session, component_type="FORK", label=name, prior_usage="UNKNOWN")
+        inv.install(session, f.id, at="2026-03-01", bike_id=on.id, slot="FORK", note=frames.AUTO_NOTE)
+        forks.append(f)
+    inv.update_component(session, forks[1].id, serial_number="F-1")   # Dirk entered something: keep it
+    session.flush()
+    assert km(session, forks[0]) == 50
+    assert frames.ensure_frames(session) >= 1
+    session.flush()
+    left = {c.label for c in session.scalars(select(Component).where(Component.component_type == "FORK"))}
+    assert left == {"Noted fork"}
+    assert km(session, frame_of(session, b)) == 50

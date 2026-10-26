@@ -172,12 +172,12 @@ async function bikeTab(page, name) {
     await page.getByRole('button', { name: 'Retire or delete' }).waitFor()
     check('Restore bike brings it back', true)
     await page.request.post(BASE + `api/bikes/${rb.id}/retire`, { headers: { 'X-BikeLog-Token': tok } })
-    // frame and fork are parts: the bike gets them, the frame has a warranty date and its own history
+    // the frame (with fork, one piece) is a part: the bike gets it, the frame has a warranty date and its own history
     const rbd = await (await page.request.get(BASE + `api/bikes/${rb.id}`)).json()
     const frame = rbd.setup.find((p) => p.component_type === 'FRAME')
-    check('a new bike gets a frame and a fork as parts', !!frame && rbd.setup.some((p) => p.component_type === 'FORK'))
+    check('a new bike gets its frame (with fork) as one part', !!frame && !rbd.setup.some((p) => p.component_type === 'FORK'))
     await page.goto(BASE + `#/inventory/${frame.component_id}`)
-    await page.getByRole('heading', { name: 'Frame history' }).waitFor()
+    await page.getByRole('heading', { name: 'Frame and fork history' }).waitFor()
     await page.getByRole('button', { name: 'Edit details' }).click()
     await page.locator('.sheet').getByLabel('Warranty until').fill('2031-03-01')
     await page.locator('.sheet').getByRole('button', { name: 'Save', exact: true }).click()

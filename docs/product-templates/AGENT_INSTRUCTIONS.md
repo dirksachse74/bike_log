@@ -90,8 +90,8 @@ error; put extra data under `specs`.
 | `BRAKE_PADS` | Brake pads | Brakes |
 | `POWER_METER` | Power meter | Drivetrain |
 | `HEADSET` | Headset | Frame |
-| `FRAME` | Frame | Frame |
-| `FORK` | Fork | Frame |
+| `FRAME` | Frame and fork | Frame |
+| `FORK` | Fork (separate) | Frame |
 | `PEDALS` | Pedals | Contact points |
 | `POWER_METER_PEDALS` | Power-meter pedals | Contact points |
 | `SHOES` | Cycling shoes | Contact points |
@@ -491,7 +491,7 @@ Template: `headset.schema.json`, example: `headset.example.json`
 | `weight_g` | number | g | Weight |
 | `color` | string |  | Colour / finish |
 | `material` | string |  | Main material |
-### Frame (`FRAME`)
+### Frame and fork (`FRAME`)
 
 Template: `frame.schema.json`, example: `frame.example.json`
 
@@ -509,7 +509,7 @@ Template: `frame.schema.json`, example: `frame.example.json`
 | `weight_g` | number | g | Weight |
 | `color` | string |  | Colour / finish |
 | `material` | string |  | Main material |
-### Fork (`FORK`)
+### Fork (separate) (`FORK`)
 
 Template: `fork.schema.json`, example: `fork.example.json`
 

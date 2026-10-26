@@ -2,7 +2,7 @@
   "format": "bikelog.product.v1",
   "component_type": "FORK",
   "maker": "Example maker",
-  "model": "Example fork 1",
+  "model": "Example fork (separate) 1",
   "list_price": 49.9,
   "currency": "EUR",
   "specs": {
@@ -23,7 +23,7 @@
   "notes": "Optional free text",
   "items": [
     {
-      "label": "Spare fork 1",
+      "label": "Spare fork (separate) 1",
       "price": 44.9,
       "purchase_date": "2026-10-20",
       "prior_usage": "NEW",

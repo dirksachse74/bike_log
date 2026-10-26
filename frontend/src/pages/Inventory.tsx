@@ -818,7 +818,7 @@ interface FrameHistory {
   crashes: { group: string; on: string; label: string; text: string | null; bike: string | null; ride_id: number | null; ride_label: string | null; open: boolean }[]
 }
 
-// A frame or fork keeps its own record: inspections and crashes from the bikes it was on, while it was on them.
+// A frame keeps its own record: inspections and crashes from the bikes it was on, while it was on them.
 function FrameHistoryCard({ h, kind }: { h: FrameHistory; kind: string }) {
   return (
     <Card title={`${kind} history`}>

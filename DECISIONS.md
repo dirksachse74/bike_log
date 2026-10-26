@@ -347,6 +347,11 @@ you disagree. Dates are 2026-10-24 unless noted.
     it is solved when every entry is fixed. Both steps are work sessions; undo voids or reopens the order
     (clear_for_session). Rides on a bike that had a frame/fork but has none that day get NO_FRAME/NO_FORK
     flags; the bike is not blocked (the ride date may simply be wrong).
+98. **Frame and fork are one piece** (Dirk 2026-10-26): only FRAME is added automatically (type name
+    "Frame and fork"); FORK stays as an optional separate part type so existing data keeps working.
+    frames.drop_auto_forks (run by ensure_frames) removes a fork whose only record is the automatic
+    installation (no other installation, work, journal, status, repair, price, serial, warranty, product,
+    note or mark): its usage rows and starting km go with it. No NO_FORK ride flag.
 
 ## Repository
 27. Pushed only to the feature branch `claude/project-thread-6y3mmh` of the private repository. Demo
