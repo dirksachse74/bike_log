@@ -18,6 +18,12 @@ UPDATING.md → "Making a release". New entries go under "Unreleased" as work is
   "Re-open" button that makes it open again. "Fixed" is now called "solved" everywhere.
 - Ride page: "Distance and time" shows a short summary (this ride; the bike in total, this year and this
   month, each in km and ride hours). The parts list unfolds with "Show details" and has an hours column.
+- Bike page tidied into tabs: Parts and service, Incidents (with the number of open ones), Maintenance,
+  Costs, Journal and history. "Installed now" shows one line per group (groupset, wheels and tires,
+  cockpit, contact points, frame, electronics) that unfolds with the triangle. Service status shows what
+  is due first; "Need a first entry" and "Up to date" fold away.
+- Bike page → Incidents: every incident on the bike with its ride, and the same Solved / Re-open, Edit,
+  Remove and Restore as on the ride.
 - Yearly full service: a whole-bike reminder every 12 months. "Log done" shows a checklist of the big jobs
   (hub bearings, headset, bottom bracket, brakes, Di2 wires / cables, frame and fork, drivetrain, pedals,
   torque); ticked and unticked jobs are saved with the entry. Each job keeps its own reminder on its part.

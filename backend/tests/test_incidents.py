@@ -177,3 +177,17 @@ def test_fitting_problem_and_crash_on_the_rider(session):
     assert [a["label"] for a in rows[1]["affected"]] == ["Whole bike", "Rider (injury)"]
     assert rides_svc.ride_row(session, r)["incidents"] == 2
 
+
+
+def test_bike_lists_its_incidents_open_first(session):
+    b, p = setup_bike(session)
+    r1 = ride(session, b, "2026-09-10", 60)
+    r2 = ride(session, b, "2026-09-12", 40)
+    g1 = inc.log(session, r1.id, incident_type="FLAT", affected=[f"c{p['ft'].id}", f"c{p['rt'].id}"])
+    g2 = inc.log(session, r2.id, incident_type="SHIFTING", affected=[f"c{p['rd'].id}"], resolved_on="2026-09-12")
+    g3 = inc.log(session, r2.id, incident_type="FIT", affected=["NUMB_HANDS"])
+    inc.remove(session, g3)
+    rows = inc.bike_incidents(session, b.id)
+    assert [r["group"] for r in rows] == [g1, g2, g3]          # open, solved, removed
+    assert rows[0]["ride_label"].startswith("Ride (2026-09-10") and len(rows[0]["affected"]) == 2
+    assert rows[2]["removed"]

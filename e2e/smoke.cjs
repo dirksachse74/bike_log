@@ -18,6 +18,33 @@ async function sheetButton(page, name) {
   await page.locator('.sheet').getByRole('button', { name, exact: true }).click()
 }
 
+// bike page: "Installed now" groups start folded; unfold them all (again after a reload)
+async function openGroups(page) {
+  await page.locator('details.setup-group').first().waitFor({ state: 'attached' })
+  await page.locator('details.setup-group').evaluateAll((ds) => ds.forEach((d) => { d.open = true }))
+}
+
+// waits until a part shows in "Installed now" (unfolding groups that appear after a reload)
+async function setupItem(page, text) {
+  for (let i = 0; i < 100; i++) {
+    await page.locator('details.setup-group').evaluateAll((ds) => ds.forEach((d) => { d.open = true }))
+    const li = page.locator('.list.setup li').filter({ hasText: text })
+    if (await li.count()) return li.first()
+    await page.waitForTimeout(100)
+  }
+  throw new Error('not installed: ' + text)
+}
+
+// bike page: unfold "Need a first entry" and "Up to date" in Service status
+async function openTaskGroups(page) {
+  await page.locator('details.task-group').first().waitFor({ state: 'attached' })
+  await page.locator('details.task-group').evaluateAll((ds) => ds.forEach((d) => { d.open = true }))
+}
+
+async function bikeTab(page, name) {
+  await page.getByRole('tab', { name }).click()
+}
+
 ;(async () => {
   const browser = await chromium.launch()
   const desktop = await browser.newPage({ viewport: { width: 1280, height: 900 } })
@@ -98,7 +125,7 @@ async function sheetButton(page, name) {
   // swap chain A -> B on the bike
   await page.goto(BASE + '#/bikes')
   await page.getByRole('link', { name: /TIME NXR/ }).click()
-  await page.locator('.setup li').filter({ hasText: 'Chain A' }).getByRole('button', { name: 'Change' }).click()
+  await (await setupItem(page, 'Chain A')).getByRole('button', { name: 'Change' }).click()
   await page.locator('.sheet .pick').filter({ hasText: 'Chain B' }).click()
   await page.locator('.sheet').getByLabel('Installed on').fill('2026-10-03')
   const keep = await page.locator('.sheet label.chip-on').innerText()
@@ -106,7 +133,7 @@ async function sheetButton(page, name) {
   await page.locator('.sheet .form-actions').getByRole('button', { name: 'Preview' }).click()
   await page.locator('.sheet .notice-preview').waitFor()
   await page.locator('.sheet .form-actions').getByRole('button', { name: 'Replace' }).click()
-  await page.locator('.setup li').filter({ hasText: 'Chain B' }).waitFor()
+  await setupItem(page, 'Chain B')
   check('swap chain via replace', true)
   await page.goto(BASE + '#/rides')
   await page.getByRole('button', { name: 'Add ride' }).click()
@@ -261,9 +288,11 @@ async function sheetButton(page, name) {
   await page.locator('.sheet').getByText('€450.00 entered').waitFor()
   await page.locator('.sheet').getByRole('button', { name: /^Add \d+ parts$/ }).click()
   await page.locator('.toast').filter({ hasText: 'parts added' }).waitFor()
-  await page.locator('.list.setup').getByRole('link', { name: 'Ultegra crankset' }).waitFor()
-  await page.locator('.list.setup').getByRole('link', { name: 'Ultegra outer chainring 50T' }).waitFor()
-  check('groupset import installs crankset and chainrings', true)
+  await setupItem(page, 'Ultegra crankset')
+  await setupItem(page, 'Ultegra outer chainring 50T')
+  const groupSummary = await page.locator('details.setup-group[data-group=GROUPSET] > summary').innerText()
+  check('groupset import installs crankset and chainrings', /Groupset/.test(groupSummary), groupSummary)
+  await bikeTab(page, 'Costs')
   const costText = await page.locator('.card').filter({ hasText: 'running cost' }).innerText()
   check('groupset price counts as running cost of the bike', /parts €450\.00/.test(costText), costText.replace(/\s+/g, ' ').slice(0, 160))
   await page.goto(BASE + '#/inventory?tab=history')
@@ -273,9 +302,12 @@ async function sheetButton(page, name) {
   await page.goto(BASE + '#/bikes')
   await page.getByRole('link', { name: /TIME NXR/ }).click()
   await page.getByRole('heading', { name: 'TIME NXR' }).waitFor()
+  await openGroups(page)
+  check('undo removes the whole groupset again', (await page.locator('.list.setup').getByRole('link', { name: 'Ultegra crankset' }).count()) === 0)
+  await bikeTab(page, 'Costs')
   const costAfter = await page.locator('.card').filter({ hasText: 'running cost' }).innerText()
   check('undo takes the groupset price out of the running cost', /parts €0\.00/.test(costAfter))
-  check('undo removes the whole groupset again', (await page.locator('.list.setup').getByRole('link', { name: 'Ultegra crankset' }).count()) === 0)
+  await bikeTab(page, 'Parts and service')
 
   // groupset bought as one bundle; the BSA bottom bracket goes to storage; km from before on a part
   await page.getByRole('button', { name: 'Add groupset' }).click()
@@ -285,10 +317,11 @@ async function sheetButton(page, name) {
   await page.locator('.sheet .groupset-items li').filter({ hasText: 'Kept as a spare' }).waitFor()
   await page.locator('.sheet').getByRole('button', { name: /^Add \d+ parts$/ }).click()
   await page.locator('.toast').filter({ hasText: 'recorded as the bundle' }).waitFor()
-  await page.locator('.list.setup').getByRole('link', { name: 'Ultegra crankset' }).waitFor()
+  await setupItem(page, 'Ultegra crankset')
+  check('bottom bracket kept as spare is not installed', (await page.locator('.list.setup').getByText(/bottom bracket/i).count()) === 0)
+  await bikeTab(page, 'Costs')
   const bundleCost = await page.locator('.card').filter({ hasText: 'running cost' }).innerText()
   check('bundle price counts once as running cost', /bundles €1,899\.00/.test(bundleCost) && /parts €0\.00/.test(bundleCost), bundleCost.replace(/\s+/g, ' ').slice(0, 200))
-  check('bottom bracket kept as spare is not installed', (await page.locator('.list.setup').getByText(/bottom bracket/i).count()) === 0)
   const bundleCard = page.locator('.card').filter({ hasText: 'Bought as a bundle' })
   await bundleCard.getByRole('button', { name: 'Show parts' }).click()
   const bbRow = await bundleCard.locator('tr').filter({ hasText: /bottom bracket/i }).innerText()
@@ -309,6 +342,7 @@ async function sheetButton(page, name) {
   await page.goto(BASE + '#/bikes')
   await page.getByRole('link', { name: /TIME NXR/ }).click()
   await page.getByRole('heading', { name: 'TIME NXR' }).waitFor()
+  await bikeTab(page, 'Costs')
   await page.locator('.card').filter({ hasText: 'Bought as a bundle' }).getByText('No bundles').waitFor()
   check('undoing the import voids the bundle', true)
 
@@ -366,6 +400,18 @@ async function sheetButton(page, name) {
   await page.getByRole('tab', { name: 'Incidents' }).click()
   await page.locator('table.incidents-table tr').filter({ hasText: 'flat tire' }).waitFor()
   check('Incidents tab lists the flat', true)
+  await page.goto(BASE + '#/bikes')
+  await page.getByRole('link', { name: /TIME NXR/ }).click()
+  await bikeTab(page, 'Incidents')
+  const bikeInc = page.locator('.incident-row').filter({ hasText: 'glass shard' })
+  await bikeInc.waitFor()
+  const bikeIncText = await bikeInc.innerText()
+  await bikeInc.getByRole('button', { name: 'Solved' }).click()
+  await bikeInc.getByRole('button', { name: 'Re-open' }).waitFor()
+  await bikeInc.getByRole('button', { name: 'Edit' }).click()
+  await page.locator('.incident-form').getByRole('button', { name: 'Cancel' }).click()
+  check('bike page lists its incidents with the ride, Solved and Edit work there', /Rear tire/.test(bikeIncText) && /Ride/.test(bikeIncText), bikeIncText.replace(/\s+/g, ' ').slice(0, 140))
+  await page.screenshot({ path: path.join(OUT, '09e-bike-incidents.png'), fullPage: true })
   await page.screenshot({ path: path.join(OUT, '09c-incidents.png'), fullPage: true })
 
   // JSON product import: check, see errors per file, import valid file, re-import changes nothing
@@ -417,12 +463,14 @@ async function sheetButton(page, name) {
   await page.getByRole('heading', { name: 'TIME NXR' }).waitFor()
 
   // purchase price and journal
+  await bikeTab(page, 'Costs')
   await page.locator('.card').filter({ hasText: 'running cost' }).getByRole('button', { name: 'Purchase price' }).click()
   await page.locator('.sheet').getByLabel('Purchase price').fill('3499')
   await page.locator('.sheet').getByLabel('Bought on').fill('2026-03-01')
   await sheetButton(page, 'Save')
   await page.locator('.card').filter({ hasText: 'initial cost' }).getByText('€3,499.00').first().waitFor()
   check('bike shows initial cost after entering the purchase price', true)
+  await bikeTab(page, 'Journal and history')
   await page.getByLabel('Journal note').fill('Creak from the bottom bracket when climbing')
   await page.getByRole('button', { name: 'Add note' }).click()
   await page.locator('.list.journal li').filter({ hasText: 'Creak from the bottom bracket' }).waitFor()
@@ -457,8 +505,9 @@ async function sheetButton(page, name) {
   check('wheel set to tubeless; change log shows it with who and when', /You \(app\)/.test(logText) && /installed/.test(logText), logText.slice(0, 200).replace(/\s+/g, ' '))
   await page.goto(BASE + '#/bikes')
   await page.getByRole('link', { name: /TIME NXR/ }).click()
-  const wheelRow = page.locator('.list.setup li').filter({ hasText: 'Zipp 303 front' })
+  const wheelRow = await setupItem(page, 'Zipp 303 front')
   check('bike page shows the wheel with its tire setup', (await wheelRow.getByLabel('Tire setup').inputValue()) === 'TUBELESS')
+  await bikeTab(page, 'Journal and history')
   const bikeLogCard = page.locator('.card').filter({ has: page.getByRole('heading', { name: 'Change log' }) })
   await bikeLogCard.locator('tr').filter({ hasText: 'purchase price' }).waitFor()
   const bikeLog = await bikeLogCard.innerText()
@@ -467,13 +516,13 @@ async function sheetButton(page, name) {
 
   await page.goto(BASE + '#/bikes')
   await page.getByRole('link', { name: /TIME NXR/ }).click()
-  await page.locator('.list.setup li').filter({ hasText: 'Zipp 303 front' }).waitFor()
+  await setupItem(page, 'Zipp 303 front')
   const groupBtn = page.getByRole('button', { name: 'Group wheels into a wheelset' })
   if (await groupBtn.count()) {
     await groupBtn.click()
     await page.locator('.sheet').getByLabel('Wheelset name').fill('Test wheelset')
     await sheetButton(page, 'Group wheels')
-    await page.locator('.list.setup').getByRole('link', { name: 'Test wheelset' }).waitFor()
+    await setupItem(page, 'Test wheelset')
     check('wheels grouped into a wheelset', (await groupBtn.count()) === 0)
   } else {
     check('wheels grouped into a wheelset', false, 'button not shown')
@@ -486,7 +535,7 @@ async function sheetButton(page, name) {
   const made = await page.request.post(BASE + 'api/components', { headers: { 'X-BikeLog-Token': apiToken }, data: { component_type: 'TIRE', label: 'GP5000 front', install: { at: '2026-10-01', parent_component_id: zipp.id } } })
   check('tire added on the wheel', made.ok(), String(made.status()))
   await page.reload()
-  const tireRow = page.locator('.list.setup li').filter({ hasText: 'GP5000 front' })
+  const tireRow = await setupItem(page, 'GP5000 front')
   await tireRow.getByRole('button', { name: 'Add pressure' }).click()
   await tireRow.getByLabel('Tire pressure').fill('4.8 bar')
   await tireRow.getByRole('button', { name: 'Save' }).click()
@@ -498,6 +547,7 @@ async function sheetButton(page, name) {
   await page.getByRole('link', { name: /TIME NXR/ }).click()
   await page.getByRole('combobox', { name: 'Shifting' }).first().selectOption('ELECTRONIC')
   await page.locator('.toast').filter({ hasText: 'Shifting set to electronic' }).waitFor()
+  await openTaskGroups(page)
   const torqueTask = page.locator('.task').filter({ hasText: 'Torque check' }).filter({ hasText: 'whole bike' })
   await torqueTask.first().waitFor()
   const di2 = await page.locator('.task').filter({ hasText: 'Di2 check' }).first().waitFor({ timeout: 8000 }).then(() => 1, () => 0)

@@ -246,7 +246,15 @@ ride's incident count counts groups. Solved / Re-open on the ride = PATCH `incid
 **Ride summary.** `rides.ride_detail` adds `summary` (`ride_summary`: this ride's km/hours; the bike's
 total km from `bike_usage` incl. starting value, hours from recorded ride time, and this calendar year and
 month in the app timezone via `_period`) and `hours` per equipment row (contribution `duration_s`). UI:
-`RideSummaryStats` in pages/Rides.tsx; the parts table is behind "Show details". UI: components/Incidents.tsx (`RideIncidents`, `IncidentEditor`).
+`RideSummaryStats` in pages/Rides.tsx; the parts table is behind "Show details".
+**Bike page layout.** pages/Bikes.tsx `BikeDetailPage`: header card, then tabs (`?tab=` overview |
+incidents | maintenance | costs | history). `SetupGroups` folds "Installed now" into `<details
+class="setup-group" data-group=…>` by the category of each top-level part (Drivetrain/Brakes/Controls and
+BATTERY → GROUPSET, Wheels, Cockpit, Contact points, Frame, Electronics, Other); parts mounted on parts stay
+with their root. `ServiceStatus` shows OVERDUE/DUE/DUE_SOON/ATTENTION/SNOOZED, and folds INSUFFICIENT_INFO
+and the rest into `details.task-group`. Incidents tab: GET `bikes/{id}/incidents`
+(`incidents.bike_incidents`, open first) rendered by `BikeIncidents` (shared `IncidentRows`; Edit loads
+the choices of the incident's ride). e2e helpers `setupItem`, `openGroups`, `openTaskGroups`, `bikeTab`. UI: components/Incidents.tsx (`RideIncidents`, `IncidentEditor`).
 
 ---
 
@@ -328,10 +336,10 @@ cd backend && ../.venv/bin/python -m bikelog            # http://127.0.0.1:8765/
 Checks that must pass before every push:
 
 ```bash
-.venv/bin/python -m pytest -q backend/tests             # currently 178 passed
+.venv/bin/python -m pytest -q backend/tests             # currently 179 passed
 cd frontend && npx tsc -b && npx eslint . && npx vite build
 # browser test: start the app on a fresh data dir, then
-node e2e/smoke.cjs http://127.0.0.1:8790/ <screenshot-dir>   # currently 84/84 (the ride-form step can flake once; rerun)
+node e2e/smoke.cjs http://127.0.0.1:8790/ <screenshot-dir>   # currently 85/85 (the ride-form step can flake once; rerun)
 #   (cd backend && ../.venv/bin/python -m bikelog --no-browser --no-sample --port 8790 --data-dir <fresh dir>)
 # sample database: start on ANOTHER fresh dir WITHOUT --no-sample (port 8791), then
 node e2e/sample.cjs http://127.0.0.1:8791/ <screenshot-dir>  # banner, sample bikes, crash item, Fresh start
@@ -385,7 +393,7 @@ Stock: `consumables` (GET/POST/PATCH), `/txns`, `/txn`, `/install`; `inventory`;
 Work sessions: `work-sessions`, `/{id}`, `/{id}/undo`. Journal: `journal` (GET/POST), `/{id}` PATCH,
 `/{id}/void`; `journal?ride_id=`; `incidents` (GET `bike_id`, `incident_type`, `open_only`);
 `rides/{id}/incidents` (GET incidents + choices per type, POST `incident_type`, `affected` keys, `text`,
-`resolved_on`), `incidents/{group}` (PATCH), `incidents/{group}/remove|restore` (POST); `bikes/{id}/group-wheels` (POST);
+`resolved_on`), `bikes/{id}/incidents` (GET), `incidents/{group}` (PATCH), `incidents/{group}/remove|restore` (POST); `bikes/{id}/group-wheels` (POST);
 `bikes/{id}/rules` (GET, bike-level rules with status), `bikes/{id}/rules/{rule_code}` (PATCH, per bike);
 `maintenance/snooze` takes `bike_id` for a bike-level reminder; bikes take `shifting`. Groupsets: `groupsets`, `/{code}/plan`, `/{code}/import`. Bundles: `bundles` (GET `bike_id`, `include_voided`; POST),
 `bundles/candidates`, `bundles/{id}` (GET/PATCH), `/members` (POST), `/members/{cid}` (DELETE), `/void`. Imports: `imports/csv`,

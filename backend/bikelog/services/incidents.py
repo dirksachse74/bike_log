@@ -215,16 +215,13 @@ def _group_row(session: Session, rows: list[JournalEntry], *, removed: bool) -> 
             "label": INCIDENT_TYPES.get(first.incident_type, first.incident_type), "on": first.entry_on,
             "text": detail, "resolved_on": first.resolved_on, "open": not first.resolved_on,
             "affected": affected, "removed": removed, "ride_id": first.ride_id,
+            "ride_label": journal._ride_label(ride),
             "edited": any(e.updated_at for e in rows)}
 
 
-def ride_incidents(session: Session, ride_id: int) -> list[dict]:
-    """The ride's incidents (one row per incident with everything it affected), removed ones last."""
-    _ride(session, ride_id)
+def _grouped(session: Session, q) -> list[dict]:
     groups: dict[str, list[JournalEntry]] = {}
-    for e in session.scalars(select(JournalEntry).where(JournalEntry.ride_id == ride_id,
-                                                        JournalEntry.incident_type.is_not(None))
-                             .order_by(JournalEntry.id)):
+    for e in session.scalars(q.where(JournalEntry.incident_type.is_not(None)).order_by(JournalEntry.id)):
         groups.setdefault(e.incident_group or e.uuid, []).append(e)
     out = []
     for rows in groups.values():
@@ -235,7 +232,21 @@ def ride_incidents(session: Session, ride_id: int) -> list[dict]:
             gone = [e for e in rows if e.void_reason == REMOVED]
             if gone:
                 out.append(_group_row(session, gone, removed=True))
+    return out
+
+
+def ride_incidents(session: Session, ride_id: int) -> list[dict]:
+    """The ride's incidents (one row per incident with everything it affected), removed ones last."""
+    _ride(session, ride_id)
+    out = _grouped(session, select(JournalEntry).where(JournalEntry.ride_id == ride_id))
     return sorted(out, key=lambda r: r["removed"])
+
+
+def bike_incidents(session: Session, bike_id: int) -> list[dict]:
+    """All incidents on a bike, newest first (open ones before solved ones), removed ones last."""
+    out = _grouped(session, select(JournalEntry).where(JournalEntry.bike_id == bike_id))
+    out.sort(key=lambda r: r["on"], reverse=True)
+    return sorted(out, key=lambda r: (r["removed"], not r["open"]))
 
 
 def count_for_ride(session: Session, ride_id: int) -> int:

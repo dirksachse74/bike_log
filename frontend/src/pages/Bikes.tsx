@@ -1,7 +1,8 @@
 import { useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { api, newOpId } from '../api'
 import Bundles from '../components/Bundles'
+import { BikeIncidents } from '../components/Incidents'
 import GroupsetImport from '../components/GroupsetImport'
 import ChangeLog from '../components/ChangeLog'
 import Journal from '../components/Journal'
@@ -13,7 +14,7 @@ import { Card, ChangeNotice, Empty, ErrorBox, Field, FormError, Loading, Sheet, 
 import { useApp } from '../context'
 import { centsInput, certaintyLabel, euro, km, slotName, toCents, today, usageText, when } from '../format'
 import { useApi } from '../hooks'
-import type { Bike, BikeCosts, BrakeRow, Change, ComponentSummary, EventRow, OpResult, RideRow, SetupRow, Task } from '../types'
+import type { Bike, BikeCosts, BrakeRow, Change, ComponentSummary, EventRow, OpResult, RideIncident, RideRow, SetupRow, Task } from '../types'
 
 export function BikeForm({ onSaved }: { onSaved: (b: Bike) => void }) {
   const { meta } = useApp()
@@ -265,10 +266,22 @@ function PartActions({ row, onDone }: { row: SetupRow; onDone: (c: Change) => vo
   )
 }
 
+const BIKE_TABS: [string, string][] = [
+  ['overview', 'Parts and service'],
+  ['incidents', 'Incidents'],
+  ['maintenance', 'Maintenance'],
+  ['costs', 'Costs'],
+  ['history', 'Journal and history'],
+]
+
 export function BikeDetailPage() {
   const { id } = useParams()
   const { toast } = useApp()
+  const [params, setParams] = useSearchParams()
+  const tab = params.get('tab') ?? 'overview'
   const { data, error, loading, reload } = useApi<BikeDetail>(`/bikes/${id}`)
+  const incidents = useApi<RideIncident[]>(`/bikes/${id}/incidents`)
+  const openIncidents = incidents.data?.filter((r) => r.open && !r.removed).length ?? 0
   const [sheet, setSheet] = useState<null | { kind: 'install' } | { kind: 'groupset' } | { kind: 'wheelset' } | { kind: 'costs' } | { kind: 'part'; row: SetupRow } | { kind: 'log' }>(null)
   if (loading && !data) return <Loading />
   if (error && !data) return <ErrorBox error={error} onRetry={reload} />
@@ -324,98 +337,115 @@ export function BikeDetailPage() {
         )}
         <ShiftingSelect bike={data} onSaved={reload} />
       </Card>
-      <CostCard bike={data} onEdit={() => setSheet({ kind: 'costs' })} />
-      <Card
-        title="Installed now"
-        actions={
-          data.setup.some((s) => s.depth === 0 && (s.component_type === 'FRONT_WHEEL' || s.component_type === 'REAR_WHEEL')) ? (
-            <button className="btn btn-small" onClick={() => setSheet({ kind: 'wheelset' })}>
-              Group wheels into a wheelset
-            </button>
-          ) : undefined
-        }
-      >
-        {data.setup.length === 0 ? (
-          <Empty title="Nothing installed yet">Install parts to track their usage.</Empty>
-        ) : (
-          <ul className="list setup">
-            {data.setup.map((s) => (
-              <li key={s.installation_id} style={{ paddingLeft: `${s.depth * 1.2}rem` }}>
-                <span className="muted small">{slotName(s.slot)}</span>
-                <Link to={`/inventory/${s.component_id}`}>{s.label}</Link>
-                <span className="muted small">since {when(s.since)}</span>
-                {(s.component_type === 'FRONT_WHEEL' || s.component_type === 'REAR_WHEEL') && <TireSetupSelect wheelId={s.component_id} value={s.tire_setup} onSaved={reload} />}
-                {s.component_type === 'TIRE' && <PressureNote tireId={s.component_id} value={s.pressure_note} onSaved={reload} />}
-                <button className="btn btn-small" onClick={() => setSheet({ kind: 'part', row: s })}>
-                  Change
+      <div className="tabs span-2" role="tablist" aria-label="Bike sections">
+        {BIKE_TABS.map(([k, l]) => (
+          <button key={k} role="tab" aria-selected={tab === k} className={`tab ${tab === k ? 'tab-on' : ''}`} onClick={() => setParams(k === 'overview' ? {} : { tab: k })}>
+            {l}
+            {k === 'incidents' && openIncidents > 0 && <span className="count">{openIncidents}</span>}
+          </button>
+        ))}
+      </div>
+      {tab === 'overview' && (
+        <>
+          <Card
+            title="Installed now"
+            className="span-2"
+            actions={
+              data.setup.some((s) => s.depth === 0 && (s.component_type === 'FRONT_WHEEL' || s.component_type === 'REAR_WHEEL')) ? (
+                <button className="btn btn-small" onClick={() => setSheet({ kind: 'wheelset' })}>
+                  Group wheels into a wheelset
                 </button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </Card>
-      <Card title="Service status">
-        <TaskList tasks={data.queue} onChange={reload} emptyText="No rules apply to the installed parts yet." />
-      </Card>
-      {data.brakes.length > 0 && (
-        <Card title="Brake circuits">
-          <ul className="list">
-            {data.brakes.map((b) => (
-              <li key={b.component_id}>
-                <strong>{b.position}</strong>
-                <Link to={`/inventory/${b.component_id}`}>{b.label}</Link>
-                {b.fluid && <StatusBadge status={b.fluid.status} />}
-                <span className="small muted">{b.last_bleed ? `Last bleed ${when(b.last_bleed.date)}: ${b.last_bleed.symptom ?? ''} → ${b.last_bleed.outcome ?? '?'}` : 'No bleed recorded'}</span>
-              </li>
-            ))}
-          </ul>
+              ) : undefined
+            }
+          >
+            {data.setup.length === 0 ? (
+              <Empty title="Nothing installed yet">Install parts to track their usage.</Empty>
+            ) : (
+              <SetupGroups setup={data.setup} onChange={(row) => setSheet({ kind: 'part', row })} reload={reload} />
+            )}
+          </Card>
+          <ServiceStatus tasks={data.queue} reload={reload} />
+        </>
+      )}
+      {tab === 'incidents' && (
+        <Card title="Incidents" className="span-2">
+          <BikeIncidents incidents={incidents.data} error={incidents.error} loading={incidents.loading} reload={incidents.reload} bikeName={data.name} />
         </Card>
       )}
-      <Card title="Recent maintenance">
-        {data.events.length === 0 ? (
-          <Empty title="No maintenance logged" />
-        ) : (
-          <ul className="list">
-            {data.events.map((e) => (
-              <li key={e.id} className={e.voided ? 'excluded' : ''}>
-                <span>{when(e.performed_at)}</span>
-                <span>{e.action}</span>
-                <span className="muted">{e.component}</span>
-                {e.outcome && <Tag>{e.outcome.toLowerCase()}</Tag>}
-              </li>
-            ))}
-          </ul>
-        )}
-      </Card>
-      <Bundles bikeId={data.id} refresh={data} onChanged={(msg) => { toast(msg); reload() }} className="span-2" />
-      <Journal bikeId={data.id} className="span-2" />
-      <ChangeLog bikeId={data.id} refresh={data} className="span-2" />
-      <Card title="Installation history" className="span-2">
-        <table className="table">
-          <thead>
-            <tr>
-              <th>Part</th>
-              <th>Slot</th>
-              <th>From</th>
-              <th>Until</th>
-              <th>Reason</th>
-            </tr>
-          </thead>
-          <tbody>
-            {data.history.map((h) => (
-              <tr key={h.id} className={h.voided ? 'excluded' : ''}>
-                <td>
-                  <Link to={`/inventory/${h.component_id}`}>{h.label}</Link>
-                </td>
-                <td>{slotName(h.slot)}</td>
-                <td>{when(h.installed_at)}</td>
-                <td>{h.removed_at ? when(h.removed_at) : 'now'}</td>
-                <td>{h.voided ? 'corrected (void)' : h.removal_reason}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </Card>
+      {tab === 'maintenance' && (
+        <>
+          <Card title="Recent maintenance">
+            {data.events.length === 0 ? (
+              <Empty title="No maintenance logged" />
+            ) : (
+              <ul className="list">
+                {data.events.map((e) => (
+                  <li key={e.id} className={e.voided ? 'excluded' : ''}>
+                    <span>{when(e.performed_at)}</span>
+                    <span>{e.action}</span>
+                    <span className="muted">{e.component}</span>
+                    {e.outcome && <Tag>{e.outcome.toLowerCase()}</Tag>}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Card>
+          <Card title="Brake circuits">
+            {data.brakes.length === 0 ? (
+              <Empty title="No brake circuits installed" />
+            ) : (
+              <ul className="list">
+                {data.brakes.map((b) => (
+                  <li key={b.component_id}>
+                    <strong>{b.position}</strong>
+                    <Link to={`/inventory/${b.component_id}`}>{b.label}</Link>
+                    {b.fluid && <StatusBadge status={b.fluid.status} />}
+                    <span className="small muted">{b.last_bleed ? `Last bleed ${when(b.last_bleed.date)}: ${b.last_bleed.symptom ?? ''} → ${b.last_bleed.outcome ?? '?'}` : 'No bleed recorded'}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Card>
+        </>
+      )}
+      {tab === 'costs' && (
+        <>
+          <CostCard bike={data} onEdit={() => setSheet({ kind: 'costs' })} />
+          <Bundles bikeId={data.id} refresh={data} onChanged={(msg) => { toast(msg); reload() }} className="span-2" />
+        </>
+      )}
+      {tab === 'history' && (
+        <>
+          <Journal bikeId={data.id} className="span-2" />
+          <ChangeLog bikeId={data.id} refresh={data} className="span-2" />
+          <Card title="Installation history" className="span-2">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>Part</th>
+                  <th>Slot</th>
+                  <th>From</th>
+                  <th>Until</th>
+                  <th>Reason</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.history.map((h) => (
+                  <tr key={h.id} className={h.voided ? 'excluded' : ''}>
+                    <td>
+                      <Link to={`/inventory/${h.component_id}`}>{h.label}</Link>
+                    </td>
+                    <td>{slotName(h.slot)}</td>
+                    <td>{when(h.installed_at)}</td>
+                    <td>{h.removed_at ? when(h.removed_at) : 'now'}</td>
+                    <td>{h.voided ? 'corrected (void)' : h.removal_reason}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </Card>
+        </>
+      )}
       {sheet?.kind === 'install' && (
         <Sheet title="Install a part" onClose={() => setSheet(null)}>
           <InstallForm bikeId={data.id} onDone={done} />
@@ -467,6 +497,112 @@ export function BikeDetailPage() {
           />
         </Sheet>
       )}
+    </div>
+  )
+}
+
+// Service status: what needs doing first; reminders that need a first entry and those that are fine fold away.
+const NEEDS_ACTION = ['OVERDUE', 'DUE', 'DUE_SOON', 'ATTENTION', 'SNOOZED']
+
+function ServiceStatus({ tasks, reload }: { tasks: Task[]; reload: () => void }) {
+  const now = tasks.filter((t) => NEEDS_ACTION.includes(t.status))
+  const first = tasks.filter((t) => t.status === 'INSUFFICIENT_INFO')
+  const fine = tasks.filter((t) => !NEEDS_ACTION.includes(t.status) && t.status !== 'INSUFFICIENT_INFO')
+  return (
+    <Card title="Service status" className="span-2">
+      {tasks.length === 0 ? (
+        <Empty title="No rules apply to the installed parts yet." />
+      ) : (
+        <>
+          {now.length ? <TaskList tasks={now} onChange={reload} /> : <p className="small muted">Nothing due right now.</p>}
+          {first.length > 0 && (
+            <details className="task-group" data-group="first">
+              <summary>
+                <strong>Need a first entry</strong> <span className="muted small">{first.length} reminders start counting once you log the last time it was done</span>
+              </summary>
+              <TaskList tasks={first} onChange={reload} />
+            </details>
+          )}
+          {fine.length > 0 && (
+            <details className="task-group" data-group="ok">
+              <summary>
+                <strong>Up to date</strong> <span className="muted small">{fine.length} reminders</span>
+              </summary>
+              <TaskList tasks={fine} onChange={reload} />
+            </details>
+          )}
+        </>
+      )}
+    </Card>
+  )
+}
+
+// "Installed now" in groups (groupset, wheels, cockpit ...): one line each, unfolded with the triangle.
+// A part mounted on another part (tire on a wheel) stays with the part it is mounted on.
+const SETUP_GROUPS: [string, string][] = [
+  ['GROUPSET', 'Groupset (drivetrain, shifting, brakes)'],
+  ['WHEELS', 'Wheels and tires'],
+  ['COCKPIT', 'Cockpit'],
+  ['CONTACT', 'Contact points'],
+  ['FRAME', 'Frame'],
+  ['ELECTRONICS', 'Electronics'],
+  ['OTHER', 'Other'],
+]
+const CATEGORY_GROUP: Record<string, string> = {
+  Drivetrain: 'GROUPSET',
+  Brakes: 'GROUPSET',
+  Controls: 'GROUPSET',
+  Wheels: 'WHEELS',
+  Cockpit: 'COCKPIT',
+  'Contact points': 'CONTACT',
+  Frame: 'FRAME',
+  Electronics: 'ELECTRONICS',
+}
+
+function SetupGroups({ setup, onChange, reload }: { setup: SetupRow[]; onChange: (row: SetupRow) => void; reload: () => void }) {
+  const { meta } = useApp()
+  const groupOf = (type: string) => {
+    if (type === 'BATTERY') return 'GROUPSET' // Di2 / AXS battery belongs to the shifting
+    const cat = meta.component_types.find((t) => t.code === type)?.category ?? ''
+    return CATEGORY_GROUP[cat] ?? 'OTHER'
+  }
+  const groups: Record<string, SetupRow[]> = {}
+  let current = 'OTHER'
+  for (const s of setup) {
+    if (s.depth === 0) current = groupOf(s.component_type)
+    ;(groups[current] ??= []).push(s)
+  }
+  return (
+    <div className="setup-groups">
+      {SETUP_GROUPS.filter(([k]) => groups[k]?.length).map(([k, label]) => {
+        const rows = groups[k]
+        const top = rows.filter((r) => r.depth === 0).map((r) => r.label)
+        return (
+          <details key={k} className="setup-group" data-group={k}>
+            <summary>
+              <strong>{label}</strong>
+              <span className="muted small">
+                {rows.length} part{rows.length === 1 ? '' : 's'} · {top.slice(0, 3).join(', ')}
+                {top.length > 3 ? ', …' : ''}
+              </span>
+            </summary>
+            <ul className="list setup">
+              {rows.map((s) => (
+                <li key={s.installation_id} style={{ paddingLeft: `${s.depth * 1.2}rem` }}>
+                  <span className="muted small">{slotName(s.slot)}</span>
+                  <Link to={`/inventory/${s.component_id}`}>{s.label}</Link>
+                  <span className="muted small">since {when(s.since)}</span>
+                  {(s.component_type === 'FRONT_WHEEL' || s.component_type === 'REAR_WHEEL') && <TireSetupSelect wheelId={s.component_id} value={s.tire_setup} onSaved={reload} />}
+                  {s.component_type === 'TIRE' && <PressureNote tireId={s.component_id} value={s.pressure_note} onSaved={reload} />}
+                  <button className="btn btn-small" onClick={() => onChange(s)}>
+                    Change
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </details>
+        )
+      })}
     </div>
   )
 }

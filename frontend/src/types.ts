@@ -96,6 +96,8 @@ export interface RideIncident {
   affected: { key: string; component_id: number | null; label: string }[]
   removed: boolean
   edited: boolean
+  ride_id: number | null
+  ride_label: string | null
 }
 
 export interface Location {

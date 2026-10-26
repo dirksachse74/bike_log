@@ -25,14 +25,14 @@ type IncidentForm = {
 };
 
 function IncidentEditor({
-  ride,
+  bikeName,
   choices,
   initial,
   submitLabel,
   onSubmit,
   onCancel,
 }: {
-  ride: RideDetail;
+  bikeName: string | null;
   choices: Record<string, IncidentChoice[]>;
   initial: IncidentForm;
   submitLabel: string;
@@ -114,7 +114,7 @@ function IncidentEditor({
         {options.some((o) => !o.recorded) && (
           <span className="field-hint">
             Names without a part: nothing of that kind is recorded on{" "}
-            {ride.bike ?? "the bike"} for this day. You can still pick it.
+            {bikeName ?? "the bike"} for this day. You can still pick it.
           </span>
         )}
       </fieldset>
@@ -149,39 +149,53 @@ function IncidentEditor({
   );
 }
 
-export function RideIncidents({
-  ride,
+type Choices = Record<string, IncidentChoice[]>;
+
+// The incident rows with Solved / Re-open, Edit and Remove, plus the removed ones with Restore. Used on the
+// ride (choices already loaded) and on the bike (choices of the incident's ride are loaded on Edit).
+function IncidentRows({
+  incidents,
+  choices,
+  bikeName,
+  showRide,
   onChanged,
 }: {
-  ride: RideDetail;
+  incidents: RideIncident[];
+  choices?: Choices;
+  bikeName: string | null;
+  showRide?: boolean;
   onChanged: () => void;
 }) {
   const { toast } = useApp();
-  const { data, error, reload } = useApi<{
-    incidents: RideIncident[];
-    choices: Record<string, IncidentChoice[]>;
-  }>(`/rides/${ride.id}/incidents`);
-  const [mode, setMode] = useState<"list" | "add" | string>("list");
-  const [opId, setOpId] = useState(newOpId);
+  const [editing, setEditing] = useState<{
+    group: string;
+    choices: Choices;
+  } | null>(null);
   const [err, setErr] = useState<string | null>(null);
-  function changed() {
-    setMode("list");
-    reload();
-    onChanged();
+  async function run(fn: () => Promise<unknown>) {
+    setErr(null);
+    try {
+      await fn();
+      setEditing(null);
+      onChanged();
+    } catch (e) {
+      setErr((e as Error).message);
+    }
   }
-  async function add(f: IncidentForm) {
-    await api.post(
-      `/rides/${ride.id}/incidents`,
-      {
-        incident_type: f.incident_type,
-        affected: f.affected,
-        text: f.text || null,
-        resolved_on: f.fixed ? ride.ride_date : null,
-      },
-      opId,
-    );
-    setOpId(newOpId());
-    changed();
+  async function edit(r: RideIncident) {
+    setErr(null);
+    try {
+      const c =
+        choices ??
+        (
+          await api.get<{ choices: Choices }>(
+            `/rides/${r.ride_id}/incidents`,
+          )
+        ).choices;
+      setEditing({ group: r.group, choices: c });
+    } catch (e) {
+      setErr((e as Error).message);
+    }
   }
   async function save(r: RideIncident, f: IncidentForm) {
     await api.patch(`/incidents/${r.group}`, {
@@ -190,59 +204,23 @@ export function RideIncidents({
       text: f.text || null,
       resolved_on: f.fixed ? (r.resolved_on ?? today()) : null,
     });
-    changed();
+    setEditing(null);
+    onChanged();
   }
-  async function act(r: RideIncident, what: "remove" | "restore") {
-    setErr(null);
-    try {
-      await api.post(`/incidents/${r.group}/${what}`, {});
-      toast(
-        what === "remove"
-          ? `${r.label} removed from this ride. It is kept and can be restored.`
-          : `${r.label} restored.`,
-      );
-      changed();
-    } catch (e) {
-      setErr((e as Error).message);
-    }
-  }
-  // Solved stamps today's date; Re-open clears it (the incident is open again)
-  async function setSolved(r: RideIncident, solved: boolean) {
-    setErr(null);
-    try {
-      await api.patch(`/incidents/${r.group}`, {
-        resolved_on: solved ? today() : null,
-      });
-      changed();
-    } catch (e) {
-      setErr((e as Error).message);
-    }
-  }
-  const live = data?.incidents.filter((r) => !r.removed) ?? [];
-  const removed = data?.incidents.filter((r) => r.removed) ?? [];
+  const where = showRide ? "" : " from this ride";
+  const live = incidents.filter((r) => !r.removed);
+  const removed = incidents.filter((r) => r.removed);
   return (
-    <section className="ride-section incidents" aria-label="Incidents">
-      <div className="ride-section-head">
-        <h3>Incidents</h3>
-        {mode === "list" && data && (
-          <button className="btn btn-small" onClick={() => setMode("add")}>
-            Log incident
-          </button>
-        )}
-      </div>
-      {error && <ErrorBox error={error} onRetry={reload} />}
+    <>
       <FormError error={err} />
-      {data && live.length === 0 && mode !== "add" && (
-        <p className="small muted">None logged.</p>
-      )}
       {live.length > 0 && (
         <ul className="incident-list">
           {live.map((r) =>
-            mode === r.group && data ? (
+            editing?.group === r.group ? (
               <li key={r.group}>
                 <IncidentEditor
-                  ride={ride}
-                  choices={data.choices}
+                  bikeName={bikeName}
+                  choices={editing.choices}
                   initial={{
                     incident_type: r.incident_type,
                     affected: r.affected.map((a) => a.key),
@@ -251,7 +229,7 @@ export function RideIncidents({
                   }}
                   submitLabel="Save changes"
                   onSubmit={(f) => save(r, f)}
-                  onCancel={() => setMode("list")}
+                  onCancel={() => setEditing(null)}
                 />
               </li>
             ) : (
@@ -269,6 +247,11 @@ export function RideIncidents({
                     </span>
                   ))}
                   {r.text && <div className="small">{r.text}</div>}
+                  {showRide && r.ride_id && (
+                    <div className="small muted">
+                      <Link to={`/rides?open=${r.ride_id}`}>{r.ride_label}</Link>
+                    </div>
+                  )}
                 </div>
                 <div className="incident-actions">
                   {r.open ? (
@@ -276,7 +259,13 @@ export function RideIncidents({
                       <Tag tone="warn">open</Tag>
                       <button
                         className="btn btn-small btn-primary"
-                        onClick={() => setSolved(r, true)}
+                        onClick={() =>
+                          run(() =>
+                            api.patch(`/incidents/${r.group}`, {
+                              resolved_on: today(),
+                            }),
+                          )
+                        }
                       >
                         Solved
                       </button>
@@ -286,21 +275,33 @@ export function RideIncidents({
                       <Tag tone="good">solved {when(r.resolved_on)}</Tag>
                       <button
                         className="btn btn-small"
-                        onClick={() => setSolved(r, false)}
+                        onClick={() =>
+                          run(() =>
+                            api.patch(`/incidents/${r.group}`, {
+                              resolved_on: null,
+                            }),
+                          )
+                        }
                       >
                         Re-open
                       </button>
                     </>
                   )}
+                  {r.ride_id && (
+                    <button className="btn btn-small" onClick={() => edit(r)}>
+                      Edit
+                    </button>
+                  )}
                   <button
                     className="btn btn-small"
-                    onClick={() => setMode(r.group)}
-                  >
-                    Edit
-                  </button>
-                  <button
-                    className="btn btn-small"
-                    onClick={() => act(r, "remove")}
+                    onClick={() =>
+                      run(async () => {
+                        await api.post(`/incidents/${r.group}/remove`, {});
+                        toast(
+                          `${r.label} removed${where}. It is kept and can be restored.`,
+                        );
+                      })
+                    }
                   >
                     Remove
                   </button>
@@ -310,16 +311,6 @@ export function RideIncidents({
           )}
         </ul>
       )}
-      {mode === "add" && data && (
-        <IncidentEditor
-          ride={ride}
-          choices={data.choices}
-          initial={{ incident_type: "FLAT", affected: [], text: "", fixed: false }}
-          submitLabel="Log incident"
-          onSubmit={add}
-          onCancel={() => setMode("list")}
-        />
-      )}
       {removed.length > 0 && (
         <details className="small">
           <summary>Removed incidents ({removed.length})</summary>
@@ -328,10 +319,16 @@ export function RideIncidents({
               <li key={r.group} className="incident-row muted">
                 <span>
                   {r.label}: {r.affected.map((a) => a.label).join(", ")}
+                  {showRide && r.ride_label ? ` · ${r.ride_label}` : ""}
                 </span>
                 <button
                   className="btn btn-small"
-                  onClick={() => act(r, "restore")}
+                  onClick={() =>
+                    run(async () => {
+                      await api.post(`/incidents/${r.group}/restore`, {});
+                      toast(`${r.label} restored.`);
+                    })
+                  }
                 >
                   Restore
                 </button>
@@ -340,7 +337,109 @@ export function RideIncidents({
           </ul>
         </details>
       )}
+    </>
+  );
+}
+
+export function RideIncidents({
+  ride,
+  onChanged,
+}: {
+  ride: RideDetail;
+  onChanged: () => void;
+}) {
+  const { data, error, reload } = useApi<{
+    incidents: RideIncident[];
+    choices: Choices;
+  }>(`/rides/${ride.id}/incidents`);
+  const [adding, setAdding] = useState(false);
+  const [opId, setOpId] = useState(newOpId);
+  function changed() {
+    setAdding(false);
+    reload();
+    onChanged();
+  }
+  async function add(f: IncidentForm) {
+    await api.post(
+      `/rides/${ride.id}/incidents`,
+      {
+        incident_type: f.incident_type,
+        affected: f.affected,
+        text: f.text || null,
+        resolved_on: f.fixed ? ride.ride_date : null,
+      },
+      opId,
+    );
+    setOpId(newOpId());
+    changed();
+  }
+  const live = data?.incidents.filter((r) => !r.removed) ?? [];
+  return (
+    <section className="ride-section incidents" aria-label="Incidents">
+      <div className="ride-section-head">
+        <h3>Incidents</h3>
+        {!adding && data && (
+          <button className="btn btn-small" onClick={() => setAdding(true)}>
+            Log incident
+          </button>
+        )}
+      </div>
+      {error && <ErrorBox error={error} onRetry={reload} />}
+      {data && live.length === 0 && !adding && (
+        <p className="small muted">None logged.</p>
+      )}
+      {data && (
+        <IncidentRows
+          incidents={data.incidents}
+          choices={data.choices}
+          bikeName={ride.bike}
+          onChanged={changed}
+        />
+      )}
+      {adding && data && (
+        <IncidentEditor
+          bikeName={ride.bike}
+          choices={data.choices}
+          initial={{ incident_type: "FLAT", affected: [], text: "", fixed: false }}
+          submitLabel="Log incident"
+          onSubmit={add}
+          onCancel={() => setAdding(false)}
+        />
+      )}
     </section>
+  );
+}
+
+// Every incident on a bike (bike page → Incidents), with the same Solved / Re-open, Edit and Remove.
+export function BikeIncidents({
+  incidents,
+  error,
+  loading,
+  reload,
+  bikeName,
+}: {
+  incidents: RideIncident[] | null;
+  error: string | null;
+  loading: boolean;
+  reload: () => void;
+  bikeName: string;
+}) {
+  if (loading && !incidents) return <Loading />;
+  if (error) return <ErrorBox error={error} onRetry={reload} />;
+  if (!incidents?.length)
+    return (
+      <Empty title="No incidents on this bike">
+        Log a flat, a shifting problem or anything else on the ride it
+        happened (Rides → open the ride → Log incident).
+      </Empty>
+    );
+  return (
+    <IncidentRows
+      incidents={incidents}
+      bikeName={bikeName}
+      showRide
+      onChanged={reload}
+    />
   );
 }
 

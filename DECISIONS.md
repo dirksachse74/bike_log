@@ -254,6 +254,9 @@ you disagree. Dates are 2026-10-24 unless noted.
     saved as text (`affected`), so a flat can be logged even before tires are entered.
 80. **Removing an incident voids it** (reason "incident removed") and Restore brings it back; unticking
     a part while editing voids only that part's entry. Nothing is deleted.
+81. **Bike page groups are a display choice, not data**: "Installed now" is grouped by part category in
+    the screen only (groupset = drivetrain, brakes, controls and the shifting battery), so no grouping has
+    to be kept in sync when parts move. Groups start folded; due reminders stay in sight.
 
 ## Repository
 27. Pushed only to the feature branch `claude/project-thread-6y3mmh` of the private repository. Demo

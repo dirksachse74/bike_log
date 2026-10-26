@@ -985,6 +985,11 @@ def create_app(factory: sessionmaker[Session], paths: DataPaths, *, token: str |
         return {"incidents": incidents_svc.ride_incidents(s, ride_id),
                 "choices": incidents_svc.all_choices(s, ride_id)}
 
+    @app.get("/api/bikes/{bike_id}/incidents")
+    def bike_incident_list(bike_id: int, s: Session = Depends(db)):
+        inv.get_bike(s, bike_id)
+        return incidents_svc.bike_incidents(s, bike_id)
+
     @app.post("/api/rides/{ride_id}/incidents", status_code=201)
     def ride_incident_add(ride_id: int, body: IncidentIn, s: Session = Depends(db), op_id: str | None = OpId):
         return run_once(s, op_id, "incident.add", lambda: {"group": incidents_svc.log(s, ride_id, **body.model_dump())})

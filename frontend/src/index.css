@@ -1001,3 +1001,40 @@ label.chip {
 .ride-parts h4 {
   margin: 0.3rem 0 0;
 }
+/* bike page: "Installed now" in groups that unfold */
+.setup-groups {
+  display: flex;
+  flex-direction: column;
+}
+.setup-group {
+  border-bottom: 1px solid var(--line);
+  padding: 0.45rem 0;
+}
+.setup-group:last-child {
+  border-bottom: 0;
+}
+.task-group {
+  border-top: 1px solid var(--line);
+  padding: 0.45rem 0;
+}
+.task-group > summary {
+  cursor: pointer;
+  display: list-item;
+}
+.task-group > summary > strong {
+  margin-right: 0.4rem;
+}
+.setup-group > summary {
+  cursor: pointer;
+  display: list-item; /* keeps the triangle */
+}
+.setup-group > summary > strong {
+  margin-right: 0.6rem;
+}
+.setup-group .list.setup {
+  margin-top: 0.4rem;
+}
+.tabs.span-2 {
+  grid-column: 1 / -1;
+  margin-bottom: 0;
+}
