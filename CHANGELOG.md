@@ -7,6 +7,10 @@ UPDATING.md → "Making a release". New entries go under "Unreleased" as work is
 
 ## Unreleased
 
+### Fixed
+- Two fields side by side (Add bike: "Purchase price" and "Bought on"; the same in every other form) now
+  line up on their input even when a hint sits under one of them.
+
 ### Changed
 - Bike page → "Retire or delete". A bike with nothing recorded (no rides, parts, maintenance or notes,
   e.g. created by mistake) can be deleted for good after a confirmation; a Strava sync does not create it

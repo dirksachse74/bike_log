@@ -66,6 +66,13 @@ async function bikeTab(page, name) {
   await page.getByRole('heading', { name: 'TIME NXR' }).waitFor()
   check('create bike', true)
 
+  // a hint under one field must not push its input out of line with the field beside it
+  await page.goto(BASE + '#/bikes')
+  await page.getByRole('button', { name: 'Add bike' }).click()
+  const tops = await page.locator('.sheet .row').filter({ hasText: 'Purchase price' }).locator('input').evaluateAll((es) => es.map((e) => Math.round(e.getBoundingClientRect().top)))
+  check('fields in a row line up even when one has a hint', new Set(tops).size === 1, tops.join(' / '))
+  await page.locator('.sheet').getByRole('button', { name: 'Close' }).click()
+
   // three chains: A installed, B and C spare
   for (const [label, install] of [['Chain A', true], ['Chain B', false], ['Chain C', false]]) {
     await page.goto(BASE + '#/inventory')
