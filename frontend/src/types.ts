@@ -73,7 +73,29 @@ export interface JournalRow {
   ride_conditions?: string | null
   incident_type?: string | null
   incident_label?: string | null
+  incident_group?: string | null
+  affected?: string | null
   via_child?: boolean
+}
+
+export interface IncidentChoice {
+  key: string
+  label: string
+  component_id: number | null
+  recorded: boolean
+}
+
+export interface RideIncident {
+  group: string
+  incident_type: string
+  label: string
+  on: string
+  text: string | null
+  resolved_on: string | null
+  open: boolean
+  affected: { key: string; component_id: number | null; label: string }[]
+  removed: boolean
+  edited: boolean
 }
 
 export interface Location {

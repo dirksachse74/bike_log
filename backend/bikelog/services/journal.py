@@ -10,7 +10,7 @@ from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from bikelog.catalog import ACTIONS, INCIDENT_TYPES
-from bikelog.models import Component, JournalEntry, MaintenanceEvent, Ride
+from bikelog.models import Component, JournalEntry, MaintenanceEvent, Ride, new_uuid
 from bikelog.services import settings
 from bikelog.services.errors import DomainError, NotFound
 from bikelog.services.inventory import get_bike, get_component, location
@@ -25,7 +25,8 @@ def _date(session: Session, value: str) -> str:
 
 def add(session: Session, *, text: str | None, on: str | None = None, bike_id: int | None = None,
         component_id: int | None = None, kind: str | None = None, resolved_on: str | None = None,
-        ride_id: int | None = None, incident_type: str | None = None) -> JournalEntry:
+        ride_id: int | None = None, incident_type: str | None = None, incident_group: str | None = None,
+        affected: str | None = None) -> JournalEntry:
     """A note or issue. With ``incident_type`` it is an incident (an issue, e.g. a flat on a ride);
     with ``ride_id`` it is linked to that ride: date and bike default to the ride's."""
     ride = None
@@ -60,7 +61,8 @@ def add(session: Session, *, text: str | None, on: str | None = None, bike_id: i
         raise DomainError("A journal entry belongs to a bike or a part")
     e = JournalEntry(bike_id=bike_id, component_id=component_id, entry_on=_date(session, on), kind=kind, text=text,
                      resolved_on=_date(session, resolved_on) if resolved_on and kind == "ISSUE" else None,
-                     ride_id=ride_id, incident_type=incident_type)
+                     ride_id=ride_id, incident_type=incident_type, affected=(affected or "").strip() or None,
+                     incident_group=(incident_group or new_uuid()) if incident_type else None)
     session.add(e)
     session.flush()
     return e
@@ -132,6 +134,7 @@ def row(session: Session, e: JournalEntry) -> dict:
             "ride_id": e.ride_id, "ride_label": _ride_label(ride), "ride_conditions": ride.conditions if ride else None,
             "incident_type": e.incident_type,
             "incident_label": INCIDENT_TYPES.get(e.incident_type) if e.incident_type else None,
+            "incident_group": e.incident_group, "affected": e.affected,
             "edited": bool(e.updated_at), "voided": bool(e.voided_at)}
 
 
@@ -147,7 +150,7 @@ def _event_row(session: Session, ev: MaintenanceEvent) -> dict | None:
             "resolved_on": None, "open_issue": False, "bike_id": ev.bike_id, "bike": None,
             "component_id": ev.component_id, "component_label": comp.label if comp else None,
             "component_type": comp.component_type if comp else None, "ride_id": None, "ride_label": None,
-            "ride_conditions": None, "incident_type": None, "incident_label": None, "edited": False, "voided": False}
+            "ride_conditions": None, "incident_type": None, "incident_label": None, "incident_group": None, "affected": None, "edited": False, "voided": False}
 
 
 def entries(session: Session, *, bike_id: int | None = None, component_id: int | None = None,

@@ -24,6 +24,8 @@ Status key: ✅ done and tested · 🟡 done, not verified where it matters · �
 - ✅ Tube/tubeless setting on wheels (moves with the wheelset); headset service rule.
 - ✅ Ride-hour and number-of-chains rules; charging reminders (Di2, power meter, sensor, coin cells).
 - ✅ Ride incidents (flat/crash/defect) linked to ride and part; dry/wet per ride.
+- ✅ Incidents reworked (Dirk, 2026-10-26): 13 types with their own affected parts or body areas, several
+  per incident, edit / remove / restore on the ride, tidier ride page.
 - ✅ Wheelset assemblies (wheels, tires, hub, bearings, spokes, rim tape, sensor), pulley wheels, carry-over.
 - ✅ Maintenance coverage review items 1–22 (bike-level rules, measurement limits, torque checks, crash
   inspection, hanger, cleats/shoes, thru-axles, sealant clean-out, valves, Di2 checks, bearings, bar tape,

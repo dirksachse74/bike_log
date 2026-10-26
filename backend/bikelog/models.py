@@ -165,6 +165,11 @@ class JournalEntry(Base):
     resolved_on: Mapped[str | None] = mapped_column(String(10))   # issues only
     ride_id: Mapped[int | None] = mapped_column(ForeignKey("ride.id"), index=True)   # incident on this ride
     incident_type: Mapped[str | None] = mapped_column(String(16))  # catalog.INCIDENT_TYPES; set = an incident
+    # One incident can affect several things (two flats): one entry per affected thing, same group id.
+    incident_group: Mapped[str | None] = mapped_column(String(36), index=True)
+    # What was affected when it is not a recorded part: a body area ("Numb hands") or a position whose part
+    # is not in Bike Log ("Front tire"). NULL with no component_id = the whole bike.
+    affected: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[str] = mapped_column(String(20), default=utc_now)
     updated_at: Mapped[str | None] = mapped_column(String(20))
     voided_at: Mapped[str | None] = mapped_column(String(20))

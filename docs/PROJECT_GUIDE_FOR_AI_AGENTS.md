@@ -127,8 +127,9 @@ packaging/               bikelog.spec (PyInstaller), entry.py, bikelog.iss (Inno
 - **work_session**: groups the transactions of one action (replace, groupset import, maintenance,
   stock change) so it can be summarised and **undone as a whole**.
 - **product_compatibility** (product ↔ bike, verified or not), **journal_entry** (dated NOTE/ISSUE on a
-  bike or part, resolved date, voidable, no deletes; `ride_id` + `incident_type` FLAT/CRASH/DEFECT/OTHER make
-  it a ride incident), **import_batch**, **operation** (idempotency),
+  bike or part, resolved date, voidable, no deletes; `ride_id` + `incident_type` (catalog.INCIDENT_TYPES) make
+  it a ride incident; `incident_group` ties the entries of one incident together, one per affected part;
+  `affected` names what was hit when it is not a recorded part: a body area or a position such as "Front tire"), **import_batch**, **operation** (idempotency),
   **strava_connection** (status, cursor, last success/error), **app_setting**.
 - **component.tire_setup** (wheels only: TUBE/TUBELESS/TUBULAR; tires and tubes inherit it from their
   wheel via `inventory.tire_setup_of`), **service_rule.requires_setup** (rule only runs for that setup).
@@ -144,7 +145,7 @@ packaging/               bikelog.spec (PyInstaller), entry.py, bikelog.iss (Inno
 Migrations: plain `ADD COLUMN` / `CREATE TABLE` where possible; tables with protection triggers are not
 rebuilt. Every schema upgrade writes a backup first; a database newer than the app is refused. A test
 compares `models.py` with the migrated schema, so **every model change needs a new migration**
-(never edit a released one; 0010 is the newest).
+(never edit a released one; 0011 is the newest).
 
 ---
 
@@ -232,6 +233,15 @@ maintenance notes (symptom, work done, notes) appear in the same list read-only.
 shows entries of parts mounted below it on the entry date (`via_child`: a flat on the tire shows on the
 wheel and the wheelset). Ride incidents: `journal.add(ride_id, incident_type, component_id)` sets date,
 bike and default text from the ride; `entries(ride_id=)`, `incidents(bike_id, incident_type, open_only)`.
+**Ride incidents (`incidents.py`, migration 0011).** `catalog.INCIDENT_OPTIONS` lists, per incident type,
+what it can affect (`IncidentOption`: component types, plus `within` slots for front/rear; no types = a body
+area, e.g. FIT). `choices(ride, type)` resolves them against `parts_on_ride` (installation tree on the ride
+date, plus the parts the ride counted on): one choice per matching part (key `c<id>`), or the option's
+name when no such part is recorded (key = option key, stored in `affected`); `BIKE` = whole bike. DEFECT and
+OTHER offer every part. `log` writes one journal issue per picked key with a shared `incident_group`;
+`update` edits type/details/fixed date/affected (unticked entries are voided "taken out of the incident",
+new ones added to the group); `remove` voids all ("incident removed"), `restore` brings those back. The
+ride's incident count counts groups. UI: components/Incidents.tsx (`RideIncidents`, `IncidentEditor`).
 
 ---
 
@@ -248,7 +258,7 @@ bike and default text from the ride; `entries(ride_id=)`, `incidents(bike_id, in
 | Purchase bundles (groupset bought at one price), parts kept as spares at import | services/bundles.py, groupsets.py, costs.py | components/Bundles.tsx (bike page "Bought as a bundle"), GroupsetImport.tsx, part page | docs/groupsets.md, DECISIONS 51–52 |
 | Km from before (starting mileage of a part, e.g. a wheelset from another bike) | inventory.set_starting_usage, usage.py | part page → Starting km / "Add km from before"; Add part form | DECISIONS 53 |
 | Journal | journal.py | components/Journal.tsx (bike and part pages) | DECISIONS 35 |
-| Ride incidents (flat/crash/defect on a ride, linked to the part), dry/wet per ride | journal.py, rides.py | components/Incidents.tsx (ride detail; Rides → Incidents tab) | DECISIONS 55–56 |
+| Ride incidents (13 types, each with its own affected parts or body areas, several per incident; edit, remove, restore), dry/wet per ride | incidents.py, journal.py, rides.py | components/Incidents.tsx (ride detail; Rides → Incidents tab) | DECISIONS 55–56, 78–80 |
 | Parts inside parts: wheelset → wheels → tire/hub/bearings/spokes/sensor; pulleys on the rear derailleur; carry-over at replace | inventory.py (group_wheels, replace carry_over), allocation.py, spares.py | Bikes.tsx ("Group wheels into a wheelset"), PartChange.tsx | DECISIONS 57–58 |
 | Ride-hour, number-of-chains and charging reminders | maintenance.py, usage.hours_since, catalog.py | Inventory.tsx RuleEditor (hours/count fields) | DECISIONS 59–61 |
 | Whole-bike reminders (torque, Di2, crash → frame inspection), measurement limits, bed-in, wet ride, worn chain → cassette, shifting type, default tire setup | maintenance.py (bike_status, _event_based_items), catalog.py (Limit) | TaskList.tsx (whole-bike rows), LogMaintenance.tsx (bike-level actions, outcome hint), Bikes.tsx (Shifting), Settings.tsx (Default tire setup) | DECISIONS 62–67 |
@@ -313,10 +323,10 @@ cd backend && ../.venv/bin/python -m bikelog            # http://127.0.0.1:8765/
 Checks that must pass before every push:
 
 ```bash
-.venv/bin/python -m pytest -q backend/tests             # currently 170 passed
+.venv/bin/python -m pytest -q backend/tests             # currently 177 passed
 cd frontend && npx tsc -b && npx eslint . && npx vite build
 # browser test: start the app on a fresh data dir, then
-node e2e/smoke.cjs http://127.0.0.1:8790/ <screenshot-dir>   # currently 77/77 (the ride-form step can flake once; rerun)
+node e2e/smoke.cjs http://127.0.0.1:8790/ <screenshot-dir>   # currently 81/81 (the ride-form step can flake once; rerun)
 #   (cd backend && ../.venv/bin/python -m bikelog --no-browser --no-sample --port 8790 --data-dir <fresh dir>)
 # sample database: start on ANOTHER fresh dir WITHOUT --no-sample (port 8791), then
 node e2e/sample.cjs http://127.0.0.1:8791/ <screenshot-dir>  # banner, sample bikes, crash item, Fresh start
@@ -368,7 +378,9 @@ Meta/overview: `health`, `meta`, `overview`, `settings` (GET/PATCH). Bikes: `bik
 `maintenance/queue|events|candidates`, `events` POST, `/void`, `snooze`; `rules`; `chains`; `brakes`.
 Stock: `consumables` (GET/POST/PATCH), `/txns`, `/txn`, `/install`; `inventory`; `shopping-list`.
 Work sessions: `work-sessions`, `/{id}`, `/{id}/undo`. Journal: `journal` (GET/POST), `/{id}` PATCH,
-`/{id}/void`; `journal?ride_id=`; `incidents` (GET `bike_id`, `incident_type`, `open_only`); `bikes/{id}/group-wheels` (POST);
+`/{id}/void`; `journal?ride_id=`; `incidents` (GET `bike_id`, `incident_type`, `open_only`);
+`rides/{id}/incidents` (GET incidents + choices per type, POST `incident_type`, `affected` keys, `text`,
+`resolved_on`), `incidents/{group}` (PATCH), `incidents/{group}/remove|restore` (POST); `bikes/{id}/group-wheels` (POST);
 `bikes/{id}/rules` (GET, bike-level rules with status), `bikes/{id}/rules/{rule_code}` (PATCH, per bike);
 `maintenance/snooze` takes `bike_id` for a bike-level reminder; bikes take `shifting`. Groupsets: `groupsets`, `/{code}/plan`, `/{code}/import`. Bundles: `bundles` (GET `bike_id`, `include_voided`; POST),
 `bundles/candidates`, `bundles/{id}` (GET/PATCH), `/members` (POST), `/members/{cid}` (DELETE), `/void`. Imports: `imports/csv`,

@@ -35,6 +35,7 @@ from bikelog.services import costs as costs_svc
 from bikelog.services import bundles as bundles_svc
 from bikelog.services import demo, diagnostics, groupsets, imports, journal, product_import, spares, stock
 from bikelog.services import worksessions as ws_svc
+from bikelog.services import incidents as incidents_svc
 from bikelog.services import inventory as inv
 from bikelog.services import maintenance as m
 from bikelog.services import rides as rides_svc
@@ -286,6 +287,20 @@ class JournalIn(Body):
     resolved_on: str | None = None
     ride_id: int | None = None
     incident_type: str | None = None
+
+
+class IncidentIn(Body):
+    incident_type: str
+    affected: list[str] = []
+    text: str | None = None
+    resolved_on: str | None = None
+
+
+class IncidentPatch(Body):
+    incident_type: str | None = None
+    affected: list[str] | None = None
+    text: str | None = None
+    resolved_on: str | None = None
 
 
 class JournalPatch(Body):
@@ -964,6 +979,30 @@ def create_app(factory: sessionmaker[Session], paths: DataPaths, *, token: str |
                       open_only: bool = False, s: Session = Depends(db)):
         return journal.incidents(s, bike_id=bike_id, component_id=component_id, incident_type=incident_type,
                                  open_only=open_only)
+
+    @app.get("/api/rides/{ride_id}/incidents")
+    def ride_incident_list(ride_id: int, s: Session = Depends(db)):
+        return {"incidents": incidents_svc.ride_incidents(s, ride_id),
+                "choices": incidents_svc.all_choices(s, ride_id)}
+
+    @app.post("/api/rides/{ride_id}/incidents", status_code=201)
+    def ride_incident_add(ride_id: int, body: IncidentIn, s: Session = Depends(db), op_id: str | None = OpId):
+        return run_once(s, op_id, "incident.add", lambda: {"group": incidents_svc.log(s, ride_id, **body.model_dump())})
+
+    @app.patch("/api/incidents/{group}")
+    def incident_edit(group: str, body: IncidentPatch, s: Session = Depends(db)):
+        given = body.model_dump(exclude_unset=True)
+        return {"group": incidents_svc.update(s, group, **given, fields=set(given))}
+
+    @app.post("/api/incidents/{group}/remove")
+    def incident_remove(group: str, s: Session = Depends(db)):
+        incidents_svc.remove(s, group)
+        return {"group": group, "removed": True}
+
+    @app.post("/api/incidents/{group}/restore")
+    def incident_restore(group: str, s: Session = Depends(db)):
+        incidents_svc.restore(s, group)
+        return {"group": group, "removed": False}
 
     @app.post("/api/journal", status_code=201)
     def journal_add(body: JournalIn, s: Session = Depends(db), op_id: str | None = OpId):

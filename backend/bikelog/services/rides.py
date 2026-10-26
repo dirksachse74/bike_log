@@ -233,7 +233,9 @@ def possible_duplicates(session: Session, ride: Ride) -> list[int]:
 
 
 def _incident_count(session: Session, ride_id: int) -> int:
-    return session.scalar(select(func.count(JournalEntry.id)).where(
+    """Incidents, not entries: one incident affecting two tires is one incident."""
+    return session.scalar(select(func.count(func.distinct(func.coalesce(JournalEntry.incident_group,
+                                                                         JournalEntry.uuid)))).where(
         JournalEntry.ride_id == ride_id, JournalEntry.voided_at.is_(None))) or 0
 
 

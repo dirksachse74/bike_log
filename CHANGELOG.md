@@ -8,6 +8,12 @@ UPDATING.md → "Making a release". New entries go under "Unreleased" as work is
 ## Unreleased
 
 ### Added
+- Ride incidents reworked: each kind of incident offers only what it can affect, taken from the parts on
+  the bike that day (flat tire → front / rear tire; shifting → front / rear derailleur, shifters ...;
+  empty battery → Di2, power meter, head unit, speed or cadence sensor ...; fitting problem → numb hands,
+  back pain ...). New kinds: shifting, dropped or broken chain, brakes, empty battery, loose or slipping
+  part, creak or noise, wheel, pedal or cleat, fitting problem. Tick several (two flats, both
+  derailleurs). Incidents can be edited on the ride, and removed and restored (never deleted).
 - Yearly full service: a whole-bike reminder every 12 months. "Log done" shows a checklist of the big jobs
   (hub bearings, headset, bottom bracket, brakes, Di2 wires / cables, frame and fork, drivetrain, pedals,
   torque); ticked and unticked jobs are saved with the entry. Each job keeps its own reminder on its part.
@@ -52,6 +58,7 @@ UPDATING.md → "Making a release". New entries go under "Unreleased" as work is
   default tire setup in Settings (inner tube), so tubeless and cable reminders stay off where they don't apply.
 
 ### Changed
+- Ride page in sections (Conditions, Incidents, Mileage given to parts); "Edit" is now "Edit ride".
 - Assioma power pedals: charge reminder every 80 ride hours instead of 50 (your choice). Existing
   databases are updated unless you had changed the value yourself.
 - Database schema 0005 → 0009 (upgraded automatically with a backup first).

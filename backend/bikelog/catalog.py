@@ -461,13 +461,112 @@ TIRE_SETUPS: dict[str, str] = {
 }
 WHEEL_TYPES = ("FRONT_WHEEL", "REAR_WHEEL")
 
-# Things that happen on a ride, logged as a journal issue linked to the ride and the affected part.
+# Things that happen on a ride, logged as journal issues linked to the ride and to what was affected.
 INCIDENT_TYPES: dict[str, str] = {
     "FLAT": "Flat tire",
+    "SHIFTING": "Shifting problem",
+    "CHAIN": "Dropped or broken chain",
+    "BRAKES": "Brake problem",
+    "BATTERY": "Empty battery",
+    "LOOSE": "Loose or slipping part",
+    "NOISE": "Creak or noise",
+    "WHEEL": "Wheel problem (spoke, out of true)",
+    "PEDAL": "Pedal or cleat problem",
+    "FIT": "Fitting problem (rider)",
     "CRASH": "Crash",
     "DEFECT": "Defect / mechanical",
     "OTHER": "Other incident",
 }
+
+
+@dataclass(frozen=True)
+class IncidentOption:
+    """Something an incident can affect. With ``types``, the matching parts that were on the bike that day
+    are offered (one choice per part); when the bike has none recorded, the label itself is offered.
+    ``within``: the part's own slot or a slot above it must be one of these (front/rear). No ``types``:
+    not a part (a body area for fitting problems)."""
+    key: str
+    label: str
+    types: tuple[str, ...] = ()
+    within: tuple[str, ...] = ()
+
+
+def _o(key: str, label: str, types: tuple[str, ...] = (), within: tuple[str, ...] = ()) -> IncidentOption:
+    return IncidentOption(key, label, types, within)
+
+
+FRONT, REAR = ("FRONT_WHEEL", "FRONT_BRAKE", "FRONT_PADS"), ("REAR_WHEEL", "REAR_BRAKE", "REAR_PADS")
+WHOLE_BIKE = "BIKE"   # choice key: the bike as a whole (no single part)
+# Per incident type, what it can affect. Several can be picked (two flats, both derailleurs).
+# Types not listed here (DEFECT, OTHER) offer every part that was on the bike.
+INCIDENT_OPTIONS: dict[str, tuple[IncidentOption, ...]] = {
+    "FLAT": (_o("FRONT_TIRE", "Front tire", ("TIRE", "INNER_TUBE"), ("FRONT_WHEEL",)),
+             _o("REAR_TIRE", "Rear tire", ("TIRE", "INNER_TUBE"), ("REAR_WHEEL",))),
+    "SHIFTING": (_o("FD", "Front derailleur", ("FRONT_DERAILLEUR",)),
+                 _o("RD", "Rear derailleur", ("REAR_DERAILLEUR",)),
+                 _o("SHIFTERS", "Shifters", ("SHIFTERS",)),
+                 _o("HANGER", "Derailleur hanger", ("DERAILLEUR_HANGER",)),
+                 _o("DI2", "Di2 / AXS battery", ("BATTERY",)),
+                 _o("SHIFT_CABLE", "Shift cable or housing", ("SHIFT_CABLE", "SHIFT_HOUSING"))),
+    "CHAIN": (_o("CHAIN", "Chain", ("CHAIN",)),
+              _o("QUICK_LINK", "Quick link", ("QUICK_LINK",)),
+              _o("FD", "Front derailleur", ("FRONT_DERAILLEUR",)),
+              _o("RD", "Rear derailleur", ("REAR_DERAILLEUR",)),
+              _o("CHAINRING", "Chainring", ("CHAINRING",))),
+    "BRAKES": (_o("FRONT_BRAKE", "Front brake", ("BRAKE_CIRCUIT",), ("FRONT_BRAKE",)),
+               _o("REAR_BRAKE", "Rear brake", ("BRAKE_CIRCUIT",), ("REAR_BRAKE",)),
+               _o("FRONT_PADS", "Front pads", ("BRAKE_PADS",), ("FRONT_PADS",)),
+               _o("REAR_PADS", "Rear pads", ("BRAKE_PADS",), ("REAR_PADS",)),
+               _o("FRONT_ROTOR", "Front rotor", ("BRAKE_ROTOR",), ("FRONT_WHEEL",)),
+               _o("REAR_ROTOR", "Rear rotor", ("BRAKE_ROTOR",), ("REAR_WHEEL",))),
+    "BATTERY": (_o("DI2", "Di2 / AXS system", ("BATTERY",)),
+                _o("POWER_METER", "Power meter", ("POWER_METER", "POWER_METER_PEDALS")),
+                _o("COMPUTER", "Head unit / computer", ("BIKE_COMPUTER",)),
+                _o("SPEED_SENSOR", "Speed sensor", ("SENSOR",), ("SENSOR_SPEED",)),
+                _o("CADENCE_SENSOR", "Cadence sensor", ("SENSOR",), ("SENSOR_CADENCE",)),
+                _o("LIGHTS", "Lights", ("LIGHT",)),
+                _o("RADAR", "Radar", ("RADAR",))),
+    "LOOSE": (_o("STEM", "Stem (loose handlebar)", ("STEM",)),
+              _o("HANDLEBAR", "Handlebar", ("HANDLEBAR",)),
+              _o("HEADSET", "Headset", ("HEADSET",)),
+              _o("SEATPOST", "Seatpost (slipping)", ("SEATPOST",)),
+              _o("SADDLE", "Saddle", ("SADDLE",)),
+              _o("BAR_TAPE", "Bar tape", ("BAR_TAPE",)),
+              _o("FRONT_WHEEL", "Front wheel / thru-axle", ("FRONT_WHEEL",)),
+              _o("REAR_WHEEL", "Rear wheel / thru-axle", ("REAR_WHEEL",))),
+    "NOISE": (_o("BB", "Bottom bracket", ("BOTTOM_BRACKET",)),
+              _o("HEADSET", "Headset", ("HEADSET",)),
+              _o("PEDALS", "Pedals", ("PEDALS", "POWER_METER_PEDALS")),
+              _o("CRANKSET", "Crankset", ("CRANKSET",)),
+              _o("FRONT_HUB", "Front hub", ("HUB", "HUB_BEARINGS"), ("FRONT_WHEEL",)),
+              _o("REAR_HUB", "Rear hub / freehub", ("HUB", "HUB_BEARINGS"), ("REAR_WHEEL",)),
+              _o("CHAIN", "Chain", ("CHAIN",)),
+              _o("SEATPOST", "Seatpost / saddle", ("SEATPOST", "SADDLE"))),
+    "WHEEL": (_o("FRONT_WHEEL", "Front wheel", ("FRONT_WHEEL",)),
+              _o("REAR_WHEEL", "Rear wheel", ("REAR_WHEEL",)),
+              _o("FRONT_SPOKES", "Front spokes", ("SPOKES",), ("FRONT_WHEEL",)),
+              _o("REAR_SPOKES", "Rear spokes", ("SPOKES",), ("REAR_WHEEL",))),
+    "PEDAL": (_o("PEDALS", "Pedals", ("PEDALS", "POWER_METER_PEDALS")),
+              _o("CLEATS", "Cleats", ("CLEATS",)),
+              _o("SHOES", "Shoes", ("SHOES",))),
+    "FIT": (_o("NUMB_HANDS", "Numb hands"), _o("NUMB_TOES", "Numb toes"), _o("SADDLE_SORE", "Saddle pain"),
+            _o("BACK_PAIN", "Back pain"), _o("NECK_PAIN", "Neck pain"), _o("SHOULDER_PAIN", "Shoulder pain"),
+            _o("KNEE_PAIN", "Knee pain"), _o("LEG_PAIN", "Leg pain"), _o("CRAMPS", "Cramps")),
+    "CRASH": (_o(WHOLE_BIKE, "Frame / whole bike"),
+              _o("RIDER", "Rider (injury)"),
+              _o("FRONT_WHEEL", "Front wheel", ("FRONT_WHEEL",)),
+              _o("REAR_WHEEL", "Rear wheel", ("REAR_WHEEL",)),
+              _o("RD", "Rear derailleur", ("REAR_DERAILLEUR",)),
+              _o("HANGER", "Derailleur hanger", ("DERAILLEUR_HANGER",)),
+              _o("SHIFTERS", "Shifters", ("SHIFTERS",)),
+              _o("HANDLEBAR", "Handlebar", ("HANDLEBAR",)),
+              _o("BAR_TAPE", "Bar tape", ("BAR_TAPE",)),
+              _o("SADDLE", "Saddle", ("SADDLE",)),
+              _o("COMPUTER", "Head unit / computer", ("BIKE_COMPUTER",))),
+}
+# fitting problems are about the rider, not the bike's parts
+RIDER_INCIDENTS = ("FIT",)
+
 # Ride conditions you set per ride (Strava does not provide them; imports never change them).
 RIDE_CONDITIONS: dict[str, str] = {"DRY": "Dry", "WET": "Wet"}
 

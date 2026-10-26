@@ -4,55 +4,66 @@ import { api, newOpId } from "../api";
 import { useApp } from "../context";
 import { today, when } from "../format";
 import { useApi } from "../hooks";
-import type { Bike, JournalRow, RideDetail } from "../types";
+import type {
+  Bike,
+  IncidentChoice,
+  JournalRow,
+  RideDetail,
+  RideIncident,
+} from "../types";
 import { Empty, ErrorBox, Field, FormError, Loading, Tag } from "./ui";
 
-// Incidents (flat, crash, defect) are journal issues linked to the ride and to the affected part, so they
-// also appear in the journal of the bike and of that part.
-export function RideIncidents({
+// An incident (flat, shifting problem, empty battery, numb hands ...) is stored as one journal issue per
+// affected part, so each part shows it in its own journal. What can be picked depends on the incident type
+// and on the parts that were on the bike that day; several can be picked (two flats, both derailleurs).
+// Removing an incident never deletes it: it is voided and can be restored.
+type IncidentForm = {
+  incident_type: string;
+  affected: string[];
+  text: string;
+  fixed: boolean;
+};
+
+function IncidentEditor({
   ride,
-  onChanged,
+  choices,
+  initial,
+  submitLabel,
+  onSubmit,
+  onCancel,
 }: {
   ride: RideDetail;
-  onChanged: () => void;
+  choices: Record<string, IncidentChoice[]>;
+  initial: IncidentForm;
+  submitLabel: string;
+  onSubmit: (f: IncidentForm) => Promise<void>;
+  onCancel?: () => void;
 }) {
   const { meta } = useApp();
-  const { data, error, reload } = useApi<JournalRow[]>(
-    `/journal?ride_id=${ride.id}`,
-  );
-  const [f, setF] = useState({
-    incident_type: "FLAT",
-    component_id: "",
-    text: "",
-    fixed: false,
-  });
-  const [opId, setOpId] = useState(newOpId);
+  const [f, setF] = useState<IncidentForm>(initial);
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  // the parts this ride counted on are the ones that can have been affected
-  const parts = ride.equipment.filter(
-    (e, i, all) =>
-      all.findIndex((x) => x.component_id === e.component_id) === i,
-  );
-  async function add() {
+  const options = choices[f.incident_type] ?? [];
+  const forRider = f.incident_type === "FIT";
+  function toggle(key: string) {
+    setF({
+      ...f,
+      affected: f.affected.includes(key)
+        ? f.affected.filter((k) => k !== key)
+        : [...f.affected, key],
+    });
+  }
+  async function submit() {
+    if (!f.affected.length)
+      return setErr(
+        forRider
+          ? "Tick at least one problem."
+          : "Tick at least one affected part (or Whole bike).",
+      );
     setBusy(true);
     setErr(null);
     try {
-      await api.post(
-        "/journal",
-        {
-          ride_id: ride.id,
-          incident_type: f.incident_type,
-          component_id: f.component_id ? Number(f.component_id) : null,
-          text: f.text || null,
-          resolved_on: f.fixed ? ride.ride_date : null,
-        },
-        opId,
-      );
-      setF({ ...f, component_id: "", text: "", fixed: false });
-      setOpId(newOpId());
-      reload();
-      onChanged();
+      await onSubmit(f);
     } catch (e) {
       setErr((e as Error).message);
     } finally {
@@ -60,72 +71,59 @@ export function RideIncidents({
     }
   }
   return (
-    <div className="incidents">
-      <h3>Incidents on this ride</h3>
-      {error && <ErrorBox error={error} onRetry={reload} />}
-      {data && data.length === 0 && <p className="small muted">None logged.</p>}
-      {data && data.length > 0 && (
-        <ul className="list">
-          {data.map((r) => (
-            <li key={r.id}>
-              <Tag tone="bad">{(r.incident_label ?? r.kind).toLowerCase()}</Tag>
-              <span>
-                {r.component_id ? (
-                  <Link to={`/inventory/${r.component_id}`}>
-                    {r.component_label}
-                  </Link>
-                ) : (
-                  r.bike
-                )}
-                : {r.text}
-              </span>
-              {r.open_issue ? (
-                <Tag tone="warn">open</Tag>
-              ) : (
-                <Tag tone="good">fixed {when(r.resolved_on)}</Tag>
-              )}
-            </li>
-          ))}
-        </ul>
-      )}
-      <div className="row">
-        <Field label="What happened">
-          <select
-            aria-label="Incident type"
-            value={f.incident_type}
-            onChange={(e) => setF({ ...f, incident_type: e.target.value })}
-          >
-            {meta.incident_types.map((t) => (
-              <option key={t.code} value={t.code}>
-                {t.label}
-              </option>
-            ))}
-          </select>
-        </Field>
-        <Field
-          label="Affected part"
-          hint="Parts this ride counted on. Leave empty for the whole bike."
+    <div className="incident-form">
+      <Field label="What happened">
+        <select
+          aria-label="Incident type"
+          value={f.incident_type}
+          onChange={(e) =>
+            setF({ ...f, incident_type: e.target.value, affected: [] })
+          }
         >
-          <select
-            aria-label="Affected part"
-            value={f.component_id}
-            onChange={(e) => setF({ ...f, component_id: e.target.value })}
-          >
-            <option value="">{ride.bike ?? "the bike"}</option>
-            {parts.map((p) => (
-              <option key={p.component_id} value={p.component_id}>
-                {p.label}
-              </option>
-            ))}
-          </select>
-        </Field>
-      </div>
+          {meta.incident_types.map((t) => (
+            <option key={t.code} value={t.code}>
+              {t.label}
+            </option>
+          ))}
+        </select>
+      </Field>
+      <fieldset className="incident-affected">
+        <legend className="field-label">
+          {forRider ? "Where (tick all that apply)" : "Affected (tick all that apply)"}
+        </legend>
+        <div className="chips" role="group" aria-label="Affected">
+          {options.map((o) => (
+            <label
+              key={o.key}
+              className={`chip chip-check ${f.affected.includes(o.key) ? "chip-on" : ""}`}
+              title={
+                o.recorded
+                  ? undefined
+                  : "No such part recorded on this bike for that day"
+              }
+            >
+              <input
+                type="checkbox"
+                checked={f.affected.includes(o.key)}
+                onChange={() => toggle(o.key)}
+              />
+              {o.label}
+            </label>
+          ))}
+        </div>
+        {options.some((o) => !o.recorded) && (
+          <span className="field-hint">
+            Names without a part: nothing of that kind is recorded on{" "}
+            {ride.bike ?? "the bike"} for this day. You can still pick it.
+          </span>
+        )}
+      </fieldset>
       <Field label="Details (optional)">
         <input
           aria-label="Incident details"
           value={f.text}
           onChange={(e) => setF({ ...f, text: e.target.value })}
-          placeholder="e.g. glass shard, front tire, plugged and continued"
+          placeholder="e.g. glass shard, plugged and continued"
         />
       </Field>
       <label className="check">
@@ -138,11 +136,183 @@ export function RideIncidents({
       </label>
       <FormError error={err} />
       <div className="form-actions">
-        <button className="btn" disabled={busy} onClick={add}>
-          {busy ? "Saving…" : "Log incident"}
+        {onCancel && (
+          <button className="btn" onClick={onCancel}>
+            Cancel
+          </button>
+        )}
+        <button className="btn btn-primary" disabled={busy} onClick={submit}>
+          {busy ? "Saving…" : submitLabel}
         </button>
       </div>
     </div>
+  );
+}
+
+export function RideIncidents({
+  ride,
+  onChanged,
+}: {
+  ride: RideDetail;
+  onChanged: () => void;
+}) {
+  const { toast } = useApp();
+  const { data, error, reload } = useApi<{
+    incidents: RideIncident[];
+    choices: Record<string, IncidentChoice[]>;
+  }>(`/rides/${ride.id}/incidents`);
+  const [mode, setMode] = useState<"list" | "add" | string>("list");
+  const [opId, setOpId] = useState(newOpId);
+  const [err, setErr] = useState<string | null>(null);
+  function changed() {
+    setMode("list");
+    reload();
+    onChanged();
+  }
+  async function add(f: IncidentForm) {
+    await api.post(
+      `/rides/${ride.id}/incidents`,
+      {
+        incident_type: f.incident_type,
+        affected: f.affected,
+        text: f.text || null,
+        resolved_on: f.fixed ? ride.ride_date : null,
+      },
+      opId,
+    );
+    setOpId(newOpId());
+    changed();
+  }
+  async function save(r: RideIncident, f: IncidentForm) {
+    await api.patch(`/incidents/${r.group}`, {
+      incident_type: f.incident_type,
+      affected: f.affected,
+      text: f.text || null,
+      resolved_on: f.fixed ? (r.resolved_on ?? today()) : null,
+    });
+    changed();
+  }
+  async function act(r: RideIncident, what: "remove" | "restore") {
+    setErr(null);
+    try {
+      await api.post(`/incidents/${r.group}/${what}`, {});
+      toast(
+        what === "remove"
+          ? `${r.label} removed from this ride. It is kept and can be restored.`
+          : `${r.label} restored.`,
+      );
+      changed();
+    } catch (e) {
+      setErr((e as Error).message);
+    }
+  }
+  const live = data?.incidents.filter((r) => !r.removed) ?? [];
+  const removed = data?.incidents.filter((r) => r.removed) ?? [];
+  return (
+    <section className="ride-section incidents" aria-label="Incidents">
+      <div className="ride-section-head">
+        <h3>Incidents</h3>
+        {mode === "list" && data && (
+          <button className="btn btn-small" onClick={() => setMode("add")}>
+            Log incident
+          </button>
+        )}
+      </div>
+      {error && <ErrorBox error={error} onRetry={reload} />}
+      <FormError error={err} />
+      {data && live.length === 0 && mode !== "add" && (
+        <p className="small muted">None logged.</p>
+      )}
+      {live.length > 0 && (
+        <ul className="incident-list">
+          {live.map((r) =>
+            mode === r.group && data ? (
+              <li key={r.group}>
+                <IncidentEditor
+                  ride={ride}
+                  choices={data.choices}
+                  initial={{
+                    incident_type: r.incident_type,
+                    affected: r.affected.map((a) => a.key),
+                    text: r.text ?? "",
+                    fixed: !r.open,
+                  }}
+                  submitLabel="Save changes"
+                  onSubmit={(f) => save(r, f)}
+                  onCancel={() => setMode("list")}
+                />
+              </li>
+            ) : (
+              <li key={r.group} className="incident-row">
+                <div>
+                  <Tag tone="bad">{r.label.toLowerCase()}</Tag>{" "}
+                  {r.affected.map((a, i) => (
+                    <span key={a.key}>
+                      {i > 0 && ", "}
+                      {a.component_id ? (
+                        <Link to={`/inventory/${a.component_id}`}>{a.label}</Link>
+                      ) : (
+                        a.label
+                      )}
+                    </span>
+                  ))}
+                  {r.text && <div className="small">{r.text}</div>}
+                </div>
+                <div className="incident-actions">
+                  {r.open ? (
+                    <Tag tone="warn">open</Tag>
+                  ) : (
+                    <Tag tone="good">fixed {when(r.resolved_on)}</Tag>
+                  )}
+                  <button
+                    className="btn btn-small"
+                    onClick={() => setMode(r.group)}
+                  >
+                    Edit
+                  </button>
+                  <button
+                    className="btn btn-small"
+                    onClick={() => act(r, "remove")}
+                  >
+                    Remove
+                  </button>
+                </div>
+              </li>
+            ),
+          )}
+        </ul>
+      )}
+      {mode === "add" && data && (
+        <IncidentEditor
+          ride={ride}
+          choices={data.choices}
+          initial={{ incident_type: "FLAT", affected: [], text: "", fixed: false }}
+          submitLabel="Log incident"
+          onSubmit={add}
+          onCancel={() => setMode("list")}
+        />
+      )}
+      {removed.length > 0 && (
+        <details className="small">
+          <summary>Removed incidents ({removed.length})</summary>
+          <ul className="incident-list">
+            {removed.map((r) => (
+              <li key={r.group} className="incident-row muted">
+                <span>
+                  {r.label}: {r.affected.map((a) => a.label).join(", ")}
+                </span>
+                <button
+                  className="btn btn-small"
+                  onClick={() => act(r, "restore")}
+                >
+                  Restore
+                </button>
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
+    </section>
   );
 }
 
@@ -159,8 +329,11 @@ export function IncidentList({ bikes }: { bikes: Bike[] }) {
   const { data, error, loading, reload } = useApi<JournalRow[]>(
     `/incidents?${q.toString()}`,
   );
-  async function resolve(id: number) {
-    await api.patch(`/journal/${id}`, { resolved_on: today() });
+  async function resolve(r: JournalRow) {
+    // the whole incident is fixed (both tires of a double flat), not just this row
+    if (r.incident_group)
+      await api.patch(`/incidents/${r.incident_group}`, { resolved_on: today() });
+    else await api.patch(`/journal/${r.id}`, { resolved_on: today() });
     reload();
   }
   return (
@@ -203,7 +376,7 @@ export function IncidentList({ bikes }: { bikes: Bike[] }) {
       {error && <ErrorBox error={error} onRetry={reload} />}
       {data && data.length === 0 && (
         <Empty title="No incidents">
-          Open a ride and use "Log incident" for a flat, a crash or a defect.
+          Open a ride and use "Log incident" for a flat, a shifting problem, an empty battery or anything else that happened.
         </Empty>
       )}
       {data && data.length > 0 && (
@@ -233,7 +406,7 @@ export function IncidentList({ bikes }: { bikes: Bike[] }) {
                       {r.component_label}
                     </Link>
                   ) : (
-                    r.bike
+                    (r.affected ?? r.bike)
                   )}
                 </td>
                 <td>
@@ -248,7 +421,7 @@ export function IncidentList({ bikes }: { bikes: Bike[] }) {
                   {r.open_issue ? (
                     <button
                       className="btn btn-small"
-                      onClick={() => resolve(r.id)}
+                      onClick={() => resolve(r)}
                     >
                       Mark fixed
                     </button>

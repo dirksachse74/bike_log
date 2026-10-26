@@ -246,6 +246,14 @@ you disagree. Dates are 2026-10-24 unless noted.
     with the tire.
 77. **Assioma pedal charge every 80 ride hours** (Dirk, 2026-10-26; Favero quotes 60 h, up to about 160 h
     with newer firmware). Changed defaults are applied by migration only to rows still at the old default.
+78. **An incident affecting several things is one incident, stored as one journal issue per affected
+    thing** (shared `incident_group`), so every part keeps the incident in its own journal and history,
+    while the ride shows and edits it as one. Counts on the ride count incidents, not entries.
+79. **What an incident can affect is data** (`catalog.INCIDENT_OPTIONS`), resolved against the parts on the
+    bike on the ride date. When no such part is recorded, the position or body area is offered by name and
+    saved as text (`affected`), so a flat can be logged even before tires are entered.
+80. **Removing an incident voids it** (reason "incident removed") and Restore brings it back; unticking
+    a part while editing voids only that part's entry. Nothing is deleted.
 
 ## Repository
 27. Pushed only to the feature branch `claude/project-thread-6y3mmh` of the private repository. Demo

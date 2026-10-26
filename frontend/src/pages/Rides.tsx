@@ -341,49 +341,55 @@ function RideDetailView({
     ),
   ];
   return (
-    <div className="form">
-      <p>
-        <strong>{data.name || "Ride"}</strong> ·{" "}
-        {when(data.start_time_utc ?? data.ride_date)}
-        {data.date_only && (
-          <Tag title="No start time recorded">date only</Tag>
-        )}{" "}
-        · {km(data.distance_km)} · {duration(data.duration_s)} ·{" "}
-        {data.bike ?? <Tag tone="warn">no bike</Tag>}
-      </p>
-      <p className="small muted">
-        Source: {data.source_kind.toLowerCase()}
-        {data.overridden_fields.length > 0 &&
-          ` · locally corrected: ${data.overridden_fields.join(", ")}`}
-        {data.usage_profile_name && ` · setup: ${data.usage_profile_name}`}
-      </p>
-      {data.inclusion === "EXCLUDED" && (
-        <div className="notice">
-          Removed ({data.exclusion_reason}). It counts no km and is never
-          imported again from Strava or CSV. Restore it to count it again.
-        </div>
-      )}
-      {data.flags.map((f, i) => (
-        <div key={i} className="flag">
-          <Tag tone="warn">{f.code.replace(/_/g, " ").toLowerCase()}</Tag>{" "}
-          {f.detail}
-        </div>
-      ))}
-      <div className="row conditions" role="group" aria-label="Conditions">
-        <span className="small">Conditions:</span>
-        {[{ code: null, label: "not set" }, ...meta.ride_conditions].map(
-          (c) => (
-            <button
-              key={c.code ?? "none"}
-              className={`btn btn-small ${data.conditions === c.code ? "btn-primary" : ""}`}
-              aria-pressed={data.conditions === c.code}
-              onClick={() => setConditions(c.code as RideRow["conditions"])}
-            >
-              {c.label}
-            </button>
-          ),
+    <div className="form ride-view">
+      <header className="ride-summary">
+        <p>
+          <strong>{data.name || "Ride"}</strong> ·{" "}
+          {when(data.start_time_utc ?? data.ride_date)}
+          {data.date_only && (
+            <Tag title="No start time recorded">date only</Tag>
+          )}{" "}
+          · {km(data.distance_km)} · {duration(data.duration_s)} ·{" "}
+          {data.bike ?? <Tag tone="warn">no bike</Tag>}
+        </p>
+        <p className="small muted">
+          Source: {data.source_kind.toLowerCase()}
+          {data.overridden_fields.length > 0 &&
+            ` · locally corrected: ${data.overridden_fields.join(", ")}`}
+          {data.usage_profile_name && ` · setup: ${data.usage_profile_name}`}
+        </p>
+        {data.inclusion === "EXCLUDED" && (
+          <div className="notice">
+            Removed ({data.exclusion_reason}). It counts no km and is never
+            imported again from Strava or CSV. Restore it to count it again.
+          </div>
         )}
-      </div>
+        {data.flags.map((f, i) => (
+          <div key={i} className="flag">
+            <Tag tone="warn">{f.code.replace(/_/g, " ").toLowerCase()}</Tag>{" "}
+            {f.detail}
+          </div>
+        ))}
+      </header>
+      <section className="ride-section">
+        <div className="ride-section-head">
+          <h3>Conditions</h3>
+        </div>
+        <div className="row conditions" role="group" aria-label="Conditions">
+          {[{ code: null, label: "not set" }, ...meta.ride_conditions].map(
+            (c) => (
+              <button
+                key={c.code ?? "none"}
+                className={`btn btn-small ${data.conditions === c.code ? "btn-primary" : ""}`}
+                aria-pressed={data.conditions === c.code}
+                onClick={() => setConditions(c.code as RideRow["conditions"])}
+              >
+                {c.label}
+              </button>
+            ),
+          )}
+        </div>
+      </section>
       <RideIncidents
         ride={data}
         onChanged={() => {
@@ -391,112 +397,116 @@ function RideDetailView({
           onChanged(null);
         }}
       />
-      <h3>Mileage given to parts</h3>
-      {data.counting_note && <p className="notice">{data.counting_note}</p>}
-      {data.equipment.length === 0 ? (
-        <p className="muted">No parts received mileage from this ride.</p>
-      ) : (
-        <table className="table">
-          <thead>
-            <tr>
-              <th>Part</th>
-              <th>Slot</th>
-              <th>km</th>
-              <th>Basis</th>
-            </tr>
-          </thead>
-          <tbody>
-            {data.equipment.map((e) => (
-              <tr key={e.component_id}>
-                <td>
-                  <Link to={`/inventory/${e.component_id}`}>{e.label}</Link>
-                </td>
-                <td>{slotName(e.slot)}</td>
-                <td>
-                  {e.state === "COUNTED" ? (
-                    km(e.km)
-                  ) : (
-                    <span className="muted">inside starting value</span>
-                  )}
-                </td>
-                <td>
-                  {e.basis === "EXPLICIT"
-                    ? "confirmed"
-                    : "installation history"}
-                  {!e.certain && <Tag tone="warn">uncertain</Tag>}
-                </td>
+      <section className="ride-section">
+        <div className="ride-section-head">
+          <h3>Mileage given to parts</h3>
+        </div>
+        {data.counting_note && <p className="notice">{data.counting_note}</p>}
+        {data.equipment.length === 0 ? (
+          <p className="muted">No parts received mileage from this ride.</p>
+        ) : (
+          <table className="table">
+            <thead>
+              <tr>
+                <th>Part</th>
+                <th>Slot</th>
+                <th>km</th>
+                <th>Basis</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
-      <details>
-        <summary>Confirm which part was used</summary>
-        <div className="row">
-          <Field label="Slot">
-            <select
-              value={equip.slot}
-              onChange={(e) => setEquip({ ...equip, slot: e.target.value })}
-            >
-              {slots.map((s) => (
-                <option key={s} value={s}>
-                  {slotName(s)}
-                </option>
+            </thead>
+            <tbody>
+              {data.equipment.map((e) => (
+                <tr key={e.component_id}>
+                  <td>
+                    <Link to={`/inventory/${e.component_id}`}>{e.label}</Link>
+                  </td>
+                  <td>{slotName(e.slot)}</td>
+                  <td>
+                    {e.state === "COUNTED" ? (
+                      km(e.km)
+                    ) : (
+                      <span className="muted">inside starting value</span>
+                    )}
+                  </td>
+                  <td>
+                    {e.basis === "EXPLICIT"
+                      ? "confirmed"
+                      : "installation history"}
+                    {!e.certain && <Tag tone="warn">uncertain</Tag>}
+                  </td>
+                </tr>
               ))}
-            </select>
-          </Field>
-          <Field label="Part">
-            <select
-              value={equip.component_id}
-              onChange={(e) =>
-                setEquip({ ...equip, component_id: e.target.value })
-              }
-            >
-              <option value="">None used</option>
-              {comps.data
-                ?.filter((c) => c.status === "ACTIVE")
-                .map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.label} ({c.type_name})
+            </tbody>
+          </table>
+        )}
+        <details>
+          <summary>Confirm which part was used</summary>
+          <div className="row">
+            <Field label="Slot">
+              <select
+                value={equip.slot}
+                onChange={(e) => setEquip({ ...equip, slot: e.target.value })}
+              >
+                {slots.map((s) => (
+                  <option key={s} value={s}>
+                    {slotName(s)}
                   </option>
                 ))}
-            </select>
-          </Field>
-        </div>
-        <div className="form-actions">
-          <button
-            className="btn"
-            onClick={() =>
-              act(
-                `/rides/${id}/equipment/${equip.slot}`,
-                {
-                  component_id: equip.component_id
-                    ? Number(equip.component_id)
-                    : null,
-                },
-                "put",
-              )
-            }
-          >
-            Confirm
-          </button>
-          {data.explicit_equipment.map((e) => (
+              </select>
+            </Field>
+            <Field label="Part">
+              <select
+                value={equip.component_id}
+                onChange={(e) =>
+                  setEquip({ ...equip, component_id: e.target.value })
+                }
+              >
+                <option value="">None used</option>
+                {comps.data
+                  ?.filter((c) => c.status === "ACTIVE")
+                  .map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.label} ({c.type_name})
+                    </option>
+                  ))}
+              </select>
+            </Field>
+          </div>
+          <div className="form-actions">
             <button
-              key={e.slot}
-              className="btn btn-small"
+              className="btn"
               onClick={() =>
-                act(`/rides/${id}/equipment/${e.slot}`, undefined, "del")
+                act(
+                  `/rides/${id}/equipment/${equip.slot}`,
+                  {
+                    component_id: equip.component_id
+                      ? Number(equip.component_id)
+                      : null,
+                  },
+                  "put",
+                )
               }
             >
-              Back to history for {slotName(e.slot)}
+              Confirm
             </button>
-          ))}
-        </div>
-      </details>
+            {data.explicit_equipment.map((e) => (
+              <button
+                key={e.slot}
+                className="btn btn-small"
+                onClick={() =>
+                  act(`/rides/${id}/equipment/${e.slot}`, undefined, "del")
+                }
+              >
+                Back to history for {slotName(e.slot)}
+              </button>
+            ))}
+          </div>
+        </details>
+      </section>
       <FormError error={err} />
-      <div className="form-actions">
+      <div className="form-actions ride-actions">
         <button className="btn" onClick={() => setEditing(true)}>
-          Edit
+          Edit ride
         </button>
         {data.inclusion === "INCLUDED" ? (
           <button

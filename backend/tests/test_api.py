@@ -183,3 +183,18 @@ def test_bike_level_reminders_over_http(client):
     assert "BIKE_FULL_SERVICE" in {r["rule_code"] for r in client.get(f"/api/bikes/{bike['id']}/rules").json()}
     tire = client.post("/api/components", json={"component_type": "TIRE", "label": "GP5000 rear"}).json()
     assert client.patch(f"/api/components/{tire['id']}", json={"pressure_note": "5.0 bar"}).json()["pressure_note"] == "5.0 bar"
+
+
+def test_incidents_over_http(client):
+    b = client.post("/api/bikes", json={"name": "TIME NXR"}).json()
+    r = client.post("/api/rides", json={"bike_id": b["id"], "when": "2026-09-10", "distance": 50}).json()
+    rid = r["result"]["id"] if "result" in r else r["id"]
+    data = client.get(f"/api/rides/{rid}/incidents").json()
+    assert [c["label"] for c in data["choices"]["FLAT"]] == ["Front tire", "Rear tire"]
+    made = client.post(f"/api/rides/{rid}/incidents", json={"incident_type": "FLAT", "affected": ["REAR_TIRE"]})
+    assert made.status_code == 201
+    group = made.json()["group"]
+    assert client.patch(f"/api/incidents/{group}", json={"affected": ["FRONT_TIRE", "REAR_TIRE"]}).status_code == 200
+    assert len(client.get(f"/api/rides/{rid}/incidents").json()["incidents"][0]["affected"]) == 2
+    assert client.post(f"/api/incidents/{group}/remove").json()["removed"] is True
+    assert client.post(f"/api/incidents/{group}/restore").json()["removed"] is False

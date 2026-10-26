@@ -905,3 +905,79 @@ label.chip {
   margin-top: 0.5rem;
   flex-wrap: wrap;
 }
+
+/* ride page: summary, then one section per topic */
+.ride-summary p {
+  margin: 0 0 0.3rem;
+}
+.ride-section {
+  border-top: 1px solid var(--line);
+  padding-top: 0.6rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.ride-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+.ride-section-head h3 {
+  margin: 0;
+}
+.ride-actions {
+  border-top: 1px solid var(--line);
+  padding-top: 0.6rem;
+}
+.incident-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: 0.6rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+.incident-affected {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 0;
+}
+.chip-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+.chip-check input {
+  width: auto;
+  min-height: 0;
+  margin: 0;
+}
+.incident-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+.incident-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+.incident-actions {
+  display: flex;
+  gap: 0.35rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.row.conditions > * {
+  flex: 0 0 auto;
+}
