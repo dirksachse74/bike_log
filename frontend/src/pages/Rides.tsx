@@ -277,6 +277,50 @@ export function RideForm({
   );
 }
 
+function hours(h: number | null | undefined): string {
+  if (h === null || h === undefined) return "—";
+  return h ? duration(h * 3600) : "0 h";
+}
+
+// This ride, and its bike in total, this year and this month (km and recorded ride time).
+function RideSummaryStats({ summary }: { summary: RideDetail["summary"] }) {
+  const b = summary.bike;
+  return (
+    <div className="ride-stats">
+      <div>
+        <span className="muted small">This ride</span>
+        <span className="stat">{km(summary.km)}</span>
+        <span className="small">
+          {summary.hours ? hours(summary.hours) : "no time recorded"}
+        </span>
+      </div>
+      {b && (
+        <>
+          <div>
+            <span className="muted small">{b.name} in total</span>
+            <span className="stat">
+              {b.starting_is_estimate ? "≈ " : ""}
+              {km(b.total_km, 0)}
+            </span>
+            <span className="small" title="Recorded ride time; km from before tracking have no hours">
+              {hours(b.total_hours)}
+            </span>
+          </div>
+          {[b.year, b.month].map((p) => (
+            <div key={p.label}>
+              <span className="muted small">{p.label}</span>
+              <span className="stat">{km(p.km, 0)}</span>
+              <span className="small">
+                {hours(p.hours)} · {p.rides} ride{p.rides === 1 ? "" : "s"}
+              </span>
+            </div>
+          ))}
+        </>
+      )}
+    </div>
+  );
+}
+
 function RideDetailView({
   id,
   onChanged,
@@ -290,6 +334,7 @@ function RideDetailView({
   const [editing, setEditing] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [equip, setEquip] = useState({ slot: "CHAIN", component_id: "" });
+  const [showParts, setShowParts] = useState(false);
   if (loading && !data) return <Loading />;
   if (error || !data)
     return <ErrorBox error={error ?? "not found"} onRetry={reload} />;
@@ -399,109 +444,124 @@ function RideDetailView({
       />
       <section className="ride-section">
         <div className="ride-section-head">
-          <h3>Mileage given to parts</h3>
+          <h3>Distance and time</h3>
+          <button
+            className="btn btn-small"
+            aria-expanded={showParts}
+            onClick={() => setShowParts(!showParts)}
+          >
+            {showParts ? "Hide details" : "Show details"}
+          </button>
         </div>
+        <RideSummaryStats summary={data.summary} />
         {data.counting_note && <p className="notice">{data.counting_note}</p>}
-        {data.equipment.length === 0 ? (
-          <p className="muted">No parts received mileage from this ride.</p>
-        ) : (
-          <table className="table">
-            <thead>
-              <tr>
-                <th>Part</th>
-                <th>Slot</th>
-                <th>km</th>
-                <th>Basis</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.equipment.map((e) => (
-                <tr key={e.component_id}>
-                  <td>
-                    <Link to={`/inventory/${e.component_id}`}>{e.label}</Link>
-                  </td>
-                  <td>{slotName(e.slot)}</td>
-                  <td>
-                    {e.state === "COUNTED" ? (
-                      km(e.km)
-                    ) : (
-                      <span className="muted">inside starting value</span>
-                    )}
-                  </td>
-                  <td>
-                    {e.basis === "EXPLICIT"
-                      ? "confirmed"
-                      : "installation history"}
-                    {!e.certain && <Tag tone="warn">uncertain</Tag>}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-        <details>
-          <summary>Confirm which part was used</summary>
-          <div className="row">
-            <Field label="Slot">
-              <select
-                value={equip.slot}
-                onChange={(e) => setEquip({ ...equip, slot: e.target.value })}
-              >
-                {slots.map((s) => (
-                  <option key={s} value={s}>
-                    {slotName(s)}
-                  </option>
-                ))}
-              </select>
-            </Field>
-            <Field label="Part">
-              <select
-                value={equip.component_id}
-                onChange={(e) =>
-                  setEquip({ ...equip, component_id: e.target.value })
-                }
-              >
-                <option value="">None used</option>
-                {comps.data
-                  ?.filter((c) => c.status === "ACTIVE")
-                  .map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.label} ({c.type_name})
-                    </option>
+        {showParts && (
+          <div className="ride-parts">
+            <h4>Distance and time given to parts</h4>
+            {data.equipment.length === 0 ? (
+              <p className="muted">No parts received mileage from this ride.</p>
+            ) : (
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th>Part</th>
+                    <th>Slot</th>
+                    <th>km</th>
+                    <th>Hours</th>
+                    <th>Basis</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.equipment.map((e) => (
+                    <tr key={e.component_id}>
+                      <td>
+                        <Link to={`/inventory/${e.component_id}`}>{e.label}</Link>
+                      </td>
+                      <td>{slotName(e.slot)}</td>
+                      <td>
+                        {e.state === "COUNTED" ? (
+                          km(e.km)
+                        ) : (
+                          <span className="muted">inside starting value</span>
+                        )}
+                      </td>
+                      <td>{e.state === "COUNTED" ? hours(e.hours) : "—"}</td>
+                      <td>
+                        {e.basis === "EXPLICIT"
+                          ? "confirmed"
+                          : "installation history"}
+                        {!e.certain && <Tag tone="warn">uncertain</Tag>}
+                      </td>
+                    </tr>
                   ))}
-              </select>
-            </Field>
+                </tbody>
+              </table>
+            )}
+            <details>
+              <summary>Confirm which part was used</summary>
+              <div className="row">
+                <Field label="Slot">
+                  <select
+                    value={equip.slot}
+                    onChange={(e) => setEquip({ ...equip, slot: e.target.value })}
+                  >
+                    {slots.map((s) => (
+                      <option key={s} value={s}>
+                        {slotName(s)}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+                <Field label="Part">
+                  <select
+                    value={equip.component_id}
+                    onChange={(e) =>
+                      setEquip({ ...equip, component_id: e.target.value })
+                    }
+                  >
+                    <option value="">None used</option>
+                    {comps.data
+                      ?.filter((c) => c.status === "ACTIVE")
+                      .map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.label} ({c.type_name})
+                        </option>
+                      ))}
+                  </select>
+                </Field>
+              </div>
+              <div className="form-actions">
+                <button
+                  className="btn"
+                  onClick={() =>
+                    act(
+                      `/rides/${id}/equipment/${equip.slot}`,
+                      {
+                        component_id: equip.component_id
+                          ? Number(equip.component_id)
+                          : null,
+                      },
+                      "put",
+                    )
+                  }
+                >
+                  Confirm
+                </button>
+                {data.explicit_equipment.map((e) => (
+                  <button
+                    key={e.slot}
+                    className="btn btn-small"
+                    onClick={() =>
+                      act(`/rides/${id}/equipment/${e.slot}`, undefined, "del")
+                    }
+                  >
+                    Back to history for {slotName(e.slot)}
+                  </button>
+                ))}
+              </div>
+            </details>
           </div>
-          <div className="form-actions">
-            <button
-              className="btn"
-              onClick={() =>
-                act(
-                  `/rides/${id}/equipment/${equip.slot}`,
-                  {
-                    component_id: equip.component_id
-                      ? Number(equip.component_id)
-                      : null,
-                  },
-                  "put",
-                )
-              }
-            >
-              Confirm
-            </button>
-            {data.explicit_equipment.map((e) => (
-              <button
-                key={e.slot}
-                className="btn btn-small"
-                onClick={() =>
-                  act(`/rides/${id}/equipment/${e.slot}`, undefined, "del")
-                }
-              >
-                Back to history for {slotName(e.slot)}
-              </button>
-            ))}
-          </div>
-        </details>
+        )}
       </section>
       <FormError error={err} />
       <div className="form-actions ride-actions">

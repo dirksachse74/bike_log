@@ -16,6 +16,8 @@ UPDATING.md → "Making a release". New entries go under "Unreleased" as work is
   derailleurs). Incidents can be edited on the ride, and removed and restored (never deleted).
 - Ride page: each incident shows open or solved, with a "Solved" button (records today's date) and a
   "Re-open" button that makes it open again. "Fixed" is now called "solved" everywhere.
+- Ride page: "Distance and time" shows a short summary (this ride; the bike in total, this year and this
+  month, each in km and ride hours). The parts list unfolds with "Show details" and has an hours column.
 - Yearly full service: a whole-bike reminder every 12 months. "Log done" shows a checklist of the big jobs
   (hub bearings, headset, bottom bracket, brakes, Di2 wires / cables, frame and fork, drivetrain, pedals,
   torque); ticked and unticked jobs are saved with the entry. Each job keeps its own reminder on its part.

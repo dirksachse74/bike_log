@@ -214,3 +214,22 @@ def test_change_notice_is_short_for_many_parts():
     assert notice(deltas, True).startswith("Preview: Part 0 +80.0 km; Part 1")
     mixed = deltas[:5] + [{"label": "Rear tire", "delta_km": -10.0}]
     assert notice(mixed, False) == "6 parts changed: Part 0 +80.0 km; Part 1 +80.0 km; Part 2 +80.0 km; and 3 more."
+
+
+def test_ride_summary_with_bike_totals_this_year_and_month(session):
+    from datetime import date
+
+    from bikelog.services.rides import ride_detail, ride_summary
+    b = bike(session)
+    chain = part(session, "CHAIN", "Chain A")
+    inv.install(session, chain.id, at="2025-12-01", bike_id=b.id)
+    ride(session, b, "2025-12-20", 30, duration_s=3600)
+    ride(session, b, "2026-09-05", 50, duration_s=2 * 3600)
+    r = ride(session, b, "2026-10-12", 40, duration_s=5400)
+    s = ride_summary(session, r, today=date(2026, 10, 26))
+    assert s["km"] == 40 and s["hours"] == 1.5
+    assert s["bike"]["total_km"] == 120 and s["bike"]["total_hours"] == 4.5
+    assert s["bike"]["year"] == {"label": "2026", "km": 90, "hours": 3.5, "rides": 2}
+    assert s["bike"]["month"] == {"label": "October 2026", "km": 40, "hours": 1.5, "rides": 1}
+    eq = ride_detail(session, r)["equipment"]
+    assert eq[0]["label"] == "Chain A" and eq[0]["hours"] == 1.5

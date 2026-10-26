@@ -242,7 +242,11 @@ OTHER offer every part. `log` writes one journal issue per picked key with a sha
 `update` edits type/details/fixed date/affected (unticked entries are voided "taken out of the incident",
 new ones added to the group); `remove` voids all ("incident removed"), `restore` brings those back. The
 ride's incident count counts groups. Solved / Re-open on the ride = PATCH `incidents/{group}` with
-`resolved_on` today / null (the whole incident, every affected part). UI: components/Incidents.tsx (`RideIncidents`, `IncidentEditor`).
+`resolved_on` today / null (the whole incident, every affected part).
+**Ride summary.** `rides.ride_detail` adds `summary` (`ride_summary`: this ride's km/hours; the bike's
+total km from `bike_usage` incl. starting value, hours from recorded ride time, and this calendar year and
+month in the app timezone via `_period`) and `hours` per equipment row (contribution `duration_s`). UI:
+`RideSummaryStats` in pages/Rides.tsx; the parts table is behind "Show details". UI: components/Incidents.tsx (`RideIncidents`, `IncidentEditor`).
 
 ---
 
@@ -324,10 +328,10 @@ cd backend && ../.venv/bin/python -m bikelog            # http://127.0.0.1:8765/
 Checks that must pass before every push:
 
 ```bash
-.venv/bin/python -m pytest -q backend/tests             # currently 177 passed
+.venv/bin/python -m pytest -q backend/tests             # currently 178 passed
 cd frontend && npx tsc -b && npx eslint . && npx vite build
 # browser test: start the app on a fresh data dir, then
-node e2e/smoke.cjs http://127.0.0.1:8790/ <screenshot-dir>   # currently 82/82 (the ride-form step can flake once; rerun)
+node e2e/smoke.cjs http://127.0.0.1:8790/ <screenshot-dir>   # currently 84/84 (the ride-form step can flake once; rerun)
 #   (cd backend && ../.venv/bin/python -m bikelog --no-browser --no-sample --port 8790 --data-dir <fresh dir>)
 # sample database: start on ANOTHER fresh dir WITHOUT --no-sample (port 8791), then
 node e2e/sample.cjs http://127.0.0.1:8791/ <screenshot-dir>  # banner, sample bikes, crash item, Fresh start

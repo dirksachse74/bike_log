@@ -238,10 +238,30 @@ export interface RideRow {
 }
 
 export interface RideDetail extends RideRow {
-  equipment: { component_id: number; label: string; component_type: string; slot: string; km: number; basis: string; certain: boolean; state: string; note: string | null }[]
+  equipment: { component_id: number; label: string; component_type: string; slot: string; km: number; hours: number | null; basis: string; certain: boolean; state: string; note: string | null }[]
   explicit_equipment: { slot: string; component_id: number | null; note: string | null }[]
   source_values: Record<string, unknown> | null
   counting_note: string | null
+  summary: {
+    km: number | null
+    hours: number | null
+    bike: {
+      name: string
+      total_km: number
+      total_hours: number
+      starting_km: number | null
+      starting_is_estimate: boolean
+      year: RidePeriod
+      month: RidePeriod
+    } | null
+  }
+}
+
+export interface RidePeriod {
+  label: string
+  km: number
+  hours: number
+  rides: number
 }
 
 export interface Change {

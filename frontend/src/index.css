@@ -981,3 +981,23 @@ label.chip {
 .row.conditions > * {
   flex: 0 0 auto;
 }
+.ride-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr));
+  gap: 0.75rem;
+}
+.ride-stats > div {
+  display: flex;
+  flex-direction: column;
+}
+.ride-stats .stat {
+  font-size: 1.2rem;
+}
+.ride-parts {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.ride-parts h4 {
+  margin: 0.3rem 0 0;
+}

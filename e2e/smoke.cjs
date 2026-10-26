@@ -350,6 +350,15 @@ async function sheetButton(page, name) {
   await sheet.locator('.incident-row').filter({ hasText: 'glass shard' }).getByRole('button', { name: 'Remove' }).waitFor()
   check('incident removed and restored (never deleted)', true)
   await page.screenshot({ path: path.join(OUT, '09b-ride-incidents.png'), fullPage: true })
+  // distance and time: short summary; the parts list unfolds on "Show details"
+  const stats = await sheet.locator('.ride-stats').innerText()
+  check('ride shows this ride, bike total, this year and this month', /This ride/.test(stats) && /TIME NXR in total/.test(stats) && /\b20\d\d\b/.test(stats), stats.replace(/\s+/g, ' ').slice(0, 160))
+  const partsHidden = (await sheet.locator('.ride-parts').count()) === 0
+  await sheet.getByRole('button', { name: 'Show details' }).click()
+  const hoursHeader = await sheet.locator('.ride-parts th').filter({ hasText: 'Hours' }).count()
+  check('parts list hidden until "Show details", then shows km and hours', partsHidden && hoursHeader === 1)
+  await page.screenshot({ path: path.join(OUT, '09d-ride-summary.png'), fullPage: true })
+  await sheet.getByRole('button', { name: 'Hide details' }).click()
   await page.keyboard.press('Escape')
   await page.goto(BASE + '#/rides')
   const wetRow = await page.locator('table.rides tbody tr').filter({ hasText: '1 incident' }).first().innerText()

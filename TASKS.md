@@ -26,6 +26,7 @@ Status key: ✅ done and tested · 🟡 done, not verified where it matters · �
 - ✅ Ride incidents (flat/crash/defect) linked to ride and part; dry/wet per ride.
 - ✅ Incidents reworked (Dirk, 2026-10-26): 13 types with their own affected parts or body areas, several
   per incident, edit / remove / restore on the ride, tidier ride page; Solved / Re-open buttons.
+- ✅ Ride page: distance and time summary (ride, bike total, year, month); parts list with hours behind "Show details".
 - ✅ Wheelset assemblies (wheels, tires, hub, bearings, spokes, rim tape, sensor), pulley wheels, carry-over.
 - ✅ Maintenance coverage review items 1–22 (bike-level rules, measurement limits, torque checks, crash
   inspection, hanger, cleats/shoes, thru-axles, sealant clean-out, valves, Di2 checks, bearings, bar tape,

@@ -7,6 +7,7 @@ ride_source; local corrections go to ride_override and survive re-imports.
 from __future__ import annotations
 
 import json
+from datetime import date
 
 from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
@@ -18,7 +19,7 @@ from bikelog.models import (
 from bikelog.services import allocation, settings
 from bikelog.services.errors import DomainError, NotFound
 from bikelog.services.inventory import get_bike, get_component
-from bikelog.timeutil import parse_when
+from bikelog.timeutil import parse_when, today_local
 
 KM_PER_MILE = 1.609344
 EDITABLE_FIELDS = ("name", "when", "distance_km", "duration_s", "bike_id", "sport_type", "usage_profile_code",
@@ -278,13 +279,42 @@ def ride_detail(session: Session, ride: Ride) -> dict:
         Component, Component.id == UsageContribution.component_id).where(UsageContribution.ride_id == ride.id)
         .order_by(UsageContribution.slot)).all()
     row["equipment"] = [{"component_id": c.component_id, "label": label, "component_type": ctype, "slot": c.slot,
-                         "km": c.km, "basis": c.basis, "certain": c.certain, "state": c.state, "note": c.note}
+                         "km": c.km, "hours": round(c.duration_s / 3600, 2) if c.duration_s is not None else None,
+                         "basis": c.basis, "certain": c.certain, "state": c.state, "note": c.note}
                         for c, label, ctype in contribs]
     row["explicit_equipment"] = [{"slot": e.slot, "component_id": e.component_id, "note": e.note}
                                  for e in session.scalars(select(RideEquipment).where(RideEquipment.ride_id == ride.id))]
     row["source_values"] = source_values(session, ride)
     row["counting_note"] = _counting_note(session, ride, row["equipment"])
+    row["summary"] = ride_summary(session, ride)
     return row
+
+
+def _period(session: Session, bike_id: int, prefix: str) -> dict:
+    """Counted rides of a bike whose local date starts with ``prefix`` ("2026" or "2026-10")."""
+    km, secs, n = session.execute(select(func.sum(Ride.distance_km), func.sum(Ride.duration_s), func.count()).where(
+        Ride.bike_id == bike_id, Ride.status == "ACTIVE", Ride.inclusion == "INCLUDED",
+        Ride.ride_date.like(prefix + "%"))).one()
+    return {"km": round(float(km or 0), 1), "hours": round((secs or 0) / 3600, 1), "rides": int(n)}
+
+
+def ride_summary(session: Session, ride: Ride, today: date | None = None) -> dict:
+    """Short summary for the ride page: this ride, and its bike in total, this year and this month (today's
+    calendar year and month in the app's timezone). Hours are recorded ride time; km before tracking (the
+    bike's starting value) have no hours."""
+    from bikelog.services.usage import bike_usage
+    today = today or today_local(settings.tz(session))
+    out = {"km": ride.distance_km, "hours": round(ride.duration_s / 3600, 2) if ride.duration_s else None,
+           "bike": None}
+    if ride.bike_id is not None:
+        bike = get_bike(session, ride.bike_id)
+        u = bike_usage(session, bike)
+        year, month = f"{today.year:04d}", f"{today.year:04d}-{today.month:02d}"
+        out["bike"] = {"name": bike.name, "total_km": u["total_km"], "total_hours": round(u["hours"], 1),
+                       "starting_km": u["starting_km"], "starting_is_estimate": u["starting_is_estimate"],
+                       "year": {"label": year, **_period(session, bike.id, year)},
+                       "month": {"label": today.strftime("%B %Y"), **_period(session, bike.id, month)}}
+    return out
 
 
 def _counting_note(session: Session, ride: Ride, equipment: list[dict]) -> str | None:
