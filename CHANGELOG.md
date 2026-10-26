@@ -8,6 +8,11 @@ UPDATING.md → "Making a release". New entries go under "Unreleased" as work is
 ## Unreleased
 
 ### Added
+- Yearly full service: a whole-bike reminder every 12 months. "Log done" shows a checklist of the big jobs
+  (hub bearings, headset, bottom bracket, brakes, Di2 wires / cables, frame and fork, drivetrain, pedals,
+  torque); ticked and unticked jobs are saved with the entry. Each job keeps its own reminder on its part.
+- Tire pressure note per tire (e.g. "4.8 bar"): set it on the bike page or the tire's page. A note only,
+  no reminder.
 - Groupset bought as one bundle: one price, shop and date for the whole set, counted once in the bike's
   running cost; parts replaced later get their own price. Bike page → "Bought as a bundle" lists what is
   in use and in storage, with an estimated share per part; existing parts can be grouped later.
@@ -27,8 +32,8 @@ UPDATING.md → "Making a release". New entries go under "Unreleased" as work is
   HUB_BEARINGS, SPOKES, RIM_TAPE, PULLEY_WHEEL (upper/lower on the rear derailleur), POWER_METER_PEDALS,
   SENSOR.
 - Quick links move to the next chain at a chain change (tick box in Replace) and are due after 2 chains.
-- Charging reminders with a "Charged" action: Di2 battery 800 km, power meter / Assioma pedals 50 ride
-  hours, speed sensor battery 400 h or 12 months; lever coin cells 24 months (off by default).
+- Charging reminders with a "Charged" action: Di2 battery 800 km, power meter 50 ride hours, Assioma
+  pedals 80 ride hours, speed sensor battery 400 h or 12 months; lever coin cells 24 months (off by default).
 - Reminder rules can count ride hours or the number of parts served (rule editor).
 
 - Whole-bike reminders: torque check every 3 months and once after the first ride on newly fitted parts
@@ -47,6 +52,8 @@ UPDATING.md → "Making a release". New entries go under "Unreleased" as work is
   default tire setup in Settings (inner tube), so tubeless and cable reminders stay off where they don't apply.
 
 ### Changed
+- Assioma power pedals: charge reminder every 80 ride hours instead of 50 (your choice). Existing
+  databases are updated unless you had changed the value yourself.
 - Database schema 0005 → 0009 (upgraded automatically with a backup first).
 - Lever coin-cell reminder 18 months (still off by default); rim-tape check for every tire setup.
 - A quick link on a chain in storage reads "on Chain A (not on a bike)" instead of "unmounted parent".

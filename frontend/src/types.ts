@@ -105,6 +105,7 @@ export interface ComponentSummary {
   disposition: string
   storage_location: string | null
   tire_setup: TireSetup | null
+  pressure_note: string | null
   effective_tire_setup: TireSetup | null
   tire_setup_from: string | null
   location: Location
@@ -265,6 +266,7 @@ export interface ActionDef {
   unit?: string | null
   limits_source?: string | null
   limits?: { value: number; outcome: string; below: boolean }[]
+  checklist?: string[]
 }
 
 export interface ComponentType {
@@ -384,6 +386,7 @@ export interface SetupRow {
   installation_id: number
   depth: number
   tire_setup: TireSetup | null
+  pressure_note: string | null
 }
 
 export interface GroupsetTemplate {

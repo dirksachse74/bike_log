@@ -29,7 +29,9 @@ Status key: ✅ done and tested · 🟡 done, not verified where it matters · �
   inspection, hanger, cleats/shoes, thru-axles, sealant clean-out, valves, Di2 checks, bearings, bar tape,
   hoses, bed-in, worn chain → cassette, wet ride, tire age, stem, cables (mechanical only), chargers).
 - ⏳ Editing a bike-level rule for one bike in the UI (API exists: PATCH /api/bikes/{id}/rules/{code}).
-- ⏳ Review items 23 (annual full-service checklist) and 24 (tire pressure note): waiting for Dirk.
+- ✅ Review item 23: yearly full service of the whole bike with a tick-box checklist.
+- ✅ Review item 24: tire pressure note per tire, shown on the bike page (note only).
+- ✅ Assioma pedal charge reminder at 80 ride hours (Dirk, 2026-10-26).
 - ✅ Bugs B1–B15 from the imaginary-bike test run (B5 was fixed with the quick-link carry-over).
 - ⏳ Bike installation history and a tire's change log could also list the bikes a wheel took its
   mounted parts to (UAT B6 second half; the km table already shows them).

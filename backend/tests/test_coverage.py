@@ -212,3 +212,34 @@ def test_time_reminders_count_from_install_not_purchase(session):
     inv.install(session, wheel.id, bike_id=b.id, at="2026-09-01")
     st = status(session, wheel, "FRONT_WHEEL_INSPECTION", date(2026, 10, 20))
     assert "in use since 2026-09-01" in st["explanation"]
+
+
+def test_yearly_full_service_is_a_bike_reminder_with_a_checklist(session):
+    b = bike(session)
+    assert "Headset" in " ".join(ACTIONS["FULL_SERVICE"].checklist)
+    row = bike_row(session, b, "BIKE_FULL_SERVICE", date(2026, 9, 1))
+    assert row["status"] == "INSUFFICIENT_INFO" and row["component_id"] is None
+    m.log_event(session, action_code="FULL_SERVICE", at="2026-03-01", bike_id=b.id,
+                work_done="Done: Headset: clean, grease, check play.")
+    row = bike_row(session, b, "BIKE_FULL_SERVICE", date(2026, 9, 1))
+    assert row["status"] == "OK" and row["due_date"] == "2027-03-01"
+    assert bike_row(session, b, "BIKE_FULL_SERVICE", date(2027, 2, 15))["status"] == "DUE_SOON"
+    assert bike_row(session, b, "BIKE_FULL_SERVICE", date(2027, 3, 2))["status"] == "OVERDUE"
+
+
+def test_tire_pressure_note_only_on_tires(session):
+    b = bike(session)
+    wheel = part(session, "FRONT_WHEEL", "DT Swiss front")
+    inv.install(session, wheel.id, at="2026-09-01", bike_id=b.id)
+    tire = part(session, "TIRE", "GP5000 front")
+    inv.install(session, tire.id, at="2026-09-01", parent_component_id=wheel.id)
+    inv.update_component(session, tire.id, pressure_note="  4.8 bar  ")
+    assert tire.pressure_note == "4.8 bar"
+    row = next(r for r in inv.bike_setup(session, b) if r["component_id"] == tire.id)
+    assert row["pressure_note"] == "4.8 bar" and row["depth"] == 1      # shown on the bike page
+    with pytest.raises(DomainError, match="goes on a tire"):
+        inv.update_component(session, wheel.id, pressure_note="5 bar")
+    with pytest.raises(DomainError, match="short"):
+        inv.update_component(session, tire.id, pressure_note="x" * 81)
+    inv.update_component(session, tire.id, pressure_note="")
+    assert tire.pressure_note is None

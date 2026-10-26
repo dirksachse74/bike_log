@@ -194,7 +194,7 @@ you disagree. Dates are 2026-10-24 unless noted.
     times, no km figure; counting chains served is what can be tracked.
 60. **Ride-hour rules**: interval_hours/warn_hours count moving time since the last action; rides with
     no time are listed, not guessed. Used for charging: Assioma PRO RS-1 spec ≥60 h (up to 160 h after
-    firmware), default 50 h; Magene sensor ~500 h per retailers, default 400 h or 12 months (months are
+    firmware), default 50 h (80 h since decision 77); Magene sensor ~500 h per retailers, default 400 h or 12 months (months are
     Dirk's guess). Di2 BT-DN300 ~1000 km per retailers, default 800 km. All PERSONAL/unverified.
 61. **Charge rules start as "insufficient information"** until the first Charged is logged, because the
     state of charge at install is unknown. Lever coin-cell rule exists but is off by default (Dirk's
@@ -238,6 +238,14 @@ you disagree. Dates are 2026-10-24 unless noted.
     database is flagged (`sample_data` setting) and every record is logged with source SAMPLE; Fresh start
     drops everything, flag included. Built from code with a fixed random seed (same sample every time),
     dates relative to the first start. Command-line runs (backup, export, Strava, product import) never seed.
+75. **The yearly full service is one bike-level reminder with a checklist**, not a bundle of the per-part
+    rules: logging it records which jobs were done (in `work_done`) and resets only itself, because a job
+    like a brake bleed has its own interval and its own record on the part.
+76. **Tire pressure is a free-text note on the tire** (`component.pressure_note`), not a number with
+    units or a reminder: riders write "4.8 bar", "70 psi" or "4.5 wet". It lives on the tire, so it moves
+    with the tire.
+77. **Assioma pedal charge every 80 ride hours** (Dirk, 2026-10-26; Favero quotes 60 h, up to about 160 h
+    with newer firmware). Changed defaults are applied by migration only to rows still at the old default.
 
 ## Repository
 27. Pushed only to the feature branch `claude/project-thread-6y3mmh` of the private repository. Demo

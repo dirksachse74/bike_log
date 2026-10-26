@@ -35,6 +35,7 @@ class Action:
     limits: tuple["Limit", ...] = ()          # a measurement sets the outcome (worst limit reached first)
     unit: str | None = None                   # unit the limits are in (also the default unit)
     limits_source: str | None = None
+    checklist: tuple[str, ...] = ()           # jobs to tick off when logging it (e.g. the yearly full service)
 
 
 @dataclass(frozen=True)
@@ -47,6 +48,19 @@ class Limit:
 
 
 POWER_METERS = ("POWER_METER", "POWER_METER_PEDALS")
+# The big jobs of the yearly full service. Logging the full service records which ones were ticked; each job
+# still has its own reminder on its part (bleed, bearings ...), which the full service does not reset.
+FULL_SERVICE_CHECKLIST = (
+    "Wheel hub bearings: play and roughness",
+    "Headset: clean, grease, check play",
+    "Bottom bracket: play and noise",
+    "Brakes: bleed (or check lever feel), hoses, pads, rotors",
+    "Di2 wires and junction / shift cables and housing",
+    "Frame and fork: cracks, dents, chips",
+    "Drivetrain: deep clean, chain, cassette and chainring wear",
+    "Pedals: bearing play",
+    "Torque check of all bolts",
+)
 # actions that charge a battery: a charge reminder needs one logged charge before it can count
 CHARGE_ACTIONS = ("BATTERY_CHARGE", "POWER_CHARGE")
 
@@ -245,6 +259,8 @@ ACTIONS: dict[str, Action] = {a.code: a for a in [
     Action("DI2_WIRE_INSPECT", "Inspect Di2 wires and junction", "INSPECT", (BIKE,),
            fields=("outcome",), outcomes=("OK", "DAMAGE"), attention_outcomes=("DAMAGE",)),
     Action("SHIFT_ADJUST", "Adjust shifting", "SERVICE", (BIKE,), fields=("symptom", "work_done")),
+    Action("FULL_SERVICE", "Full service (whole bike)", "SERVICE", (BIKE,), fields=("work_done",),
+           checklist=FULL_SERVICE_CHECKLIST),
     # generic
     Action("INSPECT", "Record inspection", "INSPECT", ALL, quick=True, fields=("outcome",),
            outcomes=("OK", "MONITOR", "WORN", "DAMAGE"), attention_outcomes=("MONITOR", "WORN", "DAMAGE")),
@@ -339,9 +355,10 @@ DEFAULT_RULES: list[DefaultRule] = [
     DefaultRule("POWER_METER_CHARGE", "Charge power meter", "POWER_METER", "POWER_CHARGE", interval_hours=50,
                 warn_hours=10, notes="Set to your power meter's battery life with a margin."),
     DefaultRule("POWER_PEDALS_CHARGE", "Charge power-meter pedals", "POWER_METER_PEDALS", "POWER_CHARGE",
-                interval_hours=50, warn_hours=10,
+                interval_hours=80, warn_hours=10,
                 notes="Favero Assioma PRO RS-1: at least 60 h per charge (up to about 160 h after a firmware "
-                      "update). 50 h leaves a margin. Source: retailer listings quoting Favero, not verified."),
+                      "update). 80 h is your choice (2026-10-26). Source: retailer listings quoting Favero, "
+                      "not verified."),
     DefaultRule("SENSOR_BATTERY", "Replace sensor battery", "SENSOR", "COIN_CELL_REPLACE", interval_hours=400,
                 warn_hours=40, interval_months=12, warn_days=30,
                 notes="Magene S3+ (CR2032): about 500 h of riding per battery (retailer listings, not verified with "
@@ -406,6 +423,9 @@ DEFAULT_RULES: list[DefaultRule] = [
                 notes="Firmware is updated with Shimano E-TUBE; 6 months is a personal value."),
     DefaultRule("BIKE_DI2_WIRES", "Inspect Di2 wires", BIKE, "DI2_WIRE_INSPECT", interval_months=12, warn_days=30,
                 requires_setup="ELECTRONIC", notes="Personal value."),
+    DefaultRule("BIKE_FULL_SERVICE", "Yearly full service", BIKE, "FULL_SERVICE", interval_months=12, warn_days=30,
+                notes="Once a year, a full service of the whole bike: " + "; ".join(FULL_SERVICE_CHECKLIST)
+                      + ". Personal value; each job keeps its own reminder."),
 ]
 
 

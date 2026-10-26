@@ -7,7 +7,7 @@ import LogMaintenance from '../components/LogMaintenance'
 import ProductImport from '../components/ProductImport'
 import { DispositionForm, MoveForm, OutcomeChoice, RemoveForm, ReplaceForm } from '../components/PartChange'
 import TaskList from '../components/TaskList'
-import { TireSetupSelect } from '../components/TireSetup'
+import { PressureNote, TireSetupSelect } from '../components/TireSetup'
 import { Card, ChangeNotice, Empty, ErrorBox, Field, FormError, Loading, Sheet, Tag } from '../components/ui'
 import { useApp } from '../context'
 import { centsInput, certaintyLabel, euro, km, setupLabel, slotName, toCents, today, usageText, when } from '../format'
@@ -1037,6 +1037,12 @@ export function ComponentDetailPage() {
         {(data.component_type === 'TIRE' || data.component_type === 'INNER_TUBE') && (
           <p className="small muted">
             Tire setup: {data.tire_setup_from ? `${setupLabel(meta.tire_setups, data.effective_tire_setup)} (set on ${data.tire_setup_from})` : 'follows the wheel it is mounted on'}
+          </p>
+        )}
+        {data.component_type === 'TIRE' && (
+          <p className="small">
+            Tire pressure: <PressureNote tireId={data.id} value={data.pressure_note} onSaved={reload} />{' '}
+            <span className="muted">A note, shown on the bike page. No reminder.</span>
           </p>
         )}
         <p className="small muted">

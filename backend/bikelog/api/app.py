@@ -143,6 +143,7 @@ class ComponentPatch(Body):
     specs: dict | None = None
     storage_location: str | None = None
     tire_setup: str | None = None
+    pressure_note: str | None = None
 
 
 class RemoveIn(Body):
@@ -553,7 +554,7 @@ def create_app(factory: sessionmaker[Session], paths: DataPaths, *, token: str |
             "ride_conditions": [{"code": k, "label": v} for k, v in RIDE_CONDITIONS.items()],
             "actions": [{"code": a.code, "name": a.name, "kind": a.kind, "targets": list(a.targets),
                          "quick": a.quick, "fields": list(a.fields), "outcomes": list(a.outcomes),
-                         "unit": a.unit, "limits_source": a.limits_source,
+                         "unit": a.unit, "limits_source": a.limits_source, "checklist": list(a.checklist),
                          "limits": [{"value": x.value, "outcome": x.outcome, "below": x.below} for x in a.limits]}
                         for a in ACTIONS.values()],
             "profiles": [{"id": p.id, "code": p.code, "name": p.name, "kind": p.kind,
@@ -1279,6 +1280,7 @@ def _component_summary(s: Session, c: Component) -> dict:
             "prior_usage": c.prior_usage, "status": c.status, "purchase_date": c.purchase_date,
             "price_cents": c.price_cents, "serial_number": c.serial_number, "notes": c.notes,
             "retired_on": c.retired_on, "retire_reason": c.retire_reason, "disposition": c.disposition,
-            "storage_location": c.storage_location, "tire_setup": c.tire_setup, "bundle": _bundle_ref(s, c),
+            "storage_location": c.storage_location, "tire_setup": c.tire_setup, "pressure_note": c.pressure_note,
+            "bundle": _bundle_ref(s, c),
             "effective_tire_setup": setup, "tire_setup_from": wheel.label if wheel is not None and wheel.id != c.id else None,
             "location": inv.location(s, c), "usage": component_usage(s, c)}

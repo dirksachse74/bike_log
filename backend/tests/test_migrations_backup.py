@@ -87,3 +87,28 @@ def test_backup_export_restore_roundtrip(tmp_path, engine, paths):
     assert any(p.name.endswith("pre-restore.db") for p in paths.backups.iterdir())
     s2.close()
     eng2.dispose()
+
+
+def test_upgrade_to_0010_moves_unedited_pedal_charge_to_80_hours(tmp_path):
+    paths = DataPaths(tmp_path / "d").ensure()
+    eng = make_engine(paths.database)
+    _upgrade_to(eng, "0009")
+    raw = sqlite3.connect(paths.database)
+    cols = ("uuid, rule_code, name, component_type, action_code, \"trigger\", reset_actions_json, origin, active, "
+            "created_at, updated_at, interval_hours, warn_hours")
+    raw.executescript(f"""
+        INSERT INTO service_rule ({cols}) VALUES ('r-1', 'POWER_PEDALS_CHARGE', 'Charge', 'POWER_METER_PEDALS',
+            'POWER_CHARGE', 'INTERVAL', '["POWER_CHARGE"]', 'DEFAULT', 1, 'x', 'x', 50, 10);
+        INSERT INTO component (id, uuid, component_type, label, prior_usage, status, created_at, updated_at)
+            VALUES (1, 'c-1', 'POWER_METER_PEDALS', 'Assioma', 'NEW', 'ACTIVE', 'x', 'x');
+        INSERT INTO service_rule (uuid, rule_code, name, component_id, action_code, "trigger", reset_actions_json,
+            origin, active, created_at, updated_at, interval_hours, warn_hours) VALUES ('r-2', 'POWER_PEDALS_CHARGE',
+            'Charge', 1, 'POWER_CHARGE', 'INTERVAL', '["POWER_CHARGE"]', 'PERSONAL', 1, 'x', 'x', 50, 10);
+    """)
+    raw.commit()
+    raw.close()
+    upgrade_database(eng, paths)
+    raw = sqlite3.connect(paths.database)
+    hours = dict(raw.execute("SELECT uuid, interval_hours FROM service_rule").fetchall())
+    raw.close()
+    assert hours == {"r-1": 80, "r-2": 50}          # your own per-part value is kept

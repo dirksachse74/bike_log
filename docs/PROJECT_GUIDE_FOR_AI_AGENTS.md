@@ -144,7 +144,7 @@ packaging/               bikelog.spec (PyInstaller), entry.py, bikelog.iss (Inno
 Migrations: plain `ADD COLUMN` / `CREATE TABLE` where possible; tables with protection triggers are not
 rebuilt. Every schema upgrade writes a backup first; a database newer than the app is refused. A test
 compares `models.py` with the migrated schema, so **every model change needs a new migration**
-(never edit a released one; 0009 is the newest).
+(never edit a released one; 0010 is the newest).
 
 ---
 
@@ -166,11 +166,20 @@ liquid-wax top-up once in the 250–300 km window after hot wax (never postpones
 3000 km/12 months; hub bearings 10000 km; freehub 5000 km/12 months; tire check 1000 km; sealant top-up every 3 months, tubeless only
 (else NOT_APPLICABLE, hidden from the queue); headset service 5000 km/12 months. Part types include HEADSET and
 POWER_METER (on the bike or on a crankset; actions zero offset, battery, firmware). Ride-hour rules
-(`usage.hours_since`, rides without a moving time are counted and named): power meter / Assioma pedals
-charge 50 h (warn 10 h), Magene-type speed sensor battery 400 h or 12 months. Di2 battery charge 800 km.
+(`usage.hours_since`, rides without a moving time are counted and named): power meter
+charge 50 h, Assioma pedals (POWER_PEDALS_CHARGE) 80 h (Dirk's choice; migration 0010 moves unedited
+DEFAULT rows from 50 to 80), both warn 10 h, Magene-type speed sensor battery 400 h or 12 months. Di2 battery charge 800 km.
 Charge rules (CHARGE_ACTIONS) say INSUFFICIENT_INFO until the first "Charged" is logged. Lever coin
 cells (CR1632) 24 months, switched off by default (on only for wireless levers). Pulley wheels and
 chainrings checked every 5000 km; quick link: PARENT_COUNT 2 chains; rim tape check 12 months.
+**Yearly full service and tire pressure (migration 0010):** BIKE_FULL_SERVICE is a bike-level default
+rule (12 months, warn 30 days) for the action FULL_SERVICE, whose `Action.checklist`
+(`catalog.FULL_SERVICE_CHECKLIST`: hub bearings, headset, BB, brakes, Di2 wires / cables, frame and fork,
+drivetrain, pedals, torque) is sent in `/api/meta` actions. The log form shows it as tick boxes and saves
+"Done: …. Not done: …." in `work_done`; it resets only the full-service rule, never the per-part rules.
+`component.pressure_note` (TIRE only, free text, max 80 characters, blank clears) is a note, not a
+reminder: PATCH /api/components/{id} `pressure_note`; shown in the bike setup rows (`bike_setup`) and on
+the part page (`PressureNote` in components/TireSetup.tsx).
 **Coverage additions (migration 0009):** bike-level rules (`effective_bike_rules`, `bike_rule_status`,
 `bike_status`, `set_bike_rule`; events with `bike_id` and no part): torque check every 3 months plus a
 re-check after the first ride on any newly fitted `torque=True` part (specs from the product's
@@ -304,10 +313,10 @@ cd backend && ../.venv/bin/python -m bikelog            # http://127.0.0.1:8765/
 Checks that must pass before every push:
 
 ```bash
-.venv/bin/python -m pytest -q backend/tests             # currently 167 passed
+.venv/bin/python -m pytest -q backend/tests             # currently 170 passed
 cd frontend && npx tsc -b && npx eslint . && npx vite build
 # browser test: start the app on a fresh data dir, then
-node e2e/smoke.cjs http://127.0.0.1:8790/ <screenshot-dir>   # currently 74/74 (the ride-form step can flake once; rerun)
+node e2e/smoke.cjs http://127.0.0.1:8790/ <screenshot-dir>   # currently 77/77 (the ride-form step can flake once; rerun)
 #   (cd backend && ../.venv/bin/python -m bikelog --no-browser --no-sample --port 8790 --data-dir <fresh dir>)
 # sample database: start on ANOTHER fresh dir WITHOUT --no-sample (port 8791), then
 node e2e/sample.cjs http://127.0.0.1:8791/ <screenshot-dir>  # banner, sample bikes, crash item, Fresh start

@@ -445,6 +445,20 @@ async function sheetButton(page, name) {
     check('wheels grouped into a wheelset', false, 'button not shown')
   }
 
+  // tire pressure: a note per tire, shown on the bike page (no reminder)
+  const comps = await (await page.request.get(BASE + 'api/components')).json()
+  const zipp = (comps.items ?? comps).find((c) => c.label === 'Zipp 303 front')
+  const apiToken = await page.locator('meta[name="bikelog-token"]').getAttribute('content')
+  const made = await page.request.post(BASE + 'api/components', { headers: { 'X-BikeLog-Token': apiToken }, data: { component_type: 'TIRE', label: 'GP5000 front', install: { at: '2026-10-01', parent_component_id: zipp.id } } })
+  check('tire added on the wheel', made.ok(), String(made.status()))
+  await page.reload()
+  const tireRow = page.locator('.list.setup li').filter({ hasText: 'GP5000 front' })
+  await tireRow.getByRole('button', { name: 'Add pressure' }).click()
+  await tireRow.getByLabel('Tire pressure').fill('4.8 bar')
+  await tireRow.getByRole('button', { name: 'Save' }).click()
+  await tireRow.getByRole('button', { name: 'Pressure: 4.8 bar' }).waitFor()
+  check('bike page shows the tire pressure note', true)
+
   // whole-bike reminders: shifting set on the bike page, torque check logged for the whole bike
   await page.goto(BASE + '#/bikes')
   await page.getByRole('link', { name: /TIME NXR/ }).click()
@@ -459,6 +473,17 @@ async function sheetButton(page, name) {
   await sheetButton(page, 'Save')
   await page.locator('.toast').filter({ hasText: 'logged for TIME NXR' }).waitFor()
   check('torque check logged for the whole bike', true)
+  // yearly full service: a whole-bike reminder; logging it ticks off a checklist
+  const fullTask = page.locator('.task').filter({ hasText: 'Yearly full service' })
+  await fullTask.first().getByRole('button', { name: 'Log done' }).click()
+  const checklist = page.locator('.sheet .checklist input[type=checkbox]')
+  await checklist.first().waitFor()
+  const items = await checklist.count()
+  await checklist.nth(0).check()
+  await checklist.nth(1).check()
+  await sheetButton(page, 'Save')
+  await page.locator('.toast').filter({ hasText: 'Full service (whole bike) logged for TIME NXR' }).waitFor()
+  check('yearly full service logged with its checklist', items >= 6, `${items} checklist items`)
   // a measurement says which outcome it gives (Shimano pad limits)
   await page.getByRole('button', { name: 'Log maintenance' }).first().click()
   await page.locator('.sheet').getByRole('button', { name: 'Measure pad material' }).click()

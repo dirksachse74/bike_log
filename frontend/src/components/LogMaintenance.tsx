@@ -29,6 +29,13 @@ function implied(a: ActionDef, raw: string, unit: string): string | null {
   return hit ? hit.outcome : 'OK'
 }
 
+/** "Done: a; b. Not done: c. <own text>" so the entry records which checklist jobs were ticked. */
+function checklistText(items: string[], ticked: string[], own: string): string {
+  const done = items.filter((i) => ticked.includes(i))
+  const open = items.filter((i) => !ticked.includes(i))
+  return [done.length ? `Done: ${done.join('; ')}.` : '', open.length ? `Not done: ${open.join('; ')}.` : '', own.trim()].filter(Boolean).join(' ')
+}
+
 /** Short, contextual maintenance entry: bike → action → installed parts preselected → date → save. */
 export default function LogMaintenance({ bikeId, componentId, actionCode, onDone }: Props) {
   const { meta } = useApp()
@@ -39,6 +46,7 @@ export default function LogMaintenance({ bikeId, componentId, actionCode, onDone
   const [action, setAction] = useState<string | null>(actionCode ?? null)
   const [selected, setSelected] = useState<number[]>(componentId ? [componentId] : [])
   const [form, setForm] = useState({ at: today(), symptom: '', work_done: '', outcome: '', measurement_value: '', measurement_unit: '', consumable_id: '', consumable_qty: '', notes: '', cost: '' })
+  const [ticked, setTicked] = useState<string[]>([])
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [opId] = useState(newOpId)
@@ -62,6 +70,7 @@ export default function LogMaintenance({ bikeId, componentId, actionCode, onDone
 
   useEffect(() => {
     // preselect every installed part the action applies to (e.g. both tires for "top up sealant")
+    setTicked([])
     if (act && !componentId) setSelected(setup.filter((s) => applies(act, s.component_type) && !act.targets.includes('*')).map((s) => s.component_id))
   }, [action]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -75,6 +84,7 @@ export default function LogMaintenance({ bikeId, componentId, actionCode, onDone
     try {
       const body: Record<string, unknown> = { action_code: act.code, at: form.at }
       for (const k of ['symptom', 'work_done', 'outcome', 'measurement_unit', 'notes'] as const) if (form[k]) body[k] = form[k]
+      if (act.checklist?.length) body.work_done = checklistText(act.checklist, ticked, form.work_done)
       if (form.measurement_value) body.measurement_value = Number(form.measurement_value.replace(',', '.'))
       if (form.consumable_id) body.consumable_id = Number(form.consumable_id)
       if (form.consumable_qty) body.consumable_qty = Number(form.consumable_qty.replace(',', '.'))
@@ -159,6 +169,20 @@ export default function LogMaintenance({ bikeId, componentId, actionCode, onDone
           {act.fields.includes('symptom') && (
             <Field label="Symptom">
               <input value={form.symptom} onChange={set('symptom')} placeholder="e.g. spongy lever" />
+            </Field>
+          )}
+          {!!act.checklist?.length && (
+            <Field label="Checklist" hint="Tick what you did; it is saved with the entry. Each job keeps its own reminder on its part.">
+              <ul className="checklist">
+                {act.checklist.map((item) => (
+                  <li key={item}>
+                    <label>
+                      <input type="checkbox" checked={ticked.includes(item)} onChange={(e) => setTicked(e.target.checked ? [...ticked, item] : ticked.filter((x) => x !== item))} />
+                      {item}
+                    </label>
+                  </li>
+                ))}
+              </ul>
             </Field>
           )}
           {act.fields.includes('work_done') && (

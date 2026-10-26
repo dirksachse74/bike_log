@@ -91,9 +91,9 @@ def test_charging_by_ride_hours_needs_a_logged_charge(session):
     assert st["status"] == "INSUFFICIENT_INFO" and "no charge recorded" in st["explanation"]
     m.log_event(session, action_code="POWER_CHARGE", at="2026-09-02", component_id=pedals.id)
     for d in range(3, 9):
-        ride(session, b, f"2026-09-0{d}" if d < 10 else f"2026-09-{d}", 200, duration_s=8 * 3600)   # 48 h
-    st = status(session, pedals, "POWER_PEDALS_CHARGE")
-    assert st["status"] == "DUE_SOON" and st["used_hours"] == 48 and "2.0 h left" in st["explanation"]
+        ride(session, b, f"2026-09-0{d}" if d < 10 else f"2026-09-{d}", 200, duration_s=12 * 3600)   # 72 h
+    st = status(session, pedals, "POWER_PEDALS_CHARGE")       # charge every 80 ride hours (Dirk's choice)
+    assert st["status"] == "DUE_SOON" and st["used_hours"] == 72 and "8.0 h left" in st["explanation"]
     ride(session, b, "2026-09-09", 30)                                           # no ride time recorded
     assert "1 ride without a ride time" in status(session, pedals, "POWER_PEDALS_CHARGE")["explanation"]
     m.log_event(session, action_code="POWER_CHARGE", at="2026-09-10", component_id=pedals.id)

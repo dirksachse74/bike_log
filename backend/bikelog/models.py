@@ -126,6 +126,8 @@ class Component(Base):
     # Wheels only: how the tire on it is run (TUBE, TUBELESS, TUBULAR; NULL = not set). It lives on the
     # wheel so it moves with the wheel (wheelset) between bikes; tires inherit it. Valid values: trigger.
     tire_setup: Mapped[str | None] = mapped_column(String(12))
+    # Tires only: the pressure you run, as free text ("4.8 bar"). A note shown on the bike page, no reminder.
+    pressure_note: Mapped[str | None] = mapped_column(Text)
     # Bought together with other parts at one price (e.g. a groupset); the bundle carries the price.
     bundle_id: Mapped[int | None] = mapped_column(ForeignKey("purchase_bundle.id"), index=True)
 

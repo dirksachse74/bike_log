@@ -178,3 +178,8 @@ def test_bike_level_reminders_over_http(client):
     pad = next(a for a in meta["actions"] if a["code"] == "PAD_MEASURE")
     assert pad["unit"] == "mm" and pad["limits"][0] == {"value": 0.5, "outcome": "AT_LIMIT", "below": True}
     assert meta["settings"]["default_tire_setup"] == "TUBE"
+    full = next(a for a in meta["actions"] if a["code"] == "FULL_SERVICE")
+    assert full["targets"] == ["BIKE"] and len(full["checklist"]) >= 6
+    assert "BIKE_FULL_SERVICE" in {r["rule_code"] for r in client.get(f"/api/bikes/{bike['id']}/rules").json()}
+    tire = client.post("/api/components", json={"component_type": "TIRE", "label": "GP5000 rear"}).json()
+    assert client.patch(f"/api/components/{tire['id']}", json={"pressure_note": "5.0 bar"}).json()["pressure_note"] == "5.0 bar"

@@ -30,3 +30,37 @@ export function TireSetupSelect({ wheelId, value, onSaved }: { wheelId: number; 
     </select>
   )
 }
+
+// The pressure you run on a tire, as a free-text note ("4.8 bar"). Shown on the bike page; no reminder.
+export function PressureNote({ tireId, value, onSaved }: { tireId: number; value: string | null; onSaved: () => void }) {
+  const { toast } = useApp()
+  const [editing, setEditing] = useState(false)
+  const [text, setText] = useState(value ?? '')
+  const [busy, setBusy] = useState(false)
+  async function save() {
+    setBusy(true)
+    try {
+      await api.patch(`/components/${tireId}`, { pressure_note: text.trim() || null })
+      setEditing(false)
+      onSaved()
+    } catch (e) {
+      toast((e as Error).message)
+    } finally {
+      setBusy(false)
+    }
+  }
+  if (!editing)
+    return (
+      <button type="button" className="btn btn-small" title="Tire pressure (note only)" onClick={() => { setText(value ?? ''); setEditing(true) }}>
+        {value ? `Pressure: ${value}` : 'Add pressure'}
+      </button>
+    )
+  return (
+    <span className="inline-form">
+      <input aria-label="Tire pressure" className="input-small" maxLength={80} value={text} placeholder="e.g. 4.8 bar" autoFocus
+        onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') save(); if (e.key === 'Escape') setEditing(false) }} />
+      <button type="button" className="btn btn-small btn-primary" disabled={busy} onClick={save}>Save</button>
+      <button type="button" className="btn btn-small" onClick={() => setEditing(false)}>Cancel</button>
+    </span>
+  )
+}

@@ -210,8 +210,14 @@ def update_component(session: Session, component_id: int, **fields) -> Component
             raise DomainError(f"{comp.label} was bought in the bundle '{b.name}'; the bundle carries the price")
     if "tire_setup" in fields:
         _check_tire_setup(comp.component_type, fields["tire_setup"])
+    if "pressure_note" in fields:
+        fields["pressure_note"] = (fields["pressure_note"] or "").strip() or None
+        if fields["pressure_note"] and comp.component_type != "TIRE":
+            raise DomainError("A tire pressure note goes on a tire")
+        if fields["pressure_note"] and len(fields["pressure_note"]) > 80:
+            raise DomainError("Keep the tire pressure note short (80 characters at most)")
     for k in ("label", "serial_number", "purchase_date", "price_cents", "notes", "product_id", "prior_usage",
-              "storage_location", "tire_setup"):
+              "storage_location", "tire_setup", "pressure_note"):
         if k in fields:
             setattr(comp, k, fields[k])
     if "specs" in fields:
@@ -776,7 +782,8 @@ def _setup_row(c: Component, i: Installation, depth: int, root: Installation) ->
     return {"component_id": c.id, "label": c.label, "component_type": c.component_type,
             "type_name": COMPONENT_TYPES[c.component_type].name, "slot": i.slot, "since": since,
             "mounted_since": i.installed_at, "installation_id": i.id, "depth": depth,
-            "parent_component_id": i.parent_component_id, "tire_setup": c.tire_setup}
+            "parent_component_id": i.parent_component_id, "tire_setup": c.tire_setup,
+            "pressure_note": c.pressure_note}
 
 
 def bike_installation_history(session: Session, bike: Bike) -> list[dict]:
