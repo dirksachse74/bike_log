@@ -1,0 +1,11 @@
+{
+  "format": "bikelog.products.v1",
+  "products": [
+    {"component_type": "BRAKE_ROTOR", "maker": "Shimano", "model": "RT-MT800 160 mm",
+     "specs": {"diameter_mm": 160, "mount": "centerlock", "min_thickness_mm": "1,5"},
+     "source": {"url": "https://shop.example/rt-mt800", "retrieved_at": "2026-10-25", "tool": "e2e"},
+     "items": [{"label": "Spare rotor 160", "price": 54.9}]},
+    {"component_type": "TIRE", "maker": "Continental", "model": "GP5000 S TR 28",
+     "list_price": 69.95, "specs": {"size": "700x28c", "tubeless": true}}
+  ]
+}

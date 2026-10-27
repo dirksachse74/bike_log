@@ -124,19 +124,32 @@ def bike_usage(session: Session, bike: Bike) -> dict:
         Ride.bike_id == bike.id, Ride.status == "ACTIVE", Ride.inclusion == "INCLUDED")).one()
     start = starting_value(session, bike_id=bike.id)
     ride_km = float(row[0] or 0)
+    before_count = 0
     if start:
-        before = session.scalar(select(func.sum(Ride.distance_km)).where(
+        before, before_count = session.execute(select(func.sum(Ride.distance_km), func.count()).where(
             Ride.bike_id == bike.id, Ride.status == "ACTIVE", Ride.inclusion == "INCLUDED",
-            Ride.sort_utc < start.effective_utc)) or 0.0
-        ride_km -= float(before)
+            Ride.sort_utc < start.effective_utc)).one()
+        ride_km -= float(before or 0.0)
     total = (start.km if start else 0.0) + ride_km
     return {
-        "total_km": _round(total), "ride_km": _round(ride_km), "ride_count": int(row[2]),
+        # rides before the starting value are inside it: counted apart so rides and km agree (UAT B3)
+        "total_km": _round(total), "ride_km": _round(ride_km), "ride_count": int(row[2]) - int(before_count),
+        "rides_before_start": int(before_count),
         "hours": round((row[1] or 0) / 3600, 2),
         "starting_km": start.km if start else None, "starting_is_estimate": bool(start and start.is_estimate),
         "starting_effective": start.effective_at if start else None,
         "certainty": "ESTIMATED" if start and start.is_estimate else ("KNOWN" if start else "INCOMPLETE"),
     }
+
+
+def hours_since(session: Session, component_id: int, since_utc: str | None) -> tuple[float, int]:
+    """Ride time (hours) counted on a part since an instant, and how many of those rides have no time."""
+    q = select(UsageContribution.duration_s).where(
+        UsageContribution.component_id == component_id, UsageContribution.state == "COUNTED")
+    if since_utc:
+        q = q.where(UsageContribution.sort_utc >= since_utc)
+    durations = list(session.scalars(q))
+    return round(sum(d for d in durations if d) / 3600, 2), sum(1 for d in durations if not d)
 
 
 def usage_since(session: Session, component_id: int, since_utc: str | None) -> float:
@@ -145,3 +158,20 @@ def usage_since(session: Session, component_id: int, since_utc: str | None) -> f
     if since_utc:
         q = q.where(UsageContribution.sort_utc >= since_utc)
     return _round(float(session.scalar(q) or 0))
+
+
+def bike_km_since(session: Session, bike_id: int, since_utc: str | None) -> float:
+    """Ride km on a bike since an instant (bike-level reminders such as a torque check)."""
+    q = select(func.sum(Ride.distance_km)).where(Ride.bike_id == bike_id, Ride.status == "ACTIVE",
+                                                 Ride.inclusion == "INCLUDED")
+    if since_utc:
+        q = q.where(Ride.sort_utc >= since_utc)
+    return _round(float(session.scalar(q) or 0))
+
+
+def bike_hours_since(session: Session, bike_id: int, since_utc: str | None) -> tuple[float, int]:
+    q = select(Ride.duration_s).where(Ride.bike_id == bike_id, Ride.status == "ACTIVE", Ride.inclusion == "INCLUDED")
+    if since_utc:
+        q = q.where(Ride.sort_utc >= since_utc)
+    durations = list(session.scalars(q))
+    return round(sum(d for d in durations if d) / 3600, 2), sum(1 for d in durations if not d)

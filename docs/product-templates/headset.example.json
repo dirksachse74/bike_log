@@ -1,0 +1,32 @@
+{
+  "format": "bikelog.product.v1",
+  "component_type": "HEADSET",
+  "maker": "Example maker",
+  "model": "Example headset 1",
+  "list_price": 49.9,
+  "currency": "EUR",
+  "specs": {
+    "standard": "ZS44/28.6 | ZS56/40",
+    "steerer": "1-1/8\" to 1.5\" tapered",
+    "bearings": "cartridge 41.8 mm 45x45",
+    "integrated_cables": false,
+    "torque_nm": "5",
+    "weight_g": 250
+  },
+  "source": {
+    "url": "https://example.com/product-page",
+    "retrieved_at": "2026-10-25",
+    "tool": "my-scraper 1.0"
+  },
+  "verified": false,
+  "notes": "Optional free text",
+  "items": [
+    {
+      "label": "Spare headset 1",
+      "price": 44.9,
+      "purchase_date": "2026-10-20",
+      "prior_usage": "NEW",
+      "storage_location": "Workshop drawer"
+    }
+  ]
+}

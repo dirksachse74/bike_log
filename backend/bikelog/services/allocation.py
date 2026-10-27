@@ -8,6 +8,8 @@ Which parts a ride used, in priority order:
 2. otherwise installation history at the ride's instant (start-inclusive, end-exclusive),
    resolved as a tree (bike → wheel → tire),
 3. then the ride's usage profile removes excluded slots / types (e.g. direct-drive trainer).
+Rider gear (shoes) is not mounted: while "in use" (disposition history) it counts every ride that has a
+bike, and the parts on it (cleats) follow it.
 
 Contributions before a component's starting-mileage date are kept as IN_BASELINE (already inside
 the starting value) and do not count.
@@ -21,10 +23,12 @@ from dataclasses import dataclass
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
+from bikelog.catalog import RIDER_GEAR_TYPES
 from bikelog.models import (
-    Component, Installation, Ride, RideEquipment, RideFlag, UsageAdjustment, UsageContribution, UsageProfile,
+    Bike, Component, ComponentDisposition, Installation, Ride, RideEquipment, RideFlag, UsageAdjustment,
+    UsageContribution, UsageProfile,
 )
-from bikelog.timeutil import FAR_FUTURE, local_date_of
+from bikelog.timeutil import FAR_FUTURE, local_date_of, parse_when
 
 
 @dataclass
@@ -62,6 +66,23 @@ class AllocationIndex:
                 UsageAdjustment.component_id.is_not(None))):
             self.baseline[a.component_id] = a.effective_utc
         self.types = dict(session.execute(select(Component.id, Component.component_type)).all())
+        # rider gear: (component, from, until) periods in which it was in use
+        self.rider: list[tuple[int, str, str]] = []
+        rows = session.execute(select(ComponentDisposition.component_id, ComponentDisposition.disposition,
+                                      ComponentDisposition.effective_on).join(
+            Component, Component.id == ComponentDisposition.component_id).where(
+            Component.component_type.in_(RIDER_GEAR_TYPES), ComponentDisposition.voided_at.is_(None))
+            .order_by(ComponentDisposition.component_id, ComponentDisposition.effective_on, ComponentDisposition.id))
+        hist: dict[int, list[tuple[str, str]]] = defaultdict(list)
+        for cid, disp, on in rows:
+            hist[cid].append((disp, parse_when(on, tz).utc))
+        for cid, items in hist.items():
+            for n, (disp, start) in enumerate(items):
+                if disp == "IN_USE":
+                    end = next((u for _, u in items[n + 1:] if u > start), FAR_FUTURE)
+                    if n + 1 < len(items) and items[n + 1][1] == start:
+                        continue          # replaced the same day
+                    self.rider.append((cid, start, end))
         self.profiles: dict[int, tuple[set[str], set[str]]] = {}
         for p in session.scalars(select(UsageProfile)):
             self.profiles[p.id] = (set(json.loads(p.excluded_slots_json)), set(json.loads(p.excluded_types_json)))
@@ -71,19 +92,27 @@ class AllocationIndex:
         return [i for i in insts if i.start <= t < i.end]
 
     def subtree(self, component_id: int, t: str) -> list[_Inst]:
-        out: list[_Inst] = []
+        return [child for child, _ in self.subtree_paths(component_id, t)]
+
+    def subtree_paths(self, component_id: int, t: str, path: tuple[str, ...] = ()) -> list[tuple[_Inst, tuple[str, ...]]]:
+        """Parts mounted on a part at time t, each with the slots of the parts above it (for exclusions:
+        a hub on a wheel in a wheelset is off when the trainer profile takes the wheel off)."""
+        out: list[tuple[_Inst, tuple[str, ...]]] = []
         for child in self._active(self.by_parent.get(component_id, []), t):
-            out.append(child)
-            out.extend(self.subtree(child.component_id, t))
+            out.append((child, path))
+            out.extend(self.subtree_paths(child.component_id, t, path + (child.slot,)))
         return out
 
     def boundary_days(self, insts: list[_Inst], slot: str) -> dict[str, bool]:
         """Local dates on which the slot changed -> whether that boundary is date-only."""
         days: dict[str, bool] = {}
+        ends = {i.end_local for i in insts if i.slot == slot and i.end_local}
         for i in insts:
             if i.slot != slot:
                 continue
-            days[i.start_local] = days.get(i.start_local, False) or i.start_date_only
+            # a first installation with no part before it that day is not a change (e.g. the bike's frame)
+            if i.start_local in ends:
+                days[i.start_local] = days.get(i.start_local, False) or i.start_date_only
             if i.end_local:
                 days[i.end_local] = days.get(i.end_local, False) or i.end_date_only
         return days
@@ -96,6 +125,10 @@ class _Use:
     slot: str
     basis: str
     ambiguous: bool
+    path: tuple[str, ...] = ()      # slots of the parent parts between the bike and this part
+
+
+WHEEL_SLOTS = ("WHEELSET", "FRONT_WHEEL", "REAR_WHEEL")
 
 
 def _plan(index: AllocationIndex, ride: Ride, explicit: dict[str, int | None]) -> tuple[list[_Use], list[tuple[str, str | None, str]]]:
@@ -122,18 +155,32 @@ def _plan(index: AllocationIndex, ride: Ride, explicit: dict[str, int | None]) -
             continue
         amb = inst.slot in ambiguous_slots
         uses.append(_Use(inst.component_id, inst.slot, inst.slot, "HISTORY", amb))
-        for child in index.subtree(inst.component_id, t):
-            uses.append(_Use(child.component_id, inst.slot, child.slot, "HISTORY", amb))
+        for child, path in index.subtree_paths(inst.component_id, t):
+            uses.append(_Use(child.component_id, inst.slot, child.slot, "HISTORY", amb, path))
+    for comp_id, start, end in index.rider:
+        if start <= t < end:
+            uses.append(_Use(comp_id, "RIDER", "RIDER", "HISTORY", False))
+            for child, path in index.subtree_paths(comp_id, t, ("RIDER",)):
+                uses.append(_Use(child.component_id, "RIDER", child.slot, "HISTORY", False, path))
     for slot, comp_id in explicit.items():
         if comp_id is None:
             continue
         uses.append(_Use(comp_id, slot, slot, "EXPLICIT", False))
-        for child in index.subtree(comp_id, t):
-            uses.append(_Use(child.component_id, slot, child.slot, "EXPLICIT", False))
+        for child, path in index.subtree_paths(comp_id, t):
+            uses.append(_Use(child.component_id, slot, child.slot, "EXPLICIT", False, path))
+    on_trainer = ride.usage_profile_id is not None or ride.sport_type == "VirtualRide"
+    if bike_insts and not on_trainer and not any(u.slot in WHEEL_SLOTS for u in uses):
+        flags.append(("NO_WHEELS", None,
+                      "No wheels on this bike on the ride day, so no wheel, tire or rotor gets these km. "
+                      "Install the wheels with the day they were fitted, or set them on this ride."))
+    if any(i.slot == "FRAME" for i in bike_insts) and not any(u.slot == "FRAME" for u in uses):
+        flags.append(("NO_FRAME", "FRAME",
+                      "No frame on this bike on the ride day (away for repair?). Check the date or the bike, "
+                      "or put the frame back on from the day it returned."))
     if ride.usage_profile_id and ride.usage_profile_id in index.profiles:
         ex_slots, ex_types = index.profiles[ride.usage_profile_id]
         uses = [u for u in uses if u.root_slot not in ex_slots and u.slot not in ex_slots
-                and index.types.get(u.component_id) not in ex_types]
+                and not ex_slots.intersection(u.path) and index.types.get(u.component_id) not in ex_types]
     # one row per component (a part cannot be used twice by one ride)
     seen: dict[int, _Use] = {}
     for u in uses:
@@ -153,6 +200,10 @@ def allocate_ride(session: Session, ride: Ride, index: AllocationIndex) -> None:
     uses, flags = _plan(index, ride, explicit)
     if ride.distance_km is None:
         flags.append(("MISSING_DISTANCE", None, "Distance is missing: 0 km counted; time still counts."))
+    b = session.get(Bike, ride.bike_id) if ride.bike_id else None
+    if b and b.purchase_date and ride.ride_date < b.purchase_date:
+        flags.append(("BEFORE_PURCHASE", None,
+                      f"This ride is dated before {b.name} was bought ({b.purchase_date}). Check the date or the bike."))
     if ride.assignment_uncertain:
         flags.append(("UNCERTAIN_ASSIGNMENT", None,
                       ride.uncertainty_note or "Marked as uncertain: bike or equipment may be wrong."))

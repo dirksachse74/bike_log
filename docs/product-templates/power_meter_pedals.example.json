@@ -1,0 +1,33 @@
+{
+  "format": "bikelog.product.v1",
+  "component_type": "POWER_METER_PEDALS",
+  "maker": "Example maker",
+  "model": "Example power-meter pedals 1",
+  "list_price": 49.9,
+  "currency": "EUR",
+  "specs": {
+    "system": "Shimano SPD-SL",
+    "sides": "dual",
+    "battery": "rechargeable, magnetic charger",
+    "battery_life_h": 60,
+    "protocols": "ANT+, Bluetooth",
+    "torque_nm": "5",
+    "weight_g": 250
+  },
+  "source": {
+    "url": "https://example.com/product-page",
+    "retrieved_at": "2026-10-25",
+    "tool": "my-scraper 1.0"
+  },
+  "verified": false,
+  "notes": "Optional free text",
+  "items": [
+    {
+      "label": "Spare power-meter pedals 1",
+      "price": 44.9,
+      "purchase_date": "2026-10-20",
+      "prior_usage": "NEW",
+      "storage_location": "Workshop drawer"
+    }
+  ]
+}

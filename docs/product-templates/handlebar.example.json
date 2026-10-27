@@ -1,0 +1,33 @@
+{
+  "format": "bikelog.product.v1",
+  "component_type": "HANDLEBAR",
+  "maker": "Example maker",
+  "model": "Example handlebar 1",
+  "list_price": 49.9,
+  "currency": "EUR",
+  "specs": {
+    "width_mm": 420,
+    "reach_mm": 80,
+    "drop_mm": 125,
+    "clamp_mm": 31.8,
+    "integrated": false,
+    "torque_nm": "5",
+    "weight_g": 250
+  },
+  "source": {
+    "url": "https://example.com/product-page",
+    "retrieved_at": "2026-10-25",
+    "tool": "my-scraper 1.0"
+  },
+  "verified": false,
+  "notes": "Optional free text",
+  "items": [
+    {
+      "label": "Spare handlebar 1",
+      "price": 44.9,
+      "purchase_date": "2026-10-20",
+      "prior_usage": "NEW",
+      "storage_location": "Workshop drawer"
+    }
+  ]
+}

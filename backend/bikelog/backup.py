@@ -14,16 +14,18 @@ import shutil
 import sqlite3
 import tempfile
 import zipfile
+from contextlib import closing
 from datetime import UTC, datetime
 from pathlib import Path
 
-from bikelog import __version__
+from bikelog import __version__, buildinfo
 from bikelog.paths import DataPaths
 
 log = logging.getLogger(__name__)
 
 EXPORT_FORMAT = 1
 KEEP_AUTO_BACKUPS = 10
+KEPT_MARK = "kept-before-"   # backups with this in the name (fresh start, restore) are never pruned
 
 
 def _stamp() -> str:
@@ -32,9 +34,11 @@ def _stamp() -> str:
 
 def snapshot_database(src: Path, dest: Path) -> Path:
     dest.parent.mkdir(parents=True, exist_ok=True)
-    with sqlite3.connect(src) as s, sqlite3.connect(dest) as d:
+    # sqlite3's own context manager does not close connections; an open handle would keep -wal/-shm alive
+    with closing(sqlite3.connect(src)) as s, closing(sqlite3.connect(dest)) as d:
         s.backup(d)
-    with sqlite3.connect(dest) as d:
+    with closing(sqlite3.connect(dest)) as d:
+        d.execute("PRAGMA journal_mode = DELETE")  # self-contained single file, no -wal needed to read it
         ok = d.execute("PRAGMA integrity_check").fetchone()[0]
     if ok != "ok":
         raise RuntimeError(f"Backup integrity check failed for {dest}: {ok}")
@@ -53,7 +57,8 @@ def backup_database(paths: DataPaths, reason: str) -> Path | None:
 
 
 def prune_backups(paths: DataPaths, keep: int = KEEP_AUTO_BACKUPS) -> None:
-    files = sorted(paths.backups.glob("bikelog-*.db"), key=lambda p: p.name, reverse=True)
+    files = sorted((p for p in paths.backups.glob("bikelog-*.db") if KEPT_MARK not in p.name),
+                   key=lambda p: p.name, reverse=True)
     for old in files[keep:]:
         old.unlink(missing_ok=True)
 
@@ -65,7 +70,7 @@ def export_archive(paths: DataPaths, schema_revision: str | None, dest: Path | N
         snap = snapshot_database(paths.database, Path(tmp) / "bikelog.db")
         manifest = {
             "format": EXPORT_FORMAT,
-            "app_version": __version__,
+            "app_version": __version__, "app_build": buildinfo.full_version(),
             "schema_revision": schema_revision,
             "created_at": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
         }
@@ -101,7 +106,7 @@ def restore_archive(paths: DataPaths, archive: Path) -> dict:
         tmpdir = Path(tmp)
         with zipfile.ZipFile(archive) as z:
             z.extractall(tmpdir)
-        with sqlite3.connect(tmpdir / "bikelog.db") as c:
+        with closing(sqlite3.connect(tmpdir / "bikelog.db")) as c:
             if c.execute("PRAGMA integrity_check").fetchone()[0] != "ok":
                 raise ValueError("Database in archive failed integrity check")
         for suffix in ("-wal", "-shm"):
