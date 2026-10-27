@@ -63,6 +63,7 @@ export default function TaskList({ tasks, onChange, emptyText = 'Nothing due by 
                   )}
                 </div>
                 <div className="task-why">{t.explanation}</div>
+                {t.forecast && !['DUE', 'OVERDUE'].includes(t.status) && <div className="task-forecast small muted">{t.forecast.text}</div>}
               </div>
             </div>
             <div className="task-actions">

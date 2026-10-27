@@ -233,6 +233,7 @@ export interface Task {
   snooze_id?: number
   origin?: string
   rotation?: { kind: 'SWAP' | 'WAX' | 'INSTALL'; text: string; to?: number; to_label?: string; bike_id: number }
+  forecast?: { status: 'OK' | 'INSUFFICIENT_INFO'; text: string; date?: string; in_days?: number } | null
 }
 
 export interface Flag {

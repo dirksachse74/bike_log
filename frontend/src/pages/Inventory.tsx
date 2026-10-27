@@ -5,6 +5,7 @@ import ChangeLog from '../components/ChangeLog'
 import Journal from '../components/Journal'
 import LogMaintenance from '../components/LogMaintenance'
 import MountPicker, { type MountTarget } from '../components/MountPicker'
+import PartLife from '../components/PartLife'
 import PartTree from '../components/PartTree'
 import { RepairsCard, ReturnForm, SendOutForm, type IncidentPick } from '../components/ServiceOrders'
 import ProductImport from '../components/ProductImport'
@@ -208,6 +209,7 @@ const TABS: [string, string][] = [
   ['installed', 'Installed'],
   ['shopping', 'Shopping list'],
   ['history', 'History'],
+  ['life', 'Part life'],
   ['chains', 'Chains'],
   ['supplies', 'Supplies'],
   ['all', 'All parts'],
@@ -606,7 +608,7 @@ export default function InventoryPage() {
   const tab = params.get('tab') ?? 'available'
   const [sheet, setSheet] = useState<null | 'part' | 'stock' | 'supply' | 'json'>(null)
   const nav = useNavigate()
-  const view = useApi<InventoryView>(['chains', 'all'].includes(tab) ? null : '/inventory')
+  const view = useApi<InventoryView>(['chains', 'all', 'life'].includes(tab) ? null : '/inventory')
   const parts = useApi<ComponentSummary[]>(tab === 'all' ? '/components' : null)
   const chains = useApi<ChainRow[]>(tab === 'chains' ? '/chains' : null)
   const changed = (msg: string) => {
@@ -644,8 +646,8 @@ export default function InventoryPage() {
           </button>
         ))}
       </div>
-      {!['chains', 'all'].includes(tab) && view.loading && !v && <Loading />}
-      {!['chains', 'all'].includes(tab) && view.error && <ErrorBox error={view.error} onRetry={view.reload} />}
+      {!['chains', 'all', 'life'].includes(tab) && view.loading && !v && <Loading />}
+      {!['chains', 'all', 'life'].includes(tab) && view.error && <ErrorBox error={view.error} onRetry={view.reload} />}
       {tab === 'available' && v && (
         <>
           <h3>Spare stock</h3>
@@ -708,6 +710,7 @@ export default function InventoryPage() {
           )}
         </>
       )}
+      {tab === 'life' && <PartLife />}
       {tab === 'supplies' && v && (
         <>
           <p className="small muted">Bulk supplies: wax, sealant, fluid, grease. The amount used per job is optional.</p>

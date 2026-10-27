@@ -1184,3 +1184,14 @@ label.chip {
 .rotation-prompt.warn {
   background: var(--warn-bg, rgba(200, 140, 20, 0.12));
 }
+
+.life-type {
+  border-bottom: 1px solid var(--line);
+  padding: 0.5rem 0;
+}
+.life-type h4 {
+  margin: 0.75rem 0 0.25rem;
+}
+.task-forecast {
+  margin-top: 0.2rem;
+}

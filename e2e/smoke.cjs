@@ -864,12 +864,25 @@ async function bikeTab(page, name) {
   await phone.locator('.sheet').getByRole('button', { name: 'Save', exact: true }).click()
   await phone.locator('.toast').filter({ hasText: 'Measure chain wear logged' }).waitFor()
   check('mobile: log chain wear measurement', true)
-  for (const route of ['#/bikes', '#/rides', '#/inventory', '#/inventory?tab=history', '#/inventory?tab=shopping', '#/settings']) {
+  for (const route of ['#/bikes', '#/rides', '#/inventory', '#/inventory?tab=history', '#/inventory?tab=shopping', '#/inventory?tab=life', '#/settings']) {
     await phone.goto(BASE + route)
     await phone.waitForTimeout(400)
     const of = await phone.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1)
     check(`mobile: ${route} fits the screen`, !of)
   }
+  // part life report: per type, finished parts and parts still in use; reminders carry a pace forecast
+  await page.goto(BASE + '#/inventory?tab=life')
+  await page.locator('details.life-type[data-type=CHAIN]').waitFor()
+  await page.locator('details.life-type[data-type=CHAIN] > summary').click()
+  const life = await page.locator('details.life-type[data-type=CHAIN]').innerText()
+  check('Part life: chains listed with km (finished or still in use)', /Chain A/.test(life) && /km/.test(life), life.slice(0, 120))
+  await page.screenshot({ path: path.join(OUT, '14-part-life.png'), fullPage: true })
+  const chainA = (await (await page.request.get(BASE + 'api/components')).json()).find((c) => c.label === 'Chain A')
+  await page.goto(BASE + `#/inventory/${chainA.id}`)
+  await page.locator('.task').first().waitFor()
+  await page.waitForLoadState('networkidle')
+  const fc = await page.locator('.task-forecast').allInnerTexts()
+  check('reminders show a pace forecast or say why there is none', fc.length > 0 && fc.every((t) => /^(Due around \d{4}-\d{2}-\d{2} at your pace|No forecast yet)/.test(t)), fc.slice(0, 2).join(' | '))
   // fresh start: typed confirmation, kept backup, empty database, undo by restoring that backup
   await page.goto(BASE + '#/settings')
   const fresh = page.locator('.card').filter({ hasText: 'Fresh start' })

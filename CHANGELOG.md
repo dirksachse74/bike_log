@@ -8,6 +8,15 @@ UPDATING.md → "Making a release". New entries go under "Unreleased" as work is
 ## Unreleased
 
 ### Added
+- Part life report (Dirk 2026-10-27, forum idea G3): Inventory → Part life. Per part type (folded): every
+  finished part (discarded, retired, sold, returned under warranty) with lifetime km, ride hours, months
+  in use, product, bikes and why it went; an average (and range) per product; parts still in use apart
+  with their km so far. ≈ marks estimates (km from before, uncertain rides), ≥ a minimum (earlier use
+  unknown). Computed on the fly, nothing stored.
+- Replacement forecast on km and ride-hour reminders: "Due around <date> at your pace of the last 4
+  weeks (… km in … rides ≈ … km/week; … km left)", or "No forecast yet" with fewer than 3 rides or less
+  than a week of riding. Shown under the reminder, never instead of it, and marked as a planning estimate,
+  not a safety check.
 - Frame and fork are one piece (Dirk 2026-10-26): every bike gets a single "Frame and fork" part; the
   separate fork parts the previous build added automatically are removed on the next start (a fork with
   anything entered on it stays). Rides are flagged only for "no frame"; crash incidents offer "Frame and

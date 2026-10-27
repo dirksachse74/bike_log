@@ -34,6 +34,7 @@ from bikelog.paths import DataPaths, resource_root
 from bikelog.services import assemblies
 from bikelog.services import chains as chains_svc
 from bikelog.services import frames as frames_svc
+from bikelog.services import part_life
 from bikelog.services import service_orders as orders_svc
 from bikelog.services import costs as costs_svc
 from bikelog.services import bundles as bundles_svc
@@ -816,6 +817,10 @@ def create_app(factory: sessionmaker[Session], paths: DataPaths, *, token: str |
                        op_id: str | None = OpId):
         return op(s, op_id, "service_order.return",
                   lambda: orders_svc.return_part(s, order_id, **body.model_dump()), dry_run)
+
+    @app.get("/api/reports/part-life")
+    def part_life_report(component_type: str | None = None, s: Session = Depends(db)):
+        return part_life.report(s, component_type)
 
     @app.get("/api/service-orders")
     def service_orders_away(bike_id: int | None = None, s: Session = Depends(db)):

@@ -352,6 +352,14 @@ you disagree. Dates are 2026-10-24 unless noted.
     frames.drop_auto_forks (run by ensure_frames) removes a fork whose only record is the automatic
     installation (no other installation, work, journal, status, repair, price, serial, warranty, product,
     note or mark): its usage rows and starting km go with it. No NO_FORK ride flag.
+99. **Part life and forecasts are computed, never stored** (Dirk 2026-10-27; services/part_life.py,
+    maintenance._forecast). A part is finished when its disposition is out of use for good (OUT_OF_USE);
+    its life runs from the first installation to the last removal (else the retire date); km, hours and
+    certainty come from component_usage, so starting values and uncertain rides show as ≈ / ≥. Parts
+    never installed are left out; frame/fork too. The forecast uses the subject's km (or ride hours) over
+    the last 28 days, or since the reminder's count started if that is later; it needs at least 3 rides
+    and 7 days, otherwise it says why there is none. It is a separate `forecast` field: status and
+    explanation still go by the km actually ridden. A months limit that comes first is named.
 
 ## Repository
 27. Pushed only to the feature branch `claude/project-thread-6y3mmh` of the private repository. Demo

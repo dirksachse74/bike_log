@@ -30,7 +30,7 @@ from bikelog.services.inventory import (
     get_bike, get_component, location, open_installation, set_disposition, shifting_of, tire_setup_of,
 )
 from bikelog.services.usage import bike_hours_since, bike_km_since, hours_since, usage_since
-from bikelog.timeutil import add_months, parse_when, today_local, utc_now
+from bikelog.timeutil import add_months, local_date_of, parse_when, today_local, utc_now
 
 SEVERITY = {"OVERDUE": 0, "DUE": 1, "ATTENTION": 1, "DUE_SOON": 2, "INSUFFICIENT_INFO": 3, "SNOOZED": 4,
             "OK": 5, "DONE_THIS_CYCLE": 6, "DISABLED": 7, "NOT_APPLICABLE": 8}
@@ -351,6 +351,15 @@ class _Subject:
         return hours_since(self.session, self.comp.id, since_utc) if self.comp else \
             bike_hours_since(self.session, self.bike.id, since_utc)
 
+    def rides_since(self, since_utc: str) -> int:
+        if self.comp:
+            return self.session.scalar(select(func.count()).select_from(UsageContribution).where(
+                UsageContribution.component_id == self.comp.id, UsageContribution.state == "COUNTED",
+                UsageContribution.sort_utc >= since_utc)) or 0
+        return self.session.scalar(select(func.count()).select_from(Ride).where(
+            Ride.bike_id == self.bike.id, Ride.status == "ACTIVE", Ride.inclusion == "INCLUDED",
+            Ride.sort_utc >= since_utc)) or 0
+
 
 def _last_event(session: Session, comp_id: int, actions: list[str]) -> MaintenanceEvent | None:
     return session.scalar(select(MaintenanceEvent).where(
@@ -581,7 +590,60 @@ def _interval_status(subj: _Subject, rule: ServiceRule, act_name: str, today: da
     out["status"] = _worst(*statuses)
     out["explanation"] = "; ".join(parts) + "."
     out["since_utc"] = since_utc
+    out["forecast"] = _forecast(subj, out, since_utc, today)
     return out
+
+
+PACE_DAYS = 28        # "your pace": the last 4 weeks
+PACE_MIN_RIDES = 3    # fewer rides than this in the window: not enough to forecast
+PACE_MIN_DAYS = 7     # a part tracked for less than a week: not enough either
+
+
+def _forecast(subj: _Subject, res: dict, since_utc: str, today: date) -> dict | None:
+    """When a km or ride-hours interval will probably be reached at the recent pace (DECISIONS 99).
+    Planning help only: the reminder itself still goes by the km/hours actually ridden."""
+    km_left = res.get("remaining_km") if res.get("interval_km") else None
+    h_left = res.get("remaining_hours") if res.get("interval_hours") else None
+    if km_left is None and h_left is None:
+        return None            # a months-only rule has an exact date already
+    if (km_left is not None and km_left <= 0) or (h_left is not None and h_left <= 0):
+        return None            # due now: nothing to forecast
+    from datetime import timedelta
+    tz = settings.tz(subj.session)
+    window_start = parse_when((today - timedelta(days=PACE_DAYS - 1)).isoformat(), tz).utc
+    start = max(window_start, since_utc) if since_utc else window_start   # a part (or count) younger than 4 weeks: its own days only
+    days = min(PACE_DAYS, max(1, (today - date.fromisoformat(local_date_of(start, tz))).days + 1))
+    rides = subj.rides_since(start)
+    basis = f"the last {days} day{'s' if days != 1 else ''}" if days < PACE_DAYS else "the last 4 weeks"
+    if rides < PACE_MIN_RIDES or days < PACE_MIN_DAYS:
+        why = (f"only {rides} ride{'s' if rides != 1 else ''} in {basis}" if rides < PACE_MIN_RIDES
+               else f"only {days} days of riding to go by")
+        return {"status": "INSUFFICIENT_INFO", "rides": rides, "days": days,
+                "text": f"No forecast yet: {why} (needs at least {PACE_MIN_RIDES} rides over {PACE_MIN_DAYS} days)."}
+    cands = []
+    if km_left is not None:
+        km = subj.km_since(start)
+        if km > 0:
+            per_day = km / days
+            cands.append((km_left / per_day, f"{km:,.0f} km in {rides} rides over {basis} ≈ {per_day * 7:,.0f} km/week; "
+                                             f"{km_left:,.0f} km left"))
+    if h_left is not None:
+        hours, _ = subj.hours_since(start)
+        if hours > 0:
+            per_day = hours / days
+            cands.append((h_left / per_day, f"{hours:,.1f} h in {rides} rides over {basis} ≈ "
+                                            f"{per_day * 7:,.1f} h/week; {h_left:,.1f} h left"))
+    if not cands:
+        return {"status": "INSUFFICIENT_INFO", "rides": rides, "days": days,
+                "text": f"No forecast yet: the rides in {basis} have no distance or time."}
+    in_days, how = min(cands, key=lambda c: c[0])
+    on = today + timedelta(days=round(in_days))
+    text = f"Due around {on.isoformat()} at your pace of {basis} ({how})."
+    if res.get("due_date") and res["due_date"] < on.isoformat():
+        text += f" The time limit comes first: {res['due_date']}."
+    text += " A planning estimate, not a safety check: go by the km and the part's condition."
+    return {"status": "OK", "date": on.isoformat(), "in_days": round(in_days), "rides": rides, "days": days,
+            "text": text}
 
 
 def _add_wet_ride(session: Session, comp: Component, rule: ServiceRule, res: dict) -> None:

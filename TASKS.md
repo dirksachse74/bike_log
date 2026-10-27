@@ -12,6 +12,7 @@ Status key: ✅ done and tested · 🟡 done, not verified where it matters · �
 - ✅ Products vs physical components; install/remove/replace/reinstall with effective dates.
 - ✅ Conflicting installations refused (service and database triggers); lifetime usage kept.
 - ✅ Replacement workflow with removed-item outcomes, move/swap positions, undo per work session.
+- ✅ Part life report (Inventory → Part life) and pace forecast on km/hour reminders (G3).
 - ✅ Send a part away for repair and record what came back (4 outcomes, cost, receipt, incident, put back on).
 - ✅ Frame and fork as one part (Dirk 2026-10-26); automatic forks removed.
 - ✅ Frame and fork as parts (km, serial, warranty until, warranty replacement, frame history).
