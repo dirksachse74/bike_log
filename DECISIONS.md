@@ -473,7 +473,8 @@ you disagree. Dates are 2026-10-24 unless noted.
 115. **Groupset as a tree under Installed now** (Dirk 2026-11-01). `SetupGroups` (Bikes.tsx) splits the GROUPSET
     rows by the catalog category of each top-level part (`GROUPSET_SUBS`: Drivetrain, Controls shown as
     "Shifting and controls" with the battery, Brakes) into nested `details.setup-sub`, folded like the rest.
-    Frontend only; e2e helpers unfold `details.setup-sub` too.
+    Frontend only; e2e helpers unfold `details.setup-sub` too. Header rows have no links (Dirk): "Groupset N parts ·
+    name" like "Wheels and tires N parts · …"; the groupset page link is inside the unfolded group.
 
 ## Repository
 27. Pushed only to the feature branch `claude/project-thread-6y3mmh` of the private repository. Demo

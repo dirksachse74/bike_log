@@ -503,9 +503,11 @@ async function bikeTab(page, name) {
   await setupItem(page, 'Ultegra crankset')
   check('bottom bracket kept as spare is not installed', (await page.locator('.list.setup').getByText(/bottom bracket/i).count()) === 0)
   // the groupset is one line on the bike; its page has combined numbers and the parts tree
-  const gsLink = page.locator('details.setup-group[data-group=GROUPSET] > summary a')
-  check('Installed now shows the groupset as one line named after the bundle', /Ultegra/.test(await gsLink.innerText()), await gsLink.innerText())
-  await gsLink.click()
+  const gsHead = await page.locator('details.setup-group[data-group=GROUPSET] > summary').innerText()
+  check('Installed now: groupset header like the wheels header, "Groupset N parts · name", no link',
+    /^Groupset\s*\d+ parts · .*Ultegra/.test(gsHead) && (await page.locator('details.setup-group > summary a').count()) === 0, gsHead)
+  await openGroups(page)
+  await page.locator('details.setup-group[data-group=GROUPSET]').getByRole('link', { name: 'Groupset page' }).click()
   await page.getByRole('heading', { name: 'Service tasks' }).waitFor()
   const gsStats = await page.locator('.card').first().innerText()
   check('groupset page shows km, ride time and number of parts', /on this bike since then/.test(gsStats) && /parts/.test(gsStats), gsStats.replace(/\s+/g, ' ').slice(0, 160))

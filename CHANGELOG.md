@@ -18,7 +18,8 @@ UPDATING.md → "Making a release". New entries go under "Unreleased" as work is
   as running cost.
 - **Installed now** shows the groupset as a tree, like a wheelset (Dirk 2026-11-01): Groupset unfolds
   into **Drivetrain**, **Shifting and controls** and **Brakes**, each with its parts (chainrings under the
-  crankset, pulleys under the rear derailleur). The groupset name still links to the groupset page.
+  crankset, pulleys under the rear derailleur). Its header reads like the others, "Groupset 17 parts ·
+  Shimano Ultegra Di2 …", with no link in it; the **Groupset page** link sits inside, under the branches.
 - In the cost entries, the **groupset** bundle row links to the bike's groupset page.
 
 ### Fixed
