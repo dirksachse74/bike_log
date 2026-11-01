@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { api, newOpId } from '../api'
 import ChangeLog from '../components/ChangeLog'
+import EventLog from '../components/EventLog'
 import GroupsetImport from '../components/GroupsetImport'
 import Journal from '../components/Journal'
 import LogMaintenance from '../components/LogMaintenance'
@@ -40,7 +41,7 @@ export function ChainStateTag({ state }: { state: string }) {
 // "Groupset" in the type list: several parts at once, through the same dialog as on the bike page
 const GROUPSET = 'GROUPSET'
 
-export function ComponentForm({ onSaved, presetType, onGroupset }: { onSaved: (c: ComponentSummary) => void; presetType?: string; onGroupset?: (msg: string) => void }) {
+export function ComponentForm({ onSaved, presetType, onGroupset, onCancel }: { onSaved: (c: ComponentSummary) => void; presetType?: string; onGroupset?: (msg: string) => void; onCancel?: () => void }) {
   const { meta } = useApp()
   const [f, setF] = useState({ component_type: presetType ?? 'CHAIN', label: '', history: 'NEW', start_km: '', start_date: today(), start_estimate: true, install_slot: '', install_at: today(), notes: '', price: '', purchase_date: '' })
   const [mount, setMount] = useState<MountTarget | null>(null)
@@ -150,8 +151,13 @@ export function ComponentForm({ onSaved, presetType, onGroupset }: { onSaved: (c
       <FormError error={error} />
       <div className="form-actions">
         <button className="btn btn-primary" disabled={busy || !f.label.trim()} onClick={save}>
-          {busy ? 'Saving…' : 'Add part'}
+          {busy ? 'Saving…' : 'Save'}
         </button>
+        {onCancel && (
+          <button className="btn" onClick={onCancel}>
+            Cancel
+          </button>
+        )}
       </div>
     </div>
   )
@@ -791,7 +797,17 @@ export default function InventoryPage() {
       )}
       {sheet === 'part' && (
         <Sheet title="Add part" onClose={() => setSheet(null)}>
-          <ComponentForm presetType={tab === 'chains' ? 'CHAIN' : undefined} onSaved={(c) => nav(`/inventory/${c.id}`)} onGroupset={changed} />
+          <ComponentForm
+            presetType={tab === 'chains' ? 'CHAIN' : undefined}
+            onSaved={(c) => {
+              // back to the Inventory list (Dirk 2026-11-01); the new part is one click away in the lists
+              changed(`${c.label} added.`)
+              parts.reload()
+              chains.reload()
+            }}
+            onGroupset={changed}
+            onCancel={() => setSheet(null)}
+          />
         </Sheet>
       )}
       {sheet === 'json' && (
@@ -1286,32 +1302,7 @@ export function ComponentDetailPage() {
         )}
       </Card>
       <Card title="Maintenance log" className="span-2">
-        {data.events.length === 0 ? (
-          <Empty title="Nothing logged yet" />
-        ) : (
-          <ul className="list">
-            {data.events.map((e) => (
-              <li key={e.id} className={e.voided ? 'excluded' : ''}>
-                <span>{when(e.performed_at)}</span>
-                <strong>{e.action}</strong>
-                <span className="small">{[e.symptom && `symptom: ${e.symptom}`, e.work_done, e.outcome && `→ ${e.outcome.toLowerCase()}`, e.measurement_value !== null && `${e.measurement_value}${e.measurement_unit ?? ''}`, e.consumable].filter(Boolean).join(' · ')}</span>
-                {e.voided ? (
-                  <Tag>void: {e.void_reason}</Tag>
-                ) : (
-                  <button
-                    className="btn btn-small"
-                    onClick={() => {
-                      const reason = window.prompt('Why is this entry wrong?')
-                      if (reason) plain(`/maintenance/events/${e.id}/void`, { reason })
-                    }}
-                  >
-                    Void
-                  </button>
-                )}
-              </li>
-            ))}
-          </ul>
-        )}
+        <EventLog events={data.events} onChanged={reload} show="none" />
       </Card>
       {sheet === 'log' && (
         <Sheet title={`Record work done · ${data.label}`} onClose={close}>

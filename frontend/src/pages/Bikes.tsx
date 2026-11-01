@@ -11,6 +11,7 @@ import { MoveForm, RemoveForm, ReplaceForm } from '../components/PartChange'
 import { SwapTube } from '../components/Repairs'
 import MountPicker, { type MountTarget } from '../components/MountPicker'
 import ChainRotation from '../components/ChainRotation'
+import EventLog from '../components/EventLog'
 import { AwayCard } from '../components/ServiceOrders'
 import TaskList from '../components/TaskList'
 import { PressureNote, TireSetupSelect } from '../components/TireSetup'
@@ -410,20 +411,7 @@ export function BikeDetailPage() {
       {tab === 'maintenance' && (
         <>
           <Card title="Recent maintenance">
-            {data.events.length === 0 ? (
-              <Empty title="No maintenance logged" />
-            ) : (
-              <ul className="list">
-                {data.events.map((e) => (
-                  <li key={e.id} className={e.voided ? 'excluded' : ''}>
-                    <span>{when(e.performed_at)}</span>
-                    <span>{e.action}</span>
-                    <span className="muted">{e.component}</span>
-                    {e.outcome && <Tag>{e.outcome.toLowerCase()}</Tag>}
-                  </li>
-                ))}
-              </ul>
-            )}
+            <EventLog events={data.events} onChanged={reload} show="part" />
           </Card>
           <Card title="Brake circuits">
             {data.brakes.length === 0 ? (

@@ -412,6 +412,7 @@ export interface EventRow {
   measurement_value: number | null
   measurement_unit: string | null
   consumable: string | null
+  cost_cents?: number | null
   notes: string | null
   voided: boolean
   void_reason: string | null

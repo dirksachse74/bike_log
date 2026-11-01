@@ -1285,3 +1285,12 @@ label.chip {
   letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
 }
+.event-log .row-actions {
+  margin-left: auto;
+  display: inline-flex;
+  gap: 0.3rem;
+  white-space: nowrap;
+}
+.deleted-entries {
+  margin-top: 0.5rem;
+}

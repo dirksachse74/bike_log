@@ -373,6 +373,17 @@ you disagree. Dates are 2026-10-24 unless noted.
     top of Add part's type list (not a component type: a groupset stays a view of its parts, DECISIONS
     91) and renders the same GroupsetImport as the bike page, with the bike picker (or none = spares).
 
+103. **Maintenance log entries can be edited and deleted** (Dirk 2026-11-01: "edit and delete buttons
+    to remove log entries"). Delete is a void like everywhere else (no hard deletes): `voided_at` +
+    reason "deleted", its supply transactions are voided with it (stock comes back), reminders and costs
+    no longer see it, and Restore un-voids both. An entry taken back by Undo of its work session cannot
+    be restored on its own (use the session). Edit changes only the descriptive fields (date, cost,
+    symptom, work done, outcome, measurement, notes); which part, which action and which supplies were
+    used are fixed: delete and record again. Changed, deleted and restored entries write change-log rows
+    (ENTRY_CHANGED / ENTRY_DELETED / ENTRY_RESTORED) on the part, or on the bike for a whole-bike entry.
+    Add part has Save / Cancel, both returning to the Inventory list (Dirk: "so the view goes back to
+    the inventory screen").
+
 ## Repository
 27. Pushed only to the feature branch `claude/project-thread-6y3mmh` of the private repository. Demo
     data uses fictional Strava gear ids.

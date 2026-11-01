@@ -18,6 +18,14 @@ async function sheetButton(page, name) {
   await page.locator('.sheet').getByRole('button', { name, exact: true }).click()
 }
 
+// Add part: Save closes the form and stays on Inventory; open the new part's page from there
+async function saveNewPart(page, label) {
+  await sheetButton(page, 'Save')
+  await page.locator('.toast').filter({ hasText: `${label} added.` }).waitFor()
+  const id = await page.evaluate(async (l) => (await (await fetch('api/components')).json()).find((c) => c.label === l).id, label)
+  await page.goto(BASE + `#/inventory/${id}`)
+}
+
 // bike page: "Installed now" groups start folded; unfold them all (again after a reload)
 async function openGroups(page) {
   await page.locator('details.setup-group').first().waitFor({ state: 'attached' })
@@ -82,7 +90,7 @@ async function bikeTab(page, name) {
       await page.locator('.sheet').getByLabel('Where does it go?').selectOption({ label: 'On the bike · chain' })
       await page.locator('.sheet').getByLabel('Since').fill('2026-10-01')
     }
-    await sheetButton(page, 'Add part')
+    await saveNewPart(page, label)
     await page.getByRole('heading', { name: new RegExp(label) }).waitFor()
   }
   await page.goto(BASE + '#/inventory?tab=chains')
@@ -378,7 +386,7 @@ async function bikeTab(page, name) {
   await page.locator('.sheet').getByLabel('Name / label').fill('Rear pads')
   await page.locator('.sheet').getByLabel('Where does it go?').selectOption({ label: 'On the bike · rear pads' })
   await page.locator('.sheet').getByLabel('Since').fill('2026-10-01')
-  await sheetButton(page, 'Add part')
+  await saveNewPart(page, 'Rear pads')
   await page.getByRole('heading', { name: /Rear pads/ }).waitFor()
   await page.getByRole('button', { name: 'Replace', exact: true }).click()
   await page.locator('.sheet .pick').filter({ hasText: 'One from stock' }).waitFor()
@@ -684,7 +692,7 @@ async function bikeTab(page, name) {
   await page.locator('.sheet').getByLabel('Name / label').fill('Zipp 303 front')
   await page.locator('.sheet').getByLabel('Where does it go?').selectOption({ label: 'On the bike · front wheel' })
   await page.locator('.sheet').getByLabel('Since').fill('2026-10-01')
-  await sheetButton(page, 'Add part')
+  await saveNewPart(page, 'Zipp 303 front')
   await page.getByRole('heading', { name: /Zipp 303 front/ }).waitFor()
   await page.getByLabel('Tire setup').selectOption('TUBELESS')
   const changeLog = page.locator('.card').filter({ has: page.getByRole('heading', { name: 'Change log' }) })
@@ -736,7 +744,7 @@ async function bikeTab(page, name) {
     await page.locator('.sheet').getByLabel('Where does it go?').selectOption({ label: 'Test wheelset › Zipp 303 front (front wheel)' })
     await page.locator('.sheet').getByLabel('Since').fill('2026-10-01')
     await page.screenshot({ path: path.join(OUT, '11b-add-hub.png'), fullPage: true })
-    await sheetButton(page, 'Add part')
+    await saveNewPart(page, 'DT 240 front hub')
     await page.getByRole('heading', { name: /DT 240 front hub/ }).waitFor()
     check('hub mounted on the front wheel', /TIME NXR → Test wheelset → Zipp 303 front/.test(await page.locator('main').innerText()))
     await page.goto(BASE + '#/bikes')
@@ -826,7 +834,7 @@ async function bikeTab(page, name) {
   await page.getByRole('button', { name: 'Add part' }).click()
   await page.locator('.sheet').getByLabel('Type').selectOption('SHOES')
   await page.locator('.sheet').getByLabel('Name / label').fill('Test shoes')
-  await sheetButton(page, 'Add part')
+  await saveNewPart(page, 'Test shoes')
   await page.getByRole('heading', { name: /Test shoes/ }).waitFor()
   await page.getByRole('button', { name: 'Start using' }).click()
   await page.locator('.sheet').getByRole('button', { name: 'Start using' }).click()
@@ -839,7 +847,44 @@ async function bikeTab(page, name) {
   await page.getByRole('button', { name: 'Add part' }).click()
   const typeOptions = await page.locator('.sheet').getByLabel('Type').locator('option').allInnerTexts()
   check('headset and power meter can be added', typeOptions.includes('Headset') && typeOptions.includes('Power meter'))
-  await page.keyboard.press('Escape')
+  await page.locator('.sheet').getByLabel('Name / label').fill('Not kept')
+  await sheetButton(page, 'Cancel')
+  await page.locator('.sheet').waitFor({ state: 'detached' })
+  check('Add part: Cancel closes the form and stays on Inventory', /#\/inventory$/.test(page.url()) && (await page.getByText('Not kept').count()) === 0, page.url())
+
+  // Maintenance log: edit, delete (hidden, restorable) and restore an entry
+  {
+    const chainA = await page.evaluate(async () => (await (await fetch('api/components')).json()).find((c) => c.label === 'Chain A').id)
+    await page.goto(BASE + `#/inventory/${chainA}`)
+    const logCard = page.locator('.card').filter({ has: page.getByRole('heading', { name: 'Maintenance log' }) })
+    const entry = logCard.locator('.event-log li').filter({ hasText: 'Hot wax' }).first()
+    await entry.waitFor()
+    const evId = await entry.getAttribute('data-event')
+    const row = logCard.locator(`.event-log li[data-event="${evId}"]`)
+    await row.getByRole('button', { name: 'Edit' }).click()
+    await page.locator('.sheet').getByLabel('Notes').fill('should not stay')
+    await sheetButton(page, 'Cancel')
+    await page.locator('.sheet').waitFor({ state: 'detached' })
+    check('log entry: Cancel closes the edit without saving', !(await row.innerText()).includes('should not stay'))
+    await row.getByRole('button', { name: 'Edit' }).click()
+    await page.locator('.sheet').getByLabel('Notes').fill('fresh wax pot')
+    await sheetButton(page, 'Save')
+    await page.locator('.toast').filter({ hasText: 'Entry saved.' }).waitFor()
+    await row.filter({ hasText: 'fresh wax pot' }).waitFor()
+    check('log entry: Edit and Save change the entry', true)
+    page.once('dialog', (d) => d.accept())
+    await row.getByRole('button', { name: 'Delete' }).click()
+    await page.locator('.toast').filter({ hasText: 'Entry deleted' }).waitFor()
+    await row.waitFor({ state: 'detached' })
+    const deleted = logCard.locator('details.deleted-entries')
+    await deleted.locator('summary').click()
+    check('log entry: Delete moves it to "Deleted entries"', /Deleted entries \(1\)/.test(await deleted.locator('summary').innerText()))
+    await page.screenshot({ path: path.join(OUT, '12-log-entry-deleted.png'), fullPage: true })
+    await deleted.getByRole('button', { name: 'Restore' }).click()
+    await page.locator('.toast').filter({ hasText: 'Entry restored.' }).waitFor()
+    await row.waitFor()
+    check('log entry: Restore brings it back', (await logCard.locator('details.deleted-entries').count()) === 0)
+  }
 
   // diagnostics: the log is readable in Settings and never shows the Strava secret
   await page.goto(BASE + '#/settings')

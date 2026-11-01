@@ -13,6 +13,9 @@ const ACTION_LABEL: Record<string, string> = {
   REINSTATED: 'removal undone',
   VOIDED: 'entry voided',
   DELETED: 'deleted',
+  ENTRY_CHANGED: 'log entry changed',
+  ENTRY_DELETED: 'log entry deleted',
+  ENTRY_RESTORED: 'log entry restored',
 }
 const via = (v: string | null) => (v ? v.replace(/[._]/g, ' ') : null)
 
