@@ -21,7 +21,7 @@ from sqlalchemy import event, inspect, select
 from sqlalchemy.orm import Session
 
 from bikelog.catalog import COMPONENT_TYPES, DISPOSITIONS
-from bikelog.models import Bike, ChangeLog, Component, Installation, Product
+from bikelog.models import Bike, ChangeLog, Component, Installation, MaintenanceEvent, Product
 from bikelog.timeutil import utc_now
 
 SOURCES = {
@@ -188,6 +188,44 @@ def _installation_rows(session: Session, inst: Installation, is_new: bool) -> li
     return rows
 
 
+_EVENT_FIELDS = {"performed_at": "date", "symptom": "symptom", "work_done": "work done", "outcome": "result",
+                 "measurement_value": "measurement", "measurement_unit": "unit", "cost_cents": "cost",
+                 "notes": "notes"}
+
+
+def _event_rows(session: Session, ev: MaintenanceEvent) -> list[dict]:
+    """A maintenance entry edited, deleted (voided) or restored, on the part (or the bike) it is about."""
+    from bikelog.catalog import ACTIONS
+    if not session.is_modified(ev, include_collections=False):
+        return []
+    state = inspect(ev)
+    name = f"{ACTIONS[ev.action_code].name if ev.action_code in ACTIONS else ev.action_code} {ev.performed_on}"
+    base = {"component_id": ev.component_id, "bike_id": None if ev.component_id else ev.bike_id}
+    if base["component_id"] is None and base["bike_id"] is None:
+        return []
+    v = state.attrs["voided_at"].history
+    if v.has_changes():
+        old = v.deleted[0] if v.deleted else None
+        new = v.added[0] if v.added else None
+        if new and not old:
+            return [{**base, "action": "ENTRY_DELETED", "field": "maintenance entry", "old_value": name,
+                     "new_value": ev.void_reason}]
+        if old and not new:
+            return [{**base, "action": "ENTRY_RESTORED", "field": "maintenance entry", "old_value": None,
+                     "new_value": name}]
+    rows = []
+    for key, label in _EVENT_FIELDS.items():
+        h = state.attrs[key].history
+        if not h.has_changes():
+            continue
+        o, n = (h.deleted[0] if h.deleted else None), (h.added[0] if h.added else None)
+        if o == n:
+            continue
+        rows.append({**base, "action": "ENTRY_CHANGED", "field": f"{name}: {label}",
+                     "old_value": _fmt(session, key, o), "new_value": _fmt(session, key, n)})
+    return rows
+
+
 def _after_flush(session: Session, _ctx_flush) -> None:
     source, via = _ctx.get()
     rows: list[dict] = []
@@ -219,6 +257,8 @@ def _after_flush(session: Session, _ctx_flush) -> None:
                                  "field": field, "old_value": old, "new_value": new})
             elif isinstance(obj, Installation):
                 rows += _installation_rows(session, obj, False)
+            elif isinstance(obj, MaintenanceEvent):
+                rows += _event_rows(session, obj)
     if not rows:
         return
     now = utc_now()

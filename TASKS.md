@@ -55,6 +55,7 @@ Status key: ✅ done and tested · 🟡 done, not verified where it matters · �
 - ⏳ Bike installation history and a tire's change log could also list the bikes a wheel took its
   mounted parts to (UAT B6 second half; the km table already shows them).
 - ✅ Sample database as the first-start default (wiped by Fresh start).
+- ✅ Maintenance log: Edit / Delete / Restore per entry (Dirk 2026-11-01); Add part Save / Cancel back to Inventory.
 
 ## P5 Chain rotation and brakes
 - ✅ Hot wax / liquid wax cycle, spare chain readiness, independent brake circuits, bleed vs fluid.

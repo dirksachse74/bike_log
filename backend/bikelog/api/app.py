@@ -396,6 +396,17 @@ class VoidIn(Body):
     reason: str
 
 
+class EventPatch(Body):
+    at: str | None = None
+    symptom: str | None = None
+    work_done: str | None = None
+    outcome: str | None = None
+    measurement_value: float | None = None
+    measurement_unit: str | None = None
+    cost_cents: int | None = None
+    notes: str | None = None
+
+
 class InstallCorrectIn(Body):
     installed_at: str | None = None
     removed_at: str | None = None
@@ -1015,6 +1026,22 @@ def create_app(factory: sessionmaker[Session], paths: DataPaths, *, token: str |
     def void_event(event_id: int, body: VoidIn, s: Session = Depends(db)):
         e = m.void_event(s, event_id, body.reason)
         return {"id": e.id, "voided": True}
+
+    @app.delete("/api/maintenance/events/{event_id}")
+    def delete_event(event_id: int, s: Session = Depends(db)):
+        """Delete = remove from the log (voided, restorable); nothing is erased."""
+        e = m.void_event(s, event_id, "deleted")
+        return {"id": e.id, "voided": True}
+
+    @app.post("/api/maintenance/events/{event_id}/restore")
+    def restore_event(event_id: int, s: Session = Depends(db)):
+        e = m.restore_event(s, event_id)
+        return {"id": e.id, "voided": False}
+
+    @app.patch("/api/maintenance/events/{event_id}")
+    def patch_event(event_id: int, body: EventPatch, s: Session = Depends(db)):
+        e = m.update_event(s, event_id, **body.model_dump(exclude_unset=True))
+        return {"id": e.id, "performed_at": e.performed_at}
 
     @app.post("/api/maintenance/snooze", status_code=201)
     def snooze(body: SnoozeIn, s: Session = Depends(db)):

@@ -8,6 +8,7 @@ import TaskList from '../components/TaskList'
 import { Card, Empty, ErrorBox, Loading, Tag } from '../components/ui'
 import { km, when } from '../format'
 import { useApi } from '../hooks'
+import EventLog from '../components/EventLog'
 import type { GroupsetPageData } from '../types'
 
 export function GroupsetPage() {
@@ -85,20 +86,7 @@ export function GroupsetPage() {
         )}
       </Card>
       <Card title="Maintenance log">
-        {data.events.length === 0 ? (
-          <Empty title="Nothing logged yet" />
-        ) : (
-          <ul className="list">
-            {data.events.slice(0, 50).map((e) => (
-              <li key={e.id} className={e.voided ? 'excluded' : ''}>
-                <span>{when(e.performed_at)}</span>
-                <span>{e.action}</span>
-                {e.component_id && <Link to={`/inventory/${e.component_id}`}>{e.component}</Link>}
-                {e.outcome && <Tag>{e.outcome.toLowerCase()}</Tag>}
-              </li>
-            ))}
-          </ul>
-        )}
+        <EventLog events={data.events} onChanged={reload} show="part" limit={50} />
       </Card>
       <Card title="Journal">
         {data.journal.length === 0 ? (

@@ -215,6 +215,14 @@ installed until repaired. Inventory tabs: available spares, needs prep/repair, i
 (from minimum stock), history. Undo of a work session is refused if later records depend on it; parts it
 created stay as "record of an undone operation".
 
+**Correcting log entries (`maintenance.py` `update_event` / `void_event` / `restore_event`, DECISIONS
+103).** `PATCH /api/maintenance/events/{id}` changes the descriptive fields only (`EDITABLE`);
+`DELETE` voids the entry and its ConsumableTxn rows (stock back), `POST …/restore` un-voids both (refused
+for entries undone with their work session). The frontend list is `components/EventLog.tsx` (Edit sheet
+with Save / Cancel, folded "Deleted entries" with Restore), used on the part, bike, groupset and
+Maintenance pages. `changelog.py` writes ENTRY_CHANGED / ENTRY_DELETED / ENTRY_RESTORED rows. Add part
+saves with "Save" and returns to the Inventory list (e2e helper `saveNewPart` opens the new part).
+
 **Costs (`costs.py`).** Initial cost = bike purchase price. Running cost is derived each time: part prices
 (counted for the bike the part was *first* installed on, following parents; spares never installed count
 for no bike), stock used on the bike valued at the stock line's average purchase price (≈), and service
@@ -344,10 +352,10 @@ warns, npm 12 blocks): run `npm install-scripts approve <pkg>`.
 Checks that must pass before every push:
 
 ```bash
-.venv/bin/python -m pytest -q backend/tests             # currently 218 passed
+.venv/bin/python -m pytest -q backend/tests             # currently 220 passed
 cd frontend && npx tsc -b && npx eslint . && npx vite build
 # browser test: start the app on a fresh data dir, then
-node e2e/smoke.cjs http://127.0.0.1:8790/ <screenshot-dir>   # currently 125/125 (the ride-form step can flake once; rerun)
+node e2e/smoke.cjs http://127.0.0.1:8790/ <screenshot-dir>   # currently 132/132 (the ride-form step can flake once; rerun)
 #   (cd backend && ../.venv/bin/python -m bikelog --no-browser --no-sample --port 8790 --data-dir <fresh dir>)
 # sample database: start on ANOTHER fresh dir WITHOUT --no-sample (port 8791), then
 node e2e/sample.cjs http://127.0.0.1:8791/ <screenshot-dir>  # banner, sample bikes, crash item, Fresh start

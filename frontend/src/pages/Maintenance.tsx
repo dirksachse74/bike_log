@@ -1,10 +1,9 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import EventLog from '../components/EventLog'
 import LogMaintenance from '../components/LogMaintenance'
 import TaskList from '../components/TaskList'
-import { Card, Empty, ErrorBox, Loading, Sheet, Tag } from '../components/ui'
+import { Card, Empty, ErrorBox, Loading, Sheet } from '../components/ui'
 import { useApp } from '../context'
-import { when } from '../format'
 import { useApi } from '../hooks'
 import type { Bike, EventRow, Rule, Task } from '../types'
 
@@ -55,17 +54,7 @@ export default function MaintenancePage() {
         {events.loading && !events.data && <Loading />}
         {events.error && <ErrorBox error={events.error} onRetry={events.reload} />}
         {events.data?.length === 0 && <Empty title="Nothing logged yet">Use “Record work done”: pick the bike, tap what you did, and the installed parts are preselected.</Empty>}
-        <ul className="list">
-          {events.data?.map((e) => (
-            <li key={e.id} className={e.voided ? 'excluded' : ''}>
-              <span>{when(e.performed_at)}</span>
-              <strong>{e.action}</strong>
-              {e.component_id ? <Link to={`/inventory/${e.component_id}`}>{e.component}</Link> : <span>{e.bike}</span>}
-              {e.outcome && <Tag>{e.outcome.toLowerCase()}</Tag>}
-              {e.voided && <Tag>void</Tag>}
-            </li>
-          ))}
-        </ul>
+        {events.data && events.data.length > 0 && <EventLog events={events.data} onChanged={refresh} show="both" />}
       </Card>
       <Card title="Default intervals">
         {rules.loading && !rules.data && <Loading />}

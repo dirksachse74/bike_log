@@ -20,8 +20,8 @@ from bikelog.catalog import (
     action_applies, outcome_from_measurement,
 )
 from bikelog.models import (
-    Bike, Component, Consumable, Installation, JournalEntry, MaintenanceEvent, Product, ReminderSnooze, Ride,
-    ServiceRule, UsageAdjustment, UsageContribution,
+    Bike, Component, Consumable, ConsumableTxn, Installation, JournalEntry, MaintenanceEvent, Product,
+    ReminderSnooze, Ride, ServiceRule, UsageAdjustment, UsageContribution,
 )
 from bikelog.services import settings, stock
 from bikelog.services.stock import add_consumable, consumable_stock, consumable_txn  # noqa: F401 (API)
@@ -112,15 +112,72 @@ def log_batch(session: Session, *, action_code: str, at: str, component_ids: lis
             for i, cid in enumerate(component_ids)]
 
 
-def void_event(session: Session, event_id: int, reason: str) -> MaintenanceEvent:
+def _event(session: Session, event_id: int) -> MaintenanceEvent:
     ev = session.get(MaintenanceEvent, event_id)
     if not ev:
         raise NotFound("Maintenance event not found")
+    return ev
+
+
+def void_event(session: Session, event_id: int, reason: str) -> MaintenanceEvent:
+    """Remove an entry from the log (Delete): it no longer counts for reminders, costs or stock, and stays
+    restorable (restore_event). Supplies it used come back into stock."""
+    ev = _event(session, event_id)
     if not reason:
         raise DomainError("Say why this entry is wrong")
     if not ev.voided_at:
-        ev.voided_at, ev.void_reason = utc_now(), reason
+        now = utc_now()
+        ev.voided_at, ev.void_reason = now, reason
+        for t in session.scalars(select(ConsumableTxn).where(ConsumableTxn.maintenance_event_id == ev.id,
+                                                             ConsumableTxn.voided_at.is_(None))):
+            t.voided_at = now
         session.flush()
+    return ev
+
+
+def restore_event(session: Session, event_id: int) -> MaintenanceEvent:
+    """Bring back an entry removed with Delete (with the supplies it used). An entry taken back by undoing
+    its whole work session cannot come back this way: record the work again instead."""
+    ev = _event(session, event_id)
+    if not ev.voided_at:
+        return ev
+    if (ev.void_reason or "").startswith("undone"):
+        raise DomainError("This entry was taken back with Undo of its whole session; record the work again instead")
+    for t in session.scalars(select(ConsumableTxn).where(ConsumableTxn.maintenance_event_id == ev.id,
+                                                         ConsumableTxn.voided_at == ev.voided_at)):
+        t.voided_at = None
+    ev.voided_at = ev.void_reason = None
+    session.flush()
+    return ev
+
+
+EDITABLE = ("at", "symptom", "work_done", "outcome", "measurement_value", "measurement_unit", "cost_cents", "notes")
+
+
+def update_event(session: Session, event_id: int, **fields) -> MaintenanceEvent:
+    """Correct an entry in place: date, symptom, work done, result, measurement, cost, notes. What was done
+    (the action), the part and the supplies used stay; for those, delete the entry and record it again."""
+    ev = _event(session, event_id)
+    if ev.voided_at:
+        raise DomainError("This entry was deleted; restore it first")
+    unknown = set(fields) - set(EDITABLE)
+    if unknown:
+        raise DomainError(f"These cannot be changed here: {', '.join(sorted(unknown))}")
+    action = ACTIONS.get(ev.action_code)
+    for k in ("symptom", "work_done", "notes", "outcome", "measurement_unit"):
+        if k in fields:
+            fields[k] = (fields[k] or "").strip() or None
+    if fields.get("outcome") and action and action.outcomes and fields["outcome"] not in action.outcomes:
+        raise DomainError(f"Outcome must be one of {', '.join(action.outcomes)}")
+    if fields.get("cost_cents") is not None and fields["cost_cents"] < 0:
+        raise DomainError("The cost cannot be negative")
+    if fields.get("at"):
+        w = parse_when(fields["at"], settings.tz(session))
+        ev.performed_at, ev.performed_on, ev.sort_utc = w.raw, w.local_date, w.utc
+    for k in EDITABLE[1:]:
+        if k in fields:
+            setattr(ev, k, fields[k])
+    session.flush()
     return ev
 
 

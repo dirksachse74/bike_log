@@ -7,7 +7,16 @@ UPDATING.md → "Making a release". New entries go under "Unreleased" as work is
 
 ## Unreleased
 
+### Added
+- Maintenance log: every entry has Edit and Delete (Dirk 2026-11-01), on the part page, the bike page,
+  the groupset page and Maintenance → Recently logged. Edit changes date, cost, symptom, work done,
+  outcome, measurement and notes (Save / Cancel); each change is in the change log. Delete hides the
+  entry from the log, the reminders and the costs and puts supplies it used back into stock; it stays
+  under "Deleted entries" with a Restore button. Nothing is erased.
+
 ### Changed
+- Add part: the button is now "Save", next to "Cancel"; both close the form and return to the Inventory
+  list (Dirk 2026-11-01). Before, saving opened the new part's page.
 - Inventory → Add part lists "Groupset (all its parts at once)" as the first type (Dirk 2026-11-01). It
   opens the same groupset dialog as on the bike page: pick the groupset, a bike (or none: everything
   becomes spares), options, bundle price.
