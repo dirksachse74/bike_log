@@ -394,6 +394,13 @@ you disagree. Dates are 2026-10-24 unless noted.
     with `useCrumb`), shown by `components/Breadcrumbs.tsx`; trail and names kept in sessionStorage for
     the browser tab only.
 
+105. **Same name for a second identical part** (Dirk 2026-11-01: a spare bottom bracket with the same
+    label was refused). Every physical part is its own record, so a name already used by a part of that
+    type no longer blocks Add part: `inventory.free_label` saves it as "name (2)", "(3)", … (the same
+    numbering replacements and groupset imports already used). Labels stay unique per type, so every
+    list, picker and import still tells the parts apart. Renaming onto a name in use is still refused,
+    with a hint.
+
 ## Repository
 27. Pushed only to the feature branch `claude/project-thread-6y3mmh` of the private repository. Demo
     data uses fictional Strava gear ids.

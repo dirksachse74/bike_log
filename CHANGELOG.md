@@ -7,6 +7,11 @@ UPDATING.md → "Making a release". New entries go under "Unreleased" as work is
 
 ## Unreleased
 
+### Changed
+- Add part: a second part with the same name (an identical spare bottom bracket) is no longer refused.
+  It is saved with a number, e.g. "CEMA BB386 (2)", so the two can be told apart in every list; rename
+  it any time (Dirk 2026-11-01).
+
 ### Added
 - Breadcrumbs on every page below a main menu item (Dirk 2026-11-01), e.g. "Inventory › Installed ›
   Bottom bracket" or "Bikes › TIME NXR › Groupset › Rear derailleur". They show the way you came; every

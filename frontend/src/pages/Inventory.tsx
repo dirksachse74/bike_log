@@ -42,7 +42,7 @@ export function ChainStateTag({ state }: { state: string }) {
 // "Groupset" in the type list: several parts at once, through the same dialog as on the bike page
 const GROUPSET = 'GROUPSET'
 
-export function ComponentForm({ onSaved, presetType, onGroupset, onCancel }: { onSaved: (c: ComponentSummary) => void; presetType?: string; onGroupset?: (msg: string) => void; onCancel?: () => void }) {
+export function ComponentForm({ onSaved, presetType, onGroupset, onCancel }: { onSaved: (c: ComponentSummary, typedLabel?: string) => void; presetType?: string; onGroupset?: (msg: string) => void; onCancel?: () => void }) {
   const { meta } = useApp()
   const [f, setF] = useState({ component_type: presetType ?? 'CHAIN', label: '', history: 'NEW', start_km: '', start_date: today(), start_estimate: true, install_slot: '', install_at: today(), notes: '', price: '', purchase_date: '' })
   const [mount, setMount] = useState<MountTarget | null>(null)
@@ -65,7 +65,7 @@ export function ComponentForm({ onSaved, presetType, onGroupset, onCancel }: { o
         if (!slot) throw new Error('Name the position on the bike, e.g. bottle cage 1')
         body.install = { at: f.install_at, slot, ...(mount.parent_component_id ? { parent_component_id: mount.parent_component_id } : { bike_id: mount.bike_id }) }
       }
-      onSaved(await api.post<ComponentSummary>('/components', body, opId))
+      onSaved(await api.post<ComponentSummary>('/components', body, opId), f.label.trim())
     } catch (e) {
       setError((e as Error).message)
     } finally {
@@ -790,9 +790,9 @@ export default function InventoryPage() {
         <Sheet title="Add part" onClose={() => setSheet(null)}>
           <ComponentForm
             presetType={tab === 'chains' ? 'CHAIN' : undefined}
-            onSaved={(c) => {
+            onSaved={(c, typed) => {
               // back to the Inventory list (Dirk 2026-11-01); the new part is one click away in the lists
-              changed(`${c.label} added.`)
+              changed(typed && c.label !== typed ? `${c.label} added. You already have one with that name, so this one got a number to tell them apart; rename it any time with Edit details on its page.` : `${c.label} added.`)
               parts.reload()
               chains.reload()
             }}

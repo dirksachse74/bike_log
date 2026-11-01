@@ -206,9 +206,8 @@ def create_component(session: Session, *, component_type: str, label: str, produ
             raise NotFound(f"Product {product_id} not found")
         if prod.component_type != component_type:
             raise DomainError(f"Product {prod.model!r} is a {prod.component_type}, not a {component_type}")
-    if session.scalar(select(Component).where(Component.component_type == component_type,
-                                              func.lower(Component.label) == label.lower())):
-        raise Conflict(f"There is already a {COMPONENT_TYPES[component_type].name.lower()} labelled {label!r}")
+    # A second identical part (a spare bottom bracket) keeps the typed name with a number: "BB (2)" (DECISIONS 105)
+    label = free_label(session, component_type, label)
     comp = Component(component_type=component_type, label=label, product_id=product_id, prior_usage=prior_usage,
                      serial_number=serial_number, purchase_date=purchase_date, price_cents=price_cents, notes=notes,
                      specs_json=json.dumps(specs or {}), disposition="STORED",
@@ -309,7 +308,7 @@ def update_component(session: Session, component_id: int, **fields) -> Component
     try:
         session.flush()
     except IntegrityError as e:
-        raise Conflict("Another component of this type already has that label") from e
+        raise Conflict("Another part of this type already has that name. Add something to tell them apart, e.g. \"(2)\" or where it is kept.") from e
     return comp
 
 
@@ -744,6 +743,19 @@ def spare_stock(session: Session) -> list[dict]:
         g["ready" if c.disposition == "STORED" else "awaiting_service"] += 1
         g["items"].append({"id": c.id, "label": c.label, "disposition": c.disposition})
     return sorted(groups.values(), key=lambda g: (g["type_name"], g["product"] or ""))
+
+
+def free_label(session: Session, component_type: str, label: str) -> str:
+    """The label as typed if no other part of this type has it, else the first free "label (n)"."""
+    def taken(x: str) -> bool:
+        return session.scalar(select(Component.id).where(Component.component_type == component_type,
+                                                         func.lower(Component.label) == x.lower())) is not None
+    if not taken(label):
+        return label
+    n = 2
+    while taken(f"{label} ({n})"):
+        n += 1
+    return f"{label} ({n})"
 
 
 def _next_label(session: Session, old: Component) -> str:

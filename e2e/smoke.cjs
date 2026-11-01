@@ -848,6 +848,14 @@ async function bikeTab(page, name) {
   await page.locator('.toast').filter({ hasText: 'In use' }).waitFor()
   await page.getByRole('button', { name: 'Stop using' }).waitFor()
   check('shoes can be put in use (they count every ride)', true)
+  // a second identical part: same name is fine, it gets a number to tell them apart
+  await page.goto(BASE + '#/inventory')
+  await page.getByRole('button', { name: 'Add part' }).click()
+  await page.locator('.sheet').getByLabel('Type').selectOption('SHOES')
+  await page.locator('.sheet').getByLabel('Name / label').fill('Test shoes')
+  await sheetButton(page, 'Save')
+  const dupToast = await page.locator('.toast').filter({ hasText: 'Test shoes (2) added' }).innerText()
+  check('Add part: a second part with the same name is saved as "(2)"', /already have one with that name/.test(dupToast), dupToast)
 
   // headset and power meter exist as part types
   await page.goto(BASE + '#/inventory')
