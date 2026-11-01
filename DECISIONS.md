@@ -412,6 +412,15 @@ you disagree. Dates are 2026-10-24 unless noted.
     Lists pick it up. Text instead of a foreign key keeps every existing record, import and export as it
     was.
 
+107. **One short way to install a tire** (Dirk 2026-11-01: "installing tires is clumsy and broken").
+    Before, a tire went on only through bike → Manage parts → Install a part, and only if it was already
+    in storage; a stored part's own page had no Install, and "Swap tire" was greyed out until a tire was
+    on. `components/InstallHere.tsx` asks where (positions from `/api/mount-targets`, now with `under`
+    = only positions on that part or parts mounted on it, and `occupied_id` / `parent_type` per target),
+    a spare from storage or a new part (created and installed in one call), and the date. Used for
+    "Install a tire" (wheelset/wheel page, bike page) and "Install" on a stored part's page. A taken
+    position offers "Change it" = the normal Replace of the part that is there.
+
 ## Repository
 27. Pushed only to the feature branch `claude/project-thread-6y3mmh` of the private repository. Demo
     data uses fictional Strava gear ids.

@@ -7,6 +7,15 @@ UPDATING.md → "Making a release". New entries go under "Unreleased" as work is
 
 ## Unreleased
 
+### Fixed
+- Installing a tire was hard to find (Dirk 2026-11-01). There is now one short form, **Install a tire**:
+  pick front or rear wheel, a spare tire from storage or a new one (name, price, date, shop), the date,
+  Save. It is on the wheelset and wheel pages, on the bike page (Manage parts, and next to every wheel
+  without a tire under Installed now) and replaces the greyed-out "Swap tire" while no tire is on.
+  A wheel that already has a tire shows it with "Change it" (the normal Replace).
+- The page of a part in storage now has an **Install** button (where does it go?, date, Save).
+- Radio buttons were drawn as large empty circles; they are normal size again.
+
 ### Added
 - "Bought from" (shop) on Add part, a part's Edit details, a bike's purchase, stock purchases and
   returns; bundles, groupset import and "Send away for repair" use the same field (Dirk 2026-11-01). It

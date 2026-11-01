@@ -1229,8 +1229,12 @@ def create_app(factory: sessionmaker[Session], paths: DataPaths, *, token: str |
         return {"group": group, "removed": False}
 
     @app.get("/api/mount-targets")
-    def mount_targets(component_type: str, bike_id: int | None = None, s: Session = Depends(db)):
-        return spares.mount_targets(s, component_type, bike_id)
+    def mount_targets(component_type: str, bike_id: int | None = None, under: int | None = None,
+                      s: Session = Depends(db)):
+        if under is not None and bike_id is None:
+            # a part on a bike: its wheels are listed under that bike; a stored one under "not on a bike"
+            bike_id = inv.location(s, inv.get_component(s, under)).get("bike_id")
+        return spares.mount_targets(s, component_type, bike_id, under)
 
     @app.get("/api/incidents/{group}/fix-options")
     def incident_fix_options(group: str, s: Session = Depends(db)):

@@ -200,10 +200,11 @@ def _slot_text(slot: str) -> str:
     return slot.replace("_", " ").lower()
 
 
-def mount_targets(session: Session, component_type: str, bike_id: int | None = None) -> dict:
+def mount_targets(session: Session, component_type: str, bike_id: int | None = None, under: int | None = None) -> dict:
     """Where a new or stored part of this type can go: positions on a bike, or on a part it mounts on
     (wheelset → front/rear wheel → hub → bearings; crankset → chainring; rear derailleur → pulleys), with
-    the path to it and what already sits there. With ``bike_id`` only that bike's positions and parts."""
+    the path to it and what already sits there. With ``bike_id`` only that bike's positions and parts; with
+    ``under`` only positions on that part or on parts mounted on it (a wheelset page: its two wheels)."""
     from bikelog.services.inventory import bike_setup, get_bike
     if component_type not in COMPONENT_TYPES:
         raise DomainError(f"Unknown part type {component_type}")
@@ -214,21 +215,27 @@ def mount_targets(session: Session, component_type: str, bike_id: int | None = N
     out: list[dict] = []
     seen: set[int] = set()
 
-    def occupant(parent_id: int | None, bid: int | None, slot: str) -> str | None:
+    def occupant_row(parent_id: int | None, bid: int | None, slot: str) -> Component | None:
         q = select(Installation).where(Installation.slot == slot, Installation.removed_utc.is_(None),
                                        Installation.voided_at.is_(None))
         q = q.where(Installation.parent_component_id == parent_id) if parent_id is not None \
             else q.where(Installation.bike_id == bid, Installation.parent_component_id.is_(None))
         i = session.scalar(q.limit(1))
-        return session.get(Component, i.component_id).label if i else None
+        return session.get(Component, i.component_id) if i else None
+
+    def occupant(parent_id: int | None, bid: int | None, slot: str) -> str | None:
+        c = occupant_row(parent_id, bid, slot)
+        return c.label if c else None
 
     def add_parent(c: Component, group: str, path: list[str]) -> None:
         seen.add(c.id)
         name = f"{' › '.join(path + [c.label])} ({COMPONENT_TYPES[c.component_type].name.lower()})"
         for slot in t.slots:
+            occ = occupant_row(c.id, None, slot)
             out.append({"group": group, "bike_id": None, "parent_component_id": c.id, "slot": slot,
                         "text": name + (f" · {_slot_text(slot)}" if len(t.slots) > 1 else ""),
-                        "occupied_by": occupant(c.id, None, slot)})
+                        "parent_type": c.component_type, "parent_label": c.label,
+                        "occupied_by": occ.label if occ else None, "occupied_id": occ.id if occ else None})
 
     for b in bikes:
         if on_bike and not t.slots:      # free positions (bottle cage, accessory): named when installing
@@ -263,5 +270,16 @@ def mount_targets(session: Session, component_type: str, bike_id: int | None = N
                 path.insert(0, parent.label)
                 inst = open_installation(session, parent.id)
             add_parent(c, "Not on a bike (stored)", path)
+    if under is not None:
+        def inside(cid: int | None) -> bool:
+            seen_ids: set[int] = set()
+            while cid is not None and cid not in seen_ids:
+                if cid == under:
+                    return True
+                seen_ids.add(cid)
+                inst = open_installation(session, cid)
+                cid = inst.parent_component_id if inst is not None else None
+            return False
+        out = [o for o in out if inside(o["parent_component_id"])]
     return {"component_type": component_type, "on_bike": on_bike, "needs_parent": not on_bike,
             "targets": out}

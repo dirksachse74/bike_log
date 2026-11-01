@@ -12,9 +12,12 @@ export interface MountTarget {
   slot: string | null
   text: string
   occupied_by: string | null
+  occupied_id?: number | null
+  parent_type?: string
+  parent_label?: string
 }
 
-interface MountTargets {
+export interface MountTargets {
   on_bike: boolean
   needs_parent: boolean
   targets: MountTarget[]

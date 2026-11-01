@@ -936,6 +936,43 @@ async function bikeTab(page, name) {
   check('Settings → Lists: rename follows on the parts, merged and hidden names leave the dropdown', after.includes('Bike24.de') && !after.includes('Bike 24') && !after.includes('Carbon repair shop'), after.join(' | '))
   await page.keyboard.press('Escape')
 
+  // tires: "Install a tire" on a wheelset (front or rear, new or spare) and "Install" on a stored tire's page
+  {
+    const post = (url, body) => page.evaluate(async ([url, body]) => {
+      const t = document.querySelector('meta[name="bikelog-token"]').getAttribute('content')
+      return (await fetch('api' + url, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-BikeLog-Token': t }, body: JSON.stringify(body) })).json()
+    }, [url, body])
+    await page.goto(BASE + '#/inventory')
+    const tws = await post('/components', { component_type: 'WHEELSET', label: 'Tire test wheelset' })
+    await post('/components', { component_type: 'FRONT_WHEEL', label: 'TT front', install: { at: '2026-10-01', parent_component_id: tws.id, slot: 'FRONT_WHEEL' } })
+    await post('/components', { component_type: 'REAR_WHEEL', label: 'TT rear', install: { at: '2026-10-01', parent_component_id: tws.id, slot: 'REAR_WHEEL' } })
+    const spare = await post('/components', { component_type: 'TIRE', label: 'TT spare tire' })
+    await page.goto(BASE + `#/inventory/${tws.id}`)
+    await page.getByRole('button', { name: 'Install a tire' }).click()
+    const where = page.locator('.sheet [role=radiogroup][aria-label="Where does it go?"]')
+    await where.getByText('Front wheel · TT front').waitFor()
+    check('wheelset page: Install a tire offers its front and rear wheel', (await where.innerText()).includes('Rear wheel · TT rear'))
+    await where.getByText('Front wheel · TT front').click()
+    await page.locator('.sheet').getByRole('button', { name: /A new tire/ }).click()
+    await page.locator('.sheet').getByLabel('Name / label').fill('TT new front tire')
+    await page.screenshot({ path: path.join(OUT, '15-install-tire.png') })
+    await sheetButton(page, 'Save')
+    await page.locator('.toast').filter({ hasText: 'TT new front tire installed: Front wheel · TT front' }).waitFor()
+    await page.locator('.part-tree').getByText('TT new front tire').waitFor({ state: 'attached' })
+    check('wheelset page: a new tire is created and mounted on the front wheel', true)
+    await page.goto(BASE + `#/inventory/${spare.id}`)
+    await page.getByRole('button', { name: 'Install', exact: true }).click()
+    await page.locator('.sheet').getByText('Rear wheel · TT rear').click()
+    await sheetButton(page, 'Save')
+    await page.locator('.toast').filter({ hasText: 'TT spare tire installed: Rear wheel · TT rear' }).waitFor()
+    check('stored tire page: Install puts it on a wheel', true)
+    await page.goto(BASE + `#/inventory/${tws.id}`)
+    await page.getByRole('button', { name: 'Install a tire' }).click()
+    await where.getByText('has TT spare tire').waitFor()
+    check('Install a tire: a wheel with a tire shows it, with Change it', (await page.locator('.sheet').getByRole('button', { name: 'Change it' }).count()) === 2)
+    await sheetButton(page, 'Cancel')
+  }
+
   // Maintenance log: edit, delete (hidden, restorable) and restore an entry
   {
     const chainA = await page.evaluate(async () => (await (await fetch('api/components')).json()).find((c) => c.label === 'Chain A').id)
