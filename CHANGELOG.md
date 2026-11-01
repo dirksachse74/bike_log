@@ -8,6 +8,8 @@ UPDATING.md → "Making a release". New entries go under "Unreleased" as work is
 ## Unreleased
 
 ### Changed
+- Always light with a white page (Dirk 2026-11-01): the app no longer turns dark when Windows or the
+  browser is set to dark mode.
 - New look (Dirk 2026-11-01: "make our app look similar to strava.com"): white top bar with the logo and
   a text menu (current page underlined in orange) instead of the left sidebar; on phones the menu is a
   bottom tab bar. Light grey page, flat white cards, one orange accent for main buttons, tabs and

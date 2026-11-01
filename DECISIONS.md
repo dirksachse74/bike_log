@@ -365,6 +365,9 @@ you disagree. Dates are 2026-10-24 unless noted.
     white cards, one orange accent (`--accent`) for the main action, active tab/nav and chips, blue links,
     big stat numbers with small grey labels. A similar feel, not a clone: own logo, name and colour values;
     no fonts, icons or assets from another app. Only CSS and the page skeleton changed. docs/ui-style.md.
+101. **Always light, white page** (Dirk 2026-11-01: "the background color is still dark, change it to
+    white"). No dark mode: the `prefers-color-scheme: dark` block is gone and `:root` sets
+    `color-scheme: light`; `--bg` is white.
 
 ## Repository
 27. Pushed only to the feature branch `claude/project-thread-6y3mmh` of the private repository. Demo
