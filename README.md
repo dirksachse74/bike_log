@@ -11,4 +11,5 @@ your user folder.
 - Windows build and checklist: [packaging/README.md](packaging/README.md)
 - Update after new changes (git pull and rebuild), versions and releases: [UPDATING.md](UPDATING.md)
 - What changed in each version: [CHANGELOG.md](CHANGELOG.md)
+- Giving the app to friends (download, SmartScreen, Strava, updating): [docs/INSTALL.md](docs/INSTALL.md) · publishing a release: [UPDATING.md](UPDATING.md) → "Publishing a release for friends"
 - CSV import format: [docs/csv-import.md](docs/csv-import.md) · Strava: [docs/strava.md](docs/strava.md) · Groupsets: [docs/groupsets.md](docs/groupsets.md) · JSON import: [docs/product-import.md](docs/product-import.md)
