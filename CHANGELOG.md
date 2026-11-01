@@ -7,6 +7,17 @@ UPDATING.md → "Making a release". New entries go under "Unreleased" as work is
 
 ## Unreleased
 
+### Changed
+- **Screens arranged by importance** (Dirk 2026-11-01). Each main screen now starts with what needs doing,
+  then the current state, then history. Overview: a tile per bike at the top (km, how many due), then
+  Upcoming tasks, rides to review and recent rides before shopping, chains and brakes. Maintenance: the
+  long list of "not enough info" reminders folds away under "Need a first entry" (snoozed and up to date
+  fold too), like on the overview. Bike page: Service status first, then Installed now, then Manage parts
+  (more compact) and Chain rotation. Part page: Replace / Record work done / Edit details stay, the rest
+  is under **More…**; Service status comes right after the header, then maintenance log and installation
+  history; "Where the kilometres come from" is folded with a summary line. Reminder explanations show two
+  lines with "more" to unfold. Nothing was removed. Details: docs/ui-style.md → "Screen order".
+
 ### Added
 - **Settings → Strava: "Import only rides with known bikes"** (Dirk 2026-11-01). On: a Strava ride whose
   bike is not in Bike Log (or that has no bike) is skipped and no bike is created; rides already imported

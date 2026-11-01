@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import EventLog from '../components/EventLog'
 import LogMaintenance from '../components/LogMaintenance'
-import TaskList from '../components/TaskList'
+import { GroupedTasks } from '../components/TaskList'
 import { Card, Empty, ErrorBox, Loading, Sheet } from '../components/ui'
 import { useApp } from '../context'
 import { useApi } from '../hooks'
@@ -42,12 +42,12 @@ export default function MaintenancePage() {
             ))}
           </select>
           <label className="check">
-            <input type="checkbox" checked={all} onChange={(e) => setAll(e.target.checked)} /> Show items that are OK
+            <input type="checkbox" checked={all} onChange={(e) => setAll(e.target.checked)} /> Also list reminders that are up to date
           </label>
         </div>
         {q.loading && !q.data && <Loading />}
         {q.error && <ErrorBox error={q.error} onRetry={q.reload} />}
-        {q.data && <TaskList tasks={q.data} onChange={refresh} />}
+        {q.data && (q.data.length ? <GroupedTasks tasks={q.data} onChange={refresh} /> : <Empty title="Nothing due by recorded usage.">{meta.safety_note}</Empty>)}
         <p className="footnote">{meta.safety_note}</p>
       </Card>
       <Card title="Recently logged">

@@ -1120,46 +1120,51 @@ export function ComponentDetailPage() {
               <button className={installed || (!away && !ctype?.rider_gear && (ctype?.slots.length || ctype?.parent_types.length)) ? 'btn' : 'btn btn-primary'} onClick={() => setSheet('log')} title="Cleaning, lubing, waxing, charging, checks, bleeds, repairs: anything you did to the bike or a part">
                 Record work done
               </button>
-              {installed && (
-                <button className="btn" onClick={() => setSheet('remove')}>
-                  Remove
-                </button>
-              )}
-              {installed && canMove && (
-                <button className="btn" onClick={() => setSheet('move')}>
-                  Move
-                </button>
-              )}
               {ctype?.rider_gear && (
                 <button className={data.disposition === 'IN_USE' ? 'btn' : 'btn btn-primary'} onClick={() => setSheet('inuse')}>
                   {data.disposition === 'IN_USE' ? 'Stop using' : 'Start using'}
                 </button>
               )}
-              {!installed && !ctype?.rider_gear && (
-                <button className="btn" onClick={() => setSheet('disposition')}>
-                  Change status
-                </button>
-              )}
-              {away ? (
+              {away && (
                 <button className="btn btn-primary" onClick={() => setSheet({ back: away })}>
                   Back from repair
                 </button>
-              ) : (
-                !ctype?.rider_gear && (
-                  <button className="btn" onClick={() => setSheet('sendout')}>
-                    Send away for repair
-                  </button>
-                )
               )}
               <button className="btn" onClick={() => setSheet('details')}>
                 Edit details
               </button>
-              <button className="btn" onClick={openStart}>
-                Starting km
-              </button>
-              <button className="btn" onClick={() => setSheet('retire')}>
-                Retire
-              </button>
+              {/* less frequent actions fold into one menu so the header stays short (phone: one row) */}
+              <details className="more-menu">
+                <summary className="btn">More…</summary>
+                <div className="more-items" onClick={(e) => ((e.currentTarget.parentElement as HTMLDetailsElement).open = false)}>
+                  {installed && (
+                    <button className="btn" onClick={() => setSheet('remove')}>
+                      Remove
+                    </button>
+                  )}
+                  {installed && canMove && (
+                    <button className="btn" onClick={() => setSheet('move')}>
+                      Move
+                    </button>
+                  )}
+                  {!installed && !ctype?.rider_gear && (
+                    <button className="btn" onClick={() => setSheet('disposition')}>
+                      Change status
+                    </button>
+                  )}
+                  {!away && !ctype?.rider_gear && (
+                    <button className="btn" onClick={() => setSheet('sendout')}>
+                      Send away for repair
+                    </button>
+                  )}
+                  <button className="btn" onClick={openStart}>
+                    Starting km
+                  </button>
+                  <button className="btn" onClick={() => setSheet('retire')}>
+                    Retire
+                  </button>
+                </div>
+              </details>
             </>
           ) : (
             data.disposition !== 'VOIDED' && (
@@ -1244,16 +1249,6 @@ export function ComponentDetailPage() {
         </p>
       </Card>
       <RepairsCard orders={data.service_orders} componentId={data.id} onBack={(o) => setSheet({ back: o })} />
-      {data.frame_history && <FrameHistoryCard h={data.frame_history} kind={data.type_name} />}
-      {ctype && ctype.specs.length > 0 && <PropertiesCard componentId={data.id} fields={ctype.specs} specs={data.specs} productSpecs={data.product_detail?.specs ?? null} notes={data.notes ?? null} onChanged={reload} />}
-      {data.spokes && <SpokesCard wheelId={data.id} label={data.label} info={data.spokes} onChanged={reload} />}
-      {data.chain && <ChainCard comp={data} chain={data.chain} onChanged={reload} />}
-      {data.parts.length > 0 && (
-        <Card title="Parts on it" className="span-2">
-          <p className="small muted">What is mounted on {data.label} now. Unfold a part to see what sits on it; open any part for its km, service and history.</p>
-          <PartTree nodes={data.parts} />
-        </Card>
-      )}
       <Card title="Service status" className="span-2">
         <TaskList tasks={data.service_status} onChange={reload} emptyText="No service rules for this part." />
         <div className="form-actions">
@@ -1262,33 +1257,17 @@ export function ComponentDetailPage() {
           </button>
         </div>
       </Card>
-      <Card title="Rules">
-        {data.rules.length === 0 ? (
-          <Empty title="No rules" />
-        ) : (
-          <ul className="list">
-            {data.rules.map((r) => (
-              <li key={r.id}>
-                <span>
-                  {r.name}
-                  {!r.active && <Tag>off</Tag>}
-                </span>
-                <span className="muted small">
-                  {r.trigger === 'CYCLE_WINDOW' ? `once at ${r.window_min_km}–${r.window_max_km} km after ${actionName(r.cycle_action_code)}` : [r.interval_km && `every ${r.interval_km} km`, r.interval_months && `every ${r.interval_months} months`].filter(Boolean).join(' or ')}
-                  {' · '}
-                  {r.component_id ? 'this part' : 'type default'} · {r.origin.toLowerCase()}
-                  {r.requires_setup && ` · only ${setupLabel(meta.tire_setups, r.requires_setup).toLowerCase()}`}
-                </span>
-                <button className="btn btn-small" onClick={() => setSheet({ rule: r })}>
-                  Edit
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
+      {data.spokes && <SpokesCard wheelId={data.id} label={data.label} info={data.spokes} onChanged={reload} />}
+      {data.chain && <ChainCard comp={data} chain={data.chain} onChanged={reload} />}
+      {data.parts.length > 0 && (
+        <Card title="Parts on it" className="span-2">
+          <p className="small muted">What is mounted on {data.label} now. Unfold a part to see what sits on it; open any part for its km, service and history.</p>
+          <PartTree nodes={data.parts} />
+        </Card>
+      )}
+      <Card title="Maintenance log" className="span-2">
+        <EventLog events={data.events} onChanged={reload} show="none" />
       </Card>
-      <Journal componentId={data.id} className="span-2" />
-      <ChangeLog componentId={data.id} refresh={data} className="span-2" />
       <Card title="Installation history">
         {data.history.length === 0 ? (
           <Empty title="Never installed" />
@@ -1315,6 +1294,31 @@ export function ComponentDetailPage() {
           </ul>
         )}
       </Card>
+      <Card title="Rules">
+        {data.rules.length === 0 ? (
+          <Empty title="No rules" />
+        ) : (
+          <ul className="list">
+            {data.rules.map((r) => (
+              <li key={r.id}>
+                <span>
+                  {r.name}
+                  {!r.active && <Tag>off</Tag>}
+                </span>
+                <span className="muted small">
+                  {r.trigger === 'CYCLE_WINDOW' ? `once at ${r.window_min_km}–${r.window_max_km} km after ${actionName(r.cycle_action_code)}` : [r.interval_km && `every ${r.interval_km} km`, r.interval_months && `every ${r.interval_months} months`].filter(Boolean).join(' or ')}
+                  {' · '}
+                  {r.component_id ? 'this part' : 'type default'} · {r.origin.toLowerCase()}
+                  {r.requires_setup && ` · only ${setupLabel(meta.tire_setups, r.requires_setup).toLowerCase()}`}
+                </span>
+                <button className="btn btn-small" onClick={() => setSheet({ rule: r })}>
+                  Edit
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Card>
       {data.dispositions.length > 0 && (
         <Card title="What happened to it">
           <ul className="list">
@@ -1335,6 +1339,15 @@ export function ComponentDetailPage() {
         {data.ledger.length === 0 ? (
           <Empty title="No usage recorded yet" />
         ) : (
+          <details className="task-group" data-group="ledger">
+            <summary>
+              <strong>
+                {data.ledger.length} entr{data.ledger.length === 1 ? 'y' : 'ies'}
+              </strong>{' '}
+              <span className="muted small">
+                {when(data.ledger[0].date)} → {when(data.ledger[data.ledger.length - 1].date)} · {usageText(u)} in total
+              </span>
+            </summary>
           <table className="table">
             <thead>
               <tr>
@@ -1366,11 +1379,13 @@ export function ComponentDetailPage() {
               ))}
             </tbody>
           </table>
+          </details>
         )}
       </Card>
-      <Card title="Maintenance log" className="span-2">
-        <EventLog events={data.events} onChanged={reload} show="none" />
-      </Card>
+      {ctype && ctype.specs.length > 0 && <PropertiesCard componentId={data.id} fields={ctype.specs} specs={data.specs} productSpecs={data.product_detail?.specs ?? null} notes={data.notes ?? null} onChanged={reload} />}
+      {data.frame_history && <FrameHistoryCard h={data.frame_history} kind={data.type_name} />}
+      <Journal componentId={data.id} className="span-2" />
+      <ChangeLog componentId={data.id} refresh={data} className="span-2" />
       {sheet === 'log' && (
         <Sheet title={`Record work done · ${data.label}`} onClose={close}>
           <LogMaintenance componentId={data.id} onDone={(msg) => { close(); toast(msg); reload() }} />

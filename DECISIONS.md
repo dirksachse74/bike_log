@@ -498,6 +498,13 @@ you disagree. Dates are 2026-10-24 unless noted.
     creates one; an activity with no resolved bike and no RideSource yet is skipped (count
     SKIPPED_UNKNOWN_BIKE, cursor still advances). Already imported rides keep being updated. Re-read
     (rescan) picks skipped rides up once the bike exists. UI: switch in StravaSettings (shown connected or not).
+120. **Screen order** (Dirk 2026-11-01). Main screens go: needs doing → current state → history. Reminder grouping
+    is one component, `GroupedTasks` (components/TaskList.tsx): OVERDUE/DUE/ATTENTION open (plus DUE_SOON,
+    except on the overview where `foldSoon` folds it), SNOOZED / INSUFFICIENT_INFO / the rest in
+    `details.task-group` (data-group soon/snoozed/first/ok). Used by Overview, Maintenance and the bike page.
+    Explanations clamp to two lines (`Why`, ResizeObserver decides whether "more" shows); the full text stays in
+    the DOM. Part page: rare actions in `details.more-menu`; ledger in `details[data-group=ledger]`. Overview
+    bike tiles `.bike-strip`. No endpoint or function was removed.
 
 ## Repository
 27. Pushed only to the feature branch `claude/project-thread-6y3mmh` of the private repository. Demo
