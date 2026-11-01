@@ -8,6 +8,8 @@ UPDATING.md → "Making a release". New entries go under "Unreleased" as work is
 ## Unreleased
 
 ### Added
+- **Notes on rides** (Dirk 2026-11-01): open a ride → Notes → Add notes, up to 2000 characters of free
+  text (line breaks kept). The ride list shows the start of them. Strava and CSV imports never change them.
 - **Rides → Punctures** (Dirk 2026-11-01): puncture statistics from the flats you log on rides (Add
   incident → Flat tire). Totals by wheel, wet/dry and bike; tables **by inner tube** and **by tire** model with
   punctures, km ridden and km per puncture; the list of all punctures with tube, tire, damage and fix. Tubes

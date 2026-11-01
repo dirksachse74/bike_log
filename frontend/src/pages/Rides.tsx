@@ -322,6 +322,84 @@ function RideSummaryStats({ summary }: { summary: RideDetail["summary"] }) {
   );
 }
 
+const NOTES_MAX = 2000;
+
+// Free-text notes on a ride (up to 2000 characters). Never set or changed by a Strava or CSV import.
+function RideNotes({
+  id,
+  notes,
+  onSaved,
+}: {
+  id: number;
+  notes: string | null;
+  onSaved: () => void;
+}) {
+  const { toast } = useApp();
+  const [text, setText] = useState<string | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  async function save() {
+    if (text === null) return;
+    setErr(null);
+    setBusy(true);
+    try {
+      await api.patch(`/rides/${id}`, { notes: text.trim() || null });
+      toast("Notes saved.");
+      setText(null);
+      onSaved();
+    } catch (e) {
+      setErr((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <section className="ride-section ride-notes">
+      <div className="ride-section-head">
+        <h3>Notes</h3>
+        {text === null && (
+          <button className="btn btn-small" onClick={() => setText(notes ?? "")}>
+            {notes ? "Edit notes" : "Add notes"}
+          </button>
+        )}
+      </div>
+      {text === null ? (
+        notes ? (
+          <p className="ride-notes-text">{notes}</p>
+        ) : (
+          <p className="small muted">None yet.</p>
+        )
+      ) : (
+        <div className="form">
+          <Field
+            label="Notes"
+            hint={`${text.length} / ${NOTES_MAX} characters. Kept when Strava syncs again.`}
+          >
+            <textarea
+              aria-label="Ride notes"
+              rows={6}
+              maxLength={NOTES_MAX}
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              placeholder="How it went, route, weather, what to check on the bike ..."
+              autoFocus
+            />
+          </Field>
+          <FormError error={err} />
+          <div className="form-actions">
+            <button className="btn btn-primary" disabled={busy} onClick={save}>
+              Save notes
+            </button>
+            <button className="btn" onClick={() => setText(null)}>
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+    </section>
+  );
+}
+
 export function RideDetailView({
   id,
   onChanged,
@@ -436,6 +514,14 @@ export function RideDetailView({
           )}
         </div>
       </section>
+      <RideNotes
+        id={id}
+        notes={data.notes}
+        onSaved={() => {
+          reload();
+          onChanged(null);
+        }}
+      />
       <RideIncidents
         ride={data}
         onChanged={() => {
@@ -893,6 +979,12 @@ export default function RidesPage() {
                       )}
                       {r.source_kind !== "MANUAL" && (
                         <Tag>{r.source_kind.toLowerCase()}</Tag>
+                      )}
+                      {r.notes && (
+                        <span className="small muted ride-note-snippet" title={r.notes}>
+                          {" "}
+                          {r.notes.length > 60 ? `${r.notes.slice(0, 60)}…` : r.notes}
+                        </span>
                       )}
                       {r.flags.map((f, i) => (
                         <Tag key={i} tone="warn" title={f.detail}>

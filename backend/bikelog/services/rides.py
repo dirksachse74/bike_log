@@ -24,6 +24,7 @@ from bikelog.timeutil import parse_when, today_local
 KM_PER_MILE = 1.609344
 EDITABLE_FIELDS = ("name", "when", "distance_km", "duration_s", "bike_id", "sport_type", "usage_profile_code",
                    "assignment_uncertain", "uncertainty_note", "notes", "conditions")
+RIDE_NOTES_MAX = 2000      # free-text notes on a ride (Dirk 2026-11-01); never set by an import
 # fields an import may set; anything in ride_override wins over these
 SOURCE_FIELDS = ("name", "when", "distance_km", "duration_s", "bike_id", "sport_type", "usage_profile_code")
 
@@ -82,6 +83,11 @@ def _apply_fields(session: Session, ride: Ride, values: dict) -> None:
         ride.bike_id = values["bike_id"]
     if "usage_profile_code" in values:
         ride.usage_profile_id = profile_id(session, values["usage_profile_code"])
+    if "notes" in values:
+        notes = (values["notes"] or "").strip() or None
+        if notes and len(notes) > RIDE_NOTES_MAX:
+            raise DomainError(f"Notes can be up to {RIDE_NOTES_MAX} characters (these are {len(notes)})")
+        values = {**values, "notes": notes}
     for k in ("name", "sport_type", "uncertainty_note", "notes"):
         if k in values:
             setattr(ride, k, values[k])

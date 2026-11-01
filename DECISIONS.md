@@ -489,6 +489,10 @@ you disagree. Dates are 2026-10-24 unless noted.
     (ConsumableTxn USE of the fix's work session, note ": front …"/": rear …"), km = bike ride km between.
     Computed on each call, nothing stored. Logging stays where it was: the ride → Add incident → Flat tire.
 
+118. **Ride notes** (Dirk 2026-11-01). `ride.notes` existed (API, not shown). Now: `rides.RIDE_NOTES_MAX` = 2000,
+    trimmed, longer is refused; not a SOURCE_FIELD, so Strava/CSV re-sync never touches it. UI: `RideNotes`
+    section on the ride (Rides.tsx), snippet in the ride list.
+
 ## Repository
 27. Pushed only to the feature branch `claude/project-thread-6y3mmh` of the private repository. Demo
     data uses fictional Strava gear ids.

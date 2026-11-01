@@ -197,3 +197,25 @@ def test_deleted_strava_bike_is_not_created_again(session, engine, tmp_path):
     assert "BIKES_CREATED" not in res["counts"]
     assert session.scalar(select(func.count()).select_from(Bike)) == 0
     assert [r.bike_id for r in session.scalars(select(Ride))] == [None]   # the ride still comes in, without a bike
+
+
+def test_ride_notes_up_to_2000_chars_survive_resync(session, world):
+    """Dirk 2026-11-01: free-text notes on a ride (2000 characters), never touched by Strava."""
+    from bikelog.services.errors import DomainError
+    factory, fake, client, chain = world
+    strava.sync(factory, client, force=True)
+    r2 = session.scalar(select(Ride).where(Ride.distance_km == 50))
+    text = "Windy, headwind home. " * 90                     # 1980 characters
+    rides.edit_ride(session, r2.id, {"notes": text})
+    with pytest.raises(DomainError, match="2000"):
+        rides.edit_ride(session, r2.id, {"notes": "x" * 2001})
+    session.commit()
+    fake.activities[10_000_002]["name"] = "Renamed on Strava"
+    fake.now += 20 * 24 * 3600
+    strava.sync(factory, client, force=True)
+    strava.sync(factory, client, rescan=True, force=True)
+    session.expire_all()
+    r2 = session.get(Ride, r2.id)
+    assert r2.name == "Renamed on Strava" and r2.notes == text.strip()
+    assert rides.ride_row(session, r2)["notes"] == text.strip()
+    session.commit()
