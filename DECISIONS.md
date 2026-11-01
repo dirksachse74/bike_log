@@ -394,6 +394,24 @@ you disagree. Dates are 2026-10-24 unless noted.
     with `useCrumb`), shown by `components/Breadcrumbs.tsx`; trail and names kept in sessionStorage for
     the browser tab only.
 
+105. **Same name for a second identical part** (Dirk 2026-11-01: a spare bottom bracket with the same
+    label was refused). Every physical part is its own record, so a name already used by a part of that
+    type no longer blocks Add part: `inventory.free_label` saves it as "name (2)", "(3)", … (the same
+    numbering replacements and groupset imports already used). Labels stay unique per type, so every
+    list, picker and import still tells the parts apart. Renaming onto a name in use is still refused,
+    with a hint.
+
+106. **Pick lists, shops first** (Dirk 2026-11-01: where a part was bought, a dropdown of shops, and a
+    place in Settings to manage such lists). Records keep the shop name as text in their own column
+    (`shop` on bike, component and consumable_txn, new in migration 0016; `merchant` on bundles and
+    `shop` on service orders already existed). `pick_list_item` holds the names on offer per list.
+    A before_flush hook (`services/picklists.py`) stores every name as the list spells it, adds new
+    names, follows merges and unhides a hidden name used again, so typing never creates near-duplicates.
+    Rename and merge rewrite the records through the ORM (change log rows); merged and hidden entries
+    stay (no deletes). A new list = one entry in `LISTS` naming its columns; API, hook and Settings →
+    Lists pick it up. Text instead of a foreign key keeps every existing record, import and export as it
+    was.
+
 ## Repository
 27. Pushed only to the feature branch `claude/project-thread-6y3mmh` of the private repository. Demo
     data uses fictional Strava gear ids.

@@ -43,7 +43,7 @@ def create_bike(session: Session, *, name: str, maker: str | None = None, model:
                 year: int | None = None, strava_gear_id: str | None = None, notes: str | None = None,
                 starting_km: float | None = None, starting_date: str | None = None,
                 starting_is_estimate: bool = False, purchase_price_cents: int | None = None,
-                purchase_date: str | None = None, shifting: str | None = None) -> Bike:
+                purchase_date: str | None = None, shifting: str | None = None, shop: str | None = None) -> Bike:
     name = (name or "").strip()
     if not name:
         raise DomainError("A bike needs a name")
@@ -54,7 +54,7 @@ def create_bike(session: Session, *, name: str, maker: str | None = None, model:
         raise DomainError(f"Shifting must be one of {', '.join(SHIFTING_TYPES)} (or not set)")
     bike = Bike(name=name, maker=maker, model=model, year=year, strava_gear_id=strava_gear_id or None, notes=notes,
                 purchase_price_cents=purchase_price_cents, purchase_date=purchase_date or None,
-                shifting=shifting or None)
+                shifting=shifting or None, shop=shop or None)
     session.add(bike)
     session.flush()
     if starting_km is not None:
@@ -72,7 +72,7 @@ def update_bike(session: Session, bike_id: int, **fields) -> Bike:
         raise DomainError(f"Shifting must be one of {', '.join(SHIFTING_TYPES)} (or not set)")
     old_purchase = bike.purchase_date
     for k in ("name", "maker", "model", "year", "strava_gear_id", "notes", "purchase_price_cents", "purchase_date",
-              "shifting"):
+              "shifting", "shop"):
         if k in fields:
             v = fields[k]
             setattr(bike, k, v if k in ("name", "purchase_price_cents") else (v or None))
@@ -189,7 +189,7 @@ def create_component(session: Session, *, component_type: str, label: str, produ
                      specs: dict | None = None, starting_km: float | None = None, starting_date: str | None = None,
                      starting_is_estimate: bool = False, work_session_id: int | None = None,
                      from_stock_txn_id: int | None = None, storage_location: str | None = None,
-                     tire_setup: str | None = None) -> Component:
+                     tire_setup: str | None = None, shop: str | None = None) -> Component:
     """Only type and label are required; everything else (serial number, specs) can be added later.
     With a work session, price_cents is that session's purchase of this item."""
     _check_type(component_type)
@@ -206,15 +206,14 @@ def create_component(session: Session, *, component_type: str, label: str, produ
             raise NotFound(f"Product {product_id} not found")
         if prod.component_type != component_type:
             raise DomainError(f"Product {prod.model!r} is a {prod.component_type}, not a {component_type}")
-    if session.scalar(select(Component).where(Component.component_type == component_type,
-                                              func.lower(Component.label) == label.lower())):
-        raise Conflict(f"There is already a {COMPONENT_TYPES[component_type].name.lower()} labelled {label!r}")
+    # A second identical part (a spare bottom bracket) keeps the typed name with a number: "BB (2)" (DECISIONS 105)
+    label = free_label(session, component_type, label)
     comp = Component(component_type=component_type, label=label, product_id=product_id, prior_usage=prior_usage,
                      serial_number=serial_number, purchase_date=purchase_date, price_cents=price_cents, notes=notes,
                      specs_json=json.dumps(specs or {}), disposition="STORED",
                      purchase_session_id=work_session_id,
                      from_stock_txn_id=from_stock_txn_id, storage_location=storage_location,
-                     tire_setup=tire_setup)
+                     tire_setup=tire_setup, shop=(shop or "").strip() or None)
     session.add(comp)
     session.flush()
     if starting_km is not None:
@@ -301,15 +300,15 @@ def update_component(session: Session, component_id: int, **fields) -> Component
             raise DomainError("Only chains go in a chain rotation")
         get_bike(session, fields["rotation_bike_id"])
     for k in ("label", "serial_number", "purchase_date", "price_cents", "notes", "product_id", "prior_usage",
-              "storage_location", "tire_setup", "pressure_note", "mark", "rotation_bike_id", "warranty_until"):
+              "storage_location", "tire_setup", "pressure_note", "mark", "rotation_bike_id", "warranty_until", "shop"):
         if k in fields:
-            setattr(comp, k, fields[k])
+            setattr(comp, k, (fields[k] or "").strip() or None if k == "shop" else fields[k])
     if "specs" in fields:
         comp.specs_json = json.dumps(fields["specs"] or {})
     try:
         session.flush()
     except IntegrityError as e:
-        raise Conflict("Another component of this type already has that label") from e
+        raise Conflict("Another part of this type already has that name. Add something to tell them apart, e.g. \"(2)\" or where it is kept.") from e
     return comp
 
 
@@ -744,6 +743,19 @@ def spare_stock(session: Session) -> list[dict]:
         g["ready" if c.disposition == "STORED" else "awaiting_service"] += 1
         g["items"].append({"id": c.id, "label": c.label, "disposition": c.disposition})
     return sorted(groups.values(), key=lambda g: (g["type_name"], g["product"] or ""))
+
+
+def free_label(session: Session, component_type: str, label: str) -> str:
+    """The label as typed if no other part of this type has it, else the first free "label (n)"."""
+    def taken(x: str) -> bool:
+        return session.scalar(select(Component.id).where(Component.component_type == component_type,
+                                                         func.lower(Component.label) == x.lower())) is not None
+    if not taken(label):
+        return label
+    n = 2
+    while taken(f"{label} ({n})"):
+        n += 1
+    return f"{label} ({n})"
 
 
 def _next_label(session: Session, old: Component) -> str:

@@ -55,6 +55,8 @@ Status key: ✅ done and tested · 🟡 done, not verified where it matters · �
 - ⏳ Bike installation history and a tire's change log could also list the bikes a wheel took its
   mounted parts to (UAT B6 second half; the km table already shows them).
 - ✅ Sample database as the first-start default (wiped by Fresh start).
+- ✅ Shop ("Bought from") dropdown on parts, bikes, stock, bundles and repairs; Settings → Lists to add, rename, merge and hide (Dirk 2026-11-01).
+- ✅ A second identical part with the same name gets "(2)" instead of an error (Dirk 2026-11-01).
 - ✅ Breadcrumbs on pages below a main menu item, following the way you came (Dirk 2026-11-01).
 - ✅ Maintenance log: Edit / Delete / Restore per entry (Dirk 2026-11-01); Add part Save / Cancel back to Inventory.
 

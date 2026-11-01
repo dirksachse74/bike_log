@@ -5,6 +5,7 @@ import { centsInput, euro, toCents, today, when } from '../format'
 import type { ServiceOrder } from '../types'
 import { useApp } from '../context'
 import { Card, Field, FormError, Sheet, Tag } from './ui'
+import ShopPicker from './ShopPicker'
 
 // Sent after that day's rides: a date alone would be the start of the day and take that day's rides away.
 const afterRides = (date: string) => (date === today() ? new Date().toISOString() : `${date}T23:59`)
@@ -38,9 +39,7 @@ export function SendOutForm({ componentId, label, incidents, onDone }: { compone
         <Field label="Sent on">
           <input type="date" value={f.at} onChange={(e) => setF({ ...f, at: e.target.value })} />
         </Field>
-        <Field label="Shop or maker">
-          <input value={f.shop} onChange={(e) => setF({ ...f, shop: e.target.value })} placeholder="e.g. Carbon repair shop" />
-        </Field>
+        <ShopPicker label="Shop or maker" value={f.shop} onChange={(v) => setF({ ...f, shop: v })} />
       </div>
       <Field label="What is wrong">
         <textarea rows={2} value={f.reason} onChange={(e) => setF({ ...f, reason: e.target.value })} />

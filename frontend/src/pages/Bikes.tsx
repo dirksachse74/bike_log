@@ -13,6 +13,7 @@ import MountPicker, { type MountTarget } from '../components/MountPicker'
 import ChainRotation from '../components/ChainRotation'
 import EventLog from '../components/EventLog'
 import { AwayCard } from '../components/ServiceOrders'
+import ShopPicker from '../components/ShopPicker'
 import TaskList from '../components/TaskList'
 import { PressureNote, TireSetupSelect } from '../components/TireSetup'
 import { Card, ChangeNotice, Empty, ErrorBox, Field, FormError, Loading, Sheet, StatusBadge, Tag } from '../components/ui'
@@ -25,7 +26,7 @@ import type { Bike, BikeCosts, BrakeRow, Change, ComponentSummary, EventRow, Gro
 
 export function BikeForm({ onSaved }: { onSaved: (b: Bike) => void }) {
   const { meta } = useApp()
-  const [f, setF] = useState({ name: '', maker: '', model: '', strava_gear_id: '', starting_km: '', starting_date: today(), starting_is_estimate: true, price: '', purchase_date: '', shifting: '' })
+  const [f, setF] = useState({ name: '', maker: '', model: '', strava_gear_id: '', starting_km: '', starting_date: today(), starting_is_estimate: true, price: '', purchase_date: '', shifting: '', shop: '' })
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [opId] = useState(newOpId)
@@ -41,6 +42,7 @@ export function BikeForm({ onSaved }: { onSaved: (b: Bike) => void }) {
       if (Number.isNaN(price)) throw new Error('Price: enter an amount such as 3.499,00 or 3499')
       if (price !== null) body.purchase_price_cents = price
       if (f.purchase_date) body.purchase_date = f.purchase_date
+      if (f.shop.trim()) body.shop = f.shop.trim()
       if (f.shifting) body.shifting = f.shifting
       if (f.starting_km) Object.assign(body, { starting_km: Number(f.starting_km), starting_date: f.starting_date, starting_is_estimate: f.starting_is_estimate })
       onSaved(await api.post<Bike>('/bikes', body, opId))
@@ -70,6 +72,9 @@ export function BikeForm({ onSaved }: { onSaved: (b: Bike) => void }) {
         <Field label="Bought on (optional)">
           <input type="date" value={f.purchase_date} onChange={(e) => setF({ ...f, purchase_date: e.target.value })} />
         </Field>
+      </div>
+      <div className="row">
+        <ShopPicker value={f.shop} onChange={(v) => setF({ ...f, shop: v })} />
       </div>
       <Field label="Shifting" hint="Decides which reminders apply (Di2 checks or cable checks). Not set: electronic once a Di2/AXS battery is fitted.">
         <select aria-label="Shifting" value={f.shifting} onChange={(e) => setF({ ...f, shifting: e.target.value })}>
@@ -1068,7 +1073,7 @@ function CostCard({ bike, onEdit }: { bike: BikeDetail; onEdit: () => void }) {
       <div className="stats">
         <div>
           <span className="stat">{c.initial_known ? euro(c.initial_cents) : '—'}</span>
-          <span className="muted small">initial cost{c.purchase_date ? ` · ${when(c.purchase_date)}` : c.initial_known ? '' : ' · not entered'}</span>
+          <span className="muted small">initial cost{c.purchase_date ? ` · ${when(c.purchase_date)}` : c.initial_known ? '' : ' · not entered'}{bike.shop ? ` · ${bike.shop}` : ''}</span>
         </div>
         <div>
           <span className="stat">
@@ -1121,14 +1126,14 @@ function CostCard({ bike, onEdit }: { bike: BikeDetail; onEdit: () => void }) {
 }
 
 function PurchaseForm({ bike, onDone }: { bike: Bike; onDone: () => void }) {
-  const [f, setF] = useState({ price: centsInput(bike.purchase_price_cents), date: bike.purchase_date ?? '' })
+  const [f, setF] = useState({ price: centsInput(bike.purchase_price_cents), date: bike.purchase_date ?? '', shop: bike.shop ?? '' })
   const [err, setErr] = useState<string | null>(null)
   async function save() {
     setErr(null)
     const price = toCents(f.price)
     if (Number.isNaN(price)) return setErr('Price: enter an amount such as 3499,00')
     try {
-      await api.patch(`/bikes/${bike.id}`, { purchase_price_cents: price, purchase_date: f.date || null })
+      await api.patch(`/bikes/${bike.id}`, { purchase_price_cents: price, purchase_date: f.date || null, shop: f.shop.trim() || null })
       onDone()
     } catch (e) {
       setErr((e as Error).message)
@@ -1143,6 +1148,9 @@ function PurchaseForm({ bike, onDone }: { bike: Bike; onDone: () => void }) {
         <Field label="Bought on">
           <input type="date" value={f.date} onChange={(e) => setF({ ...f, date: e.target.value })} />
         </Field>
+      </div>
+      <div className="row">
+        <ShopPicker value={f.shop} onChange={(v) => setF({ ...f, shop: v })} label="Bought from" />
       </div>
       <p className="small muted">Running cost is added up from part prices, stock used on this bike and service costs; it is never typed in.</p>
       <FormError error={err} />

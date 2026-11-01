@@ -18,6 +18,16 @@ async function sheetButton(page, name) {
   await page.locator('.sheet').getByRole('button', { name, exact: true }).click()
 }
 
+// shop dropdown: pick a shop used before, or "New shop…" and type it
+async function pickShop(page, label, name) {
+  const sel = page.locator('.sheet').getByLabel(label, { exact: true })
+  await sel.locator('option').first().waitFor({ state: 'attached' })
+  const have = await sel.locator('option').allInnerTexts()
+  if (have.includes(name)) return sel.selectOption({ label: name })
+  await sel.selectOption({ label: 'New shop…' })
+  await page.locator('.sheet').getByLabel('New shop name').fill(name)
+}
+
 // Add part: Save closes the form and stays on Inventory; open the new part's page from there
 async function saveNewPart(page, label) {
   await sheetButton(page, 'Save')
@@ -199,7 +209,7 @@ async function bikeTab(page, name) {
     await page.goto(BASE + `#/inventory/${rframe.component_id}`)
     await page.getByRole('button', { name: 'Send away for repair' }).click()
     await page.locator('.sheet').getByLabel('Sent on').fill(yesterday)
-    await page.locator('.sheet').getByLabel('Shop or maker').fill('Carbon repair shop')
+    await pickShop(page, 'Shop or maker', 'Carbon repair shop')
     await page.locator('.sheet').getByLabel('What is wrong').fill('crack at the top tube')
     await page.locator('.sheet').getByRole('button', { name: 'Send away' }).click()
     await page.getByText(/Away for repair at Carbon repair shop/).first().waitFor()
@@ -455,7 +465,7 @@ async function bikeTab(page, name) {
   await page.getByRole('button', { name: 'Replace whole groupset' }).click()
   await page.locator('.sheet').getByText('Keep the current part; the new one becomes a spare').click()
   await page.locator('.sheet').getByLabel('Bundle price').fill('1899')
-  await page.locator('.sheet').getByLabel('Shop').fill('bike-components.de')
+  await pickShop(page, 'Shop', 'bike-components.de')
   await page.locator('.sheet').getByLabel('Keep bottom bracket as spare').check()
   await page.locator('.sheet .groupset-items li').filter({ hasText: 'Kept as a spare' }).waitFor()
   await page.locator('.sheet').getByRole('button', { name: /^Add \d+ parts$/ }).click()
@@ -848,6 +858,14 @@ async function bikeTab(page, name) {
   await page.locator('.toast').filter({ hasText: 'In use' }).waitFor()
   await page.getByRole('button', { name: 'Stop using' }).waitFor()
   check('shoes can be put in use (they count every ride)', true)
+  // a second identical part: same name is fine, it gets a number to tell them apart
+  await page.goto(BASE + '#/inventory')
+  await page.getByRole('button', { name: 'Add part' }).click()
+  await page.locator('.sheet').getByLabel('Type').selectOption('SHOES')
+  await page.locator('.sheet').getByLabel('Name / label').fill('Test shoes')
+  await sheetButton(page, 'Save')
+  const dupToast = await page.locator('.toast').filter({ hasText: 'Test shoes (2) added' }).innerText()
+  check('Add part: a second part with the same name is saved as "(2)"', /already have one with that name/.test(dupToast), dupToast)
 
   // headset and power meter exist as part types
   await page.goto(BASE + '#/inventory')
@@ -870,6 +888,53 @@ async function bikeTab(page, name) {
   await page.locator('nav.breadcrumbs').getByRole('link', { name: 'Installed' }).click()
   await page.getByRole('tab', { name: 'Installed', selected: true }).waitFor()
   check('breadcrumbs: "Installed" opens Inventory on the Installed tab, breadcrumbs gone on the main page', /tab=installed/.test(page.url()) && (await page.locator('nav.breadcrumbs').count()) === 0, page.url())
+
+  // shops: typed once on Add part, then offered in the dropdown; Settings → Lists renames, merges, hides
+  await page.goto(BASE + '#/inventory')
+  await page.getByRole('button', { name: 'Add part' }).click()
+  await page.locator('.sheet').getByLabel('Type').selectOption('BOTTOM_BRACKET')
+  await page.locator('.sheet').getByLabel('Name / label').fill('Spare BB')
+  await pickShop(page, 'Bought from (optional)', 'Bike24')
+  await saveNewPart(page, 'Spare BB')
+  await page.getByText(/from Bike24/).waitFor()
+  check('Add part: "Bought from" is saved and shown on the part', true)
+  await page.goto(BASE + '#/inventory')
+  await page.getByRole('button', { name: 'Add part' }).click()
+  await page.locator('.sheet').getByLabel('Bought from (optional)').locator('option', { hasText: 'Bike24' }).waitFor({ state: 'attached' })
+  const shopOptions = await page.locator('.sheet').getByLabel('Bought from (optional)').locator('option').allInnerTexts()
+  check('Add part: the shop dropdown offers shops used before', shopOptions.includes('Bike24') && shopOptions.includes('bike-components.de') && shopOptions.includes('Carbon repair shop'), shopOptions.join(' | '))
+  await page.locator('.sheet').getByLabel('Type').selectOption('BOTTOM_BRACKET')
+  await page.locator('.sheet').getByLabel('Name / label').fill('Spare BB 2')
+  await pickShop(page, 'Bought from (optional)', 'bike24 ')
+  await sheetButton(page, 'Save')
+  await page.locator('.toast').filter({ hasText: 'Spare BB 2 added' }).waitFor()
+  await page.goto(BASE + '#/settings')
+  const shops = page.locator('details.pick-list[data-list=SHOP]')
+  await shops.locator('li[data-item="Bike24"]').waitFor()
+  check('Settings → Lists: a second spelling becomes the same shop (used 2×)', /used 2×/.test(await shops.locator('li[data-item="Bike24"]').innerText()) && (await shops.locator('li[data-item="bike24"]').count()) === 0)
+  await shops.locator('li[data-item="Bike24"]').getByRole('button', { name: 'Rename' }).click()
+  await shops.getByLabel('New name for Bike24').fill('Bike24.de')
+  await shops.locator('li[data-item="Bike24"]').getByRole('button', { name: 'Save' }).click()
+  await page.locator('.toast').filter({ hasText: 'Renamed to Bike24.de on 2 records' }).waitFor()
+  await shops.getByLabel('Add to Shops').fill('Bike 24')
+  await shops.getByRole('button', { name: 'Add', exact: true }).click()
+  await shops.locator('li[data-item="Bike 24"]').getByRole('button', { name: 'Merge' }).click()
+  await shops.getByLabel('Merge Bike 24 into').selectOption({ label: 'Bike24.de' })
+  await shops.locator('li[data-item="Bike 24"]').getByRole('button', { name: 'Merge' }).click()
+  await page.locator('.toast').filter({ hasText: 'Bike 24 merged' }).waitFor()
+  await shops.getByText('Bike 24 → Bike24.de').waitFor()
+  await shops.locator('li[data-item="Carbon repair shop"]').getByRole('button', { name: 'Hide' }).click()
+  await shops.locator('li[data-item="Carbon repair shop"]').getByText('hidden').waitFor()
+  await page.screenshot({ path: path.join(OUT, '14-settings-lists.png'), fullPage: true })
+  const bbId = await page.evaluate(async () => (await (await fetch('api/components')).json()).find((c) => c.label === 'Spare BB').id)
+  await page.goto(BASE + `#/inventory/${bbId}`)
+  await page.getByText(/from Bike24\.de/).waitFor()
+  await page.goto(BASE + '#/inventory')
+  await page.getByRole('button', { name: 'Add part' }).click()
+  await page.locator('.sheet').getByLabel('Bought from (optional)').locator('option', { hasText: 'Bike24.de' }).waitFor({ state: 'attached' })
+  const after = await page.locator('.sheet').getByLabel('Bought from (optional)').locator('option').allInnerTexts()
+  check('Settings → Lists: rename follows on the parts, merged and hidden names leave the dropdown', after.includes('Bike24.de') && !after.includes('Bike 24') && !after.includes('Carbon repair shop'), after.join(' | '))
+  await page.keyboard.press('Escape')
 
   // Maintenance log: edit, delete (hidden, restorable) and restore an entry
   {

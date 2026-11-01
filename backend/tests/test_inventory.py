@@ -31,8 +31,9 @@ def test_quick_add_needs_only_type_and_label(session):
 def test_three_individually_labelled_chains(session):
     for label in ("Chain A", "Chain B", "Chain C"):
         part(session, "CHAIN", label)
-    with pytest.raises(Conflict):
-        part(session, "CHAIN", "chain a")
+    # a second identical part keeps the typed name with a number (DECISIONS 105)
+    assert part(session, "CHAIN", "Chain A").label == "Chain A (2)"
+    assert part(session, "CHAIN", "Chain A").label == "Chain A (3)"
 
 
 def test_install_remove_reinstall_preserves_lifetime_across_bikes(session):

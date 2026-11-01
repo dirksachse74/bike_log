@@ -68,6 +68,8 @@ class Bike(Base):
     updated_at: Mapped[str] = mapped_column(String(20), default=utc_now, onupdate=utc_now)
     # ELECTRONIC / MECHANICAL (catalog.SHIFTING_TYPES); NULL = electronic if a battery is fitted, else unknown
     shifting: Mapped[str | None] = mapped_column(String(12))
+    # where it was bought (a name from the SHOP pick list, services/picklists.py)
+    shop: Mapped[str | None] = mapped_column(Text)
 
 
 class PurchaseBundle(Base):
@@ -136,6 +138,8 @@ class Component(Base):
     rotation_bike_id: Mapped[int | None] = mapped_column(ForeignKey("bike.id"))
     # Last day of the warranty (frames above all); shown on the part page.
     warranty_until: Mapped[str | None] = mapped_column(String(10))
+    # where it was bought (a name from the SHOP pick list, services/picklists.py)
+    shop: Mapped[str | None] = mapped_column(Text)
 
     product: Mapped[Product | None] = relationship()
 
@@ -572,6 +576,22 @@ class ConsumableTxn(Base):
     component_id: Mapped[int | None] = mapped_column(Integer)  # individual record created from this USE
     packages: Mapped[int | None] = mapped_column(Integer)      # purchase: packages bought (qty = usable units)
     voided_at: Mapped[str | None] = mapped_column(String(20))  # its work session was undone
+    shop: Mapped[str | None] = mapped_column(Text)             # purchase / return: where (SHOP pick list)
+
+
+class PickListItem(Base):
+    """One entry of a reusable pick list (DECISIONS 106), e.g. a shop. Records keep the name as text; this
+    list offers the names in dropdowns and is managed in Settings → Lists (add, rename, merge, hide).
+    Never deleted: hidden entries leave the dropdowns, merged ones point to the entry they went into."""
+    __tablename__ = "pick_list_item"
+    __table_args__ = (UniqueConstraint("list_code", "name", name="uq_pick_list_item"),)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    uuid: Mapped[str] = mapped_column(String(36), unique=True, default=new_uuid)
+    list_code: Mapped[str] = mapped_column(String(24), index=True)
+    name: Mapped[str] = mapped_column(Text)
+    hidden_at: Mapped[str | None] = mapped_column(String(20))
+    merged_into_id: Mapped[int | None] = mapped_column(ForeignKey("pick_list_item.id"))
+    created_at: Mapped[str] = mapped_column(String(20), default=utc_now)
 
 
 class ImportBatch(Base):

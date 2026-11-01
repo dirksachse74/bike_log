@@ -13,6 +13,7 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
 import bikelog.changelog  # noqa: F401  (registers the change-log hook on all sessions)
+import bikelog.services.picklists  # noqa: F401  (registers the pick-list hook: shop names)
 
 
 def make_engine(db_path: Path) -> Engine:
