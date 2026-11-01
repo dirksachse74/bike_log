@@ -7,6 +7,11 @@ UPDATING.md → "Making a release". New entries go under "Unreleased" as work is
 
 ## Unreleased
 
+### Changed
+- **Install a part** (bike page → Manage parts) can create the part right there (Dirk 2026-11-01: no
+  trip to Inventory first): choose **A new part** (type, name, price, shop, properties, notes, km from
+  before, where it goes on this bike) and **Save and install**. **A part from storage** works as before.
+
 ### Fixed
 - Wheelset properties showed **Weight** and **Weight of the pair** (Dirk 2026-11-01): both were the same
   value. A type's own field now replaces the common one, so a wheelset has only "Weight of the pair"
