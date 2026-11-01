@@ -23,6 +23,7 @@ from sqlalchemy.orm import Session, object_session, sessionmaker
 
 from bikelog import __version__, backup, buildinfo, changelog
 from bikelog.api.security import LocalSecurityMiddleware
+from bikelog.product_specs import fields_for
 from bikelog.catalog import (
     ACTIONS, COMPONENT_TYPES, DISPOSITIONS, INCIDENT_TYPES, RIDE_CONDITIONS, SHIFTING_TYPES, TIRE_SETUPS, TRACKING_MODES,
     action_applies,
@@ -670,7 +671,9 @@ def create_app(factory: sessionmaker[Session], paths: DataPaths, *, token: str |
             "settings": settings_svc.all_settings(s),
             "component_types": [{"code": t.code, "name": t.name, "category": t.category, "slots": list(t.slots),
                                  "parent_types": list(t.parent_types), "removed_default": t.removed_default,
-                                 "rider_gear": t.rider_gear, "torque": t.torque}
+                                 "rider_gear": t.rider_gear, "torque": t.torque,
+                                 "specs": [{"key": f.key, "kind": f.kind, "label": f.description, "unit": f.unit,
+                                            "values": list(f.values)} for f in fields_for(t.code)]}
                                 for t in COMPONENT_TYPES.values()],
             "dispositions": [{"code": k, "label": v} for k, v in DISPOSITIONS.items()],
             "tracking_modes": [{"code": k, "label": v} for k, v in TRACKING_MODES.items()],

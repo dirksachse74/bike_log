@@ -120,6 +120,9 @@ COMPONENT_TYPES: dict[str, ComponentType] = {t.code: t for t in [
     ComponentType("SEATPOST", "Seatpost", "Contact points", ("SEATPOST",), torque=True),
     ComponentType("STEM", "Stem", "Cockpit", ("STEM",), torque=True),
     ComponentType("HANDLEBAR", "Handlebar", "Cockpit", ("HANDLEBAR",), torque=True),
+    # bar and stem as one part (Dirk 2026-11-01): fully integrated (one piece) or semi integrated (bar and
+    # stem made for each other, cables hidden); instead of a separate stem and handlebar
+    ComponentType("COCKPIT", "Cockpit (bar and stem)", "Cockpit", ("COCKPIT",), torque=True),
     ComponentType("BAR_TAPE", "Bar tape", "Cockpit", ("BAR_TAPE",), removed_default="DISCARDED"),
     ComponentType("SHIFTERS", "Shifters", "Controls", ("SHIFTERS",), torque=True),
     # Di2: one battery on the bike; SRAM AXS: one battery on each derailleur

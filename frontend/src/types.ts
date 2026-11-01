@@ -361,6 +361,16 @@ export interface ComponentType {
   removed_default: string
   rider_gear?: boolean
   torque?: boolean
+  specs: SpecFieldDef[]
+}
+
+// One property of a part type (product_specs.py): stem length, reach, integration ...
+export interface SpecFieldDef {
+  key: string
+  kind: 'number' | 'integer' | 'string' | 'enum' | 'boolean'
+  label: string
+  unit: string | null
+  values: string[]
 }
 
 export interface Profile {

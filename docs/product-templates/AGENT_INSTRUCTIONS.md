@@ -100,6 +100,7 @@ error; put extra data under `specs`.
 | `SEATPOST` | Seatpost | Contact points |
 | `STEM` | Stem | Cockpit |
 | `HANDLEBAR` | Handlebar | Cockpit |
+| `COCKPIT` | Cockpit (bar and stem) | Cockpit |
 | `BAR_TAPE` | Bar tape | Cockpit |
 | `SHIFTERS` | Shifters | Controls |
 | `BATTERY` | Battery (Di2/AXS) | Electronics |
@@ -277,8 +278,11 @@ Template: `wheelset.schema.json`, example: `wheelset.example.json`
 
 | key | type | unit | meaning |
 |---|---|---|---|
-| `rim_depth_mm` | number | mm | Rim depth |
-| `internal_width_mm` | number | mm | Internal rim width |
+| `rim_outer_width_mm` | number | mm | Rim outer width |
+| `internal_width_mm` | number | mm | Rim inner width |
+| `rim_depth_front_mm` | number | mm | Rim depth front |
+| `rim_depth_rear_mm` | number | mm | Rim depth rear |
+| `tire_size_range` | string |  | Tire size range |
 | `brake` | one of `disc`, `rim` |  | Brake type |
 | `axles` | string |  | Axle standard front / rear |
 | `weight_g` | number | g | Weight of the pair |
@@ -292,7 +296,9 @@ Template: `front_wheel.schema.json`, example: `front_wheel.example.json`
 | key | type | unit | meaning |
 |---|---|---|---|
 | `rim_depth_mm` | number | mm | Rim depth |
-| `internal_width_mm` | number | mm | Internal rim width |
+| `internal_width_mm` | number | mm | Rim inner width |
+| `rim_outer_width_mm` | number | mm | Rim outer width |
+| `tire_size_range` | string |  | Tire size range |
 | `tubeless` | boolean |  | Tubeless ready |
 | `axle` | string |  | Axle standard |
 | `brake` | one of `disc`, `rim` |  | Brake type |
@@ -309,7 +315,9 @@ Template: `rear_wheel.schema.json`, example: `rear_wheel.example.json`
 | key | type | unit | meaning |
 |---|---|---|---|
 | `rim_depth_mm` | number | mm | Rim depth |
-| `internal_width_mm` | number | mm | Internal rim width |
+| `internal_width_mm` | number | mm | Rim inner width |
+| `rim_outer_width_mm` | number | mm | Rim outer width |
+| `tire_size_range` | string |  | Tire size range |
 | `tubeless` | boolean |  | Tubeless ready |
 | `axle` | string |  | Axle standard |
 | `brake` | one of `disc`, `rim` |  | Brake type |
@@ -628,6 +636,22 @@ Template: `handlebar.schema.json`, example: `handlebar.example.json`
 | `drop_mm` | number | mm | Drop |
 | `clamp_mm` | number | mm | Stem clamp diameter |
 | `integrated` | boolean |  | One-piece bar and stem |
+| `torque_nm` | string | Nm | Tightening torque (bolts, clamps, axle) as printed by the maker |
+| `weight_g` | number | g | Weight |
+| `color` | string |  | Colour / finish |
+| `material` | string |  | Main material |
+### Cockpit (bar and stem) (`COCKPIT`)
+
+Template: `cockpit.schema.json`, example: `cockpit.example.json`
+
+| key | type | unit | meaning |
+|---|---|---|---|
+| `integration` | one of `fully integrated`, `semi integrated` |  | Integration |
+| `stem_length_mm` | number | mm | Stem length |
+| `stem_angle_deg` | number | ° | Stem angle |
+| `reach_mm` | number | mm | Reach |
+| `drop_mm` | number | mm | Drop |
+| `width_mm` | number | mm | Width |
 | `torque_nm` | string | Nm | Tightening torque (bolts, clamps, axle) as printed by the maker |
 | `weight_g` | number | g | Weight |
 | `color` | string |  | Colour / finish |

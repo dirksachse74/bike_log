@@ -445,6 +445,14 @@ you disagree. Dates are 2026-10-24 unless noted.
     the bike-level "Inspect Di2 wires" reminder is unchanged. 12-speed Di2 (R9200, R8100, R7150, GRX
     RX825) has no junction box: charging is at the rear derailleur port (Dirk 2026-11-01), so
     DI2_JUNCTION is named "(11-speed Di2)" and no 12-speed template adds one.
+111. **Part properties are edited in the app** (Dirk 2026-11-01: Cockpit and wheelset properties).
+    `meta.component_types[].specs` sends each type's fields (product_specs.fields_for: type fields,
+    torque, weight / colour / material). Add part (`components/Properties.tsx` SpecInputs, `specs.ts`)
+    saves them as the part's own specs; the part page's Properties card shows own values over product
+    values and edits them with notes (PATCH keeps spec keys that are not fields of the type). New type
+    COCKPIT (category Cockpit, slot COCKPIT, torque) for one-piece / semi-integrated bar and stem;
+    integration is an enum. Wheelset: rim_outer_width_mm, internal_width_mm (label "Rim inner width"),
+    rim_depth_front_mm / rim_depth_rear_mm (front and rear can differ, Dirk), tire_size_range (text).
 
 ## Repository
 27. Pushed only to the feature branch `claude/project-thread-6y3mmh` of the private repository. Demo

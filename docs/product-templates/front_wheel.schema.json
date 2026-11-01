@@ -43,7 +43,15 @@
         },
         "internal_width_mm": {
           "type": "number",
-          "description": "Internal rim width (mm)"
+          "description": "Rim inner width (mm)"
+        },
+        "rim_outer_width_mm": {
+          "type": "number",
+          "description": "Rim outer width (mm)"
+        },
+        "tire_size_range": {
+          "type": "string",
+          "description": "Tire size range"
         },
         "tubeless": {
           "type": "boolean",

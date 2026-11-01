@@ -6,8 +6,11 @@
   "list_price": 49.9,
   "currency": "EUR",
   "specs": {
-    "rim_depth_mm": 50,
-    "internal_width_mm": 21,
+    "rim_outer_width_mm": 30,
+    "internal_width_mm": 23.6,
+    "rim_depth_front_mm": 52,
+    "rim_depth_rear_mm": 52,
+    "tire_size_range": "700x28c - 700x47c",
     "brake": "disc",
     "axles": "12x100 / 12x142 thru-axle",
     "weight_g": 250

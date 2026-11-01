@@ -7,6 +7,17 @@ UPDATING.md → "Making a release". New entries go under "Unreleased" as work is
 
 ## Unreleased
 
+### Added
+- **Cockpit (bar and stem)** part type (Dirk 2026-11-01), with its properties: integration (fully or
+  semi integrated), stem length, stem angle, reach, drop and width.
+- **Part properties in the app**: Add part has a folded **Properties** section with the fields of the
+  chosen type (open for Cockpit and Wheelset), and every part page has a **Properties** card with
+  **Edit properties** and a free-text **Notes** field. Values from an imported product show as "from the
+  product" until you enter your own.
+- **Wheelset properties** (Dirk 2026-11-01): rim outer width, rim inner width, rim depth front and rear
+  (they can differ), tire size range (e.g. 700x28c - 700x47c). Wheels get rim outer width and tire size
+  range too. Add part also has a Notes field.
+
 ### Fixed
 - 12-speed Di2 has no junction box (Dirk 2026-11-01): the charging port is in the rear derailleur. The
   junction box part type is now named "Di2 junction box (11-speed Di2)"; the 12-speed templates never add

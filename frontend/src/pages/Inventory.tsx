@@ -12,6 +12,8 @@ import PartTree from '../components/PartTree'
 import { RepairsCard, ReturnForm, SendOutForm, type IncidentPick } from '../components/ServiceOrders'
 import ProductImport from '../components/ProductImport'
 import ShopPicker from '../components/ShopPicker'
+import { PropertiesCard, SpecInputs } from '../components/Properties'
+import { specsFrom } from '../specs'
 import { BrokenSpokes, SpokeCount } from '../components/Spokes'
 import InstallHere from '../components/InstallHere'
 import { DispositionForm, MoveForm, OutcomeChoice, RemoveForm, ReplaceForm } from '../components/PartChange'
@@ -48,6 +50,8 @@ const GROUPSET = 'GROUPSET'
 export function ComponentForm({ onSaved, presetType, onGroupset, onCancel }: { onSaved: (c: ComponentSummary, typedLabel?: string) => void; presetType?: string; onGroupset?: (msg: string) => void; onCancel?: () => void }) {
   const { meta } = useApp()
   const [f, setF] = useState({ component_type: presetType ?? 'CHAIN', label: '', history: 'NEW', start_km: '', start_date: today(), start_estimate: true, install_slot: '', install_at: today(), notes: '', price: '', purchase_date: '', shop: '' })
+  const [props, setProps] = useState<Record<string, string>>({})
+  const [propsOpen, setPropsOpen] = useState(presetType === 'COCKPIT' || presetType === 'WHEELSET')
   const [mount, setMount] = useState<MountTarget | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
@@ -63,6 +67,8 @@ export function ComponentForm({ onSaved, presetType, onGroupset, onCancel }: { o
       if (price !== null) body.price_cents = price
       if (f.purchase_date) body.purchase_date = f.purchase_date
       if (f.shop.trim()) body.shop = f.shop.trim()
+      const specs = specsFrom(specFields, props)
+      if (Object.keys(specs).length) body.specs = specs
       if (f.history === 'KNOWN') Object.assign(body, { starting_km: Number(f.start_km || 0), starting_date: f.start_date, starting_is_estimate: f.start_estimate })
       if (mount) {
         const slot = mount.slot ?? f.install_slot.trim().toUpperCase().replace(/\s+/g, '_')
@@ -76,12 +82,15 @@ export function ComponentForm({ onSaved, presetType, onGroupset, onCancel }: { o
       setBusy(false)
     }
   }
+  const specFields = meta.component_types.find((t) => t.code === f.component_type)?.specs ?? []
   const typeField = (
     <Field label="Type">
       <select
         value={f.component_type}
         onChange={(e) => {
           setF({ ...f, component_type: e.target.value, install_slot: '' })
+          setProps({})
+          setPropsOpen(e.target.value === 'COCKPIT' || e.target.value === 'WHEELSET')
           setMount(null)
         }}
       >
@@ -106,7 +115,7 @@ export function ComponentForm({ onSaved, presetType, onGroupset, onCancel }: { o
     <div className="form">
       <div className="row">
         {typeField}
-        <Field label="Name / label" hint="e.g. Chain A. Specs can be added later.">
+        <Field label="Name / label" hint="e.g. Chain A. Properties can be added later.">
           <input value={f.label} onChange={(e) => setF({ ...f, label: e.target.value })} autoFocus />
         </Field>
       </div>
@@ -121,6 +130,17 @@ export function ComponentForm({ onSaved, presetType, onGroupset, onCancel }: { o
       <div className="row">
         <ShopPicker value={f.shop} onChange={(v) => setF({ ...f, shop: v })} />
       </div>
+      {specFields.length > 0 && (
+        <details className="add-props" open={propsOpen} onToggle={(e) => setPropsOpen((e.target as HTMLDetailsElement).open)}>
+          <summary>
+            Properties <span className="muted small">(optional)</span>
+          </summary>
+          <SpecInputs fields={specFields} raw={props} onChange={setProps} />
+        </details>
+      )}
+      <Field label="Notes (optional)">
+        <textarea rows={2} aria-label="Notes (optional)" value={f.notes} onChange={(e) => setF({ ...f, notes: e.target.value })} />
+      </Field>
       <Field label="Usage before tracking">
         <select value={f.history} onChange={(e) => setF({ ...f, history: e.target.value })}>
           <option value="NEW">New part (0 km)</option>
@@ -840,6 +860,7 @@ interface ComponentDetail extends ComponentSummary {
   events: EventRow[]
   actions: { code: string; name: string }[]
   specs: Record<string, unknown>
+  product_detail: { specs: Record<string, unknown> } | null
   dispositions: { id: number; disposition: string; label: string; effective_on: string; note: string | null; voided: boolean }[]
   inventory: ItemRow
   suggested_outcome: string
@@ -1222,6 +1243,7 @@ export function ComponentDetailPage() {
       </Card>
       <RepairsCard orders={data.service_orders} componentId={data.id} onBack={(o) => setSheet({ back: o })} />
       {data.frame_history && <FrameHistoryCard h={data.frame_history} kind={data.type_name} />}
+      {ctype && ctype.specs.length > 0 && <PropertiesCard componentId={data.id} fields={ctype.specs} specs={data.specs} productSpecs={data.product_detail?.specs ?? null} notes={data.notes ?? null} onChanged={reload} />}
       {data.spokes && <SpokesCard wheelId={data.id} label={data.label} info={data.spokes} onChanged={reload} />}
       {data.chain && <ChainCard comp={data} chain={data.chain} onChanged={reload} />}
       {data.parts.length > 0 && (
