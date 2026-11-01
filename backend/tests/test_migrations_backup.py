@@ -112,3 +112,28 @@ def test_upgrade_to_0010_moves_unedited_pedal_charge_to_80_hours(tmp_path):
     hours = dict(raw.execute("SELECT uuid, interval_hours FROM service_rule").fetchall())
     raw.close()
     assert hours == {"r-1": 80, "r-2": 50}          # your own per-part value is kept
+
+
+def test_upgrade_to_0017_moves_di2_wires_from_other_to_the_groupset(tmp_path):
+    from bikelog.services.assemblies import in_groupset
+    paths = DataPaths(tmp_path / "d").ensure()
+    eng = make_engine(paths.database)
+    _upgrade_to(eng, "0016")
+    raw = sqlite3.connect(paths.database)
+    raw.executescript("""
+        INSERT INTO product (id, uuid, component_type, maker, model, specs_json, created_at)
+            VALUES (1, 'p-1', 'OTHER', 'Shimano', 'EW-SD300 wire set', '{}', 'x');
+        INSERT INTO component (id, uuid, component_type, label, prior_usage, status, product_id, created_at, updated_at)
+            VALUES (1, 'c-1', 'OTHER', 'Ultegra Di2 wires', 'NEW', 'ACTIVE', 1, 'x', 'x'),
+                   (2, 'c-2', 'OTHER', 'Junction A EW-RS910', 'NEW', 'ACTIVE', NULL, 'x', 'x'),
+                   (3, 'c-3', 'OTHER', 'Bell', 'NEW', 'ACTIVE', NULL, 'x', 'x');
+    """)
+    raw.commit()
+    raw.close()
+    upgrade_database(eng, paths)
+    raw = sqlite3.connect(paths.database)
+    types = dict(raw.execute("SELECT label, component_type FROM component").fetchall())
+    product = raw.execute("SELECT component_type FROM product").fetchone()[0]
+    raw.close()
+    assert types == {"Ultegra Di2 wires": "DI2_WIRES", "Junction A EW-RS910": "DI2_JUNCTION", "Bell": "OTHER"}
+    assert product == "DI2_WIRES" and in_groupset("DI2_WIRES") and in_groupset("DI2_JUNCTION")

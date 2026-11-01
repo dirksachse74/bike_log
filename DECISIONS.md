@@ -437,6 +437,12 @@ you disagree. Dates are 2026-10-24 unless noted.
     wheel belongs to it). The count since lacing now counts breaks, not replacements; at the limit
     (default 3) the reminder reads "Replace the wheel (or re-lace it)", and an unreplaced spoke is
     ATTENTION. The spokes' install date defaults to the wheel's purchase date (`laced_on`).
+110. **Di2 wires and junction boxes are groupset parts** (Dirk 2026-11-01: "the di2 wires are part of the
+    groupset"). New types DI2_WIRES (slot DI2_WIRES) and DI2_JUNCTION (slot DI2_JUNCTION), category
+    Controls, so `assemblies.in_groupset` and the bike page's Groupset group include them. Groupset
+    templates use DI2_WIRES. Migration 0017 retypes existing OTHER parts (and their products) that sit in
+    the DI2_WIRES slot or are named Di2 wire / EW-SD… (wires) or junction / EW-JC… / EW-RS910 (junction);
+    the bike-level "Inspect Di2 wires" reminder is unchanged.
 
 ## Repository
 27. Pushed only to the feature branch `claude/project-thread-6y3mmh` of the private repository. Demo

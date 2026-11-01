@@ -82,7 +82,7 @@ TEMPLATE_DI2 = {
          "specs": {"system": "Shimano Di2", "mount": "internal (seatpost or frame)",
                    "charging": "EW-EC300 cable at the rear derailleur port"},
          "mount": {"slot": "BATTERY"}},
-        {"key": "wires", "type": "OTHER", "name": "Di2 wires", "model": "EW-SD300 wire set",
+        {"key": "wires", "type": "DI2_WIRES", "name": "Di2 wires", "model": "EW-SD300 wire set",
          "specs": {"connects": "Battery to front and rear derailleur",
                    "lengths": "Depend on the frame; measure before ordering"},
          "mount": {"slot": "DI2_WIRES"}, "default": False},

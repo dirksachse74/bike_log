@@ -812,6 +812,19 @@ async function bikeTab(page, name) {
     await bs.getByText('None so far.').waitFor({ state: 'attached' })
     check('a wrong broken spoke can be removed', /0 of 3 broken spokes/.test(await bs.innerText()))
     await page.locator('.sheet').getByRole('button', { name: /close/i }).first().click()
+    // Di2 wires belong to the groupset (Dirk 2026-11-01: they showed under "Other")
+    {
+      const r = await page.evaluate(async () => {
+        const t = document.querySelector('meta[name="bikelog-token"]').getAttribute('content')
+        const bike = (await (await fetch('api/bikes')).json()).find((b) => b.name === 'TIME NXR')
+        const res = await fetch('api/components', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-BikeLog-Token': t }, body: JSON.stringify({ component_type: 'DI2_WIRES', label: 'Test Di2 wires', prior_usage: 'NEW', install: { bike_id: bike.id, at: '2026-10-01' } }) })
+        return res.status
+      })
+      await page.reload()
+      const li = await setupItem(page, 'Test Di2 wires')
+      const group = await li.evaluate((el) => el.closest('details.setup-group')?.querySelector('summary')?.textContent ?? '')
+      check('Di2 wires are listed under the groupset, not Other', r === 201 && /Groupset/.test(group), `${r} ${group}`)
+    }
     // wheelset page: front and rear wheel, each unfolding to the parts on it, with links
     await (await setupItem(page, 'Test wheelset')).getByRole('link', { name: 'Test wheelset' }).click()
     const onIt = page.locator('.card').filter({ has: page.getByRole('heading', { name: 'Parts on it' }) })

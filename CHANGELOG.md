@@ -7,6 +7,13 @@ UPDATING.md → "Making a release". New entries go under "Unreleased" as work is
 
 ## Unreleased
 
+### Fixed
+- **Di2 wires showed under "Other"** (Dirk 2026-11-01): there was no part type for them, so the groupset
+  import (and Add part) made them an "Other part". New part types **Di2 wires (set)** and **Di2 junction
+  box / charging port** belong to the groupset (Installed now → Groupset, the groupset page). Wires and
+  junction boxes you already have are moved over automatically on the next start (database update 0017);
+  their km and history stay.
+
 ### Added
 - **Broken spokes per wheel** (Dirk 2026-11-01): a **Broken spoke…** button next to each wheel's spokes
   (bike page) and on the wheel's own page. Log the day it broke and, now or later, the day it was

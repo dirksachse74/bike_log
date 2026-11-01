@@ -124,6 +124,10 @@ COMPONENT_TYPES: dict[str, ComponentType] = {t.code: t for t in [
     ComponentType("SHIFTERS", "Shifters", "Controls", ("SHIFTERS",), torque=True),
     # Di2: one battery on the bike; SRAM AXS: one battery on each derailleur
     ComponentType("BATTERY", "Battery (Di2/AXS)", "Electronics", ("BATTERY",), ("FRONT_DERAILLEUR", "REAR_DERAILLEUR")),
+    # wired Di2: the wires (one set) and a junction box / charging port belong to the shifting, so the
+    # groupset (Dirk 2026-11-01: "the di2 wires are part of the groupset"); they were "Other" before
+    ComponentType("DI2_WIRES", "Di2 wires (set)", "Controls", ("DI2_WIRES",)),
+    ComponentType("DI2_JUNCTION", "Di2 junction box / charging port", "Controls", ("DI2_JUNCTION",)),
     # speed/cadence sensor: on a wheel (moves with the wheelset), on the crankset or on the bike
     ComponentType("SENSOR", "Sensor (speed/cadence)", "Electronics", ("SENSOR_SPEED", "SENSOR_CADENCE"),
                   ("FRONT_WHEEL", "REAR_WHEEL", "CRANKSET")),
