@@ -12,6 +12,8 @@ from sqlalchemy import create_engine, event
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
+import bikelog.changelog  # noqa: F401  (registers the change-log hook on all sessions)
+
 
 def make_engine(db_path: Path) -> Engine:
     engine = create_engine(

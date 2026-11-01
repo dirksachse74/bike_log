@@ -177,3 +177,59 @@ def test_rebuild_is_deterministic(session, setup):
     rebuild_all(session, "Europe/Berlin")
     rebuild_all(session, "Europe/Berlin")
     assert component_totals(session) == before
+
+
+def test_road_ride_on_bike_without_wheels_is_flagged(session, setup):
+    """UAT B1: the km would silently miss the wheels and tires."""
+    b, chain = setup
+    codes = lambda r: {f["code"] for f in rides.ride_row(session, r)["flags"]}
+    road = ride(session, b, "2026-10-05", 80)
+    zwift = ride(session, b, "2026-10-06", 30, sport_type="VirtualRide")
+    assert "NO_WHEELS" in codes(road) and "NO_WHEELS" not in codes(zwift)
+    wheel = part(session, "REAR_WHEEL", "Rear wheel")
+    inv.install(session, wheel.id, bike_id=b.id, at="2026-10-04")
+    session.refresh(road)
+    assert "NO_WHEELS" not in codes(road)
+
+
+def test_rides_before_tracking_or_purchase_are_explained(session):
+    """UAT B3: a reason on the ride, a flag before the purchase date, ride count agrees with km."""
+    b = bike(session, starting_km=850, starting_date="2026-09-01", starting_is_estimate=True)
+    early = ride(session, b, "2025-12-31", 40)
+    before = ride(session, b, "2026-08-20", 30)
+    ride(session, b, "2026-09-10", 50)
+    inv.update_bike(session, b.id, purchase_date="2026-03-01")     # set later: the early ride is flagged now
+    usage = bike_usage(session, b)
+    assert usage["ride_count"] == 1 and usage["rides_before_start"] == 2 and usage["total_km"] == 900
+    detail = rides.ride_detail(session, before)
+    assert detail["counting_note"].startswith("Before tracking started")
+    assert "BEFORE_PURCHASE" in {f["code"] for f in rides.ride_row(session, early)["flags"]}
+    assert "BEFORE_PURCHASE" not in {f["code"] for f in rides.ride_row(session, before)["flags"]}
+
+
+def test_change_notice_is_short_for_many_parts():
+    from bikelog.services.operations import notice
+    deltas = [{"label": f"Part {i}", "delta_km": 80.0} for i in range(20)]
+    assert notice(deltas, False) == "+80.0 km on 20 parts."
+    assert notice(deltas, True).startswith("Preview: Part 0 +80.0 km; Part 1")
+    mixed = deltas[:5] + [{"label": "Rear tire", "delta_km": -10.0}]
+    assert notice(mixed, False) == "6 parts changed: Part 0 +80.0 km; Part 1 +80.0 km; Part 2 +80.0 km; and 3 more."
+
+
+def test_ride_summary_with_bike_totals_this_year_and_month(session):
+    from datetime import date
+
+    from bikelog.services.rides import ride_detail, ride_summary
+    b = bike(session)
+    chain = part(session, "CHAIN", "Chain A")
+    inv.install(session, chain.id, at="2025-12-01", bike_id=b.id)
+    ride(session, b, "2025-12-20", 30, duration_s=3600)
+    ride(session, b, "2026-09-05", 50, duration_s=2 * 3600)
+    r = ride(session, b, "2026-10-12", 40, duration_s=5400)
+    s = ride_summary(session, r, today=date(2026, 10, 26))
+    assert s["km"] == 40 and s["hours"] == 1.5
+    assert s["bike"]["total_km"] == 120 and s["bike"]["total_hours"] == 4.5
+    assert s["bike"]["year"] == {"label": "2026", "km": 90, "hours": 3.5, "rides": 2}
+    assert s["bike"]["month"] == {"label": "October 2026", "km": 40, "hours": 1.5, "rides": 1}
+    eq = ride_detail(session, r)["equipment"]
+    assert eq[0]["label"] == "Chain A" and eq[0]["hours"] == 1.5

@@ -17,3 +17,6 @@ packaging/output/
 bikelog-data/
 frontend/.env
 *.log
+
+# browser test output
+e2e-out/

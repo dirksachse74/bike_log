@@ -1,0 +1,31 @@
+{
+  "format": "bikelog.product.v1",
+  "component_type": "BRAKE_PADS",
+  "maker": "Example maker",
+  "model": "Example brake pads 1",
+  "list_price": 49.9,
+  "currency": "EUR",
+  "specs": {
+    "compound": "resin",
+    "cooling_fins": true,
+    "fits": "BR-R8170, BR-R9270",
+    "min_thickness_mm": 0.5,
+    "weight_g": 250
+  },
+  "source": {
+    "url": "https://example.com/product-page",
+    "retrieved_at": "2026-10-25",
+    "tool": "my-scraper 1.0"
+  },
+  "verified": false,
+  "notes": "Optional free text",
+  "items": [
+    {
+      "label": "Spare brake pads 1",
+      "price": 44.9,
+      "purchase_date": "2026-10-20",
+      "prior_usage": "NEW",
+      "storage_location": "Workshop drawer"
+    }
+  ]
+}

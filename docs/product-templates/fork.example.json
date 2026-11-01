@@ -1,0 +1,33 @@
+{
+  "format": "bikelog.product.v1",
+  "component_type": "FORK",
+  "maker": "Example maker",
+  "model": "Example fork (separate) 1",
+  "list_price": 49.9,
+  "currency": "EUR",
+  "specs": {
+    "material": "carbon",
+    "steerer": "1-1/8\" to 1.5\" tapered",
+    "front_axle": "12x100 thru-axle",
+    "brake_mount": "flat mount",
+    "rake_mm": 45,
+    "max_tire_mm": 32,
+    "weight_g": 250
+  },
+  "source": {
+    "url": "https://example.com/product-page",
+    "retrieved_at": "2026-10-25",
+    "tool": "my-scraper 1.0"
+  },
+  "verified": false,
+  "notes": "Optional free text",
+  "items": [
+    {
+      "label": "Spare fork (separate) 1",
+      "price": 44.9,
+      "purchase_date": "2026-10-20",
+      "prior_usage": "NEW",
+      "storage_location": "Workshop drawer"
+    }
+  ]
+}

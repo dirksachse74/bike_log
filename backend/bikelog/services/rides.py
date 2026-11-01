@@ -7,22 +7,23 @@ ride_source; local corrections go to ride_override and survive re-imports.
 from __future__ import annotations
 
 import json
+from datetime import date
 
-from sqlalchemy import delete, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
-from bikelog.catalog import COMPONENT_TYPES
+from bikelog.catalog import COMPONENT_TYPES, RIDE_CONDITIONS
 from bikelog.models import (
-    Bike, Component, Ride, RideEquipment, RideFlag, RideOverride, RideSource, UsageContribution, UsageProfile,
+    Bike, Component, JournalEntry, Ride, RideEquipment, RideFlag, RideOverride, RideSource, UsageContribution, UsageProfile,
 )
 from bikelog.services import allocation, settings
 from bikelog.services.errors import DomainError, NotFound
 from bikelog.services.inventory import get_bike, get_component
-from bikelog.timeutil import parse_when
+from bikelog.timeutil import parse_when, today_local
 
 KM_PER_MILE = 1.609344
 EDITABLE_FIELDS = ("name", "when", "distance_km", "duration_s", "bike_id", "sport_type", "usage_profile_code",
-                   "assignment_uncertain", "uncertainty_note", "notes")
+                   "assignment_uncertain", "uncertainty_note", "notes", "conditions")
 # fields an import may set; anything in ride_override wins over these
 SOURCE_FIELDS = ("name", "when", "distance_km", "duration_s", "bike_id", "sport_type", "usage_profile_code")
 
@@ -86,6 +87,10 @@ def _apply_fields(session: Session, ride: Ride, values: dict) -> None:
             setattr(ride, k, values[k])
     if "assignment_uncertain" in values:
         ride.assignment_uncertain = bool(values["assignment_uncertain"])
+    if "conditions" in values:
+        if values["conditions"] is not None and values["conditions"] not in RIDE_CONDITIONS:
+            raise DomainError(f"conditions must be one of {', '.join(RIDE_CONDITIONS)} (or empty)")
+        ride.conditions = values["conditions"]
 
 
 def _allocate(session: Session, ride: Ride) -> None:
@@ -96,7 +101,7 @@ def _allocate(session: Session, ride: Ride) -> None:
 def add_manual_ride(session: Session, *, bike_id: int | None, when: str, distance: float | None, unit: str = "km",
                     duration_s: int | None = None, name: str | None = None, sport_type: str = "Ride",
                     usage_profile_code: str | None = None, assignment_uncertain: bool = False,
-                    uncertainty_note: str | None = None, notes: str | None = None,
+                    uncertainty_note: str | None = None, notes: str | None = None, conditions: str | None = None,
                     equipment: dict[str, int | None] | None = None) -> Ride:
     """Bike + date + distance is enough. Date-only rides get no invented clock time."""
     if bike_id is None and not assignment_uncertain:
@@ -104,14 +109,23 @@ def add_manual_ride(session: Session, *, bike_id: int | None, when: str, distanc
     ride = Ride(source_kind="MANUAL", sport_type=sport_type or "Ride")
     values = {"when": when, "distance_km": to_km(distance, unit), "duration_s": duration_s, "bike_id": bike_id,
               "name": name, "assignment_uncertain": assignment_uncertain, "uncertainty_note": uncertainty_note,
-              "notes": notes, "usage_profile_code": usage_profile_code or _default_profile(session, sport_type)}
+              "notes": notes, "conditions": conditions,
+              "usage_profile_code": usage_profile_code or _default_profile(session, sport_type)}
     _apply_fields(session, ride, values)
     session.add(ride)
     session.flush()
     for slot, cid in (equipment or {}).items():
         _put_equipment(session, ride, slot, cid)
     _allocate(session, ride)
+    _frames_follow(session, ride.bike_id)
     return ride
+
+
+def _frames_follow(session: Session, bike_id: int | None) -> None:
+    """A ride older than the bike's first day moves its automatic frame and fork back (services/frames.py)."""
+    if bike_id is not None:
+        from bikelog.services import frames
+        frames.ensure_frames(session, bike_id)
 
 
 def source_values(session: Session, ride: Ride) -> dict | None:
@@ -142,6 +156,7 @@ def edit_ride(session: Session, ride_id: int, changes: dict) -> Ride:
                     session.add(RideOverride(ride_id=ride.id, field=field, value_json=json.dumps(new)))
     _apply_fields(session, ride, changes)
     _allocate(session, ride)
+    _frames_follow(session, ride.bike_id)
     return ride
 
 
@@ -160,6 +175,22 @@ def exclude_ride(session: Session, ride_id: int, reason: str | None = None) -> R
         ride.exclusion_reason = reason or "removed by user"
         _allocate(session, ride)
     return ride
+
+
+def assign_bike(session: Session, ride_ids: list[int], bike_id: int | None) -> dict:
+    """Set (or clear) the bike of several rides at once. For imported rides this is a local override:
+    re-sync and re-read keep it; setting the bike back to the imported value removes the override."""
+    if not ride_ids:
+        raise DomainError("Pick at least one ride")
+    if bike_id is not None and not session.get(Bike, bike_id):
+        raise DomainError("Bike not found")
+    changed = 0
+    for rid in dict.fromkeys(ride_ids):
+        ride = get_ride(session, rid)
+        if ride.bike_id != bike_id or ride.assignment_uncertain:
+            edit_ride(session, ride.id, {"bike_id": bike_id, "assignment_uncertain": False})
+            changed += 1
+    return {"changed": changed, "rides": len(set(ride_ids))}
 
 
 def restore_ride(session: Session, ride_id: int) -> Ride:
@@ -211,7 +242,15 @@ def possible_duplicates(session: Session, ride: Ride) -> list[int]:
     return [o.id for o in others if abs(o.distance_km - ride.distance_km) <= max(0.5, pct * ride.distance_km)]
 
 
-def ride_row(session: Session, ride: Ride, bikes: dict[int, str] | None = None) -> dict:
+def _incident_count(session: Session, ride_id: int) -> int:
+    """Incidents, not entries: one incident affecting two tires is one incident."""
+    return session.scalar(select(func.count(func.distinct(func.coalesce(JournalEntry.incident_group,
+                                                                         JournalEntry.uuid)))).where(
+        JournalEntry.ride_id == ride_id, JournalEntry.voided_at.is_(None))) or 0
+
+
+def ride_row(session: Session, ride: Ride, bikes: dict[int, str] | None = None,
+             incident_counts: dict[int, int] | None = None) -> dict:
     bikes = bikes if bikes is not None else dict(session.execute(select(Bike.id, Bike.name)).all())
     flags = [{"code": f.code, "slot": f.slot, "detail": f.detail}
              for f in session.scalars(select(RideFlag).where(RideFlag.ride_id == ride.id))]
@@ -222,6 +261,8 @@ def ride_row(session: Session, ride: Ride, bikes: dict[int, str] | None = None) 
                                 "Exclude one if it is the same outing."})
     profile = session.get(UsageProfile, ride.usage_profile_id) if ride.usage_profile_id else None
     overridden = list(session.scalars(select(RideOverride.field).where(RideOverride.ride_id == ride.id)))
+    src = source_values(session, ride) if ride.source_kind != "MANUAL" else None
+    source_bike_id = src.get("bike_id") if src else None
     return {
         "id": ride.id, "uuid": ride.uuid, "name": ride.name, "ride_date": ride.ride_date,
         "start_time_utc": ride.start_time_utc, "date_only": ride.start_time_utc is None,
@@ -231,7 +272,13 @@ def ride_row(session: Session, ride: Ride, bikes: dict[int, str] | None = None) 
         "source_kind": ride.source_kind, "status": ride.status, "inclusion": ride.inclusion,
         "exclusion_reason": ride.exclusion_reason, "assignment_uncertain": ride.assignment_uncertain,
         "uncertainty_note": ride.uncertainty_note, "notes": ride.notes, "flags": flags,
+        "conditions": ride.conditions, "incidents": incident_counts.get(ride.id, 0) if incident_counts is not None
+        else _incident_count(session, ride.id),
         "overridden_fields": overridden,
+        "removed": ride.inclusion == "EXCLUDED" or ride.status != "ACTIVE",
+        "bike_overridden": "bike_id" in overridden,
+        "source_bike_id": source_bike_id if src else None,
+        "source_bike": bikes.get(source_bike_id) if source_bike_id else (src or {}).get("unmatched_bike"),
     }
 
 
@@ -241,24 +288,80 @@ def ride_detail(session: Session, ride: Ride) -> dict:
         Component, Component.id == UsageContribution.component_id).where(UsageContribution.ride_id == ride.id)
         .order_by(UsageContribution.slot)).all()
     row["equipment"] = [{"component_id": c.component_id, "label": label, "component_type": ctype, "slot": c.slot,
-                         "km": c.km, "basis": c.basis, "certain": c.certain, "state": c.state, "note": c.note}
+                         "km": c.km, "hours": round(c.duration_s / 3600, 2) if c.duration_s is not None else None,
+                         "basis": c.basis, "certain": c.certain, "state": c.state, "note": c.note}
                         for c, label, ctype in contribs]
     row["explicit_equipment"] = [{"slot": e.slot, "component_id": e.component_id, "note": e.note}
                                  for e in session.scalars(select(RideEquipment).where(RideEquipment.ride_id == ride.id))]
     row["source_values"] = source_values(session, ride)
+    row["counting_note"] = _counting_note(session, ride, row["equipment"])
+    row["summary"] = ride_summary(session, ride)
     return row
 
 
+def _period(session: Session, bike_id: int, prefix: str) -> dict:
+    """Counted rides of a bike whose local date starts with ``prefix`` ("2026" or "2026-10")."""
+    km, secs, n = session.execute(select(func.sum(Ride.distance_km), func.sum(Ride.duration_s), func.count()).where(
+        Ride.bike_id == bike_id, Ride.status == "ACTIVE", Ride.inclusion == "INCLUDED",
+        Ride.ride_date.like(prefix + "%"))).one()
+    return {"km": round(float(km or 0), 1), "hours": round((secs or 0) / 3600, 1), "rides": int(n)}
+
+
+def ride_summary(session: Session, ride: Ride, today: date | None = None) -> dict:
+    """Short summary for the ride page: this ride, and its bike in total, this year and this month (today's
+    calendar year and month in the app's timezone). Hours are recorded ride time; km before tracking (the
+    bike's starting value) have no hours."""
+    from bikelog.services.usage import bike_usage
+    today = today or today_local(settings.tz(session))
+    out = {"km": ride.distance_km, "hours": round(ride.duration_s / 3600, 2) if ride.duration_s else None,
+           "bike": None}
+    if ride.bike_id is not None:
+        bike = get_bike(session, ride.bike_id)
+        u = bike_usage(session, bike)
+        year, month = f"{today.year:04d}", f"{today.year:04d}-{today.month:02d}"
+        out["bike"] = {"name": bike.name, "total_km": u["total_km"], "total_hours": round(u["hours"], 1),
+                       "starting_km": u["starting_km"], "starting_is_estimate": u["starting_is_estimate"],
+                       "year": {"label": year, **_period(session, bike.id, year)},
+                       "month": {"label": today.strftime("%B %Y"), **_period(session, bike.id, month)}}
+    return out
+
+
+def _counting_note(session: Session, ride: Ride, equipment: list[dict]) -> str | None:
+    """Why a counted ride gives the bike or its parts no km (UAT B3)."""
+    if not ride.bike_id or ride.inclusion != "INCLUDED" or ride.status != "ACTIVE":
+        return None
+    from bikelog.services.usage import starting_value
+    start = starting_value(session, bike_id=ride.bike_id)
+    if start and ride.sort_utc < start.effective_utc:
+        b = session.get(Bike, ride.bike_id)
+        return (f"Before tracking started: {b.name}'s starting value ({'≈' if start.is_estimate else ''}"
+                f"{start.km:,.0f} km on {start.effective_at[:10]}) already includes this ride, so it adds no km.")
+    if equipment and all(e["state"] == "IN_BASELINE" for e in equipment):
+        return "Every part on the bike has a 'km from before' value dated after this ride, which already includes it."
+    if not equipment:
+        return "No parts were on the bike on this day, so only the bike's own total counts it."
+    return None
+
+
 def list_rides(session: Session, *, bike_id: int | None = None, include_excluded: bool = True,
-               flagged_only: bool = False, limit: int = 200, offset: int = 0) -> list[dict]:
+               flagged_only: bool = False, limit: int = 200, offset: int = 0, view: str = "all",
+               unassigned: bool = False) -> list[dict]:
+    """view: "active" (counted rides), "removed" (removed by you or deleted at the source) or "all"."""
     q = select(Ride)
     if bike_id is not None:
         q = q.where(Ride.bike_id == bike_id)
-    if not include_excluded:
-        q = q.where(Ride.inclusion == "INCLUDED")
+    if unassigned:
+        q = q.where(Ride.bike_id.is_(None))
+    if not include_excluded or view == "active":
+        q = q.where(Ride.inclusion == "INCLUDED", Ride.status == "ACTIVE")
+    elif view == "removed":
+        q = q.where((Ride.inclusion == "EXCLUDED") | (Ride.status != "ACTIVE"))
     q = q.order_by(Ride.sort_utc.desc(), Ride.id.desc()).limit(limit).offset(offset)
     bikes = dict(session.execute(select(Bike.id, Bike.name)).all())
-    rows = [ride_row(session, r, bikes) for r in session.scalars(q)]
+    counts = dict(session.execute(select(JournalEntry.ride_id, func.count(func.distinct(func.coalesce(
+        JournalEntry.incident_group, JournalEntry.uuid)))).where(
+        JournalEntry.ride_id.is_not(None), JournalEntry.voided_at.is_(None)).group_by(JournalEntry.ride_id)).all())
+    rows = [ride_row(session, r, bikes, counts) for r in session.scalars(q)]
     if flagged_only:
         rows = [r for r in rows if r["flags"]]
     return rows

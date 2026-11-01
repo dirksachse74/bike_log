@@ -1,0 +1,39 @@
+# INACTIVE EXAMPLE. Not in .github/workflows, so it never runs. Move it to
+# .github/workflows/windows-build.yml only after Dirk agrees to use GitHub Actions minutes.
+# It builds the Windows package on a clean windows-latest runner (Python is used only to build)
+# and checks launch, persistence across restart, and upgrade from a v0.1.0 build.
+name: windows-build
+on: workflow_dispatch
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.13" }
+      - uses: actions/setup-node@v4
+        with: { node-version: "22" }
+      - run: python -m pip install -r requirements-dev.txt
+      - run: python -m pytest -q backend/tests
+      - run: npm ci && npm run build
+        working-directory: frontend
+      - run: pyinstaller --noconfirm --clean packaging/bikelog.spec
+      - name: Smoke test the frozen app (launch, health, restart persistence)
+        shell: pwsh
+        run: |
+          $env:BIKELOG_DATA_DIR = "$env:RUNNER_TEMP\bikelog-data"
+          $p = Start-Process dist\BikeLog\BikeLog.exe -ArgumentList '--no-browser','--port','8765' -PassThru
+          Start-Sleep 8
+          $h = Invoke-RestMethod http://127.0.0.1:8765/api/health
+          if (-not $h.ok) { throw "health failed" }
+          $html = (Invoke-WebRequest http://127.0.0.1:8765/).Content
+          $tok = [regex]::Match($html, 'bikelog-token" content="([^"]+)').Groups[1].Value
+          Invoke-RestMethod -Method Post -Uri http://127.0.0.1:8765/api/bikes -Headers @{ 'X-BikeLog-Token' = $tok } -ContentType 'application/json' -Body '{"name":"CI bike"}'
+          Stop-Process $p.Id; Start-Sleep 3
+          $p = Start-Process dist\BikeLog\BikeLog.exe -ArgumentList '--no-browser','--port','8765' -PassThru
+          Start-Sleep 8
+          $b = Invoke-RestMethod http://127.0.0.1:8765/api/bikes
+          if ($b[0].name -ne 'CI bike') { throw "data lost across restart" }
+          Stop-Process $p.Id
+      - uses: actions/upload-artifact@v4
+        with: { name: BikeLog-windows, path: dist/BikeLog }

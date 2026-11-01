@@ -45,6 +45,7 @@ class Product(Base):
     specs_json: Mapped[str] = mapped_column(Text, default="{}")
     spec_source: Mapped[str | None] = mapped_column(Text)     # e.g. URL or "manual"
     spec_version: Mapped[str | None] = mapped_column(Text)    # e.g. "2026 datasheet"
+    list_price_cents: Mapped[int | None] = mapped_column(Integer)  # reference price, not money spent
     notes: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[str] = mapped_column(String(20), default=utc_now)
 
@@ -61,8 +62,32 @@ class Bike(Base):
     status: Mapped[str] = mapped_column(String(16), default="ACTIVE")
     strava_gear_id: Mapped[str | None] = mapped_column(String(32), unique=True)
     notes: Mapped[str | None] = mapped_column(Text)
+    purchase_price_cents: Mapped[int | None] = mapped_column(Integer)  # initial cost
+    purchase_date: Mapped[str | None] = mapped_column(String(10))
     created_at: Mapped[str] = mapped_column(String(20), default=utc_now)
     updated_at: Mapped[str] = mapped_column(String(20), default=utc_now, onupdate=utc_now)
+    # ELECTRONIC / MECHANICAL (catalog.SHIFTING_TYPES); NULL = electronic if a battery is fitted, else unknown
+    shifting: Mapped[str | None] = mapped_column(String(12))
+
+
+class PurchaseBundle(Base):
+    """Parts bought together at one price, at one shop, on one date (e.g. a whole groupset). The price
+    belongs to the bundle, not to its parts; parts replaced later get their own price and the originals
+    stay members. Never deleted; a bundle entered by mistake is voided (its parts are released)."""
+    __tablename__ = "purchase_bundle"
+    __table_args__ = (CheckConstraint("price_cents IS NULL OR price_cents >= 0", name="ck_bundle_price"),)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    uuid: Mapped[str] = mapped_column(String(36), unique=True, default=new_uuid)
+    name: Mapped[str] = mapped_column(Text)
+    merchant: Mapped[str | None] = mapped_column(Text)
+    purchased_on: Mapped[str | None] = mapped_column(String(10))
+    price_cents: Mapped[int | None] = mapped_column(Integer)
+    notes: Mapped[str | None] = mapped_column(Text)
+    work_session_id: Mapped[int | None] = mapped_column(ForeignKey("work_session.id"))
+    created_at: Mapped[str] = mapped_column(String(20), default=utc_now)
+    updated_at: Mapped[str] = mapped_column(String(20), default=utc_now, onupdate=utc_now)
+    voided_at: Mapped[str | None] = mapped_column(String(20))
+    void_reason: Mapped[str | None] = mapped_column(Text)
 
 
 class Component(Base):
@@ -90,8 +115,159 @@ class Component(Base):
     notes: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[str] = mapped_column(String(20), default=utc_now)
     updated_at: Mapped[str] = mapped_column(String(20), default=utc_now, onupdate=utc_now)
+    # Current answer to "what happened to it" while not installed (latest component_disposition row).
+    # Valid values are enforced by a trigger (catalog.DISPOSITIONS); see migration 0003.
+    disposition: Mapped[str] = mapped_column(String(20), default="STORED", server_default="STORED")
+    disposition_on: Mapped[str | None] = mapped_column(String(10))
+    # Bought in this work session (price_cents is that purchase), or drawn from counted stock (no own cost).
+    purchase_session_id: Mapped[int | None] = mapped_column(Integer)
+    from_stock_txn_id: Mapped[int | None] = mapped_column(Integer)
+    storage_location: Mapped[str | None] = mapped_column(Text)   # where the spare is kept
+    # Wheels only: how the tire on it is run (TUBE, TUBELESS, TUBULAR; NULL = not set). It lives on the
+    # wheel so it moves with the wheel (wheelset) between bikes; tires inherit it. Valid values: trigger.
+    tire_setup: Mapped[str | None] = mapped_column(String(12))
+    # Tires only: the pressure you run, as free text ("4.8 bar"). A note shown on the bike page, no reminder.
+    pressure_note: Mapped[str | None] = mapped_column(Text)
+    # Bought together with other parts at one price (e.g. a groupset); the bundle carries the price.
+    bundle_id: Mapped[int | None] = mapped_column(ForeignKey("purchase_bundle.id"), index=True)
+    # How the part is marked physically, to tell identical parts apart (Chain A: "1 punch dot").
+    mark: Mapped[str | None] = mapped_column(Text)
+    # Chains only: the bike whose chain rotation this chain is in (services/chains.py); NULL = none.
+    rotation_bike_id: Mapped[int | None] = mapped_column(ForeignKey("bike.id"))
+    # Last day of the warranty (frames above all); shown on the part page.
+    warranty_until: Mapped[str | None] = mapped_column(String(10))
 
     product: Mapped[Product | None] = relationship()
+
+
+class ComponentDisposition(Base):
+    """History of what happened to a part when it was not on a bike: stored, awaiting repair, retired,
+    discarded, sold. Discarding never deletes the component or its history."""
+    __tablename__ = "component_disposition"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    component_id: Mapped[int] = mapped_column(ForeignKey("component.id"), index=True)
+    disposition: Mapped[str] = mapped_column(String(20))
+    previous_disposition: Mapped[str | None] = mapped_column(String(20))
+    effective_on: Mapped[str] = mapped_column(String(10))
+    note: Mapped[str | None] = mapped_column(Text)
+    work_session_id: Mapped[int | None] = mapped_column(ForeignKey("work_session.id"))
+    created_at: Mapped[str] = mapped_column(String(20), default=utc_now)
+    voided_at: Mapped[str | None] = mapped_column(String(20))   # its work session was undone
+
+
+class JournalEntry(Base):
+    """A dated free-text note on a bike or a part (e.g. an issue noticed). Entries on a part also record
+    the bike it was on. Never deleted: a wrong entry is voided and stays in the history."""
+    __tablename__ = "journal_entry"
+    __table_args__ = (CheckConstraint("kind IN ('NOTE','ISSUE')", name="ck_journal_kind"),
+                      CheckConstraint("bike_id IS NOT NULL OR component_id IS NOT NULL", name="ck_journal_target"))
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    uuid: Mapped[str] = mapped_column(String(36), unique=True, default=new_uuid)
+    bike_id: Mapped[int | None] = mapped_column(ForeignKey("bike.id"), index=True)
+    component_id: Mapped[int | None] = mapped_column(ForeignKey("component.id"), index=True)
+    entry_on: Mapped[str] = mapped_column(String(10))
+    kind: Mapped[str] = mapped_column(String(8), default="NOTE")
+    text: Mapped[str] = mapped_column(Text)
+    resolved_on: Mapped[str | None] = mapped_column(String(10))   # issues only
+    ride_id: Mapped[int | None] = mapped_column(ForeignKey("ride.id"), index=True)   # incident on this ride
+    incident_type: Mapped[str | None] = mapped_column(String(16))  # catalog.INCIDENT_TYPES; set = an incident
+    # One incident can affect several things (two flats): one entry per affected thing, same group id.
+    incident_group: Mapped[str | None] = mapped_column(String(36), index=True)
+    # What was affected when it is not a recorded part: a body area ("Numb hands") or a position whose part
+    # is not in Bike Log ("Front tire"). NULL with no component_id = the whole bike.
+    affected: Mapped[str | None] = mapped_column(Text)
+    # What was done about this affected part (incidents): REPLACED or REPAIRED (patched, adjusted); NULL =
+    # nothing yet. The work session holds the part change / stock use / patch event and undoes the fix.
+    repair: Mapped[str | None] = mapped_column(String(12))
+    repair_text: Mapped[str | None] = mapped_column(Text)
+    repaired_on: Mapped[str | None] = mapped_column(String(10))
+    repair_session_id: Mapped[int | None] = mapped_column(ForeignKey("work_session.id"))
+    created_at: Mapped[str] = mapped_column(String(20), default=utc_now)
+    updated_at: Mapped[str | None] = mapped_column(String(20))
+    voided_at: Mapped[str | None] = mapped_column(String(20))
+    void_reason: Mapped[str | None] = mapped_column(Text)
+
+
+class ChangeLog(Base):
+    """Change history of bikes and parts: one row per changed field (old -> new) or per event (created,
+    installed, removed, voided), with when and who/what made it. Written automatically on every flush
+    (bikelog.changelog); rows are never updated or deleted (triggers)."""
+    __tablename__ = "change_log"
+    __table_args__ = (CheckConstraint("bike_id IS NOT NULL OR component_id IS NOT NULL", name="ck_change_log_target"),)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    changed_at: Mapped[str] = mapped_column(String(20), default=utc_now)
+    # plain ids, no foreign keys: a part deleted right after a typo keeps its CREATED/DELETED rows
+    bike_id: Mapped[int | None] = mapped_column(Integer, index=True)
+    component_id: Mapped[int | None] = mapped_column(Integer, index=True)
+    action: Mapped[str] = mapped_column(String(16))         # CREATED, CHANGED, INSTALLED, REMOVED, ...
+    field: Mapped[str | None] = mapped_column(String(64))
+    old_value: Mapped[str | None] = mapped_column(Text)
+    new_value: Mapped[str | None] = mapped_column(Text)
+    source: Mapped[str] = mapped_column(String(32))         # who: APP, COMMAND_LINE, STRAVA, CSV_IMPORT, ...
+    via: Mapped[str | None] = mapped_column(String(64))     # the operation (e.g. groupset.import)
+
+
+class ProductCompatibility(Base):
+    """Which bikes a product fits. verified=False is a plausible but unchecked match."""
+    __tablename__ = "product_compatibility"
+    __table_args__ = (UniqueConstraint("product_id", "bike_id", name="uq_product_bike"),)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    product_id: Mapped[int] = mapped_column(ForeignKey("product.id"), index=True)
+    bike_id: Mapped[int] = mapped_column(ForeignKey("bike.id"))
+    verified: Mapped[bool] = mapped_column(Boolean, default=False)
+    note: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[str] = mapped_column(String(20), default=utc_now)
+
+
+class ServiceOrder(Base):
+    """A part sent away for service or repair (a shop, the maker): where it came from, why, and what came
+    back. While it is away it is off the bike (no km). The return records the outcome, the cost (as a
+    REPAIR maintenance event, so it counts in the bike's costs once) and, for a warranty replacement, the
+    new part. Never deleted; undoing the send or return work session voids or reopens it."""
+    __tablename__ = "service_order"
+    __table_args__ = (CheckConstraint("status IN ('OUT','BACK','VOIDED')", name="ck_service_order_status"),
+                      CheckConstraint("cost_cents IS NULL OR cost_cents >= 0", name="ck_service_order_cost"))
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    uuid: Mapped[str] = mapped_column(String(36), unique=True, default=new_uuid)
+    component_id: Mapped[int] = mapped_column(ForeignKey("component.id"), index=True)
+    bike_id: Mapped[int | None] = mapped_column(ForeignKey("bike.id"))           # the bike it came from
+    from_bike_id: Mapped[int | None] = mapped_column(ForeignKey("bike.id"))      # its position: on a bike ...
+    from_parent_id: Mapped[int | None] = mapped_column(ForeignKey("component.id"))  # ... or on a part
+    from_slot: Mapped[str | None] = mapped_column(String(40))
+    sent_at: Mapped[str] = mapped_column(String(20))
+    sent_on: Mapped[str] = mapped_column(String(10))
+    shop: Mapped[str | None] = mapped_column(Text)
+    reason: Mapped[str | None] = mapped_column(Text)
+    incident_group: Mapped[str | None] = mapped_column(String(36))
+    send_session_id: Mapped[int | None] = mapped_column(ForeignKey("work_session.id"))
+    status: Mapped[str] = mapped_column(String(8), default="OUT")
+    returned_at: Mapped[str | None] = mapped_column(String(20))
+    returned_on: Mapped[str | None] = mapped_column(String(10))
+    outcome: Mapped[str | None] = mapped_column(String(20))
+    cost_cents: Mapped[int | None] = mapped_column(Integer)
+    receipt_ref: Mapped[str | None] = mapped_column(Text)
+    return_notes: Mapped[str | None] = mapped_column(Text)
+    return_session_id: Mapped[int | None] = mapped_column(ForeignKey("work_session.id"))
+    event_id: Mapped[int | None] = mapped_column(ForeignKey("maintenance_event.id"))
+    replacement_id: Mapped[int | None] = mapped_column(ForeignKey("component.id"))
+    created_at: Mapped[str] = mapped_column(String(20), default=utc_now)
+
+
+class WorkSession(Base):
+    """One maintenance session at the bench. Groups the separate transactions it produced (purchases,
+    supplies used, installs, removals, dispositions, service events) without merging them, so stock
+    and cost are each counted once."""
+    __tablename__ = "work_session"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    uuid: Mapped[str] = mapped_column(String(36), unique=True, default=new_uuid)
+    performed_at: Mapped[str] = mapped_column(String(20))
+    performed_on: Mapped[str] = mapped_column(String(10))
+    bike_id: Mapped[int | None] = mapped_column(ForeignKey("bike.id"))
+    title: Mapped[str | None] = mapped_column(Text)
+    notes: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[str] = mapped_column(String(20), default=utc_now)
+    undone_at: Mapped[str | None] = mapped_column(String(20))
+    undo_reason: Mapped[str | None] = mapped_column(Text)
 
 
 class Installation(Base):
@@ -122,6 +298,10 @@ class Installation(Base):
     voided_at: Mapped[str | None] = mapped_column(String(20))  # correction: record was wrong
     void_reason: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[str] = mapped_column(String(20), default=utc_now)
+    removal_outcome: Mapped[str | None] = mapped_column(String(20))  # a DISPOSITIONS code, or MOVED
+    removal_undone_at: Mapped[str | None] = mapped_column(String(20))  # a removal reopened by an undo
+    install_session_id: Mapped[int | None] = mapped_column(Integer)
+    removal_session_id: Mapped[int | None] = mapped_column(Integer)
 
     component: Mapped[Component] = relationship(foreign_keys=[component_id])
 
@@ -189,6 +369,7 @@ class Ride(Base):
     assignment_uncertain: Mapped[bool] = mapped_column(Boolean, default=False)
     uncertainty_note: Mapped[str | None] = mapped_column(Text)
     notes: Mapped[str | None] = mapped_column(Text)
+    conditions: Mapped[str | None] = mapped_column(String(8))   # DRY / WET (catalog.RIDE_CONDITIONS); local only
     created_at: Mapped[str] = mapped_column(String(20), default=utc_now)
     updated_at: Mapped[str] = mapped_column(String(20), default=utc_now, onupdate=utc_now)
 
@@ -282,24 +463,30 @@ class MaintenanceEvent(Base):
     voided_at: Mapped[str | None] = mapped_column(String(20))
     void_reason: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[str] = mapped_column(String(20), default=utc_now)
+    work_session_id: Mapped[int | None] = mapped_column(Integer, index=True)
 
 
 class ServiceRule(Base):
-    """Type-level default or component-level rule. A component rule with the same rule_code replaces
-    the type rule for that component (active=False disables it)."""
+    """Type-level default (component_type; "BIKE" for bike-level rules), component-level or bike-level rule.
+    A component (bike) rule with the same rule_code replaces the type rule for that part (bike);
+    active=False disables it."""
     __tablename__ = "service_rule"
     __table_args__ = (
-        CheckConstraint("(component_type IS NULL) <> (component_id IS NULL)", name="ck_rule_target"),
-        CheckConstraint("trigger IN ('INTERVAL','CYCLE_WINDOW')", name="ck_rule_trigger"),
+        CheckConstraint("(component_type IS NOT NULL) + (component_id IS NOT NULL) + (bike_id IS NOT NULL) = 1",
+                        name="ck_rule_target"),
+        CheckConstraint("trigger IN ('INTERVAL','CYCLE_WINDOW','PARENT_COUNT','ONCE_AFTER_INSTALL')",
+                        name="ck_rule_trigger"),
         CheckConstraint("origin IN ('DEFAULT','MANUFACTURER','PERSONAL')", name="ck_rule_origin"),
-        CheckConstraint("trigger <> 'INTERVAL' OR interval_km IS NOT NULL OR interval_months IS NOT NULL",
-                        name="ck_rule_interval"),
+        CheckConstraint("trigger <> 'INTERVAL' OR interval_km IS NOT NULL OR interval_months IS NOT NULL "
+                        "OR interval_hours IS NOT NULL", name="ck_rule_interval"),
+        CheckConstraint("trigger <> 'PARENT_COUNT' OR interval_count >= 1", name="ck_rule_count"),
         CheckConstraint("trigger <> 'CYCLE_WINDOW' OR (window_min_km IS NOT NULL AND window_max_km >= window_min_km "
                         "AND cycle_action_code IS NOT NULL)", name="ck_rule_window"),
         Index("uq_rule_type_code", "component_type", "rule_code", unique=True,
               sqlite_where=text("component_type IS NOT NULL")),
         Index("uq_rule_component_code", "component_id", "rule_code", unique=True,
               sqlite_where=text("component_id IS NOT NULL")),
+        Index("uq_rule_bike_code", "bike_id", "rule_code", unique=True, sqlite_where=text("bike_id IS NOT NULL")),
     )
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     uuid: Mapped[str] = mapped_column(String(36), unique=True, default=new_uuid)
@@ -307,8 +494,9 @@ class ServiceRule(Base):
     name: Mapped[str] = mapped_column(Text)
     component_type: Mapped[str | None] = mapped_column(String(32))
     component_id: Mapped[int | None] = mapped_column(ForeignKey("component.id"))
+    bike_id: Mapped[int | None] = mapped_column(ForeignKey("bike.id"))
     action_code: Mapped[str] = mapped_column(String(32))
-    trigger: Mapped[str] = mapped_column(String(16), default="INTERVAL")
+    trigger: Mapped[str] = mapped_column(String(20), default="INTERVAL")
     interval_km: Mapped[float | None] = mapped_column(Float)
     interval_months: Mapped[int | None] = mapped_column(Integer)
     window_min_km: Mapped[float | None] = mapped_column(Float)
@@ -318,6 +506,11 @@ class ServiceRule(Base):
     warn_km: Mapped[float | None] = mapped_column(Float)
     warn_days: Mapped[int | None] = mapped_column(Integer)
     origin: Mapped[str] = mapped_column(String(16), default="PERSONAL")
+    # Only for parts whose wheel has this tire setup (e.g. sealant: TUBELESS). NULL = always.
+    requires_setup: Mapped[str | None] = mapped_column(String(12))
+    interval_hours: Mapped[float | None] = mapped_column(Float)    # ride time, e.g. charging every 50 h
+    warn_hours: Mapped[float | None] = mapped_column(Float)
+    interval_count: Mapped[int | None] = mapped_column(Integer)    # PARENT_COUNT: e.g. 2 chains for a quick link
     active: Mapped[bool] = mapped_column(Boolean, default=True)
     notes: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[str] = mapped_column(String(20), default=utc_now)
@@ -325,10 +518,11 @@ class ServiceRule(Base):
 
 
 class ReminderSnooze(Base):
-    """Hide a reminder until a date and/or extra km. Records no maintenance."""
+    """Hide a reminder of a part (or of a bike) until a date and/or extra km. Records no maintenance."""
     __tablename__ = "reminder_snooze"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    component_id: Mapped[int] = mapped_column(ForeignKey("component.id"), index=True)
+    component_id: Mapped[int | None] = mapped_column(ForeignKey("component.id"), index=True)
+    bike_id: Mapped[int | None] = mapped_column(ForeignKey("bike.id"), index=True)
     rule_code: Mapped[str] = mapped_column(String(48))
     until_date: Mapped[str | None] = mapped_column(String(10))
     until_km: Mapped[float | None] = mapped_column(Float)  # usage-since-reset at which it shows again
@@ -338,7 +532,8 @@ class ReminderSnooze(Base):
 
 
 class Consumable(Base):
-    """Wax, lube, sealant, brake fluid... tracked by product with optional stock."""
+    """Counted stock (patches, quick links, coin cells) or bulk supply (wax, sealant, fluid, grease).
+    Individual items with their own history (chain, tire, tube, rotor) are components instead."""
     __tablename__ = "consumable"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     uuid: Mapped[str] = mapped_column(String(36), unique=True, default=new_uuid)
@@ -349,21 +544,34 @@ class Consumable(Base):
     track_stock: Mapped[bool] = mapped_column(Boolean, default=False)
     notes: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[str] = mapped_column(String(20), default=utc_now)
+    tracking_mode: Mapped[str] = mapped_column(String(8), default="BULK", server_default="BULK")  # COUNTED | BULK
+    container_size: Mapped[float | None] = mapped_column(Float)   # bulk: default purchase quantity
+    # Counted spare parts: one stock line per product. Installing one creates an individual component
+    # (and takes it out of this quantity in the same transaction), so nothing is counted twice.
+    component_type: Mapped[str | None] = mapped_column(String(32))
+    product_id: Mapped[int | None] = mapped_column(Integer)
+    unit_note: Mapped[str | None] = mapped_column(Text)        # e.g. "one set for one caliper", tape coverage
+    storage_location: Mapped[str | None] = mapped_column(Text)
+    min_stock: Mapped[float | None] = mapped_column(Float)     # shopping-list threshold (optional)
 
 
 class ConsumableTxn(Base):
     """Buying, using and adjusting stock are separate events."""
     __tablename__ = "consumable_txn"
-    __table_args__ = (CheckConstraint("kind IN ('PURCHASE','USE','ADJUST')", name="ck_consumable_txn_kind"),)
+    __table_args__ = (CheckConstraint("kind IN ('PURCHASE','USE','RETURN','ADJUST')", name="ck_consumable_txn_kind"),)
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     consumable_id: Mapped[int] = mapped_column(ForeignKey("consumable.id"), index=True)
     kind: Mapped[str] = mapped_column(String(16))
     qty: Mapped[float | None] = mapped_column(Float)    # USE may be unknown
     occurred_on: Mapped[str] = mapped_column(String(10))
     maintenance_event_id: Mapped[int | None] = mapped_column(ForeignKey("maintenance_event.id"))
-    cost_cents: Mapped[int | None] = mapped_column(Integer)
+    cost_cents: Mapped[int | None] = mapped_column(Integer)   # only PURCHASE carries cost
     note: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[str] = mapped_column(String(20), default=utc_now)
+    work_session_id: Mapped[int | None] = mapped_column(Integer, index=True)
+    component_id: Mapped[int | None] = mapped_column(Integer)  # individual record created from this USE
+    packages: Mapped[int | None] = mapped_column(Integer)      # purchase: packages bought (qty = usable units)
+    voided_at: Mapped[str | None] = mapped_column(String(20))  # its work session was undone
 
 
 class ImportBatch(Base):
