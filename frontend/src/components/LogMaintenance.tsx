@@ -4,6 +4,7 @@ import { useApp } from '../context'
 import { toCents, today } from '../format'
 import { useApi } from '../hooks'
 import type { ActionDef, Bike, SetupRow } from '../types'
+import ShopPicker from './ShopPicker'
 import { Field, FormError, Loading } from './ui'
 
 interface Props {
@@ -45,7 +46,7 @@ export default function LogMaintenance({ bikeId, componentId, actionCode, onDone
   const detail = useApi<BikeDetail>(bike && !componentId ? `/bikes/${bike}` : null)
   const [action, setAction] = useState<string | null>(actionCode ?? null)
   const [selected, setSelected] = useState<number[]>(componentId ? [componentId] : [])
-  const [form, setForm] = useState({ at: today(), symptom: '', work_done: '', outcome: '', measurement_value: '', measurement_unit: '', consumable_id: '', consumable_qty: '', notes: '', cost: '' })
+  const [form, setForm] = useState({ at: today(), symptom: '', work_done: '', outcome: '', measurement_value: '', measurement_unit: '', consumable_id: '', consumable_qty: '', notes: '', cost: '', shop: '' })
   const [ticked, setTicked] = useState<string[]>([])
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
@@ -91,6 +92,7 @@ export default function LogMaintenance({ bikeId, componentId, actionCode, onDone
       const cost = toCents(form.cost)
       if (Number.isNaN(cost)) throw new Error('Cost: enter an amount such as 25,00')
       if (cost !== null) body.cost_cents = cost
+      if (form.shop.trim()) body.shop = form.shop.trim()
       if (bikeLevel) {
         body.bike_id = bike
         await api.post('/maintenance/events', body, opId)
@@ -247,6 +249,9 @@ export default function LogMaintenance({ bikeId, componentId, actionCode, onDone
             <Field label="Cost (optional)" hint="Shop fee or service price; supplies from stock are counted separately.">
               <input inputMode="decimal" value={form.cost} onChange={set('cost')} placeholder="€" />
             </Field>
+          </div>
+          <div className="row">
+            <ShopPicker value={form.shop} onChange={(v) => setForm({ ...form, shop: v })} label="Done by a bike shop (optional)" />
           </div>
         </>
       )}

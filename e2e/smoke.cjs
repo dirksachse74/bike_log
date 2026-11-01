@@ -927,8 +927,15 @@ async function bikeTab(page, name) {
   const items = await checklist.count()
   await checklist.nth(0).check()
   await checklist.nth(1).check()
+  await pickShop(page, 'Done by a bike shop (optional)', 'Radhaus Test')
   await sheetButton(page, 'Save')
   await page.locator('.toast').filter({ hasText: 'Full service (whole bike) logged for TIME NXR' }).waitFor()
+  const shopEv = await page.evaluate(async () => {
+    const bike = (await (await fetch('api/bikes')).json()).find((b) => b.name === 'TIME NXR')
+    const evs = await (await fetch('api/maintenance/events?bike_id=' + bike.id)).json()
+    return { ev: evs.find((e) => e.action_code === 'FULL_SERVICE' || /Full service/.test(e.action))?.shop, shops: await (await fetch('api/lists/SHOP')).json() }
+  })
+  check('Record work done: the bike shop is saved with the work and joins the shop list', shopEv.ev === 'Radhaus Test' && shopEv.shops.includes('Radhaus Test'), JSON.stringify(shopEv))
   check('yearly full service logged with its checklist', items >= 6, `${items} checklist items`)
   // a measurement says which outcome it gives (Shimano pad limits)
   await page.getByRole('button', { name: 'Record work done' }).first().click()

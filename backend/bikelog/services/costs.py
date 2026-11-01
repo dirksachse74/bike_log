@@ -148,7 +148,8 @@ def bike_costs(session: Session, bike: Bike, *, attribution: dict[int, int | Non
     for e in events:
         if e.cost_cents:
             name = ACTIONS[e.action_code].name if e.action_code in ACTIONS else e.action_code
-            items.append({"kind": "SERVICE", "date": e.performed_on, "text": name, "event_id": e.id,
+            items.append({"kind": "SERVICE", "date": e.performed_on, "event_id": e.id,
+                          "text": f"{name} ({e.shop})" if e.shop else name,
                           "cents": e.cost_cents, "estimated": False})
 
     event_ids = {e.id for e in events}

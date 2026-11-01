@@ -462,6 +462,7 @@ class MaintenanceEvent(Base):
     consumable_id: Mapped[int | None] = mapped_column(ForeignKey("consumable.id"))
     consumable_qty: Mapped[float | None] = mapped_column(Float)
     cost_cents: Mapped[int | None] = mapped_column(Integer)
+    shop: Mapped[str | None] = mapped_column(Text)             # done by a bike shop (SHOP pick list)
     notes: Mapped[str | None] = mapped_column(Text)
     batch_ref: Mapped[str | None] = mapped_column(String(36))  # events logged together
     voided_at: Mapped[str | None] = mapped_column(String(20))

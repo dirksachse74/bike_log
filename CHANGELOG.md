@@ -8,6 +8,9 @@ UPDATING.md → "Making a release". New entries go under "Unreleased" as work is
 ## Unreleased
 
 ### Changed
+- **Record work done** has a **Done by a bike shop** field (Dirk 2026-11-01): pick a shop from your shop
+  list or add a new one. It shows in the maintenance log ("at …"), in Edit, and next to the service cost in
+  Costs; the shop list in Settings → Lists counts it.
 - **Install a part** (bike page → Manage parts) can create the part right there (Dirk 2026-11-01: no
   trip to Inventory first): choose **A new part** (type, name, price, shop, properties, notes, km from
   before, where it goes on this bike) and **Save and install**. **A part from storage** works as before.

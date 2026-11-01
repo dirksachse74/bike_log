@@ -45,7 +45,7 @@ def log_event(session: Session, *, action_code: str, at: str, component_id: int 
               outcome: str | None = None, measurement_value: float | None = None, measurement_unit: str | None = None,
               consumable_id: int | None = None, consumable_qty: float | None = None, cost_cents: int | None = None,
               notes: str | None = None, batch_ref: str | None = None, work_session_id: int | None = None,
-              disposition_after: str | None = None) -> MaintenanceEvent:
+              disposition_after: str | None = None, shop: str | None = None) -> MaintenanceEvent:
     """Record work on a part. Supplies used become a separate stock USE (no cost: the cost belongs to
     the purchase). ``cost_cents`` is an extra service cost such as a shop fee. For a part awaiting
     repair, a successful outcome returns it to the spares (or pass ``disposition_after``)."""
@@ -79,7 +79,8 @@ def log_event(session: Session, *, action_code: str, at: str, component_id: int 
                           performed_on=w.local_date, sort_utc=w.utc, symptom=symptom, work_done=work_done,
                           outcome=outcome, measurement_value=measurement_value, measurement_unit=measurement_unit,
                           consumable_id=consumable_id, consumable_qty=consumable_qty, cost_cents=cost_cents,
-                          notes=notes, batch_ref=batch_ref, work_session_id=work_session_id)
+                          notes=notes, batch_ref=batch_ref, work_session_id=work_session_id,
+                          shop=(shop or "").strip() or None)
     session.add(ev)
     session.flush()
     if consumable_id is not None:
@@ -151,7 +152,8 @@ def restore_event(session: Session, event_id: int) -> MaintenanceEvent:
     return ev
 
 
-EDITABLE = ("at", "symptom", "work_done", "outcome", "measurement_value", "measurement_unit", "cost_cents", "notes")
+EDITABLE = ("at", "symptom", "work_done", "outcome", "measurement_value", "measurement_unit", "cost_cents", "notes",
+            "shop")
 
 
 def update_event(session: Session, event_id: int, **fields) -> MaintenanceEvent:
@@ -164,7 +166,7 @@ def update_event(session: Session, event_id: int, **fields) -> MaintenanceEvent:
     if unknown:
         raise DomainError(f"These cannot be changed here: {', '.join(sorted(unknown))}")
     action = ACTIONS.get(ev.action_code)
-    for k in ("symptom", "work_done", "notes", "outcome", "measurement_unit"):
+    for k in ("symptom", "work_done", "notes", "outcome", "measurement_unit", "shop"):
         if k in fields:
             fields[k] = (fields[k] or "").strip() or None
     if fields.get("outcome") and action and action.outcomes and fields["outcome"] not in action.outcomes:
@@ -224,8 +226,8 @@ def events_for(session: Session, *, component_id: int | None = None, bike_id: in
                     "performed_on": e.performed_on, "date_only": len(e.performed_at) == 10, "symptom": e.symptom,
                     "work_done": e.work_done, "outcome": e.outcome, "measurement_value": e.measurement_value,
                     "measurement_unit": e.measurement_unit, "consumable": consumables.get(e.consumable_id),
-                    "consumable_qty": e.consumable_qty, "cost_cents": e.cost_cents, "notes": e.notes,
-                    "voided": bool(e.voided_at), "void_reason": e.void_reason, "batch_ref": e.batch_ref})
+                    "consumable_qty": e.consumable_qty, "cost_cents": e.cost_cents, "shop": e.shop,
+                    "notes": e.notes, "voided": bool(e.voided_at), "void_reason": e.void_reason, "batch_ref": e.batch_ref})
     return out
 
 

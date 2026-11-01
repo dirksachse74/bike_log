@@ -436,6 +436,7 @@ class EventPatch(Body):
     measurement_value: float | None = None
     measurement_unit: str | None = None
     cost_cents: int | None = None
+    shop: str | None = None
     notes: str | None = None
 
 
@@ -500,6 +501,7 @@ class EventIn(Body):
     consumable_id: int | None = None
     consumable_qty: float | None = None
     cost_cents: int | None = None
+    shop: str | None = None
     notes: str | None = None
     disposition_after: str | None = None
 
