@@ -382,7 +382,7 @@ warns, npm 12 blocks): run `npm install-scripts approve <pkg>`.
 Checks that must pass before every push:
 
 ```bash
-.venv/bin/python -m pytest -q backend/tests             # currently 232 passed
+.venv/bin/python -m pytest -q backend/tests             # currently 233 passed
 cd frontend && npx tsc -b && npx eslint . && npx vite build
 # browser test: start the app on a fresh data dir, then
 node e2e/smoke.cjs http://127.0.0.1:8790/ <screenshot-dir>   # currently 154/154 (the ride-form step can flake once; rerun)

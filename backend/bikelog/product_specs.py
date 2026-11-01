@@ -210,7 +210,8 @@ SPEC_FIELDS: dict[str, list[SpecField]] = {
     "DI2_WIRES": [F("system", "string", "Wire system", example="EW-SD300"),
                   F("lengths", "string", "Wire lengths", example="350, 550, 1000 mm")],
     "DI2_JUNCTION": [F("ports", "number", "Ports", example=3),
-                     F("charging", "string", "Charging", example="Charging port for EW-EC300")],
+                     F("charging", "string", "Charging (11-speed Di2: at the junction box)",
+                       example="Charging port for SM-BCR2")],
     "OTHER": [],
 }
 

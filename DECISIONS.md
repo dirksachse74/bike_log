@@ -442,7 +442,9 @@ you disagree. Dates are 2026-10-24 unless noted.
     Controls, so `assemblies.in_groupset` and the bike page's Groupset group include them. Groupset
     templates use DI2_WIRES. Migration 0017 retypes existing OTHER parts (and their products) that sit in
     the DI2_WIRES slot or are named Di2 wire / EW-SD… (wires) or junction / EW-JC… / EW-RS910 (junction);
-    the bike-level "Inspect Di2 wires" reminder is unchanged.
+    the bike-level "Inspect Di2 wires" reminder is unchanged. 12-speed Di2 (R9200, R8100, R7150, GRX
+    RX825) has no junction box: charging is at the rear derailleur port (Dirk 2026-11-01), so
+    DI2_JUNCTION is named "(11-speed Di2)" and no 12-speed template adds one.
 
 ## Repository
 27. Pushed only to the feature branch `claude/project-thread-6y3mmh` of the private repository. Demo

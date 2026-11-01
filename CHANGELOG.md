@@ -8,9 +8,12 @@ UPDATING.md → "Making a release". New entries go under "Unreleased" as work is
 ## Unreleased
 
 ### Fixed
+- 12-speed Di2 has no junction box (Dirk 2026-11-01): the charging port is in the rear derailleur. The
+  junction box part type is now named "Di2 junction box (11-speed Di2)"; the 12-speed templates never add
+  one and say "charging at the rear derailleur port". The Di2 inspection is "Inspect Di2 wires and plugs".
 - **Di2 wires showed under "Other"** (Dirk 2026-11-01): there was no part type for them, so the groupset
   import (and Add part) made them an "Other part". New part types **Di2 wires (set)** and **Di2 junction
-  box / charging port** belong to the groupset (Installed now → Groupset, the groupset page). Wires and
+  box (11-speed Di2)** belong to the groupset (Installed now → Groupset, the groupset page). Wires and
   junction boxes you already have are moved over automatically on the next start (database update 0017);
   their km and history stay.
 
