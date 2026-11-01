@@ -38,7 +38,7 @@ Nothing is hosted or deployed. Data stays in his user folder.
 | Layer | Technology |
 |---|---|
 | Backend | Python 3.13, FastAPI, Pydantic 2, SQLAlchemy 2.1, Alembic, SQLite (WAL, `BEGIN IMMEDIATE` writes) |
-| Frontend | React 19 + TypeScript + Vite, React Router (hash routes `#/...`), plain CSS (`index.css`, light/dark; look and feel in docs/ui-style.md: top bar + orange accent) |
+| Frontend | React 19 + TypeScript + Vite, React Router (hash routes `#/...`), plain CSS (`index.css`, always light, no dark mode; look and feel in docs/ui-style.md: top bar + orange accent) |
 | Packaging | PyInstaller one-folder build (`BikeLog.exe`), optional Inno Setup per-user installer |
 | Tests | pytest (backend, against a real SQLite DB, no mocks of our own code), Playwright browser script (`e2e/smoke.cjs`) |
 

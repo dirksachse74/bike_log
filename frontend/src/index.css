@@ -3,7 +3,7 @@
      text nav and an orange underline, light grey page, flat white cards, big
      stat numbers with small grey labels, one orange accent for actions).
      Our own logo and name; see docs/ui-style.md. */
-  --bg: #f7f7fa;
+  --bg: #ffffff; /* white page (Dirk 2026-11-01); always light, even when Windows is in dark mode */
   --panel: #ffffff;
   --ink: #242428;
   --muted: #6d6d78;
@@ -25,19 +25,7 @@
   background: var(--bg);
   line-height: 1.45;
   -webkit-font-smoothing: antialiased;
-}
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #121214;
-    --panel: #1d1d21;
-    --ink: #ececf0;
-    --muted: #a0a0ab;
-    --line: #33333a;
-    --accent: #ff6a33;
-    --accent-hover: #ff8455;
-    --accent-soft: #3a2117;
-    --link: #7fb8ec;
-  }
+  color-scheme: light; /* form fields and scrollbars stay light too */
 }
 * {
   box-sizing: border-box;
