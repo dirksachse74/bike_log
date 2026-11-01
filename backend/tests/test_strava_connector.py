@@ -219,3 +219,29 @@ def test_ride_notes_up_to_2000_chars_survive_resync(session, world):
     assert r2.name == "Renamed on Strava" and r2.notes == text.strip()
     assert rides.ride_row(session, r2)["notes"] == text.strip()
     session.commit()
+
+
+def test_known_bikes_only_skips_unknown_gear_and_reread_brings_it_in(session, world):
+    """Dirk 2026-11-01: Settings → Strava "Import only rides with known bikes"."""
+    factory, fake, client, chain = world
+    fake.gear["b999"] = {"id": "b999", "name": "Old Trek"}
+    settings.set_value(session, "strava_known_bikes_only", "true")
+    assert settings.get(session, "strava_known_bikes_only") == "1"
+    session.commit()
+    res = strava.sync(factory, client, force=True)
+    assert res["counts"] == {"CREATED": 2, "SKIPPED_NOT_CYCLING": 1, "SKIPPED_UNKNOWN_BIKE": 1}
+    assert n_rides(session) == 2
+    from bikelog.models import Bike
+    assert session.scalar(select(Bike).where(Bike.name == "Old Trek")) is None     # no bike created
+    # the bike is added here with that Strava gear: Re-read brings the ride in
+    inv.create_bike(session, name="Trek Emonda", strava_gear_id="999")
+    session.commit()
+    strava.sync(factory, client, rescan=True, force=True)
+    assert n_rides(session) == 3
+    # switched off: unknown gear creates the bike again as before
+    settings.set_value(session, "strava_known_bikes_only", "0")
+    fake.activities[10_000_006] = act(6, "2026-10-06T08:00:00Z", 15, gear="b777")
+    fake.gear["b777"] = {"id": "b777", "name": "Gravel"}
+    session.commit()
+    res = strava.sync(factory, client, force=True)
+    assert res["counts"].get("BIKES_CREATED") == 1 and n_rides(session) == 4

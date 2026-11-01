@@ -493,6 +493,12 @@ you disagree. Dates are 2026-10-24 unless noted.
     trimmed, longer is refused; not a SOURCE_FIELD, so Strava/CSV re-sync never touches it. UI: `RideNotes`
     section on the ride (Rides.tsx), snippet in the ride list.
 
+119. **Strava: known bikes only** (Dirk 2026-11-01). Setting `strava_known_bikes_only` ("0"/"1", editable; PATCH
+    /api/settings). On: `_gear_mapper(create=False)` still links a same-name bike without gear id but never
+    creates one; an activity with no resolved bike and no RideSource yet is skipped (count
+    SKIPPED_UNKNOWN_BIKE, cursor still advances). Already imported rides keep being updated. Re-read
+    (rescan) picks skipped rides up once the bike exists. UI: switch in StravaSettings (shown connected or not).
+
 ## Repository
 27. Pushed only to the feature branch `claude/project-thread-6y3mmh` of the private repository. Demo
     data uses fictional Strava gear ids.

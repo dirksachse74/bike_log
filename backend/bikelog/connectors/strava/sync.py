@@ -78,8 +78,9 @@ def _values(session: Session, act: dict, bike_for_gear=None) -> dict:
             "usage_profile_code": (settings.get(session, "trainer_profile_for_virtual") or None) if trainer else None}
 
 
-def _gear_mapper(client: StravaClient, counts: dict):
-    """Unknown Strava bike: link it to the bike with the same name, or create that bike once."""
+def _gear_mapper(client: StravaClient, counts: dict, *, create: bool = True):
+    """Unknown Strava bike: link it to the bike with the same name, or create that bike once (``create``;
+    off with "Import only rides with known bikes")."""
     from sqlalchemy import func
 
     from bikelog.models import Bike
@@ -99,6 +100,8 @@ def _gear_mapper(client: StravaClient, counts: dict):
         if not name:
             return None
         bike = session.scalar(select(Bike).where(func.lower(Bike.name) == name.strip().lower()))
+        if bike is None and not create:
+            return None       # known bikes only: no new bike, the ride is skipped
         if bike is None:
             bike = Bike(name=name.strip(), strava_gear_id=_gear(strava_gear_id),
                         notes="Created from Strava gear during sync")
@@ -114,6 +117,13 @@ def _gear_mapper(client: StravaClient, counts: dict):
     return bike_for_gear
 
 
+def _imported(session: Session, act: dict) -> bool:
+    """Already a ride here (it stays and keeps being updated, whatever its bike)."""
+    return session.scalar(select(RideSource.id).where(
+        RideSource.source_kind == SOURCE_KIND, RideSource.source_account == SOURCE_ACCOUNT,
+        RideSource.source_ref == str(act["id"]))) is not None
+
+
 def _gear(gear_id: str | None) -> str | None:
     # Strava bike gear ids look like "b90000001"; bikes store the numeric part (as shown in the Strava UI)
     if gear_id and gear_id.startswith("b"):
@@ -127,7 +137,9 @@ def sync(factory: sessionmaker[Session], client: StravaClient, *, rescan: bool =
     if not (enabled() or force):
         raise RuntimeError("Strava connector is disabled (set BIKELOG_ENABLE_STRAVA=1). See DECISIONS.md.")
     counts: dict[str, int] = {}
-    bike_for_gear = _gear_mapper(client, counts)
+    with factory() as s:
+        known_only = settings.get(s, "strava_known_bikes_only") == "1"
+    bike_for_gear = _gear_mapper(client, counts, create=not known_only)
     with factory() as s, s.begin():
         conn = s.get(StravaConnection, SOURCE_ACCOUNT)
         if conn is None:
@@ -148,8 +160,15 @@ def sync(factory: sessionmaker[Session], client: StravaClient, *, rescan: bool =
                     if sport not in RIDE_SPORT_TYPES:
                         counts["SKIPPED_NOT_CYCLING"] = counts.get("SKIPPED_NOT_CYCLING", 0) + 1
                         continue
+                    values = _values(s, act, bike_for_gear)
+                    if known_only and values["bike_id"] is None and not _imported(s, act):
+                        # known bikes only (Settings → Strava): not imported; Re-read brings it in once the
+                        # bike exists here with that Strava gear (or the switch is off)
+                        counts["SKIPPED_UNKNOWN_BIKE"] = counts.get("SKIPPED_UNKNOWN_BIKE", 0) + 1
+                        newest = act["start_date"]
+                        continue
                     res = imports.upsert_record(s, source_kind=SOURCE_KIND, source_account=SOURCE_ACCOUNT,
-                                                source_ref=str(act["id"]), values=_values(s, act, bike_for_gear))
+                                                source_ref=str(act["id"]), values=values)
                     counts[res] = counts.get(res, 0) + 1
                     newest = act["start_date"]
                 conn = s.get(StravaConnection, SOURCE_ACCOUNT)
