@@ -113,5 +113,6 @@ Status key: ✅ done and tested · 🟡 done, not verified where it matters · �
 ## P8 Packaging and verification
 - ✅ PyInstaller spec; Linux frozen build launches, persists, upgrades.
 - 🟡 Windows build + installer compiled on Dirk's PC (2026-10-25); install/launch checklist and a clean-machine test pending.
-- ⏳ Optional: activate packaging/ci/windows-build.yml.example (needs Dirk's OK).
+- ✅ GitHub Releases: .github/workflows/release.yml builds, tests and publishes the installer (2026-11-01).
+- ⏳ Decide where friends download from (repo is private): public repo, public releases repo, or send the file.
 - 💡 App icon (.ico from the logo), code signing.

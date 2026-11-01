@@ -61,4 +61,6 @@ On the build machine (Python present):
 * `entry.py` – PyInstaller entry point (calls `bikelog.launcher.main`).
 * `bikelog.spec` – one-folder build; bundles `frontend/dist` as `bikelog/static` and the migrations.
 * `bikelog.iss` – Inno Setup per-user installer (written, untested).
-* `ci/windows-build.yml.example` – inactive GitHub Actions example; activating it needs your OK.
+* `../.github/workflows/release.yml` – GitHub Actions: builds the installer on `windows-latest`, tests install,
+  start, update-over-it and data kept, then publishes a GitHub Release (UPDATING.md → "Publishing a release for friends").
+* `../docs/INSTALL.md` – install note for friends (also the text of every release page).

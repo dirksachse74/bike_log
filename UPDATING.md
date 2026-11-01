@@ -140,6 +140,35 @@ The script raises the number, dates the "Unreleased" part of CHANGELOG.md, commi
 tags it `v0.3.0` and (with `--push`) pushes the branch and the tag. It refuses on `main`, with uncommitted
 changes, or when CHANGELOG.md lists nothing new. The build then makes `BikeLog-0.3.0-setup.exe`.
 
+## Publishing a release for friends (GitHub Releases)
+
+A GitHub machine with Windows builds the installer, tests it (install, start, update over it, data still
+there) and puts it on a release page: one download link. Nothing to install or type on your PC.
+
+1. Make the release first, so the version number is raised and the changelog dated: ask Claude for
+   "a patch release" / "a minor release" (or run `scripts\release.py`, see above), and let it be merged.
+2. On github.com open the repository → **Actions** → **Release (Windows installer)** (left) →
+   **Run workflow** → branch `main` → keep **Publish** ticked → **Run workflow**.
+3. Wait about 10–15 minutes until the run shows a green tick. A red cross means a step failed; it did not
+   publish anything. Click it to see the step, or tell Claude.
+4. The release page is **Releases** (right side of the repository's start page). The file
+   `BikeLog-X.Y.Z-setup.exe` is under **Assets**. The link
+   `https://github.com/<repository>/releases/latest` always points at the newest one.
+
+Pushing a tag `vX.Y.Z` (`scripts\release.py --push`) starts the same build by itself. Running it twice
+for the same version replaces the installer of that release. Untick **Publish** for a test build: the
+installer is then only on the run page (under Artifacts, 7 days), nothing is published.
+
+**Who can download:** a release of a *private* repository is only visible to people with access to the
+repository. Friends need either a public repository, a separate public "releases" repository (set the
+repository variable `RELEASES_REPO` to e.g. `dirksachse74/bike_log-releases` and the secret
+`RELEASES_TOKEN` to a fine-grained token with "Contents: Read and write" on that repository; the code stays
+private), or you download the file yourself and send it to them. Friends read
+[docs/INSTALL.md](docs/INSTALL.md); its text is also on every release page.
+
+Uses GitHub Actions minutes: a run takes about 10–15 minutes on Windows, which counts double on a private
+repository (free plan: 2000 minutes a month).
+
 ## Starting over with an empty database
 
 Settings → **Fresh start**: type `RESET` and press **Reset database**. Bike Log first writes a full backup
