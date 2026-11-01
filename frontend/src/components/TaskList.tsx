@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { api, newOpId } from '../api'
 import { useApp } from '../context'
@@ -6,6 +6,70 @@ import { today } from '../format'
 import type { Task } from '../types'
 import LogMaintenance from './LogMaintenance'
 import { Empty, Sheet, StatusBadge } from './ui'
+
+// The explanation says how the reminder was worked out. It shows two lines; "more" unfolds the rest
+// (the button appears only when the text is really cut off at this screen width).
+function Why({ text }: { text: string }) {
+  const [open, setOpen] = useState(false)
+  const [cut, setCut] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+  useLayoutEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const check = () => !open && setCut(el.scrollHeight > el.clientHeight + 1)
+    check()
+    const ro = new ResizeObserver(check)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [text, open])
+  return (
+    <div className="task-why-wrap">
+      <div ref={ref} className={`task-why ${open ? '' : 'clamp'}`}>
+        {text}
+      </div>
+      {(cut || open) && (
+        <button type="button" className="linklike" aria-expanded={open} onClick={() => setOpen(!open)}>
+          {open ? 'less' : 'more'}
+        </button>
+      )}
+    </div>
+  )
+}
+
+const NOW = ['OVERDUE', 'DUE', 'ATTENTION']
+
+/**
+ * Reminders in the same order on every screen: what is due now stays open, then coming up soon,
+ * and the rest folds away (snoozed, "need a first entry", up to date).
+ */
+export function GroupedTasks({ tasks, onChange, foldSoon = false, before, nothingDue = 'Nothing due right now.' }: { tasks: Task[]; onChange: () => void; foldSoon?: boolean; before?: ReactNode; nothingDue?: string | null }) {
+  const now = tasks.filter((t) => NOW.includes(t.status))
+  const soon = tasks.filter((t) => t.status === 'DUE_SOON')
+  const snoozed = tasks.filter((t) => t.status === 'SNOOZED')
+  const first = tasks.filter((t) => t.status === 'INSUFFICIENT_INFO')
+  const fine = tasks.filter((t) => !NOW.includes(t.status) && !['DUE_SOON', 'SNOOZED', 'INSUFFICIENT_INFO'].includes(t.status))
+  const plural = (n: number) => `${n} reminder${n === 1 ? '' : 's'}`
+  const fold = (key: string, title: string, hint: string, rows: Task[]) =>
+    rows.length > 0 && (
+      <details className="task-group" data-group={key}>
+        <summary>
+          <strong>{title}</strong> <span className="muted small">{hint}</span>
+        </summary>
+        <TaskList tasks={rows} onChange={onChange} />
+      </details>
+    )
+  const openNow = foldSoon ? now : [...now, ...soon]
+  return (
+    <>
+      {openNow.length ? <TaskList tasks={openNow} onChange={onChange} /> : nothingDue && <p className="small muted">{nothingDue}</p>}
+      {before}
+      {foldSoon && fold('soon', 'Coming up soon', plural(soon.length), soon)}
+      {fold('snoozed', 'Snoozed', plural(snoozed.length), snoozed)}
+      {fold('first', 'Need a first entry', `${plural(first.length)} start counting once you log the last time it was done`, first)}
+      {fold('ok', 'Up to date', plural(fine.length), fine)}
+    </>
+  )
+}
 
 /** Due tasks with the reason for each, plus one-tap log and snooze (snoozing records no maintenance). */
 export default function TaskList({ tasks, onChange, emptyText = 'Nothing due by recorded usage.' }: { tasks: Task[]; onChange: () => void; emptyText?: string }) {
@@ -62,7 +126,7 @@ export default function TaskList({ tasks, onChange, emptyText = 'Nothing due by 
                     </>
                   )}
                 </div>
-                <div className="task-why">{t.explanation}</div>
+                <Why text={t.explanation} />
                 {t.forecast && !['DUE', 'OVERDUE'].includes(t.status) && <div className="task-forecast small muted">{t.forecast.text}</div>}
               </div>
             </div>

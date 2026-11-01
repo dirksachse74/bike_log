@@ -16,7 +16,7 @@ import { AwayCard } from '../components/ServiceOrders'
 import ShopPicker from '../components/ShopPicker'
 import { BrokenSpokes, SpokeCount } from '../components/Spokes'
 import InstallHere from '../components/InstallHere'
-import TaskList from '../components/TaskList'
+import { GroupedTasks } from '../components/TaskList'
 import { PressureNote, TireSetupSelect } from '../components/TireSetup'
 import { Card, ChangeNotice, Empty, ErrorBox, Field, FormError, Loading, Sheet, StatusBadge, Tag } from '../components/ui'
 import { useApp } from '../context'
@@ -397,16 +397,7 @@ export function BikeDetailPage() {
       {tab === 'overview' && (
         <>
           <AwayCard orders={data.away} onChanged={reload} />
-          <ManageParts
-            setup={data.setup}
-            onSwap={(title, rows) => setSheet({ kind: 'swap', title, rows })}
-            onInstall={() => setSheet({ kind: 'install' })}
-            onRemove={(rows) => setSheet({ kind: 'swap', title: 'Remove a part', rows, remove: true })}
-            onReplaceGroupset={() => setSheet({ kind: 'groupset', replace: true })}
-            onWheelset={() => setSheet({ kind: 'wheelset' })}
-            onInstallTire={() => setSheet({ kind: 'installType', type: 'TIRE' })}
-          />
-          <ChainRotation bikeId={data.id} refresh={data} onChanged={reload} />
+          <ServiceStatus tasks={data.queue} reload={reload} />
           <Card
             title="Installed now"
             className="span-2"
@@ -425,7 +416,16 @@ export function BikeDetailPage() {
               <SetupGroups setup={data.setup} groupset={data.groupset} bikeId={data.id} onChange={(row) => setSheet({ kind: 'part', row })} reload={reload} onAddSpokes={(row) => setSheet({ kind: 'spokes', row })} onBrokenSpoke={(row) => setSheet({ kind: 'brokenSpokes', row })} onInstallTire={(row) => setSheet({ kind: 'installType', type: 'TIRE', prefer: row.component_id })} />
             )}
           </Card>
-          <ServiceStatus tasks={data.queue} reload={reload} />
+          <ManageParts
+            setup={data.setup}
+            onSwap={(title, rows) => setSheet({ kind: 'swap', title, rows })}
+            onInstall={() => setSheet({ kind: 'install' })}
+            onRemove={(rows) => setSheet({ kind: 'swap', title: 'Remove a part', rows, remove: true })}
+            onReplaceGroupset={() => setSheet({ kind: 'groupset', replace: true })}
+            onWheelset={() => setSheet({ kind: 'wheelset' })}
+            onInstallTire={() => setSheet({ kind: 'installType', type: 'TIRE' })}
+          />
+          <ChainRotation bikeId={data.id} refresh={data} onChanged={reload} />
         </>
       )}
       {tab === 'rides' && <BikeRides bikeId={data.id} onChanged={reload} />}
@@ -805,7 +805,9 @@ function ManageParts({ setup, onSwap, onRemove, onInstall, onWheelset, onReplace
               ),
             )}
           </div>
-          <h4 className="small muted sub-head">Groupset</h4>
+        </div>
+        <div>
+          <h3 className="small muted">Groupset</h3>
           <div className="chips">
             <button className="btn" disabled={groupsetParts.length === 0} title={groupsetParts.length === 0 ? 'No groupset parts on this bike' : 'Change one part, e.g. an Ultegra crankset for a Dura-Ace one'} onClick={() => onSwap('Change a groupset part', groupsetParts)}>
               Change a groupset part
@@ -952,37 +954,11 @@ function BikeRides({ bikeId, onChanged }: { bikeId: number; onChanged: () => voi
 }
 
 // Service status: what needs doing first; reminders that need a first entry and those that are fine fold away.
-const NEEDS_ACTION = ['OVERDUE', 'DUE', 'DUE_SOON', 'ATTENTION', 'SNOOZED']
 
 function ServiceStatus({ tasks, reload }: { tasks: Task[]; reload: () => void }) {
-  const now = tasks.filter((t) => NEEDS_ACTION.includes(t.status))
-  const first = tasks.filter((t) => t.status === 'INSUFFICIENT_INFO')
-  const fine = tasks.filter((t) => !NEEDS_ACTION.includes(t.status) && t.status !== 'INSUFFICIENT_INFO')
   return (
     <Card title="Service status" className="span-2">
-      {tasks.length === 0 ? (
-        <Empty title="No rules apply to the installed parts yet." />
-      ) : (
-        <>
-          {now.length ? <TaskList tasks={now} onChange={reload} /> : <p className="small muted">Nothing due right now.</p>}
-          {first.length > 0 && (
-            <details className="task-group" data-group="first">
-              <summary>
-                <strong>Need a first entry</strong> <span className="muted small">{first.length} reminders start counting once you log the last time it was done</span>
-              </summary>
-              <TaskList tasks={first} onChange={reload} />
-            </details>
-          )}
-          {fine.length > 0 && (
-            <details className="task-group" data-group="ok">
-              <summary>
-                <strong>Up to date</strong> <span className="muted small">{fine.length} reminders</span>
-              </summary>
-              <TaskList tasks={fine} onChange={reload} />
-            </details>
-          )}
-        </>
-      )}
+      {tasks.length === 0 ? <Empty title="No rules apply to the installed parts yet." /> : <GroupedTasks tasks={tasks} onChange={reload} />}
     </Card>
   )
 }
