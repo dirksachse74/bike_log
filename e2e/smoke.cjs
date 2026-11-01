@@ -870,6 +870,13 @@ async function bikeTab(page, name) {
     const of = await phone.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1)
     check(`mobile: ${route} fits the screen`, !of)
   }
+  // Add part → Groupset opens the same groupset dialog as on the bike page
+  await page.goto(BASE + '#/inventory')
+  await page.getByRole('button', { name: 'Add part' }).first().click()
+  await page.locator('.sheet').getByLabel('Type').selectOption('GROUPSET')
+  await page.locator('.sheet').getByRole('option', { name: 'No bike: add everything as spares' }).waitFor({ state: 'attached' })
+  check('Add part → Groupset opens the groupset dialog (template, bike or spares)', (await page.locator('.sheet').getByLabel('Name / label').count()) === 0)
+  await page.keyboard.press('Escape')
   // part life report: per type, finished parts and parts still in use; reminders carry a pace forecast
   await page.goto(BASE + '#/inventory?tab=life')
   await page.locator('details.life-type[data-type=CHAIN]').waitFor()

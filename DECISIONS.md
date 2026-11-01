@@ -369,6 +369,10 @@ you disagree. Dates are 2026-10-24 unless noted.
     white"). No dark mode: the `prefers-color-scheme: dark` block is gone and `:root` sets
     `color-scheme: light`; `--bg` is white.
 
+102. **A groupset can be added from Add part too** (Dirk 2026-11-01): "Groupset" is a pseudo-type at the
+    top of Add part's type list (not a component type: a groupset stays a view of its parts, DECISIONS
+    91) and renders the same GroupsetImport as the bike page, with the bike picker (or none = spares).
+
 ## Repository
 27. Pushed only to the feature branch `claude/project-thread-6y3mmh` of the private repository. Demo
     data uses fictional Strava gear ids.
