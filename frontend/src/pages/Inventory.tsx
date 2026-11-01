@@ -80,7 +80,7 @@ export function ComponentForm({ onSaved, presetType, onGroupset }: { onSaved: (c
         }}
       >
         {onGroupset && <option value={GROUPSET}>Groupset (all its parts at once)</option>}
-        {meta.component_types.map((t) => (
+        {[...meta.component_types].sort((a, b) => a.name.localeCompare(b.name)).map((t) => (
           <option key={t.code} value={t.code}>
             {t.name}
           </option>

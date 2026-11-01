@@ -873,6 +873,9 @@ async function bikeTab(page, name) {
   // Add part → Groupset opens the same groupset dialog as on the bike page
   await page.goto(BASE + '#/inventory')
   await page.getByRole('button', { name: 'Add part' }).first().click()
+  const typeNames = await page.locator('.sheet').getByLabel('Type').locator('option').allInnerTexts()
+  const rest = typeNames.slice(1)
+  check('Add part: Groupset first, then part types A–Z', typeNames[0].startsWith('Groupset') && rest.every((n, i) => i === 0 || rest[i - 1].localeCompare(n) <= 0), typeNames.slice(0, 4).join(' | '))
   await page.locator('.sheet').getByLabel('Type').selectOption('GROUPSET')
   await page.locator('.sheet').getByRole('option', { name: 'No bike: add everything as spares' }).waitFor({ state: 'attached' })
   check('Add part → Groupset opens the groupset dialog (template, bike or spares)', (await page.locator('.sheet').getByLabel('Name / label').count()) === 0)

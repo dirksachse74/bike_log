@@ -11,6 +11,7 @@ UPDATING.md → "Making a release". New entries go under "Unreleased" as work is
 - Inventory → Add part lists "Groupset (all its parts at once)" as the first type (Dirk 2026-11-01). It
   opens the same groupset dialog as on the bike page: pick the groupset, a bike (or none: everything
   becomes spares), options, bundle price.
+- Add part: the part types are sorted A–Z by name, after "Groupset" (Dirk 2026-11-01).
 - Always light with a white page (Dirk 2026-11-01): the app no longer turns dark when Windows or the
   browser is set to dark mode.
 - New look (Dirk 2026-11-01: "make our app look similar to strava.com"): white top bar with the logo and
