@@ -37,13 +37,25 @@
     "specs": {
       "type": "object",
       "properties": {
-        "rim_depth_mm": {
+        "rim_outer_width_mm": {
           "type": "number",
-          "description": "Rim depth (mm)"
+          "description": "Rim outer width (mm)"
         },
         "internal_width_mm": {
           "type": "number",
-          "description": "Internal rim width (mm)"
+          "description": "Rim inner width (mm)"
+        },
+        "rim_depth_front_mm": {
+          "type": "number",
+          "description": "Rim depth front (mm)"
+        },
+        "rim_depth_rear_mm": {
+          "type": "number",
+          "description": "Rim depth rear (mm)"
+        },
+        "tire_size_range": {
+          "type": "string",
+          "description": "Tire size range"
         },
         "brake": {
           "type": "string",

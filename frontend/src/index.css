@@ -1321,3 +1321,10 @@ label.chip {
 .broken-spokes .spoke-history li { flex-wrap: wrap; }
 .broken-spokes .spoke-later { flex-basis: 100%; margin-top: 0.4rem; }
 .spoke-line .tag + .tag { margin-left: 0.3rem; }
+.spec-inputs { display: grid; grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr)); gap: 0 0.8rem; }
+.add-props { margin: 0.4rem 0 0.6rem; }
+.add-props > summary { cursor: pointer; font-weight: 600; margin-bottom: 0.4rem; }
+dl.props { display: grid; grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr)); gap: 0.4rem 1rem; margin: 0; }
+dl.props dt { font-size: 0.8rem; color: var(--muted, #666); }
+dl.props dd { margin: 0; }
+.part-notes { white-space: pre-wrap; margin: 0.6rem 0 0; }

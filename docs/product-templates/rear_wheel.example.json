@@ -8,6 +8,8 @@
   "specs": {
     "rim_depth_mm": 45,
     "internal_width_mm": 21,
+    "rim_outer_width_mm": 28,
+    "tire_size_range": "700x28c - 700x47c",
     "tubeless": true,
     "axle": "12x142 thru axle",
     "brake": "disc",
