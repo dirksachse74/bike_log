@@ -52,25 +52,27 @@ export default function App() {
     <Ctx.Provider value={{ meta: meta.data, reloadMeta: meta.reload, toast }}>
       <HashRouter>
         <div className="shell">
-          <aside className="sidebar">
-            <div className="brand">
-              <img src="./logo.svg" alt="" width={32} height={32} />
-              <span>Bike Log</span>
+          <header className="topbar">
+            <div className="topbar-inner">
+              <Link to="/" className="brand" aria-label="Bike Log, overview">
+                <img src="./logo.svg" alt="" width={32} height={32} />
+                <span>Bike Log</span>
+              </Link>
+              <nav aria-label="Main">
+                {NAV.map(([to, label, icon]) => (
+                  <NavLink key={to} to={to} end={to === '/'} className={({ isActive }) => `navlink ${isActive ? 'active' : ''}`}>
+                    <span className="navicon" aria-hidden>
+                      {icon}
+                    </span>
+                    <span className="navlabel">{label}</span>
+                  </NavLink>
+                ))}
+              </nav>
               <span className="brand-version" title={`Bike Log ${meta.data.full_version}`}>
                 v{meta.data.full_version}
               </span>
             </div>
-            <nav aria-label="Main">
-              {NAV.map(([to, label, icon]) => (
-                <NavLink key={to} to={to} end={to === '/'} className={({ isActive }) => `navlink ${isActive ? 'active' : ''}`}>
-                  <span className="navicon" aria-hidden>
-                    {icon}
-                  </span>
-                  <span className="navlabel">{label}</span>
-                </NavLink>
-              ))}
-            </nav>
-          </aside>
+          </header>
           <main className="main">
             {versionProblem(meta.data) && (
               <div className="demo-banner version-banner" role="alert">

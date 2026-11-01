@@ -360,6 +360,11 @@ you disagree. Dates are 2026-10-24 unless noted.
     the last 28 days, or since the reminder's count started if that is later; it needs at least 3 rides
     and 7 days, otherwise it says why there is none. It is a separate `forecast` field: status and
     explanation still go by the km actually ridden. A months limit that comes first is named.
+100. **Look and feel: sporty activity-feed style, our own branding** (Dirk 2026-11-01, "make our app look
+    similar to strava.com"). Top bar with text navigation (bottom tab bar on phones), light grey page, flat
+    white cards, one orange accent (`--accent`) for the main action, active tab/nav and chips, blue links,
+    big stat numbers with small grey labels. A similar feel, not a clone: own logo, name and colour values;
+    no fonts, icons or assets from another app. Only CSS and the page skeleton changed. docs/ui-style.md.
 
 ## Repository
 27. Pushed only to the feature branch `claude/project-thread-6y3mmh` of the private repository. Demo
