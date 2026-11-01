@@ -84,7 +84,9 @@ frontend/src/            App.tsx, api.ts (fetch + token + op id), pages/*, compo
 e2e/smoke.cjs            browser test against the real running app; e2e/fixtures/ JSON files
 docs/                    ui-style.md (look and feel), strava.md, groupsets.md, product-import.md, csv-import.md,
                          product-templates/ (generated JSON schemas/examples + AGENT_INSTRUCTIONS.md)
-packaging/               bikelog.spec (PyInstaller), entry.py, bikelog.iss (Inno Setup), README.md, ci/ (inactive example)
+packaging/               bikelog.spec (PyInstaller), entry.py, bikelog.iss (Inno Setup), README.md
+.github/workflows/release.yml  Windows build + install/update test + GitHub Release (tag vX.Y.Z or Run workflow)
+scripts/release_notes.py text of a release page: docs/INSTALL.md + the version's CHANGELOG part
 ```
 
 ---
@@ -387,7 +389,7 @@ warns, npm 12 blocks): run `npm install-scripts approve <pkg>`.
 Checks that must pass before every push:
 
 ```bash
-.venv/bin/python -m pytest -q backend/tests             # currently 244 passed
+.venv/bin/python -m pytest -q backend/tests             # currently 246 passed
 cd frontend && npx tsc -b && npx eslint . && npx vite build
 # browser test: start the app on a fresh data dir, then
 node e2e/smoke.cjs http://127.0.0.1:8790/ <screenshot-dir>   # currently 171/171 (the ride-form step can flake once; rerun)
@@ -415,6 +417,17 @@ installer file name carries the git commit. PowerShell needs `&` before a quoted
 `%LOCALAPPDATA%\Programs\Inno Setup 6`. Dirk has compiled the exe and installer on 2026-10-25; the
 install/launch checklist in `packaging/README.md` is still pending, and nothing was tested on a clean
 Windows machine without Python. The app is unsigned (SmartScreen warns).
+
+**GitHub Releases** (`.github/workflows/release.yml`, DECISIONS 120): on a pushed tag `vX.Y.Z` or on
+Actions → "Release (Windows installer)" → Run workflow (input `publish`), a `windows-latest` runner reads the
+version from `__init__.py`, refuses a tag that does not match it or sits on another commit, tags locally so
+the build is a plain release version, runs pytest, builds frontend + PyInstaller + Inno Setup (ISCC
+preinstalled on the runner, else choco), then installs silently, starts the app, adds a bike, installs again
+over it and checks the bike is still there, uploads the installer as a run artifact and publishes the release
+with `gh release create` (notes from `scripts/release_notes.py`; repeat run = `--clobber` upload). Target repo
+= variable `RELEASES_REPO` (with secret `RELEASES_TOKEN`) or this repository. The repository is private, so
+its releases are not downloadable by friends; see UPDATING.md for the options. Friend-facing install note:
+`docs/INSTALL.md` (keep it correct when SmartScreen, data folder, update or Strava steps change).
 
 Updating an existing build after new commits (close app, pull, rebuild, reinstall; data is kept) is
 described for Dirk in `UPDATING.md`. Every change you push must keep that file correct.
@@ -464,7 +477,8 @@ Work sessions: `work-sessions`, `/{id}`, `/{id}/undo`. Journal: `journal` (GET/P
   never force-push, never change repository visibility, never deploy anything.**
 - Before every push: run all checks (section 7) and scan for secrets; never commit `.env`/`strava.env`,
   databases, backups, exports or personal ride data. Demo data uses fictional Strava gear ids.
-- The cloud environment can push the feature branch but not tags (the push is refused). After a release
+- The cloud environment can push the feature branch but not tags (the push is refused). Releases can instead be
+  published with the "Release (Windows installer)" workflow's Run workflow button on `main` (it creates the tag). After a release
   there, Dirk pushes the tag from his PC: `git fetch origin; git tag -a vX.Y.Z <commit> -m "Bike Log X.Y.Z";
   git push origin vX.Y.Z` (v0.2.0 = e95b486 was made this way).
 - Add every user-visible change to CHANGELOG.md under "## Unreleased". Make a release (scripts/release.py)
@@ -501,7 +515,7 @@ Needs Dirk or his machine:
 
 Open work (TASKS.md): editing stock line details and product compatibility/reference price in the UI
 (APIs exist), possible-duplicate ride merge helper, more groupset templates, a cost report across bikes
-per year, app icon and code signing, optional Windows CI build (needs Dirk's OK).
+per year, app icon and code signing.
 
 Out of scope until asked: barcode scanning, automatic ordering, any cloud hosting or multi-user use.
 

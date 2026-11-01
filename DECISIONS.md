@@ -506,6 +506,15 @@ you disagree. Dates are 2026-10-24 unless noted.
     the DOM. Part page: rare actions in `details.more-menu`; ledger in `details[data-group=ledger]`. Overview
     bike tiles `.bike-strip`. No endpoint or function was removed.
 
+120. **GitHub Releases for friends** (Dirk 2026-11-01). `.github/workflows/release.yml` on `windows-latest`,
+    started by a pushed tag `vX.Y.Z` or by Run workflow (the cloud cannot push tags, Dirk prefers buttons). The
+    version comes only from `__init__.py`; the workflow tags locally before PyInstaller so the build is the plain
+    release version, and `gh release create --target <sha>` creates the remote tag. Before publishing it installs
+    the setup silently, starts the app, adds a bike, installs again over it and checks the bike is kept (this is
+    the CI proof of "updating keeps data"). Release text = docs/INSTALL.md + the version's CHANGELOG part (folded),
+    so friends can read it without repo access. Optional other target repo (`RELEASES_REPO` + `RELEASES_TOKEN`)
+    because releases of a private repo are not downloadable by others. Replaces packaging/ci/windows-build.yml.example.
+
 ## Repository
 27. Pushed only to the feature branch `claude/project-thread-6y3mmh` of the private repository. Demo
     data uses fictional Strava gear ids.

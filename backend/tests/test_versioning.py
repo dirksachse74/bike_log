@@ -50,3 +50,24 @@ def test_bump_and_write_files(tmp_path):
     cl = (tmp_path / "CHANGELOG.md").read_text()
     assert "## Unreleased\n\n## 0.2.1 (2026-11-01)\n\n- Fixed a thing" in cl
     assert release.unreleased_notes(cl) == ""
+
+
+def test_release_notes_have_install_note_and_the_right_changes(tmp_path):
+    import release_notes
+    (tmp_path / "docs").mkdir()
+    (tmp_path / "docs" / "INSTALL.md").write_text("# Installing\n\nClick **More info** → Run anyway.\n", encoding="utf-8")
+    (tmp_path / "CHANGELOG.md").write_text(
+        "# Changelog\n\n## Unreleased\n\n- new thing\n\n## 0.2.0 (2026-10-25)\n\n- old thing\n", encoding="utf-8")
+    notes = release_notes.build("0.2.0", "ab12", "BikeLog-0.2.0-setup.exe", root=tmp_path)
+    assert "More info" in notes and "# Installing" not in notes
+    assert "old thing" in notes and "new thing" not in notes
+    assert "`ab12`" in notes and "BikeLog-0.2.0-setup.exe" in notes
+    # a version without its own section yet (test build) shows the Unreleased entries
+    assert "new thing" in release_notes.build("0.3.0", root=tmp_path)
+
+
+def test_release_workflow_matches_the_build_files():
+    wf = (ROOT / ".github/workflows/release.yml").read_text(encoding="utf-8")
+    assert "packaging\\bikelog.spec" in wf and "packaging\\bikelog.iss" in wf
+    assert "scripts/release_notes.py" in wf and 'tags: ["v*.*.*"]' in wf
+    assert (ROOT / "docs/INSTALL.md").exists()
