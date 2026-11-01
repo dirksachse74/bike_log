@@ -990,7 +990,7 @@ function ServiceStatus({ tasks, reload }: { tasks: Task[]; reload: () => void })
 // "Installed now" in groups (groupset, wheels, cockpit ...): one line each, unfolded with the triangle.
 // A part mounted on another part (tire on a wheel) stays with the part it is mounted on.
 const SETUP_GROUPS: [string, string][] = [
-  ['GROUPSET', 'Groupset (drivetrain, shifting, brakes)'],
+  ['GROUPSET', 'Groupset'],
   ['WHEELS', 'Wheels and tires'],
   ['COCKPIT', 'Cockpit'],
   ['CONTACT', 'Contact points'],
@@ -1098,18 +1098,13 @@ function SetupGroups({ setup, groupset, bikeId, onChange, reload, onAddSpokes, o
         return (
           <details key={k} className="setup-group" data-group={k}>
             {k === 'GROUPSET' && groupset ? (
-              // the groupset as one line; its page has the combined km, tasks, log, journal and the parts tree
+              // same shape as the other groups (Dirk 2026-11-01): "Groupset 17 parts · Shimano Ultegra Di2 …", no link here
               <summary>
-                <strong>Groupset</strong> <Link to={`/bikes/${bikeId}/groupset`}>{groupset.name === 'Groupset' ? 'open' : groupset.name}</Link>{' '}
+                <strong>{label}</strong>
                 <span className="muted small">
                   {groupset.parts} part{groupset.parts === 1 ? '' : 's'}
+                  {groupset.name !== 'Groupset' ? ` · ${groupset.name}` : ''}
                 </span>
-                {groupset.due > 0 && (
-                  <>
-                    {' '}
-                    <Tag tone="warn">{groupset.due} need attention</Tag>
-                  </>
-                )}
               </summary>
             ) : (
               <summary>
@@ -1140,6 +1135,11 @@ function SetupGroups({ setup, groupset, bikeId, onChange, reload, onAddSpokes, o
                     <ul className="list setup">{subs[sk].map(row)}</ul>
                   </details>
                 ))}
+                {groupset && (
+                  <p className="small">
+                    <Link to={`/bikes/${bikeId}/groupset`}>Groupset page</Link> <span className="muted">(km, tasks and history of the whole groupset)</span>
+                  </p>
+                )}
               </div>
             ) : (
               <ul className="list setup">{rows.map(row)}</ul>
