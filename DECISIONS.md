@@ -421,6 +421,14 @@ you disagree. Dates are 2026-10-24 unless noted.
     "Install a tire" (wheelset/wheel page, bike page) and "Install" on a stored part's page. A taken
     position offers "Change it" = the normal Replace of the part that is there.
 
+108. **A wheelset always has a front and a rear wheel** (Dirk 2026-11-01: "nothing where I can select
+    front or back"). `services/wheels.py` `ensure_wheels` adds "<wheelset> front wheel" / "rear wheel"
+    inside a wheelset that never had a wheel in that position, installed from the wheelset's first day
+    with its starting km; run when a wheelset is added (API) and at every start. Install a tire offers
+    new / used (km from before → prior usage RECORDED with a starting value, an estimate) / spare, and
+    "Move the front tire to the rear wheel" / "Swap front and rear" through the existing move (swap)
+    service. Installs dated today happen now (a tire taken off earlier today frees the position first).
+
 ## Repository
 27. Pushed only to the feature branch `claude/project-thread-6y3mmh` of the private repository. Demo
     data uses fictional Strava gear ids.

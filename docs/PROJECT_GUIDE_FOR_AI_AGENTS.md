@@ -225,7 +225,9 @@ saves with "Save" and returns to the Inventory list (e2e helper `saveNewPart` op
 
 **Installing a part where it goes (`components/InstallHere.tsx`, DECISIONS 107).** Where (mount targets,
 optionally `bike_id` / `under`), spare or new, date, Save/Cancel. Used by "Install a tire" (wheel, wheelset,
-bike pages) and "Install" on a stored part's page; a taken position offers "Change it" (ReplaceForm).
+bike pages) and "Install" on a stored part's page; a taken position offers "Replace it" (ReplaceForm). Sources: spare / new / used
+(km from before); tires and tubes can move front↔rear or swap (inventory.move). `services/wheels.py` gives every wheelset its
+front and rear wheel (launcher + wheelset create), DECISIONS 108.
 
 **Pick lists (`services/picklists.py`, DECISIONS 106).** `LISTS` maps a list code (SHOP) to the text
 columns that hold its names. A before_flush hook canonicalises those columns and adds new names; rename /
@@ -370,10 +372,10 @@ warns, npm 12 blocks): run `npm install-scripts approve <pkg>`.
 Checks that must pass before every push:
 
 ```bash
-.venv/bin/python -m pytest -q backend/tests             # currently 223 passed
+.venv/bin/python -m pytest -q backend/tests             # currently 226 passed
 cd frontend && npx tsc -b && npx eslint . && npx vite build
 # browser test: start the app on a fresh data dir, then
-node e2e/smoke.cjs http://127.0.0.1:8790/ <screenshot-dir>   # currently 146/146 (the ride-form step can flake once; rerun)
+node e2e/smoke.cjs http://127.0.0.1:8790/ <screenshot-dir>   # currently 149/149 (the ride-form step can flake once; rerun)
 #   (cd backend && ../.venv/bin/python -m bikelog --no-browser --no-sample --port 8790 --data-dir <fresh dir>)
 # sample database: start on ANOTHER fresh dir WITHOUT --no-sample (port 8791), then
 node e2e/sample.cjs http://127.0.0.1:8791/ <screenshot-dir>  # banner, sample bikes, crash item, Fresh start
