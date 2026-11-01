@@ -18,16 +18,18 @@ from __future__ import annotations
 from sqlalchemy import event, func, select
 from sqlalchemy.orm import Session
 
-from bikelog.models import Bike, Component, ConsumableTxn, PickListItem, PurchaseBundle, ServiceOrder
+from bikelog.models import (
+    Bike, Component, ConsumableTxn, MaintenanceEvent, PickListItem, PurchaseBundle, ServiceOrder,
+)
 from bikelog.services.errors import Conflict, DomainError, NotFound
 from bikelog.timeutil import utc_now
 
 LISTS: dict[str, dict] = {
     "SHOP": {
         "name": "Shops",
-        "hint": "Where you buy parts, bikes and supplies, and where parts go for repair.",
+        "hint": "Where you buy parts, bikes and supplies, where parts go for repair, and who did the work.",
         "columns": [(Component, "shop"), (Bike, "shop"), (ConsumableTxn, "shop"), (PurchaseBundle, "merchant"),
-                    (ServiceOrder, "shop")],
+                    (ServiceOrder, "shop"), (MaintenanceEvent, "shop")],
     },
 }
 

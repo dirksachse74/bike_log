@@ -4,6 +4,7 @@ import { api } from '../api'
 import { useApp } from '../context'
 import { centsInput, euro, toCents, when } from '../format'
 import type { EventRow } from '../types'
+import ShopPicker from './ShopPicker'
 import { Empty, Field, FormError, Sheet, Tag } from './ui'
 
 // Maintenance log with Edit and Delete on every entry. Delete removes the entry from the log, the reminders
@@ -101,7 +102,7 @@ export default function EventLog({ events, onChanged, show = 'part', limit }: { 
 }
 
 function details(e: EventRow): string {
-  return [e.symptom && `symptom: ${e.symptom}`, e.work_done, e.measurement_value !== null && `${e.measurement_value}${e.measurement_unit ?? ''}`, e.consumable, e.cost_cents ? euro(e.cost_cents) : null, e.notes]
+  return [e.symptom && `symptom: ${e.symptom}`, e.work_done, e.measurement_value !== null && `${e.measurement_value}${e.measurement_unit ?? ''}`, e.consumable, e.cost_cents ? euro(e.cost_cents) : null, e.shop ? `at ${e.shop}` : null, e.notes]
     .filter(Boolean)
     .join(' · ')
 }
@@ -117,6 +118,7 @@ function EditEvent({ ev, onSaved, onCancel }: { ev: EventRow; onSaved: () => voi
     measurement: ev.measurement_value === null ? '' : String(ev.measurement_value),
     cost: centsInput(ev.cost_cents),
     notes: ev.notes ?? '',
+    shop: ev.shop ?? '',
   })
   const [err, setErr] = useState<string | null>(null)
   const set = (k: keyof typeof f) => (e: { target: { value: string } }) => setF((x) => ({ ...x, [k]: e.target.value }))
@@ -129,7 +131,7 @@ function EditEvent({ ev, onSaved, onCancel }: { ev: EventRow; onSaved: () => voi
     // a date alone keeps the time the entry had (the order against that day's rides stays the same)
     const at = f.at === ev.performed_at.slice(0, 10) ? ev.performed_at : f.at
     try {
-      await api.patch(`/maintenance/events/${ev.id}`, { at, symptom: f.symptom, work_done: f.work_done, outcome: f.outcome, measurement_value: value, cost_cents: cost, notes: f.notes })
+      await api.patch(`/maintenance/events/${ev.id}`, { at, symptom: f.symptom, work_done: f.work_done, outcome: f.outcome, measurement_value: value, cost_cents: cost, shop: f.shop.trim() || null, notes: f.notes })
       onSaved()
     } catch (x) {
       setErr((x as Error).message)
@@ -181,6 +183,7 @@ function EditEvent({ ev, onSaved, onCancel }: { ev: EventRow; onSaved: () => voi
           <input inputMode="decimal" value={f.measurement} onChange={set('measurement')} />
         </Field>
       )}
+      <ShopPicker value={f.shop} onChange={(v) => setF((x) => ({ ...x, shop: v }))} label="Done by a bike shop (optional)" />
       <Field label="Notes">
         <textarea rows={2} value={f.notes} onChange={set('notes')} />
       </Field>

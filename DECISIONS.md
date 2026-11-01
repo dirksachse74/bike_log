@@ -476,6 +476,11 @@ you disagree. Dates are 2026-10-24 unless noted.
     Frontend only; e2e helpers unfold `details.setup-sub` too. Header rows have no links (Dirk): "Groupset N parts ·
     name" like "Wheels and tires N parts · …"; the groupset page link is inside the unfolded group.
 
+116. **Who did the work** (Dirk 2026-11-01). `maintenance_event.shop` (migration 0018), on every entry of a
+    batch, editable (EDITABLE), in the SHOP pick list's columns (rename/merge follow). Empty = done yourself.
+    LogMaintenance and EventLog's Edit use ShopPicker ("Done by a bike shop (optional)"); Costs SERVICE items
+    read "Action (Shop)".
+
 ## Repository
 27. Pushed only to the feature branch `claude/project-thread-6y3mmh` of the private repository. Demo
     data uses fictional Strava gear ids.

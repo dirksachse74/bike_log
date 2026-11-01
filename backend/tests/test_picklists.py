@@ -58,3 +58,22 @@ def test_rename_merge_and_hide(c):
     assert c.post("/api/lists/SHOP", json={"name": "rose"}).status_code == 409
     c.patch(f"/api/components/{a['id']}", json={"shop": "bike-components.de"})
     assert c.get("/api/lists/SHOP").json() == ["bike-components.de", "Rose"]
+
+
+def test_work_done_by_a_bike_shop(c):
+    """Dirk 2026-11-01: Record work done can name the bike shop that did it (same shop list)."""
+    c.post("/api/components", json={"component_type": "CHAIN", "label": "Chain A", "shop": "Velo Haus"})
+    b = c.post("/api/bikes", json={"name": "Synapse"}).json()
+    r = c.post("/api/maintenance/events", json={"action_code": "FRAME_INSPECT", "at": "2026-10-01", "bike_id": b["id"],
+                                                "cost_cents": 8900, "shop": "velo haus"})
+    assert r.status_code == 201, r.text
+    ev_id = r.json()["event_ids"][0]
+    ev = next(e for e in c.get("/api/maintenance/events", params={"bike_id": b["id"]}).json() if e["id"] == ev_id)
+    assert ev["shop"] == "Velo Haus"                       # the list's spelling
+    costs = c.get(f"/api/bikes/{b['id']}").json()["cost_detail"]
+    assert any(i["kind"] == "SERVICE" and "(Velo Haus)" in i["text"] for i in costs["items"])
+    # a new shop typed there goes on the list; the entry can be corrected
+    assert c.patch(f"/api/maintenance/events/{ev_id}", json={"shop": "Radhaus Mitte"}).status_code == 200
+    assert "Radhaus Mitte" in c.get("/api/lists/SHOP").json()
+    items = {i["name"]: i for i in c.get("/api/lists").json()[0]["items"]}
+    assert items["Radhaus Mitte"]["uses"] == 1
