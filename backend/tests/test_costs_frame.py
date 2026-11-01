@@ -1,4 +1,5 @@
 """The frame in Costs (Dirk 2026-11-01, DECISIONS 113): shown, priced, never counted twice."""
+from bikelog.models import Component
 from bikelog.services import costs
 from bikelog.services import groupsets as gs
 from bikelog.services import inventory as inv
@@ -43,3 +44,26 @@ def test_groupset_bundle_row_links_to_the_groupset_page(session):
                        bundle={"name": "Ultegra Di2", "price_cents": 180000})
     row = next(i for i in costs.bike_costs(session, b)["items"] if i["kind"] == "BUNDLE")
     assert row["groupset"] is True
+
+
+def test_wheels_and_spokes_of_a_priced_wheelset_are_not_missing_a_price(session):
+    """Dirk 2026-11-01: wheels and spokes inside a priced wheelset were listed as 'no price'."""
+    from bikelog.services.wheels import ensure_wheels
+    b = bike(session, name="Synapse", purchase_price_cents=300000, purchase_date="2026-03-01")
+    ws = part(session, "WHEELSET", "9Velo LV WIDE", price_cents=120000, purchase_date="2026-03-01")
+    inv.install(session, ws.id, bike_id=b.id, slot="WHEELSET", at="2026-04-01")
+    ensure_wheels(session, ws.id)
+    wheels = [c for c in session.query(Component).filter(Component.component_type.in_(("FRONT_WHEEL", "REAR_WHEEL")))]
+    assert len(wheels) == 2
+    for w in wheels:
+        sp = part(session, "SPOKES", f"Spokes {w.label}", prior_usage="UNKNOWN")
+        inv.install(session, sp.id, parent_component_id=w.id, slot="SPOKES", at="2026-04-01")
+    tire = part(session, "TIRE", "GP5000 front")
+    inv.install(session, tire.id, parent_component_id=wheels[0].id, slot="TIRE", at="2026-04-02")
+    c = costs.bike_costs(session, b)
+    assert c["parts_cents"] == 120000
+    assert c["unpriced_labels"] == ["GP5000 front"]       # a tire is bought on its own: still asks for a price
+    # without a wheelset price, the wheels and spokes do ask for one
+    inv.update_component(session, ws.id, price_cents=None)
+    c = costs.bike_costs(session, b)
+    assert c["unpriced_parts"] == 6 and "9Velo LV WIDE" in c["unpriced_labels"]

@@ -257,7 +257,7 @@ page already in the trail cuts it, direct opens get the page's home trail). A ne
 `useCrumb(pathname, label, parents?)` once its data has loaded, and a new tabbed page adds its tab list
 to `tabLabel`. Inventory and bike tab lists live in crumbs.ts (`INVENTORY_TABS`, `BIKE_TABS`).
 
-**Costs (`costs.py`).** Initial cost = bike purchase price, or, without one, the price of the bike's first frame (`first_frame`, `initial_source` FRAME; with a bike price the first frame is INCLUDED, a later frame counts as a part; `cost_detail.frame`, UI Frame line + FramePurchaseForm in Bikes.tsx; DECISIONS 113). Running cost is derived each time: part prices
+**Costs (`costs.py`).** Initial cost = bike purchase price, or, without one, the price of the bike's first frame (`first_frame`, `initial_source` FRAME; with a bike price the first frame is INCLUDED, a later frame counts as a part; `cost_detail.frame`, UI Frame line + FramePurchaseForm in Bikes.tsx; DECISIONS 113). Unpriced-parts list skips BUILT_INTO_WHEEL parts inside a priced wheelset/wheel (`_in_priced_parent`, DECISIONS 114). Running cost is derived each time: part prices
 (counted for the bike the part was *first* installed on, following parents; spares never installed count
 for no bike), stock used on the bike valued at the stock line's average purchase price (≈), and service
 costs on maintenance entries (a multi-part entry stores one fee once). Undone sessions drop out. Parts that
@@ -386,7 +386,7 @@ warns, npm 12 blocks): run `npm install-scripts approve <pkg>`.
 Checks that must pass before every push:
 
 ```bash
-.venv/bin/python -m pytest -q backend/tests             # currently 239 passed
+.venv/bin/python -m pytest -q backend/tests             # currently 240 passed
 cd frontend && npx tsc -b && npx eslint . && npx vite build
 # browser test: start the app on a fresh data dir, then
 node e2e/smoke.cjs http://127.0.0.1:8790/ <screenshot-dir>   # currently 163/163 (the ride-form step can flake once; rerun)
