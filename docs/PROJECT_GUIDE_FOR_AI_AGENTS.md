@@ -257,7 +257,7 @@ page already in the trail cuts it, direct opens get the page's home trail). A ne
 `useCrumb(pathname, label, parents?)` once its data has loaded, and a new tabbed page adds its tab list
 to `tabLabel`. Inventory and bike tab lists live in crumbs.ts (`INVENTORY_TABS`, `BIKE_TABS`).
 
-**Costs (`costs.py`).** Initial cost = bike purchase price. Running cost is derived each time: part prices
+**Costs (`costs.py`).** Initial cost = bike purchase price, or, without one, the price of the bike's first frame (`first_frame`, `initial_source` FRAME; with a bike price the first frame is INCLUDED, a later frame counts as a part; `cost_detail.frame`, UI Frame line + FramePurchaseForm in Bikes.tsx; DECISIONS 113). Running cost is derived each time: part prices
 (counted for the bike the part was *first* installed on, following parents; spares never installed count
 for no bike), stock used on the bike valued at the stock line's average purchase price (≈), and service
 costs on maintenance entries (a multi-part entry stores one fee once). Undone sessions drop out. Parts that
@@ -386,10 +386,10 @@ warns, npm 12 blocks): run `npm install-scripts approve <pkg>`.
 Checks that must pass before every push:
 
 ```bash
-.venv/bin/python -m pytest -q backend/tests             # currently 236 passed
+.venv/bin/python -m pytest -q backend/tests             # currently 239 passed
 cd frontend && npx tsc -b && npx eslint . && npx vite build
 # browser test: start the app on a fresh data dir, then
-node e2e/smoke.cjs http://127.0.0.1:8790/ <screenshot-dir>   # currently 159/159 (the ride-form step can flake once; rerun)
+node e2e/smoke.cjs http://127.0.0.1:8790/ <screenshot-dir>   # currently 163/163 (the ride-form step can flake once; rerun)
 #   (cd backend && ../.venv/bin/python -m bikelog --no-browser --no-sample --port 8790 --data-dir <fresh dir>)
 # sample database: start on ANOTHER fresh dir WITHOUT --no-sample (port 8791), then
 node e2e/sample.cjs http://127.0.0.1:8791/ <screenshot-dir>  # banner, sample bikes, crash item, Fresh start
