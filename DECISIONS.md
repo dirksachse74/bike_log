@@ -481,6 +481,14 @@ you disagree. Dates are 2026-10-24 unless noted.
     LogMaintenance and EventLog's Edit use ShopPicker ("Done by a bike shop (optional)"); Costs SERVICE items
     read "Action (Shop)".
 
+117. **Puncture statistics** (Dirk 2026-11-01). services/punctures.py, GET /api/reports/punctures, Rides tab
+    Punctures (components/Punctures.tsx). One puncture = one wheel of a live FLAT incident. Tube/tire = the
+    damaged part of the incident, else the one on that wheel that day (`_wheel_of` via installations, the
+    removal day included). Model = product maker+model, else the label without " (n)". Stock tubes have no
+    record: a flat on an unrecorded tube is the stock line the previous fix on that bike+wheel put in
+    (ConsumableTxn USE of the fix's work session, note ": front …"/": rear …"), km = bike ride km between.
+    Computed on each call, nothing stored. Logging stays where it was: the ride → Add incident → Flat tire.
+
 ## Repository
 27. Pushed only to the feature branch `claude/project-thread-6y3mmh` of the private repository. Demo
     data uses fictional Strava gear ids.
