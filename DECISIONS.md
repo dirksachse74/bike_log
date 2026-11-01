@@ -470,6 +470,11 @@ you disagree. Dates are 2026-10-24 unless noted.
     part with a price or a live bundle (`_in_priced_parent`), are not listed as "no price". Parts bought on
     their own (tire, tube, cassette, rotor) still are.
 
+115. **Groupset as a tree under Installed now** (Dirk 2026-11-01). `SetupGroups` (Bikes.tsx) splits the GROUPSET
+    rows by the catalog category of each top-level part (`GROUPSET_SUBS`: Drivetrain, Controls shown as
+    "Shifting and controls" with the battery, Brakes) into nested `details.setup-sub`, folded like the rest.
+    Frontend only; e2e helpers unfold `details.setup-sub` too.
+
 ## Repository
 27. Pushed only to the feature branch `claude/project-thread-6y3mmh` of the private repository. Demo
     data uses fictional Strava gear ids.

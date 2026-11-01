@@ -39,14 +39,14 @@ async function saveNewPart(page, label) {
 // bike page: "Installed now" groups start folded; unfold them all (again after a reload)
 async function openGroups(page) {
   await page.locator('details.setup-group').first().waitFor({ state: 'attached' })
-  await page.locator('details.setup-group').evaluateAll((ds) => ds.forEach((d) => { d.open = true }))
+  await page.locator('details.setup-group, details.setup-sub').evaluateAll((ds) => ds.forEach((d) => { d.open = true }))
 }
 
 // waits until a part shows in "Installed now" (unfolding groups that appear after a reload)
 async function setupItem(page, text) {
   await page.waitForLoadState('networkidle')   // a late reload re-renders the groups folded
   for (let i = 0; i < 100; i++) {
-    await page.locator('details.setup-group').evaluateAll((ds) => ds.forEach((d) => { d.open = true }))
+    await page.locator('details.setup-group, details.setup-sub').evaluateAll((ds) => ds.forEach((d) => { d.open = true }))
     const li = page.locator('.list.setup li').filter({ hasText: text })
     if (await li.count()) return li.first()
     await page.waitForTimeout(100)
@@ -468,6 +468,12 @@ async function bikeTab(page, name) {
   await setupItem(page, 'Ultegra outer chainring 50T')
   const groupSummary = await page.locator('details.setup-group[data-group=GROUPSET] > summary').innerText()
   check('groupset import installs crankset and chainrings', /Groupset/.test(groupSummary), groupSummary)
+  const drive = page.locator('details.setup-group[data-group=GROUPSET] details.setup-sub[data-sub=Drivetrain]')
+  const subs = await page.locator('details.setup-group[data-group=GROUPSET] details.setup-sub > summary strong').allInnerTexts()
+  check('Installed now: the groupset unfolds into drivetrain, shifting and brakes like a wheelset',
+    subs[0] === 'Drivetrain' && subs.includes('Brakes') && (await drive.locator('li').filter({ hasText: 'Ultegra outer chainring 50T' }).count()) === 1, subs.join(', '))
+  await page.locator('details.setup-group[data-group=GROUPSET]').scrollIntoViewIfNeeded()
+  await page.screenshot({ path: path.join(OUT, '09a-groupset-tree.png'), fullPage: true })
   await bikeTab(page, 'Costs')
   const costText = await page.locator('.card').filter({ hasText: 'running cost' }).innerText()
   check('groupset price counts as running cost of the bike', /parts €450\.00/.test(costText), costText.replace(/\s+/g, ' ').slice(0, 160))
