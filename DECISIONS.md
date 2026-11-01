@@ -384,6 +384,16 @@ you disagree. Dates are 2026-10-24 unless noted.
     Add part has Save / Cancel, both returning to the Inventory list (Dirk: "so the view goes back to
     the inventory screen").
 
+104. **Breadcrumbs follow the way you came** (Dirk 2026-11-01: "how do i go back?"). Shown on every page
+    below a main menu item (part, bike, groupset pages), above the page. Each page you open from another
+    page is added; a main menu item starts a new trail; opening a page that is already in the trail (a
+    crumb, the browser's back button) cuts the trail there. The tab you were on is a crumb of its own
+    (Inventory › Installed, TIME NXR › Rides) so going back opens that tab. Opened directly, or straight
+    from the main page it lives under, a page gets the trail of where it lives (Bikes › bike › Groupset).
+    At most 7 steps (older middle steps drop). Logic in `frontend/src/crumbs.ts` (pages name themselves
+    with `useCrumb`), shown by `components/Breadcrumbs.tsx`; trail and names kept in sessionStorage for
+    the browser tab only.
+
 ## Repository
 27. Pushed only to the feature branch `claude/project-thread-6y3mmh` of the private repository. Demo
     data uses fictional Strava gear ids.

@@ -17,6 +17,7 @@ import { PressureNote, TireSetupSelect } from '../components/TireSetup'
 import { Card, ChangeNotice, Empty, ErrorBox, Field, FormError, Loading, Sheet, Tag } from '../components/ui'
 import { useApp } from '../context'
 import { centsInput, certaintyLabel, euro, km, setupLabel, slotName, toCents, today, usageText, when } from '../format'
+import { INVENTORY_TABS, useCrumb } from '../crumbs'
 import { useApi } from '../hooks'
 import type { Bike, Change, ChainRow, ComponentSummary, EventRow, OpResult, PartNode, Rule, ServiceOrder, ShoppingItem, Task } from '../types'
 
@@ -225,17 +226,7 @@ interface InventoryView {
   sessions: WorkSessionRow[]
 }
 
-const TABS: [string, string][] = [
-  ['available', 'Available spares'],
-  ['service', 'Needs prep / repair'],
-  ['installed', 'Installed'],
-  ['shopping', 'Shopping list'],
-  ['history', 'History'],
-  ['life', 'Part life'],
-  ['chains', 'Chains'],
-  ['supplies', 'Supplies'],
-  ['all', 'All parts'],
-]
+const TABS = INVENTORY_TABS
 
 const plural = (n: number, unit: string) => {
   if (n === 1 || /s$/.test(unit)) return `${n.toLocaleString()} ${unit}`
@@ -984,6 +975,7 @@ export function ComponentDetailPage() {
   const { toast, meta } = useApp()
   const actionName = (code: string | null) => (meta.actions.find((a) => a.code === code)?.name ?? code ?? '').toLowerCase()
   const { data, error, loading, reload } = useApi<ComponentDetail>(`/components/${id}`)
+  useCrumb(`/inventory/${id}`, data?.label)
   const [sheet, setSheet] = useState<null | 'log' | 'details' | 'start' | 'retire' | 'rule' | 'replace' | 'remove' | 'move' | 'disposition' | 'inuse' | 'sendout' | { rule: Rule } | { correct: number } | { back: ServiceOrder }>(null)
   const [f, setF] = useState({ km: '', date: today(), estimate: true, reason: '', installed_at: '', removed_at: '', action_code: 'INSPECT', interval_km: '', interval_months: '', interval_hours: '', retire_as: '' })
   const [preview, setPreview] = useState<Change | null>(null)

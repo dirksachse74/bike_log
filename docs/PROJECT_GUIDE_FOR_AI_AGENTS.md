@@ -223,6 +223,12 @@ with Save / Cancel, folded "Deleted entries" with Restore), used on the part, bi
 Maintenance pages. `changelog.py` writes ENTRY_CHANGED / ENTRY_DELETED / ENTRY_RESTORED rows. Add part
 saves with "Save" and returns to the Inventory list (e2e helper `saveNewPart` opens the new part).
 
+**Breadcrumbs (`frontend/src/crumbs.ts`, `components/Breadcrumbs.tsx`, DECISIONS 104).** Rendered by
+App above the routes on every non-main page. `nextTrail` keeps the way you came (main item resets, a
+page already in the trail cuts it, direct opens get the page's home trail). A new detail page must call
+`useCrumb(pathname, label, parents?)` once its data has loaded, and a new tabbed page adds its tab list
+to `tabLabel`. Inventory and bike tab lists live in crumbs.ts (`INVENTORY_TABS`, `BIKE_TABS`).
+
 **Costs (`costs.py`).** Initial cost = bike purchase price. Running cost is derived each time: part prices
 (counted for the bike the part was *first* installed on, following parents; spares never installed count
 for no bike), stock used on the bike valued at the stock line's average purchase price (≈), and service
@@ -355,7 +361,7 @@ Checks that must pass before every push:
 .venv/bin/python -m pytest -q backend/tests             # currently 220 passed
 cd frontend && npx tsc -b && npx eslint . && npx vite build
 # browser test: start the app on a fresh data dir, then
-node e2e/smoke.cjs http://127.0.0.1:8790/ <screenshot-dir>   # currently 132/132 (the ride-form step can flake once; rerun)
+node e2e/smoke.cjs http://127.0.0.1:8790/ <screenshot-dir>   # currently 137/137 (the ride-form step can flake once; rerun)
 #   (cd backend && ../.venv/bin/python -m bikelog --no-browser --no-sample --port 8790 --data-dir <fresh dir>)
 # sample database: start on ANOTHER fresh dir WITHOUT --no-sample (port 8791), then
 node e2e/sample.cjs http://127.0.0.1:8791/ <screenshot-dir>  # banner, sample bikes, crash item, Fresh start
