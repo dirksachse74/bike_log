@@ -39,7 +39,13 @@
       "properties": {
         "material": {
           "type": "string",
-          "description": "Main material"
+          "description": "Material",
+          "enum": [
+            "carbon",
+            "aluminium",
+            "steel",
+            "titanium"
+          ]
         },
         "steerer": {
           "type": "string",

@@ -286,7 +286,6 @@ Template: `wheelset.schema.json`, example: `wheelset.example.json`
 | `brake` | one of `disc`, `rim` |  | Brake type |
 | `axles` | string |  | Axle standard front / rear |
 | `weight_g` | number | g | Weight of the pair |
-| `weight_g` | number | g | Weight |
 | `color` | string |  | Colour / finish |
 | `material` | string |  | Main material |
 ### Front wheel (`FRONT_WHEEL`)
@@ -516,9 +515,7 @@ Template: `frame.schema.json`, example: `frame.example.json`
 | `headset` | string |  | Headset standard (SHIS) |
 | `seatpost` | string |  | Seatpost (diameter or shape) |
 | `weight_g` | number | g | Weight |
-| `weight_g` | number | g | Weight |
 | `color` | string |  | Colour / finish |
-| `material` | string |  | Main material |
 ### Fork (separate) (`FORK`)
 
 Template: `fork.schema.json`, example: `fork.example.json`
@@ -532,9 +529,7 @@ Template: `fork.schema.json`, example: `fork.example.json`
 | `rake_mm` | number | mm | Rake / offset |
 | `max_tire_mm` | number | mm | Largest tire that fits |
 | `weight_g` | number | g | Weight |
-| `weight_g` | number | g | Weight |
 | `color` | string |  | Colour / finish |
-| `material` | string |  | Main material |
 ### Pedals (`PEDALS`)
 
 Template: `pedals.schema.json`, example: `pedals.example.json`

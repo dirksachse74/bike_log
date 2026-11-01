@@ -13,7 +13,7 @@
     "tire_size_range": "700x28c - 700x47c",
     "brake": "disc",
     "axles": "12x100 / 12x142 thru-axle",
-    "weight_g": 250
+    "weight_g": 1450
   },
   "source": {
     "url": "https://example.com/product-page",

@@ -7,6 +7,11 @@ UPDATING.md → "Making a release". New entries go under "Unreleased" as work is
 
 ## Unreleased
 
+### Fixed
+- Wheelset properties showed **Weight** and **Weight of the pair** (Dirk 2026-11-01): both were the same
+  value. A type's own field now replaces the common one, so a wheelset has only "Weight of the pair"
+  (frames and forks likewise had Weight and Material twice).
+
 ### Added
 - **Cockpit (bar and stem)** part type (Dirk 2026-11-01), with its properties: integration (fully or
   semi integrated), stem length, stem angle, reach, drop and width.

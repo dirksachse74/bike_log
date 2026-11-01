@@ -236,4 +236,6 @@ TORQUE = F("torque_nm", "string", "Tightening torque (bolts, clamps, axle) as pr
 def fields_for(component_type: str) -> list[SpecField]:
     from bikelog.catalog import COMPONENT_TYPES
     torque = [TORQUE] if component_type in COMPONENT_TYPES and COMPONENT_TYPES[component_type].torque else []
-    return SPEC_FIELDS.get(component_type, []) + torque + COMMON
+    own = SPEC_FIELDS.get(component_type, [])
+    keys = {f.key for f in own}     # a type's own field (e.g. "Weight of the pair") replaces the common one
+    return own + torque + [f for f in COMMON if f.key not in keys]
