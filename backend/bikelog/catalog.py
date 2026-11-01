@@ -124,10 +124,11 @@ COMPONENT_TYPES: dict[str, ComponentType] = {t.code: t for t in [
     ComponentType("SHIFTERS", "Shifters", "Controls", ("SHIFTERS",), torque=True),
     # Di2: one battery on the bike; SRAM AXS: one battery on each derailleur
     ComponentType("BATTERY", "Battery (Di2/AXS)", "Electronics", ("BATTERY",), ("FRONT_DERAILLEUR", "REAR_DERAILLEUR")),
-    # wired Di2: the wires (one set) and a junction box / charging port belong to the shifting, so the
-    # groupset (Dirk 2026-11-01: "the di2 wires are part of the groupset"); they were "Other" before
+    # wired Di2: the wires (one set) belong to the shifting, so the groupset (Dirk 2026-11-01: "the di2
+    # wires are part of the groupset"); they were "Other" before. 12-speed Di2 has no junction box (the
+    # charging port is in the rear derailleur, Dirk 2026-11-01); the junction type is for 11-speed Di2.
     ComponentType("DI2_WIRES", "Di2 wires (set)", "Controls", ("DI2_WIRES",)),
-    ComponentType("DI2_JUNCTION", "Di2 junction box / charging port", "Controls", ("DI2_JUNCTION",)),
+    ComponentType("DI2_JUNCTION", "Di2 junction box (11-speed Di2)", "Controls", ("DI2_JUNCTION",)),
     # speed/cadence sensor: on a wheel (moves with the wheelset), on the crankset or on the bike
     ComponentType("SENSOR", "Sensor (speed/cadence)", "Electronics", ("SENSOR_SPEED", "SENSOR_CADENCE"),
                   ("FRONT_WHEEL", "REAR_WHEEL", "CRANKSET")),
@@ -277,7 +278,7 @@ ACTIONS: dict[str, Action] = {a.code: a for a in [
            fields=("outcome", "symptom"), outcomes=("OK", "DAMAGE"), attention_outcomes=("DAMAGE",)),
     Action("DI2_SYSTEM_CHECK", "Di2 check in E-TUBE (firmware, error log)", "SERVICE", (BIKE,),
            fields=("work_done", "outcome"), outcomes=("OK", "UPDATED", "ERROR"), attention_outcomes=("ERROR",)),
-    Action("DI2_WIRE_INSPECT", "Inspect Di2 wires and junction", "INSPECT", (BIKE,),
+    Action("DI2_WIRE_INSPECT", "Inspect Di2 wires and plugs", "INSPECT", (BIKE,),
            fields=("outcome",), outcomes=("OK", "DAMAGE"), attention_outcomes=("DAMAGE",)),
     Action("SHIFT_ADJUST", "Adjust shifting", "SERVICE", (BIKE,), fields=("symptom", "work_done")),
     Action("FULL_SERVICE", "Full service (whole bike)", "SERVICE", (BIKE,), fields=("work_done",),

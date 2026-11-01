@@ -237,3 +237,14 @@ def test_di2_wires_import_as_groupset_part_not_other(session):
     assert wires.component_type == "DI2_WIRES" and inv.open_installation(session, wires.id).slot == "DI2_WIRES"
     members = {n["label"] for n in assemblies._flatten(assemblies._members(session, b)[1])}
     assert wires.label in members
+
+
+def test_12_speed_di2_has_no_junction_box_and_charges_at_the_rear_derailleur():
+    """Dirk 2026-11-01: "a 12spd di2 has no junction box. the charging port is in the rear derailleur"."""
+    di2 = [t["code"] for t in gs.list_templates() if any(i["type"] == "DI2_WIRES" for i in gs.get_template(t["code"])["items"])]
+    assert len(di2) == 4                                  # Dura-Ace, Ultegra, 105 Di2, GRX Di2 (all 12-speed)
+    for code in di2:
+        items = gs.get_template(code)["items"]
+        assert not any(i["type"] == "DI2_JUNCTION" or "junction" in i["name"].lower() for i in items), code
+        battery = next(i for i in items if i["type"] == "BATTERY")
+        assert "rear derailleur" in battery["specs"]["charging"], code

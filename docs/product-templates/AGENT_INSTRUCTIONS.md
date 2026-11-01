@@ -104,7 +104,7 @@ error; put extra data under `specs`.
 | `SHIFTERS` | Shifters | Controls |
 | `BATTERY` | Battery (Di2/AXS) | Electronics |
 | `DI2_WIRES` | Di2 wires (set) | Controls |
-| `DI2_JUNCTION` | Di2 junction box / charging port | Controls |
+| `DI2_JUNCTION` | Di2 junction box (11-speed Di2) | Controls |
 | `SENSOR` | Sensor (speed/cadence) | Electronics |
 | `BIKE_COMPUTER` | Bike computer | Electronics |
 | `LIGHT` | Light | Electronics |
@@ -680,14 +680,14 @@ Template: `di2_wires.schema.json`, example: `di2_wires.example.json`
 | `weight_g` | number | g | Weight |
 | `color` | string |  | Colour / finish |
 | `material` | string |  | Main material |
-### Di2 junction box / charging port (`DI2_JUNCTION`)
+### Di2 junction box (11-speed Di2) (`DI2_JUNCTION`)
 
 Template: `di2_junction.schema.json`, example: `di2_junction.example.json`
 
 | key | type | unit | meaning |
 |---|---|---|---|
 | `ports` | number |  | Ports |
-| `charging` | string |  | Charging |
+| `charging` | string |  | Charging (11-speed Di2: at the junction box) |
 | `weight_g` | number | g | Weight |
 | `color` | string |  | Colour / finish |
 | `material` | string |  | Main material |

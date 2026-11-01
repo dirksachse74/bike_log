@@ -47,6 +47,8 @@ duplicate products.
 | Battery | BT-DN300 internal | bike |
 | Di2 wires (unticked by default) | EW-SD300 | bike |
 
+No junction box: 12-speed Di2 (Dura-Ace R9200, Ultegra R8100, 105 R7150, GRX RX825) charges through the port on the rear derailleur (EW-EC300 cable). The "Di2 junction box" part type is only for older 11-speed Di2.
+
 **Source and status:** gathered 2026-10-25 from retailer listings of the full groupset and its parts.
 shimano.com was not reachable from the build environment, so the template is marked **unverified** and
 the app says so. Check the specs against productinfo.shimano.com (ULTEGRA R8100 series) and correct the

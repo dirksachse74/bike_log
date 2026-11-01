@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "bikelog/product-templates/di2_junction.schema.json",
-  "title": "Bike Log product: Di2 junction box / charging port",
+  "title": "Bike Log product: Di2 junction box (11-speed Di2)",
   "description": "One product (what you can buy) and optionally physical items you own. Only component_type, maker and model are required. Unlisted spec keys are imported too.",
   "type": "object",
   "required": [
@@ -43,7 +43,7 @@
         },
         "charging": {
           "type": "string",
-          "description": "Charging"
+          "description": "Charging (11-speed Di2: at the junction box)"
         },
         "weight_g": {
           "type": "number",
