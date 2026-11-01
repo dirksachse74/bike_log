@@ -318,7 +318,7 @@ export function BikeDetailPage() {
   useCrumb(`/bikes/${id}`, data?.name)
   const incidents = useApi<RideIncident[]>(`/bikes/${id}/incidents`)
   const openIncidents = incidents.data?.filter((r) => r.open && !r.removed).length ?? 0
-  const [sheet, setSheet] = useState<null | { kind: 'install' } | { kind: 'groupset'; replace?: boolean } | { kind: 'wheelset' } | { kind: 'costs' } | { kind: 'part'; row: SetupRow } | { kind: 'swap'; title: string; rows: SetupRow[]; remove?: boolean } | { kind: 'spokes'; row: SetupRow } | { kind: 'brokenSpokes'; row: SetupRow } | { kind: 'log' } | { kind: 'retire' } | { kind: 'installType'; type: string; prefer?: number }>(params.get('add') === 'groupset' ? { kind: 'groupset', replace: true } : null)
+  const [sheet, setSheet] = useState<null | { kind: 'install' } | { kind: 'groupset'; replace?: boolean } | { kind: 'wheelset' } | { kind: 'costs' } | { kind: 'frameCost' } | { kind: 'part'; row: SetupRow } | { kind: 'swap'; title: string; rows: SetupRow[]; remove?: boolean } | { kind: 'spokes'; row: SetupRow } | { kind: 'brokenSpokes'; row: SetupRow } | { kind: 'log' } | { kind: 'retire' } | { kind: 'installType'; type: string; prefer?: number }>(params.get('add') === 'groupset' ? { kind: 'groupset', replace: true } : null)
   if (loading && !data) return <Loading />
   if (error && !data) return <ErrorBox error={error} onRetry={reload} />
   if (!data) return null
@@ -459,7 +459,7 @@ export function BikeDetailPage() {
       )}
       {tab === 'costs' && (
         <>
-          <CostCard bike={data} onEdit={() => setSheet({ kind: 'costs' })} />
+          <CostCard bike={data} onEdit={() => setSheet({ kind: 'costs' })} onFrame={() => setSheet({ kind: 'frameCost' })} />
           <Bundles bikeId={data.id} refresh={data} onChanged={(msg) => { toast(msg); reload() }} className="span-2" />
         </>
       )}
@@ -517,6 +517,19 @@ export function BikeDetailPage() {
       {sheet?.kind === 'install' && (
         <Sheet title="Install a part" onClose={() => setSheet(null)}>
           <InstallForm bikeId={data.id} onDone={done} />
+        </Sheet>
+      )}
+      {sheet?.kind === 'frameCost' && data.cost_detail.frame && (
+        <Sheet title={`Frame purchase · ${data.name}`} onClose={() => setSheet(null)}>
+          <FramePurchaseForm
+            frame={data.cost_detail.frame}
+            bikePriced={data.purchase_price_cents !== null}
+            onDone={() => {
+              setSheet(null)
+              toast('Saved.')
+              reload()
+            }}
+          />
         </Sheet>
       )}
       {sheet?.kind === 'costs' && (
@@ -1132,8 +1145,9 @@ function ShiftingSelect({ bike, onSaved }: { bike: BikeDetail; onSaved: () => vo
   )
 }
 
-function CostCard({ bike, onEdit }: { bike: BikeDetail; onEdit: () => void }) {
+function CostCard({ bike, onEdit, onFrame }: { bike: BikeDetail; onEdit: () => void; onFrame: () => void }) {
   const c = bike.cost_detail
+  const fr = c.frame
   const perKm = bike.usage.total_km > 0 && c.total_cents ? Math.round(c.total_cents / bike.usage.total_km) : null
   const [open, setOpen] = useState(false)
   return (
@@ -1141,15 +1155,26 @@ function CostCard({ bike, onEdit }: { bike: BikeDetail; onEdit: () => void }) {
       title="Costs"
       className="span-2"
       actions={
-        <button className="btn btn-small" onClick={onEdit}>
-          Purchase price
-        </button>
+        <>
+          <button className="btn btn-small" onClick={onEdit}>
+            Bike purchase price
+          </button>
+          {fr && (
+            <button className="btn btn-small" onClick={onFrame}>
+              Frame price
+            </button>
+          )}
+        </>
       }
     >
       <div className="stats">
         <div>
           <span className="stat">{c.initial_known ? euro(c.initial_cents) : '—'}</span>
-          <span className="muted small">initial cost{c.purchase_date ? ` · ${when(c.purchase_date)}` : c.initial_known ? '' : ' · not entered'}{bike.shop ? ` · ${bike.shop}` : ''}</span>
+          <span className="muted small">
+            initial cost{c.initial_source === 'FRAME' ? ' (the frame)' : ''}
+            {c.purchase_date ? ` · ${when(c.purchase_date)}` : c.initial_known ? '' : ' · not entered'}
+            {c.initial_source === 'FRAME' ? (fr?.shop ? ` · ${fr.shop}` : '') : bike.shop ? ` · ${bike.shop}` : ''}
+          </span>
         </div>
         <div>
           <span className="stat">
@@ -1165,6 +1190,27 @@ function CostCard({ bike, onEdit }: { bike: BikeDetail; onEdit: () => void }) {
           <span className="muted small">total{perKm !== null ? ` · ${bike.usage.certainty === 'INCOMPLETE' ? 'at most ' : ''}${euro(perKm)} per km` : ''}</span>
         </div>
       </div>
+      {fr && (
+        <p className="small frame-cost">
+          Frame: <Link to={`/inventory/${fr.component_id}`}>{fr.label}</Link>
+          {fr.price_cents !== null ? ` · ${euro(fr.price_cents)}` : ''}
+          {fr.purchase_date ? ` · bought ${when(fr.purchase_date)}` : ''}
+          {fr.shop ? ` · ${fr.shop}` : ''}
+          <span className="muted">
+            {' '}
+            ·{' '}
+            {
+              {
+                INITIAL: 'counts as the initial cost (no bike purchase price entered)',
+                INCLUDED: 'included in the bike purchase price, not counted again',
+                PART: 'a later frame: counts as running cost',
+                NO_PRICE: c.initial_known ? 'came with the bike' : 'no price yet: enter it with Frame price (or the bike purchase price if you bought it complete)',
+                OTHER_BIKE: 'counted on the bike it came from',
+              }[fr.counted]
+            }
+          </span>
+        </p>
+      )}
       {(c.unpriced_parts > 0 || c.estimated || c.unpriced_bundles > 0) && (
         <p className="small muted">
           {c.unpriced_bundles > 0 && `${c.unpriced_bundles} bundle${c.unpriced_bundles === 1 ? ' has' : 's have'} no price yet. `}
@@ -1185,7 +1231,7 @@ function CostCard({ bike, onEdit }: { bike: BikeDetail; onEdit: () => void }) {
               {c.items?.map((i, n) => (
                 <li key={n}>
                   <span className="muted small">{when(i.date)}</span>
-                  <span>{i.component_id ? <Link to={`/inventory/${i.component_id}`}>{i.text}</Link> : i.text}</span>
+                  <span>{i.groupset ? <Link to={`/bikes/${bike.id}/groupset`}>{i.text}</Link> : i.component_id ? <Link to={`/inventory/${i.component_id}`}>{i.text}</Link> : i.text}</span>
                   <Tag>{COST_KIND[i.kind]}</Tag>
                   <span>
                     {i.estimated ? '≈' : ''}
@@ -1198,6 +1244,52 @@ function CostCard({ bike, onEdit }: { bike: BikeDetail; onEdit: () => void }) {
         </>
       )}
     </Card>
+  )
+}
+
+function FramePurchaseForm({ frame, bikePriced, onDone }: { frame: NonNullable<BikeCosts['frame']>; bikePriced: boolean; onDone: () => void }) {
+  const [f, setF] = useState({ price: centsInput(frame.price_cents), date: frame.purchase_date ?? '', shop: frame.shop ?? '' })
+  const [err, setErr] = useState<string | null>(null)
+  async function save() {
+    setErr(null)
+    const price = toCents(f.price)
+    if (Number.isNaN(price)) return setErr('Price: enter an amount such as 1999,00')
+    try {
+      await api.patch(`/components/${frame.component_id}`, { price_cents: price, purchase_date: f.date || null, shop: f.shop.trim() || null })
+      onDone()
+    } catch (e) {
+      setErr((e as Error).message)
+    }
+  }
+  return (
+    <div className="form frame-purchase">
+      <p className="small">
+        <Link to={`/inventory/${frame.component_id}`}>{frame.label}</Link>
+      </p>
+      <div className="row">
+        <Field label="Frame price" hint="What you paid for the frame (and fork).">
+          <input aria-label="Frame price" inputMode="decimal" value={f.price} onChange={(e) => setF({ ...f, price: e.target.value })} placeholder="€" autoFocus />
+        </Field>
+        <Field label="Bought on">
+          <input aria-label="Frame bought on" type="date" value={f.date} onChange={(e) => setF({ ...f, date: e.target.value })} />
+        </Field>
+      </div>
+      <div className="row">
+        <ShopPicker value={f.shop} onChange={(v) => setF({ ...f, shop: v })} label="Bought from" />
+      </div>
+      <p className="small muted">
+        {bikePriced
+          ? 'This bike has a bike purchase price, so the frame is shown as included in it and not counted twice.'
+          : 'Built up from a frame: the frame price is the initial cost. If you bought the bike complete, enter the bike purchase price instead.'}{' '}
+        Serial number, size and the rest are on the frame's page (Edit details, Properties).
+      </p>
+      <FormError error={err} />
+      <div className="form-actions">
+        <button className="btn btn-primary" onClick={save}>
+          Save
+        </button>
+      </div>
+    </div>
   )
 }
 

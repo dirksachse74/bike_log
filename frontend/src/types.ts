@@ -38,6 +38,10 @@ export interface Bike {
 export interface BikeCosts {
   initial_cents: number | null
   initial_known: boolean
+  initial_source: 'FRAME' | 'BIKE' | null
+  // the frame on the bike (DECISIONS 113): INITIAL = its price is the initial cost (bike built from a frame),
+  // INCLUDED = came with the bike's purchase price, PART = a later frame (running cost)
+  frame: { component_id: number; label: string; price_cents: number | null; purchase_date: string | null; shop: string | null; counted: 'INITIAL' | 'INCLUDED' | 'PART' | 'NO_PRICE' | 'OTHER_BIKE' } | null
   purchase_date: string | null
   parts_cents: number
   stock_cents: number
@@ -50,7 +54,7 @@ export interface BikeCosts {
   unpriced_parts: number
   unvalued_stock_uses: number
   unpriced_bundles: number
-  items?: { kind: 'PART' | 'STOCK' | 'SERVICE' | 'BUNDLE'; date: string | null; text: string; cents: number; estimated: boolean; component_id?: number }[]
+  items?: { kind: 'PART' | 'STOCK' | 'SERVICE' | 'BUNDLE'; date: string | null; text: string; cents: number; estimated: boolean; component_id?: number | null; groupset?: boolean }[]
   unpriced_labels?: string[]
 }
 

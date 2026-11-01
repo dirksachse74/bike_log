@@ -11,6 +11,12 @@ UPDATING.md → "Making a release". New entries go under "Unreleased" as work is
 - **Install a part** (bike page → Manage parts) can create the part right there (Dirk 2026-11-01: no
   trip to Inventory first): choose **A new part** (type, name, price, shop, properties, notes, km from
   before, where it goes on this bike) and **Save and install**. **A part from storage** works as before.
+- **Costs show the frame** (Dirk 2026-11-01): a Frame line (link to the frame, price, bought on, shop)
+  and a **Frame price** button to enter what you paid, when and where. A bike built up from a frame
+  (no bike purchase price) gets the frame price as its initial cost; a bike bought complete shows the
+  frame as included in the bike purchase price, never counted twice; a later (e.g. warranty) frame counts
+  as running cost.
+- In the cost entries, the **groupset** bundle row links to the bike's groupset page.
 
 ### Fixed
 - Wheelset properties showed **Weight** and **Weight of the pair** (Dirk 2026-11-01): both were the same

@@ -9,6 +9,9 @@ Running cost is derived from the records every time, never stored:
 - bundles: parts bought together at one price (e.g. a groupset) count once, with the bundle price, for
   the bike most of their parts were first installed on (services/bundles.py). Their parts have no own price.
 Money is counted once: a part drawn from stock has no own price, its value comes from the stock line.
+The bike's first frame (DECISIONS 113): with a bike purchase price it came with the bike (its own price, if
+any, is shown as included, not counted again); without one, the frame's price is the initial cost (a bike
+built up from a frame). A later frame (e.g. a warranty replacement) is a part like any other.
 Undone work sessions and voided records are left out.
 """
 from __future__ import annotations
@@ -60,9 +63,25 @@ def bike_attribution(session: Session) -> dict[int, int | None]:
         select(Component).where(Component.disposition != "VOIDED"))}
 
 
+def first_frame(session: Session, bike: Bike) -> Component | None:
+    """The frame first installed on this bike (the one it was bought or built with)."""
+    return session.scalar(select(Component).join(Installation, Installation.component_id == Component.id).where(
+        Installation.bike_id == bike.id, Installation.voided_at.is_(None), Component.component_type == "FRAME",
+        Component.disposition != "VOIDED").order_by(Installation.installed_utc, Installation.id).limit(1))
+
+
+def current_frame(session: Session, bike: Bike) -> Component | None:
+    return session.scalar(select(Component).join(Installation, Installation.component_id == Component.id).where(
+        Installation.bike_id == bike.id, Installation.voided_at.is_(None), Installation.removed_utc.is_(None),
+        Component.component_type == "FRAME").limit(1))
+
+
 def bike_costs(session: Session, bike: Bike, *, attribution: dict[int, int | None] | None = None,
                with_items: bool = True) -> dict:
     first_bike = attribution if attribution is not None else bike_attribution(session)
+    original = first_frame(session, bike)
+    frame_initial = (bike.purchase_price_cents is None and original is not None
+                     and original.price_cents is not None and not original.bundle_id)
     items: list[dict] = []
     unpriced: list[str] = []
     from bikelog.services import bundles as bundles_svc
@@ -75,15 +94,21 @@ def bike_costs(session: Session, bike: Bike, *, attribution: dict[int, int | Non
         if b.price_cents is None:
             unpriced_bundles += 1
             continue
+        # a groupset bought as one: links to the groupset page; another bundle to its first part
+        from bikelog.services.assemblies import in_groupset
+        gs = any(in_groupset(c.component_type) for c in comps)
         items.append({"kind": "BUNDLE", "date": b.purchased_on, "bundle_id": b.id, "cents": b.price_cents,
                       "text": f"{b.name} ({len(comps)} parts{', ' + b.merchant if b.merchant else ''})",
-                      "estimated": False})
+                      "estimated": False, "groupset": gs,
+                      "component_id": None if gs or not comps else comps[0].id})
     for cid, bid in first_bike.items():
         if bid != bike.id:
             continue
         c = session.get(Component, cid)
         if c.bundle_id in live_bundles:
             continue                      # priced by its bundle
+        if original is not None and c.id == original.id:
+            continue                      # the bike's first frame: initial cost, or included in the bike price
         if c.price_cents is not None:
             items.append({"kind": "PART", "date": c.purchase_date, "text": c.label, "component_id": c.id,
                           "cents": c.price_cents, "estimated": False})
@@ -121,9 +146,22 @@ def bike_costs(session: Session, bike: Bike, *, attribution: dict[int, int | Non
         return sum(i["cents"] for i in items if i["kind"] == kind)
 
     running = total("PART") + total("BUNDLE") + total("STOCK") + total("SERVICE")
-    initial = bike.purchase_price_cents
+    initial = original.price_cents if frame_initial else bike.purchase_price_cents
+    frame = current_frame(session, bike) or original
+    frame_row = None
+    if frame is not None:
+        if frame.id == (original.id if original else None):
+            counted = ("INITIAL" if frame_initial else "INCLUDED" if bike.purchase_price_cents is not None
+                       else "NO_PRICE")
+        else:
+            counted = "PART" if frame.price_cents is not None and first_bike.get(frame.id) == bike.id else (
+                "NO_PRICE" if frame.price_cents is None else "OTHER_BIKE")
+        frame_row = {"component_id": frame.id, "label": frame.label, "price_cents": frame.price_cents,
+                     "purchase_date": frame.purchase_date, "shop": frame.shop, "counted": counted}
     out = {
-        "initial_cents": initial, "purchase_date": bike.purchase_date,
+        "initial_cents": initial, "initial_source": "FRAME" if frame_initial else "BIKE" if initial is not None else None,
+        "frame": frame_row,
+        "purchase_date": original.purchase_date if frame_initial else bike.purchase_date,
         "parts_cents": total("PART"), "bundles_cents": total("BUNDLE"), "stock_cents": total("STOCK"),
         "services_cents": total("SERVICE"), "unpriced_bundles": unpriced_bundles,
         "running_cents": running, "total_cents": (initial or 0) + running,
