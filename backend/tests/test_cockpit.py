@@ -36,3 +36,13 @@ def test_wheelset_rim_and_tire_size_properties(client):  # noqa: F811
     d = client.get(f"/api/components/{c['id']}").json()
     assert d["specs"]["internal_width_mm"] == 23.6 and d["specs"]["tire_size_range"] == "700x28c - 700x47c"
     assert d["notes"] == "Hookless" and (d["specs"]["rim_depth_front_mm"], d["specs"]["rim_depth_rear_mm"]) == (52, 63)
+
+
+def test_no_type_lists_a_property_twice():
+    """Dirk 2026-11-01: a wheelset showed "Weight" and "Weight of the pair", the same value twice."""
+    from bikelog.catalog import COMPONENT_TYPES
+    from bikelog.product_specs import fields_for
+    for t in COMPONENT_TYPES:
+        keys = [f.key for f in fields_for(t)]
+        assert len(keys) == len(set(keys)), t
+    assert [f.description for f in fields_for("WHEELSET") if f.key == "weight_g"] == ["Weight of the pair"]

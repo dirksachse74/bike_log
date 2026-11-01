@@ -453,6 +453,7 @@ you disagree. Dates are 2026-10-24 unless noted.
     COCKPIT (category Cockpit, slot COCKPIT, torque) for one-piece / semi-integrated bar and stem;
     integration is an enum. Wheelset: rim_outer_width_mm, internal_width_mm (label "Rim inner width"),
     rim_depth_front_mm / rim_depth_rear_mm (front and rear can differ, Dirk), tire_size_range (text).
+    fields_for drops a common field (weight, colour, material) when the type has its own with that key.
 
 ## Repository
 27. Pushed only to the feature branch `claude/project-thread-6y3mmh` of the private repository. Demo

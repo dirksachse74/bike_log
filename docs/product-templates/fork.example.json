@@ -12,7 +12,7 @@
     "brake_mount": "flat mount",
     "rake_mm": 45,
     "max_tire_mm": 32,
-    "weight_g": 250
+    "weight_g": 380
   },
   "source": {
     "url": "https://example.com/product-page",

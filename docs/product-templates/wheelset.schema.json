@@ -71,7 +71,7 @@
         },
         "weight_g": {
           "type": "number",
-          "description": "Weight (g)"
+          "description": "Weight of the pair (g)"
         },
         "color": {
           "type": "string",
