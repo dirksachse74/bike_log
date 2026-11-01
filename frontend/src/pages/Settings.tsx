@@ -112,7 +112,7 @@ export default function SettingsPage() {
               ))}
             </select>
           </Field>
-          <Field label="Re-lace a wheel after this many broken spokes" hint="Broken spokes replaced on one wheel since it was laced. Logging a re-lace (or fitting a new spoke set) starts again.">
+          <Field label="Replace or re-lace a wheel after this many broken spokes" hint="Broken spokes on one wheel since it was laced. A new wheel, a re-lace or a new spoke set starts again.">
             <input inputMode="numeric" aria-label="Re-lace after broken spokes" value={f.spoke_relace_after} onChange={(e) => setF({ ...f, spoke_relace_after: e.target.value })} />
           </Field>
           <Field label="Setup for indoor (Virtual) rides">

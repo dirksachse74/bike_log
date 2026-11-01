@@ -14,6 +14,7 @@ import ChainRotation from '../components/ChainRotation'
 import EventLog from '../components/EventLog'
 import { AwayCard } from '../components/ServiceOrders'
 import ShopPicker from '../components/ShopPicker'
+import { BrokenSpokes, SpokeCount } from '../components/Spokes'
 import InstallHere from '../components/InstallHere'
 import TaskList from '../components/TaskList'
 import { PressureNote, TireSetupSelect } from '../components/TireSetup'
@@ -292,7 +293,7 @@ export function BikeDetailPage() {
   useCrumb(`/bikes/${id}`, data?.name)
   const incidents = useApi<RideIncident[]>(`/bikes/${id}/incidents`)
   const openIncidents = incidents.data?.filter((r) => r.open && !r.removed).length ?? 0
-  const [sheet, setSheet] = useState<null | { kind: 'install' } | { kind: 'groupset'; replace?: boolean } | { kind: 'wheelset' } | { kind: 'costs' } | { kind: 'part'; row: SetupRow } | { kind: 'swap'; title: string; rows: SetupRow[]; remove?: boolean } | { kind: 'spokes'; row: SetupRow } | { kind: 'log' } | { kind: 'retire' } | { kind: 'installType'; type: string; prefer?: number }>(params.get('add') === 'groupset' ? { kind: 'groupset', replace: true } : null)
+  const [sheet, setSheet] = useState<null | { kind: 'install' } | { kind: 'groupset'; replace?: boolean } | { kind: 'wheelset' } | { kind: 'costs' } | { kind: 'part'; row: SetupRow } | { kind: 'swap'; title: string; rows: SetupRow[]; remove?: boolean } | { kind: 'spokes'; row: SetupRow } | { kind: 'brokenSpokes'; row: SetupRow } | { kind: 'log' } | { kind: 'retire' } | { kind: 'installType'; type: string; prefer?: number }>(params.get('add') === 'groupset' ? { kind: 'groupset', replace: true } : null)
   if (loading && !data) return <Loading />
   if (error && !data) return <ErrorBox error={error} onRetry={reload} />
   if (!data) return null
@@ -396,7 +397,7 @@ export function BikeDetailPage() {
             {data.setup.length === 0 ? (
               <Empty title="Nothing installed yet">Tell the app what is on the bike: Add groupset puts a whole group on in one go; Manage parts → Install a part adds single parts.</Empty>
             ) : (
-              <SetupGroups setup={data.setup} groupset={data.groupset} bikeId={data.id} onChange={(row) => setSheet({ kind: 'part', row })} reload={reload} onAddSpokes={(row) => setSheet({ kind: 'spokes', row })} onInstallTire={(row) => setSheet({ kind: 'installType', type: 'TIRE', prefer: row.component_id })} />
+              <SetupGroups setup={data.setup} groupset={data.groupset} bikeId={data.id} onChange={(row) => setSheet({ kind: 'part', row })} reload={reload} onAddSpokes={(row) => setSheet({ kind: 'spokes', row })} onBrokenSpoke={(row) => setSheet({ kind: 'brokenSpokes', row })} onInstallTire={(row) => setSheet({ kind: 'installType', type: 'TIRE', prefer: row.component_id })} />
             )}
           </Card>
           <ServiceStatus tasks={data.queue} reload={reload} />
@@ -556,6 +557,11 @@ export function BikeDetailPage() {
           />
         </Sheet>
       )}
+      {sheet?.kind === 'brokenSpokes' && (
+        <Sheet title={`Broken spokes · ${sheet.row.label}`} onClose={() => setSheet(null)}>
+          <BrokenSpokes wheelId={sheet.row.component_id} info={data.setup.find((r) => r.component_id === sheet.row.component_id)?.spokes ?? sheet.row.spokes!} onChange={reload} />
+        </Sheet>
+      )}
       {sheet?.kind === 'retire' && (
         <Sheet title={`Retire or delete · ${data.name}`} onClose={() => setSheet(null)}>
           <RetireBike bike={data} onRetired={() => (setSheet(null), toast(`${data.name} retired. Bikes → Retired bikes shows it; Restore brings it back.`), reload())} />
@@ -582,7 +588,7 @@ const isWheel = (r: SetupRow) => r.component_type === 'FRONT_WHEEL' || r.compone
 // The spokes on a wheel as one part (a set): type, count and lengths (drive / non-drive side on the rear).
 function SpokesForm({ wheel, onDone }: { wheel: SetupRow; onDone: () => void }) {
   const rear = wheel.component_type === 'REAR_WHEEL'
-  const [f, setF] = useState({ label: `Spokes ${wheel.label}`, model: '', count: '', length: '', drive: '', nondrive: '', nipples: '', at: wheel.since })
+  const [f, setF] = useState({ label: `Spokes ${wheel.label}`, model: '', count: '', length: '', drive: '', nondrive: '', nipples: '', at: wheel.spokes?.laced_default ?? wheel.since })
   const [err, setErr] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [opId] = useState(newOpId)
@@ -632,14 +638,17 @@ function SpokesForm({ wheel, onDone }: { wheel: SetupRow; onDone: () => void }) 
           </Field>
         )}
       </div>
-      <div className="row">
-        <Field label="Nipples (optional)">
-          <input value={f.nipples} onChange={(e) => setF({ ...f, nipples: e.target.value })} placeholder="e.g. alloy, 14 mm" />
-        </Field>
-        <Field label="On the wheel since" hint="When the wheel was laced; broken spokes count from here.">
+      <Field label="Nipples (optional)">
+        <input value={f.nipples} onChange={(e) => setF({ ...f, nipples: e.target.value })} placeholder="e.g. alloy, 14 mm" />
+      </Field>
+      <details className="small">
+        <summary>
+          In the wheel since {f.at ? when(f.at) : '—'} {wheel.spokes?.laced_default && f.at === wheel.spokes.laced_default ? '(the day the wheel was bought)' : ''}. Wheel re-built later?
+        </summary>
+        <Field label="On the wheel since" hint="Only if the wheel was re-laced after you bought it. Broken spokes count from here.">
           <input type="date" value={f.at} onChange={(e) => setF({ ...f, at: e.target.value })} />
         </Field>
-      </div>
+      </details>
       <p className="small muted">Leave what you don't know empty. Spare spokes for repairs go under Inventory → Add spare stock (type Spokes), so a broken spoke can take one from there.</p>
       <FormError error={err} />
       <div className="form-actions">
@@ -963,7 +972,7 @@ const CATEGORY_GROUP: Record<string, string> = {
 }
 
 // One line under each wheel: its spokes (type, count, lengths) and the broken spokes since it was laced.
-function SpokeLine({ row, onAdd }: { row: SetupRow; onAdd: () => void }) {
+function SpokeLine({ row, onAdd, onBroken }: { row: SetupRow; onAdd: () => void; onBroken: () => void }) {
   const sp = row.spokes
   if (!sp) return null
   const s = sp.specs
@@ -973,7 +982,6 @@ function SpokeLine({ row, onAdd }: { row: SetupRow; onAdd: () => void }) {
       ? `${s.length_mm} mm`
       : null
   const what = [s.count ? `${s.count} ×` : null, s.model ?? sp.product ?? sp.label, lengths].filter(Boolean).join(' ')
-  const tone = sp.broken >= sp.relace_after ? 'bad' : sp.broken === sp.relace_after - 1 ? 'warn' : 'neutral'
   return (
     <span className="spoke-line small">
       Spokes:{' '}
@@ -990,14 +998,15 @@ function SpokeLine({ row, onAdd }: { row: SetupRow; onAdd: () => void }) {
           </button>
         </>
       )}{' '}
-      <Tag tone={tone}>
-        {sp.broken} of {sp.relace_after} broken spokes{sp.since ? ` since ${when(sp.since)}` : ''}
-      </Tag>
+      <SpokeCount sp={sp} />{' '}
+      <button className="btn btn-small" onClick={onBroken}>
+        Broken spoke…
+      </button>
     </span>
   )
 }
 
-function SetupGroups({ setup, groupset, bikeId, onChange, reload, onAddSpokes, onInstallTire }: { setup: SetupRow[]; groupset: GroupsetSummary | null; bikeId: number; onChange: (row: SetupRow) => void; reload: () => void; onAddSpokes: (row: SetupRow) => void; onInstallTire: (wheel: SetupRow) => void }) {
+function SetupGroups({ setup, groupset, bikeId, onChange, reload, onAddSpokes, onBrokenSpoke, onInstallTire }: { setup: SetupRow[]; groupset: GroupsetSummary | null; bikeId: number; onChange: (row: SetupRow) => void; reload: () => void; onAddSpokes: (row: SetupRow) => void; onBrokenSpoke: (row: SetupRow) => void; onInstallTire: (wheel: SetupRow) => void }) {
   const bare = new Set(bareOf(setup).map((w) => w.component_id))
   const { meta } = useApp()
   const groupOf = (type: string) => {
@@ -1057,7 +1066,7 @@ function SetupGroups({ setup, groupset, bikeId, onChange, reload, onAddSpokes, o
                       Install a tire
                     </button>
                   )}
-                  {s.spokes && <SpokeLine row={s} onAdd={() => onAddSpokes(s)} />}
+                  {s.spokes && <SpokeLine row={s} onAdd={() => onAddSpokes(s)} onBroken={() => onBrokenSpoke(s)} />}
                 </li>
               ))}
             </ul>

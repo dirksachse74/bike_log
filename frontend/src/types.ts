@@ -579,8 +579,26 @@ export interface SpokeInfo {
   specs: { count?: number; model?: string; length_mm?: number; length_drive_mm?: number; length_non_drive_mm?: number; nipples?: string }
   from_product: string[]
   broken: number
+  open: number
   since: string | null
   relace_after: number
+  breaks: SpokeBreak[]
+  laced_default: string | null
+}
+
+// One broken spoke on a wheel (DECISIONS 109): group set = logged as a break; without = a replacement
+// logged on its own (older records). counted = since the wheel was last laced.
+export interface SpokeBreak {
+  group: string | null
+  entry_id: number | null
+  event_id?: number
+  broke_on: string
+  replaced_on: string | null
+  repair: string | null
+  repair_text: string | null
+  ride_id: number | null
+  note: string | null
+  counted: boolean
 }
 
 // A part with the parts mounted on it now (wheelset → wheels → hub, tire ...), for drilling down.

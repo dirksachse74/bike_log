@@ -1317,3 +1317,7 @@ label.chip {
 .install-here .where-list label.check{display:flex;align-items:center;gap:.4rem;flex-wrap:wrap}
 .install-here .where-row{display:flex;align-items:center;gap:.6rem;flex-wrap:wrap}
 .install-here .move-tires{align-items:center}
+.broken-spokes .spoke-history { margin-top: 0.8rem; }
+.broken-spokes .spoke-history li { flex-wrap: wrap; }
+.broken-spokes .spoke-later { flex-basis: 100%; margin-top: 0.4rem; }
+.spoke-line .tag + .tag { margin-left: 0.3rem; }

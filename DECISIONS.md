@@ -428,6 +428,15 @@ you disagree. Dates are 2026-10-24 unless noted.
     new / used (km from before → prior usage RECORDED with a starting value, an estimate) / spare, and
     "Move the front tire to the rear wheel" / "Swap front and rear" through the existing move (swap)
     service. Installs dated today happen now (a tire taken off earlier today frees the position first).
+109. **Broken spokes are logged on the wheel** (Dirk 2026-11-01: "a way to log when a spoke breaks ... and
+    when it got replaced ... an alert when the 3rd spoke broke"). A break is a "Broken spoke" incident on
+    the wheel (`services/spokes.py`: log_broken, mark_replaced, remove_broken; API
+    `/api/components/{wheel}/broken-spokes`), replaced through the incident fix (repairs.fix → SPOKE_REPLACE
+    event, stock use, undo). `maintenance.spoke_breaks` lists breaks (incidents plus SPOKE_REPLACE events
+    logged on their own, not double counted: an event whose work session fixed a spoke incident on this
+    wheel belongs to it). The count since lacing now counts breaks, not replacements; at the limit
+    (default 3) the reminder reads "Replace the wheel (or re-lace it)", and an unreplaced spoke is
+    ATTENTION. The spokes' install date defaults to the wheel's purchase date (`laced_on`).
 
 ## Repository
 27. Pushed only to the feature branch `claude/project-thread-6y3mmh` of the private repository. Demo

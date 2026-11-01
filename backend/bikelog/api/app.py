@@ -41,6 +41,7 @@ from bikelog.services import bundles as bundles_svc
 from bikelog.services import demo, diagnostics, groupsets, imports, journal, product_import, spares, stock
 from bikelog.services import worksessions as ws_svc
 from bikelog.services import picklists
+from bikelog.services import spokes as spokes_svc
 from bikelog.services import incidents as incidents_svc
 from bikelog.services import repairs as repairs_svc
 from bikelog.services import inventory as inv
@@ -352,6 +353,18 @@ class FixPart(Body):
     action: str | None = None              # REPLACED, REPAIRED or NONE
     source: dict | None = None             # {kind: spare|stock|same|new|untracked, id?, label?}
     old_outcome: str | None = None
+
+
+class BrokenSpokeIn(Body):
+    broke_on: str
+    replaced_on: str | None = None
+    stock_line_id: int | None = None
+    note: str | None = None
+
+
+class SpokeReplacedIn(Body):
+    replaced_on: str
+    stock_line_id: int | None = None
 
 
 class FixIn(Body):
@@ -835,9 +848,24 @@ def create_app(factory: sessionmaker[Session], paths: DataPaths, *, token: str |
                 "chain": ({**m.chain_row(s, c), "cycles": chains_svc.chain_history(s, c)}
                           if c.component_type == "CHAIN" else None),
                 "frame_history": frames_svc.frame_history(s, c) if c.component_type in ("FRAME", "FORK") else None,
+                "spokes": m.spoke_info(s, c) if c.component_type in ("FRONT_WHEEL", "REAR_WHEEL") else None,
                 "service_orders": orders_svc.for_component(s, c),
                 "incident_choices": orders_svc.incident_choices(s, c) if c.status == "ACTIVE" else [],
                 "suggested_outcome": COMPONENT_TYPES[c.component_type].removed_default}
+
+    @app.post("/api/components/{component_id}/broken-spokes", status_code=201)
+    def broken_spoke_add(component_id: int, body: BrokenSpokeIn, s: Session = Depends(db), op_id: str | None = OpId):
+        return run_once(s, op_id, "spoke.broken", lambda: spokes_svc.log_broken(s, component_id, **body.model_dump()))
+
+    @app.post("/api/components/{component_id}/broken-spokes/{group}/replaced")
+    def broken_spoke_replaced(component_id: int, group: str, body: SpokeReplacedIn, s: Session = Depends(db),
+                              op_id: str | None = OpId):
+        return run_once(s, op_id, "spoke.replaced",
+                        lambda: spokes_svc.mark_replaced(s, component_id, group, **body.model_dump()))
+
+    @app.post("/api/components/{component_id}/broken-spokes/{group}/remove")
+    def broken_spoke_remove(component_id: int, group: str, s: Session = Depends(db)):
+        return spokes_svc.remove_broken(s, component_id, group)
 
     @app.post("/api/components/{component_id}/send-out")
     def send_out(component_id: int, body: SendOutIn, dry_run: bool = False, s: Session = Depends(db),
