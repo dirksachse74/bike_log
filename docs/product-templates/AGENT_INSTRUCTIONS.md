@@ -103,6 +103,8 @@ error; put extra data under `specs`.
 | `BAR_TAPE` | Bar tape | Cockpit |
 | `SHIFTERS` | Shifters | Controls |
 | `BATTERY` | Battery (Di2/AXS) | Electronics |
+| `DI2_WIRES` | Di2 wires (set) | Controls |
+| `DI2_JUNCTION` | Di2 junction box / charging port | Controls |
 | `SENSOR` | Sensor (speed/cadence) | Electronics |
 | `BIKE_COMPUTER` | Bike computer | Electronics |
 | `LIGHT` | Light | Electronics |
@@ -664,6 +666,28 @@ Template: `battery.schema.json`, example: `battery.example.json`
 | `system` | string |  | Shifting system |
 | `capacity_wh` | number | Wh | Capacity |
 | `mount` | string |  | Where it is mounted |
+| `weight_g` | number | g | Weight |
+| `color` | string |  | Colour / finish |
+| `material` | string |  | Main material |
+### Di2 wires (set) (`DI2_WIRES`)
+
+Template: `di2_wires.schema.json`, example: `di2_wires.example.json`
+
+| key | type | unit | meaning |
+|---|---|---|---|
+| `system` | string |  | Wire system |
+| `lengths` | string |  | Wire lengths |
+| `weight_g` | number | g | Weight |
+| `color` | string |  | Colour / finish |
+| `material` | string |  | Main material |
+### Di2 junction box / charging port (`DI2_JUNCTION`)
+
+Template: `di2_junction.schema.json`, example: `di2_junction.example.json`
+
+| key | type | unit | meaning |
+|---|---|---|---|
+| `ports` | number |  | Ports |
+| `charging` | string |  | Charging |
 | `weight_g` | number | g | Weight |
 | `color` | string |  | Colour / finish |
 | `material` | string |  | Main material |

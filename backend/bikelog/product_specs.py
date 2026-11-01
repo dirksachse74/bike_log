@@ -207,6 +207,10 @@ SPEC_FIELDS: dict[str, list[SpecField]] = {
     "LIGHT": [F("lumen", "number", "Light output", "lm", example=800),
               F("battery_life_h", "number", "Claimed run time in your mode", "h", example=4)],
     "RADAR": [F("battery_life_h", "number", "Claimed run time", "h", example=8)],
+    "DI2_WIRES": [F("system", "string", "Wire system", example="EW-SD300"),
+                  F("lengths", "string", "Wire lengths", example="350, 550, 1000 mm")],
+    "DI2_JUNCTION": [F("ports", "number", "Ports", example=3),
+                     F("charging", "string", "Charging", example="Charging port for EW-EC300")],
     "OTHER": [],
 }
 

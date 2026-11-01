@@ -225,3 +225,15 @@ def test_13_speed_and_mechanical_templates(session):
     assert "battery_rear" in axs and "cable_rear" not in axs
     r7100 = {i["key"] for i in gs.TEMPLATES["SHIMANO_105_R7100"]["items"]}
     assert {"cable_front", "cable_rear", "housing_front", "housing_rear"} <= r7100 and "battery" not in r7100
+
+
+def test_di2_wires_import_as_groupset_part_not_other(session):
+    """Dirk 2026-11-01: "the di2 wires are part of the groupset" (they were type OTHER, shown under Other)."""
+    from bikelog.services import assemblies
+    b = bike(session)
+    wheels(session, b)
+    rows = by_key(run_import(session, b, include=["battery", "wires"]))
+    wires = inv.get_component(session, rows["wires"]["component_id"])
+    assert wires.component_type == "DI2_WIRES" and inv.open_installation(session, wires.id).slot == "DI2_WIRES"
+    members = {n["label"] for n in assemblies._flatten(assemblies._members(session, b)[1])}
+    assert wires.label in members
