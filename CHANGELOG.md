@@ -7,6 +7,12 @@ UPDATING.md → "Making a release". New entries go under "Unreleased" as work is
 
 ## Unreleased
 
+### Added
+- **Rides → Punctures** (Dirk 2026-11-01): puncture statistics from the flats you log on rides (Add
+  incident → Flat tire). Totals by wheel, wet/dry and bike; tables **by inner tube** and **by tire** model with
+  punctures, km ridden and km per puncture; the list of all punctures with tube, tire, damage and fix. Tubes
+  taken from stock count as the model the last fix on that wheel put in.
+
 ### Changed
 - **Record work done** has a **Done by a bike shop** field (Dirk 2026-11-01): pick a shop from your shop
   list or add a new one. It shows in the maintenance log ("at …"), in Edit, and next to the service cost in

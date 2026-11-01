@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { api, newOpId } from "../api";
 import { IncidentList, RideIncidents } from "../components/Incidents";
+import Punctures from "../components/Punctures";
 import {
   Card,
   ChangeNotice,
@@ -593,6 +594,7 @@ const RIDE_TABS: [string, string][] = [
   ["unassigned", "No bike"],
   ["removed", "Removed rides"],
   ["incidents", "Incidents"],
+  ["punctures", "Punctures"],
 ];
 
 function BikeSelect({
@@ -716,7 +718,8 @@ export default function RidesPage() {
         </p>
       )}
       {tab === "incidents" && <IncidentList bikes={allBikes} />}
-      {tab !== "incidents" && (
+      {tab === "punctures" && <Punctures />}
+      {tab !== "incidents" && tab !== "punctures" && (
         <>
           <div className="filters">
             {tab !== "unassigned" && (

@@ -888,6 +888,11 @@ def create_app(factory: sessionmaker[Session], paths: DataPaths, *, token: str |
     def part_life_report(component_type: str | None = None, s: Session = Depends(db)):
         return part_life.report(s, component_type)
 
+    @app.get("/api/reports/punctures")
+    def puncture_report(s: Session = Depends(db)):
+        from bikelog.services import punctures
+        return punctures.report(s)
+
     @app.get("/api/service-orders")
     def service_orders_away(bike_id: int | None = None, s: Session = Depends(db)):
         return orders_svc.away(s, bike_id)
