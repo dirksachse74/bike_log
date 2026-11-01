@@ -12,7 +12,9 @@ Money is counted once: a part drawn from stock has no own price, its value comes
 The bike's first frame (DECISIONS 113): with a bike purchase price it came with the bike (its own price, if
 any, is shown as included, not counted again); without one, the frame's price is the initial cost (a bike
 built up from a frame). A later frame (e.g. a warranty replacement) is a part like any other.
-Undone work sessions and voided records are left out.
+A wheel's built-in parts (wheels, hubs, spokes, rims; BUILT_INTO_WHEEL) without own price inside a priced
+wheelset or wheel are included in that
+price, not "missing a price". Undone work sessions and voided records are left out.
 """
 from __future__ import annotations
 
@@ -56,6 +58,30 @@ def _unit_cost(session: Session, line_id: int) -> float | None:
         cents += sign * t.cost_cents
         qty += sign * t.qty
     return cents / qty if qty > 0 else None
+
+
+# Parts built into a wheel: they come with a wheelset or wheel. Tires, tubes, cassettes and rotors are
+# bought on their own and still ask for a price.
+BUILT_INTO_WHEEL = ("FRONT_WHEEL", "REAR_WHEEL", "HUB", "HUB_BEARINGS", "SPOKES", "RIM", "RIM_TAPE")
+
+
+def _in_priced_parent(session: Session, component_id: int, live_bundles, depth: int = 0) -> bool:
+    """True when the part sits (or sat) inside a part that has a price or a live bundle, at any level
+    (spokes on a wheel of a priced wheelset)."""
+    if depth > 5:
+        return False
+    parents = set(session.scalars(select(Installation.parent_component_id).where(
+        Installation.component_id == component_id, Installation.voided_at.is_(None),
+        Installation.parent_component_id.is_not(None))))
+    for pid in parents:
+        parent = session.get(Component, pid)
+        if parent is None or parent.disposition == "VOIDED":
+            continue
+        if parent.price_cents is not None or parent.bundle_id in live_bundles:
+            return True
+        if _in_priced_parent(session, pid, live_bundles, depth + 1):
+            return True
+    return False
 
 
 def bike_attribution(session: Session) -> dict[int, int | None]:
@@ -112,8 +138,10 @@ def bike_costs(session: Session, bike: Bike, *, attribution: dict[int, int | Non
         if c.price_cents is not None:
             items.append({"kind": "PART", "date": c.purchase_date, "text": c.label, "component_id": c.id,
                           "cents": c.price_cents, "estimated": False})
-        elif not c.from_stock_txn_id and c.component_type not in ("FRAME", "FORK"):
-            unpriced.append(c.label)      # a frame and fork without own price came with the bike
+        elif (not c.from_stock_txn_id and c.component_type not in ("FRAME", "FORK")
+              and not (c.component_type in BUILT_INTO_WHEEL and _in_priced_parent(session, c.id, live_bundles))):
+            unpriced.append(c.label)      # a frame and fork without own price came with the bike; a part
+            # inside a priced wheelset/wheel/bundle part is included in that price
 
     events = list(session.scalars(select(MaintenanceEvent).where(MaintenanceEvent.voided_at.is_(None),
                                                                  MaintenanceEvent.bike_id == bike.id)))

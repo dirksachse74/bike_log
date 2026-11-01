@@ -465,6 +465,11 @@ you disagree. Dates are 2026-10-24 unless noted.
     carries the row; the Costs card shows it with a "Frame price" sheet (PATCH components/{id} price, date,
     shop). Bundle items carry `groupset` (link to /bikes/{id}/groupset) or `component_id`.
 
+114. **A wheel's built-in parts are included in a priced wheelset** (Dirk 2026-11-01). `costs.BUILT_INTO_WHEEL`
+    (wheels, hub, hub bearings, spokes, rim, rim tape) without own price, inside (now or before, any level) a
+    part with a price or a live bundle (`_in_priced_parent`), are not listed as "no price". Parts bought on
+    their own (tire, tube, cassette, rotor) still are.
+
 ## Repository
 27. Pushed only to the feature branch `claude/project-thread-6y3mmh` of the private repository. Demo
     data uses fictional Strava gear ids.

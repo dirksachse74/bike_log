@@ -19,6 +19,9 @@ UPDATING.md → "Making a release". New entries go under "Unreleased" as work is
 - In the cost entries, the **groupset** bundle row links to the bike's groupset page.
 
 ### Fixed
+- Costs said the **wheels and spokes of a priced wheelset have no price** (Dirk 2026-11-01). Parts built
+  into a wheel (wheels, hubs, spokes, rims, rim tape) without their own price are now counted as included
+  in the price of the wheelset or wheel they sit in. Tires, tubes, cassettes and rotors still ask for a price.
 - Wheelset properties showed **Weight** and **Weight of the pair** (Dirk 2026-11-01): both were the same
   value. A type's own field now replaces the common one, so a wheelset has only "Weight of the pair"
   (frames and forks likewise had Weight and Material twice).
