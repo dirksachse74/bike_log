@@ -214,7 +214,7 @@ def _replace_part(session: Session, comp: Component, *, at: str, source: dict, o
 
 
 def _fix_spoke(session: Session, d: dict, bike_id: int | None, p: dict, *, at: str, note: str | None,
-               ws_id: int) -> str:
+               ws_id: int, entry: JournalEntry) -> str:
     """A broken spoke: replaced (counts towards re-lacing; one spoke from stock when picked) or the wheel
     trued / re-tensioned. Logged on the wheel; without a recorded wheel only the text is kept."""
     wheel = session.get(Component, d["wheel_id"]) if d.get("wheel_id") else \
@@ -234,6 +234,7 @@ def _fix_spoke(session: Session, d: dict, bike_id: int | None, p: dict, *, at: s
         return "spoke replaced (wheel not recorded, not counted)"
     m.log_event(session, action_code="SPOKE_REPLACE", at=at, component_id=wheel.id, notes=note,
                 consumable_id=line_id, consumable_qty=1 if line_id else None, work_session_id=ws_id)
+    entry.repair_session_id = ws_id      # so the count sees this event as the incident's replacement
     info = m.spoke_info(session, wheel)
     text = f"spoke replaced ({info['broken']} of {info['relace_after']} before a re-lace)"
     if line_id is not None:
@@ -268,7 +269,7 @@ def fix(session: Session, group: str, *, at: str, parts: list[dict], note: str |
         d = describe(session, e)
         comp = session.get(Component, e.component_id) if e.component_id else None
         if d["kind"] == "SPOKE":
-            text = _fix_spoke(session, d, bike_id, p, at=at, note=note, ws_id=ws.id)
+            text = _fix_spoke(session, d, bike_id, p, at=at, note=note, ws_id=ws.id, entry=e)
         elif p["action"] == "REPAIRED":
             if comp is not None and comp.component_type == "INNER_TUBE":
                 m.log_event(session, action_code="TUBE_PATCH", at=at, component_id=comp.id, notes=note,

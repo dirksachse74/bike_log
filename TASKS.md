@@ -22,6 +22,7 @@ Status key: ✅ done and tested · 🟡 done, not verified where it matters · �
 - ✅ Chain rotation: mark per part, rotation card on the bike (on / waxed, ready / dirty), swap prompt from the 500 km hot-wax rule with one-click swap, Wax chains batch, rotation history, wax cycles per chain.
 - ✅ Drill-down: part page "Parts on it" tree (wheelset → wheels → hub/spokes/tire, crankset → chainrings); groupset one line on the bike + groupset page (stats, tasks, incidents, log, journal, parts tree).
 - ✅ Spokes per wheel with broken-spoke count, "Broken spoke" incident and fix, re-lace reminder after 3 (Settings).
+- ✅ Broken spokes logged on the wheel (broke on / replaced on, history, remove), "Replace the wheel" after the 3rd; spokes dated from the wheel's purchase (DECISIONS 109).
 - ✅ Add part / Install: "Where does it go?" (spare, bike position, or on a part: wheelset › wheel › hub, crankset › chainring, RD › pulleys); Rim type.
 - ✅ Fix button on incidents (replaced from stock/spare/new, patched, nothing yet; auto-solve; Undo fix) and Manage parts → Swap tube; tubes as stock items.
 - ✅ Flat tire per wheel: tube only / tube and tire (one incident); spares to keep (2 tubes, 1 tire, editable) on the shopping list; Overview = Upcoming tasks + Shopping list, rest folded.

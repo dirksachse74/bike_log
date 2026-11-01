@@ -12,6 +12,7 @@ import PartTree from '../components/PartTree'
 import { RepairsCard, ReturnForm, SendOutForm, type IncidentPick } from '../components/ServiceOrders'
 import ProductImport from '../components/ProductImport'
 import ShopPicker from '../components/ShopPicker'
+import { BrokenSpokes, SpokeCount } from '../components/Spokes'
 import InstallHere from '../components/InstallHere'
 import { DispositionForm, MoveForm, OutcomeChoice, RemoveForm, ReplaceForm } from '../components/PartChange'
 import TaskList from '../components/TaskList'
@@ -21,7 +22,7 @@ import { useApp } from '../context'
 import { centsInput, certaintyLabel, euro, km, setupLabel, slotName, toCents, today, usageText, when } from '../format'
 import { INVENTORY_TABS, useCrumb } from '../crumbs'
 import { useApi } from '../hooks'
-import type { Bike, Change, ChainRow, ComponentSummary, EventRow, OpResult, PartNode, Rule, ServiceOrder, ShoppingItem, Task } from '../types'
+import type { Bike, Change, ChainRow, ComponentSummary, EventRow, OpResult, PartNode, Rule, ServiceOrder, ShoppingItem, SpokeInfo, Task } from '../types'
 
 const SUPPLY_KINDS: Record<string, string> = { WAX: 'Chain wax', LUBE: 'Chain lube', SEALANT: 'Tubeless sealant', BRAKE_FLUID: 'Brake fluid', GREASE: 'Grease', OTHER: 'Other' }
 // "g" and "ml" stay as they are; "tube" becomes "tubes"
@@ -846,6 +847,7 @@ interface ComponentDetail extends ComponentSummary {
   groupset_bike_id: number | null
   chain: (ChainRow & { cycles: { cycle: number; waxed_on: string; km: number; current: boolean }[] }) | null
   frame_history: FrameHistory | null
+  spokes: SpokeInfo | null
   service_orders: ServiceOrder[]
   incident_choices: IncidentPick[]
 }
@@ -853,6 +855,32 @@ interface ComponentDetail extends ComponentSummary {
 interface FrameHistory {
   inspections: EventRow[]
   crashes: { group: string; on: string; label: string; text: string | null; bike: string | null; ride_id: number | null; ride_label: string | null; open: boolean }[]
+}
+
+// A wheel's broken spokes (DECISIONS 109): the count since it was laced, and a sheet to log one or see them all.
+function SpokesCard({ wheelId, label, info, onChanged }: { wheelId: number; label: string; info: SpokeInfo; onChanged: () => void }) {
+  const [open, setOpen] = useState(false)
+  return (
+    <Card title="Spokes">
+      <p className="small">
+        <SpokeCount sp={info} />
+      </p>
+      {info.breaks.length > 0 && (
+        <p className="small muted">
+          Last broke {when(info.breaks[0].broke_on)}
+          {info.breaks[0].replaced_on ? `, replaced ${when(info.breaks[0].replaced_on)}` : ', not replaced yet'}.
+        </p>
+      )}
+      <button className="btn btn-small" onClick={() => setOpen(true)}>
+        Broken spoke…
+      </button>
+      {open && (
+        <Sheet title={`Broken spokes · ${label}`} onClose={() => setOpen(false)}>
+          <BrokenSpokes wheelId={wheelId} info={info} onChange={onChanged} />
+        </Sheet>
+      )}
+    </Card>
+  )
 }
 
 // A frame keeps its own record: inspections and crashes from the bikes it was on, while it was on them.
@@ -1194,6 +1222,7 @@ export function ComponentDetailPage() {
       </Card>
       <RepairsCard orders={data.service_orders} componentId={data.id} onBack={(o) => setSheet({ back: o })} />
       {data.frame_history && <FrameHistoryCard h={data.frame_history} kind={data.type_name} />}
+      {data.spokes && <SpokesCard wheelId={data.id} label={data.label} info={data.spokes} onChanged={reload} />}
       {data.chain && <ChainCard comp={data} chain={data.chain} onChanged={reload} />}
       {data.parts.length > 0 && (
         <Card title="Parts on it" className="span-2">

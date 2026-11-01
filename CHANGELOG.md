@@ -7,6 +7,18 @@ UPDATING.md → "Making a release". New entries go under "Unreleased" as work is
 
 ## Unreleased
 
+### Added
+- **Broken spokes per wheel** (Dirk 2026-11-01): a **Broken spoke…** button next to each wheel's spokes
+  (bike page) and on the wheel's own page. Log the day it broke and, now or later, the day it was
+  replaced (a spoke from your stock or not); the wheel lists every broken spoke with both dates. After the
+  3rd broken spoke since the wheel was laced the wheel says **Replace the wheel (or re-lace it)** in red
+  and in Service status (the number is under Settings). A spoke not replaced yet also shows in red.
+  A wrong entry can be removed (a stock spoke goes back).
+
+### Changed
+- Adding spokes no longer asks "On the wheel since": it is the day the wheel was bought (folded away
+  for a wheel re-built later).
+
 ### Fixed
 - "Install a tire" said "Pick where the tire goes" with nothing to pick (Dirk 2026-11-01): a wheelset added
   on its own had no front and rear wheel records, so a tire had nowhere to go. Every wheelset now has its
