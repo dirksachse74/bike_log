@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { api, newOpId } from '../api'
 import ChangeLog from '../components/ChangeLog'
+import GroupsetImport from '../components/GroupsetImport'
 import Journal from '../components/Journal'
 import LogMaintenance from '../components/LogMaintenance'
 import MountPicker, { type MountTarget } from '../components/MountPicker'
@@ -36,7 +37,10 @@ export function ChainStateTag({ state }: { state: string }) {
   return <Tag tone={CHAIN_TONE[state] ?? 'neutral'}>{state.replace(/_/g, ' ').toLowerCase()}</Tag>
 }
 
-export function ComponentForm({ onSaved, presetType }: { onSaved: (c: ComponentSummary) => void; presetType?: string }) {
+// "Groupset" in the type list: several parts at once, through the same dialog as on the bike page
+const GROUPSET = 'GROUPSET'
+
+export function ComponentForm({ onSaved, presetType, onGroupset }: { onSaved: (c: ComponentSummary) => void; presetType?: string; onGroupset?: (msg: string) => void }) {
   const { meta } = useApp()
   const [f, setF] = useState({ component_type: presetType ?? 'CHAIN', label: '', history: 'NEW', start_km: '', start_date: today(), start_estimate: true, install_slot: '', install_at: today(), notes: '', price: '', purchase_date: '' })
   const [mount, setMount] = useState<MountTarget | null>(null)
@@ -66,24 +70,36 @@ export function ComponentForm({ onSaved, presetType }: { onSaved: (c: ComponentS
       setBusy(false)
     }
   }
+  const typeField = (
+    <Field label="Type">
+      <select
+        value={f.component_type}
+        onChange={(e) => {
+          setF({ ...f, component_type: e.target.value, install_slot: '' })
+          setMount(null)
+        }}
+      >
+        {onGroupset && <option value={GROUPSET}>Groupset (all its parts at once)</option>}
+        {meta.component_types.map((t) => (
+          <option key={t.code} value={t.code}>
+            {t.name}
+          </option>
+        ))}
+      </select>
+    </Field>
+  )
+  if (onGroupset && f.component_type === GROUPSET) {
+    return (
+      <div className="form">
+        {typeField}
+        <GroupsetImport onDone={onGroupset} />
+      </div>
+    )
+  }
   return (
     <div className="form">
       <div className="row">
-        <Field label="Type">
-          <select
-            value={f.component_type}
-            onChange={(e) => {
-              setF({ ...f, component_type: e.target.value, install_slot: '' })
-              setMount(null)
-            }}
-          >
-            {meta.component_types.map((t) => (
-              <option key={t.code} value={t.code}>
-                {t.name}
-              </option>
-            ))}
-          </select>
-        </Field>
+        {typeField}
         <Field label="Name / label" hint="e.g. Chain A. Specs can be added later.">
           <input value={f.label} onChange={(e) => setF({ ...f, label: e.target.value })} autoFocus />
         </Field>
@@ -775,7 +791,7 @@ export default function InventoryPage() {
       )}
       {sheet === 'part' && (
         <Sheet title="Add part" onClose={() => setSheet(null)}>
-          <ComponentForm presetType={tab === 'chains' ? 'CHAIN' : undefined} onSaved={(c) => nav(`/inventory/${c.id}`)} />
+          <ComponentForm presetType={tab === 'chains' ? 'CHAIN' : undefined} onSaved={(c) => nav(`/inventory/${c.id}`)} onGroupset={changed} />
         </Sheet>
       )}
       {sheet === 'json' && (
