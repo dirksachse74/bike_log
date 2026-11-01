@@ -12,6 +12,7 @@ import PartTree from '../components/PartTree'
 import { RepairsCard, ReturnForm, SendOutForm, type IncidentPick } from '../components/ServiceOrders'
 import ProductImport from '../components/ProductImport'
 import ShopPicker from '../components/ShopPicker'
+import InstallHere from '../components/InstallHere'
 import { DispositionForm, MoveForm, OutcomeChoice, RemoveForm, ReplaceForm } from '../components/PartChange'
 import TaskList from '../components/TaskList'
 import { PressureNote, TireSetupSelect } from '../components/TireSetup'
@@ -986,7 +987,7 @@ export function ComponentDetailPage() {
   const actionName = (code: string | null) => (meta.actions.find((a) => a.code === code)?.name ?? code ?? '').toLowerCase()
   const { data, error, loading, reload } = useApi<ComponentDetail>(`/components/${id}`)
   useCrumb(`/inventory/${id}`, data?.label)
-  const [sheet, setSheet] = useState<null | 'log' | 'details' | 'start' | 'retire' | 'rule' | 'replace' | 'remove' | 'move' | 'disposition' | 'inuse' | 'sendout' | { rule: Rule } | { correct: number } | { back: ServiceOrder }>(null)
+  const [sheet, setSheet] = useState<null | 'log' | 'details' | 'start' | 'retire' | 'rule' | 'replace' | 'remove' | 'move' | 'disposition' | 'inuse' | 'sendout' | { rule: Rule } | { correct: number } | { back: ServiceOrder } | 'install' | 'tire' | { change: number }>(null)
   const [f, setF] = useState({ km: '', date: today(), estimate: true, reason: '', installed_at: '', removed_at: '', action_code: 'INSPECT', interval_km: '', interval_months: '', interval_hours: '', retire_as: '' })
   const [preview, setPreview] = useState<Change | null>(null)
   const [err, setErr] = useState<string | null>(null)
@@ -1050,12 +1051,22 @@ export function ComponentDetailPage() {
         actions={
           data.status !== 'RETIRED' ? (
             <>
+              {!installed && !away && !ctype?.rider_gear && (ctype?.slots.length || ctype?.parent_types.length) ? (
+                <button className="btn btn-primary" onClick={() => setSheet('install')}>
+                  Install
+                </button>
+              ) : null}
+              {['FRONT_WHEEL', 'REAR_WHEEL', 'WHEELSET'].includes(data.component_type) && (
+                <button className="btn" onClick={() => setSheet('tire')}>
+                  Install a tire
+                </button>
+              )}
               {installed && (
                 <button className="btn btn-primary" onClick={() => setSheet('replace')}>
                   Replace
                 </button>
               )}
-              <button className={installed ? 'btn' : 'btn btn-primary'} onClick={() => setSheet('log')} title="Cleaning, lubing, waxing, charging, checks, bleeds, repairs: anything you did to the bike or a part">
+              <button className={installed || (!away && !ctype?.rider_gear && (ctype?.slots.length || ctype?.parent_types.length)) ? 'btn' : 'btn btn-primary'} onClick={() => setSheet('log')} title="Cleaning, lubing, waxing, charging, checks, bleeds, repairs: anything you did to the bike or a part">
                 Record work done
               </button>
               {installed && (
@@ -1310,6 +1321,27 @@ export function ComponentDetailPage() {
       {sheet === 'log' && (
         <Sheet title={`Record work done · ${data.label}`} onClose={close}>
           <LogMaintenance componentId={data.id} onDone={(msg) => { close(); toast(msg); reload() }} />
+        </Sheet>
+      )}
+      {(sheet === 'install' || sheet === 'tire') && (
+        <Sheet title={sheet === 'tire' ? `Install a tire · ${data.label}` : `Install ${data.label}`} onClose={close}>
+          <InstallHere
+            componentType={sheet === 'tire' ? 'TIRE' : data.component_type}
+            part={sheet === 'install' ? data : undefined}
+            under={sheet === 'tire' ? data.id : undefined}
+            onCancel={close}
+            onChange={(id) => setSheet({ change: id })}
+            onDone={(msg) => {
+              toast(msg)
+              close()
+              reload()
+            }}
+          />
+        </Sheet>
+      )}
+      {sheet && typeof sheet === 'object' && 'change' in sheet && (
+        <Sheet title="Change the tire" onClose={close}>
+          <ReplaceForm componentId={sheet.change} onDone={(c, label) => { changed(c); toast(`${label} installed. ${c.notice}`) }} />
         </Sheet>
       )}
       {sheet === 'replace' && (

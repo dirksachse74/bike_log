@@ -410,7 +410,8 @@ textarea {
   width: 100%;
   min-width: 0;
 }
-input[type='checkbox'] {
+input[type='checkbox'],
+input[type='radio'] {
   width: auto;
   min-height: 0;
 }
@@ -1310,3 +1311,7 @@ label.chip {
 .pick-list .row-actions{margin-left:auto;display:inline-flex;gap:.3rem;flex-wrap:wrap}
 .pick-list .inline-add{display:flex;gap:.4rem;margin-top:.5rem;max-width:28rem}
 .pick-list .inline-add input{flex:1;min-width:0}
+
+/* Install a tire / Install (DECISIONS 107): where-list as big radio rows */
+.install-here .where-list{display:flex;flex-direction:column;gap:.35rem}
+.install-here .where-list label.check{display:flex;align-items:center;gap:.4rem;flex-wrap:wrap}
