@@ -852,7 +852,7 @@ async function bikeTab(page, name) {
   phone.on('pageerror', (e) => consoleErrors.push(e.message))
   await phone.goto(BASE)
   await phone.locator('.task').first().waitFor()
-  const navVisible = await phone.locator('.sidebar nav').isVisible()
+  const navVisible = await phone.locator('.topbar nav').isVisible()
   const overflow = await phone.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1)
   check('mobile: bottom navigation visible, no horizontal overflow', navVisible && !overflow, `overflow=${overflow}`)
   await phone.screenshot({ path: path.join(OUT, '05-mobile-overview.png'), fullPage: true })

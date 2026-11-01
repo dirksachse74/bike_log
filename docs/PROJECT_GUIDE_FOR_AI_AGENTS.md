@@ -38,7 +38,7 @@ Nothing is hosted or deployed. Data stays in his user folder.
 | Layer | Technology |
 |---|---|
 | Backend | Python 3.13, FastAPI, Pydantic 2, SQLAlchemy 2.1, Alembic, SQLite (WAL, `BEGIN IMMEDIATE` writes) |
-| Frontend | React 19 + TypeScript + Vite, React Router (hash routes `#/...`), plain CSS (`index.css`, light/dark) |
+| Frontend | React 19 + TypeScript + Vite, React Router (hash routes `#/...`), plain CSS (`index.css`, light/dark; look and feel in docs/ui-style.md: top bar + orange accent) |
 | Packaging | PyInstaller one-folder build (`BikeLog.exe`), optional Inno Setup per-user installer |
 | Tests | pytest (backend, against a real SQLite DB, no mocks of our own code), Playwright browser script (`e2e/smoke.cjs`) |
 
@@ -82,7 +82,7 @@ backend/bikelog/
 backend/tests/           pytest suites; fake_strava.py is an in-memory Strava API
 frontend/src/            App.tsx, api.ts (fetch + token + op id), pages/*, components/*, types.ts, format.ts
 e2e/smoke.cjs            browser test against the real running app; e2e/fixtures/ JSON files
-docs/                    strava.md, groupsets.md, product-import.md, csv-import.md,
+docs/                    ui-style.md (look and feel), strava.md, groupsets.md, product-import.md, csv-import.md,
                          product-templates/ (generated JSON schemas/examples + AGENT_INSTRUCTIONS.md)
 packaging/               bikelog.spec (PyInstaller), entry.py, bikelog.iss (Inno Setup), README.md, ci/ (inactive example)
 ```
@@ -271,6 +271,7 @@ the choices of the incident's ride). e2e helpers `setupItem`, `openGroups`, `ope
 | Prices, initial/running cost | costs.py | bike list, bike page Costs card, part Edit details | DECISIONS 31–34 |
 | Purchase bundles (groupset bought at one price), parts kept as spares at import | services/bundles.py, groupsets.py, costs.py | components/Bundles.tsx (bike page "Bought as a bundle"), GroupsetImport.tsx, part page | docs/groupsets.md, DECISIONS 51–52 |
 | Km from before (starting mileage of a part, e.g. a wheelset from another bike) | inventory.set_starting_usage, usage.py | part page → Starting km / "Add km from before"; Add part form | DECISIONS 53 |
+| Look and feel (top bar, orange accent, cards, stat blocks; phone bottom tab bar) | n/a | App.tsx (skeleton), index.css (tokens on :root) | docs/ui-style.md, DECISIONS 100 |
 | Journal | journal.py | components/Journal.tsx (bike and part pages) | DECISIONS 35 |
 | Ride incidents (13 types, each with its own affected parts or body areas, several per incident; edit, remove, restore), dry/wet per ride | incidents.py, journal.py, rides.py | components/Incidents.tsx (ride detail; Rides → Incidents tab) | DECISIONS 55–56, 78–80 |
 | Parts inside parts: wheelset → wheels → tire/hub/bearings/spokes/sensor; pulleys on the rear derailleur; carry-over at replace | inventory.py (group_wheels, replace carry_over), allocation.py, spares.py | Bikes.tsx ("Group wheels into a wheelset"), PartChange.tsx | DECISIONS 57–58 |
@@ -343,10 +344,10 @@ warns, npm 12 blocks): run `npm install-scripts approve <pkg>`.
 Checks that must pass before every push:
 
 ```bash
-.venv/bin/python -m pytest -q backend/tests             # currently 180 passed
+.venv/bin/python -m pytest -q backend/tests             # currently 218 passed
 cd frontend && npx tsc -b && npx eslint . && npx vite build
 # browser test: start the app on a fresh data dir, then
-node e2e/smoke.cjs http://127.0.0.1:8790/ <screenshot-dir>   # currently 86/86 (the ride-form step can flake once; rerun)
+node e2e/smoke.cjs http://127.0.0.1:8790/ <screenshot-dir>   # currently 125/125 (the ride-form step can flake once; rerun)
 #   (cd backend && ../.venv/bin/python -m bikelog --no-browser --no-sample --port 8790 --data-dir <fresh dir>)
 # sample database: start on ANOTHER fresh dir WITHOUT --no-sample (port 8791), then
 node e2e/sample.cjs http://127.0.0.1:8791/ <screenshot-dir>  # banner, sample bikes, crash item, Fresh start

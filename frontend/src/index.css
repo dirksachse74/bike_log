@@ -1,17 +1,26 @@
 :root {
-  --bg: #f4f6f8;
+  /* Look and feel: bright, sporty activity-feed style (white header bar with a
+     text nav and an orange underline, light grey page, flat white cards, big
+     stat numbers with small grey labels, one orange accent for actions).
+     Our own logo and name; see docs/ui-style.md. */
+  --bg: #f7f7fa;
   --panel: #ffffff;
-  --ink: #17202a;
-  --muted: #5d6b78;
-  --line: #dde3e9;
-  --brand: #1b3a57;
-  --brand-2: #2f6690;
+  --ink: #242428;
+  --muted: #6d6d78;
+  --line: #e0e0e6;
+  --accent: #f4511e; /* signal orange: primary buttons, active tab/nav, selected chips */
+  --accent-hover: #d8400f;
+  --accent-soft: #fff1ea;
+  --brand: var(--accent);
+  --brand-2: var(--accent);
+  --link: #1f6fb2;
   --ok: #2e7d32;
   --soon: #b26a00;
   --due: #c62828;
   --info: #1565c0;
-  --radius: 10px;
-  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --radius: 6px;
+  --topbar-h: 56px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Helvetica, Arial, sans-serif;
   color: var(--ink);
   background: var(--bg);
   line-height: 1.45;
@@ -19,13 +28,15 @@
 }
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #11161b;
-    --panel: #1a2229;
-    --ink: #e6edf3;
-    --muted: #9aa8b5;
-    --line: #2c3742;
-    --brand: #8cc4f2;
-    --brand-2: #8cc4f2;
+    --bg: #121214;
+    --panel: #1d1d21;
+    --ink: #ececf0;
+    --muted: #a0a0ab;
+    --line: #33333a;
+    --accent: #ff6a33;
+    --accent-hover: #ff8455;
+    --accent-soft: #3a2117;
+    --link: #7fb8ec;
   }
 }
 * {
@@ -36,10 +47,17 @@ body {
   background: var(--bg);
 }
 a {
-  color: var(--brand-2);
+  color: var(--link);
+  text-decoration: none;
+  font-weight: 600;
+}
+a:hover {
+  text-decoration: underline;
 }
 h2 {
-  font-size: 1.1rem;
+  font-size: 1.25rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
   margin: 0;
 }
 h3 {
@@ -51,47 +69,78 @@ code {
 }
 .shell {
   display: flex;
+  flex-direction: column;
   min-height: 100vh;
 }
-.sidebar {
-  width: 210px;
+/* top bar: logo left, text navigation, active page underlined in orange */
+.topbar {
   background: var(--panel);
-  border-right: 1px solid var(--line);
-  padding: 1rem 0.6rem;
+  border-bottom: 1px solid var(--line);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.04);
   position: sticky;
   top: 0;
-  height: 100vh;
+  z-index: 10;
+}
+.topbar-inner {
+  display: flex;
+  align-items: stretch;
+  gap: 1.5rem;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 1rem;
+  height: var(--topbar-h);
+}
+.topbar nav {
+  display: flex;
+  align-items: stretch;
+  flex: 1;
 }
 .brand {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  font-weight: 700;
-  font-size: 1.1rem;
-  padding: 0 0.5rem 1rem;
-  color: var(--brand);
+  font-weight: 800;
+  font-size: 1.15rem;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+  text-decoration: none;
+  white-space: nowrap;
+}
+.brand:hover {
+  text-decoration: none;
 }
 .navlink {
   display: flex;
-  gap: 0.6rem;
+  gap: 0.4rem;
   align-items: center;
-  padding: 0.55rem 0.7rem;
-  border-radius: 8px;
+  padding: 0 0.85rem;
+  color: #494950;
+  font-weight: 500;
+  text-decoration: none;
+  border-bottom: 3px solid transparent;
+  border-top: 3px solid transparent;
+}
+.navlink:hover {
   color: var(--ink);
   text-decoration: none;
+  border-bottom-color: var(--line);
 }
 .navlink.active {
-  background: color-mix(in srgb, var(--brand-2) 15%, transparent);
-  font-weight: 600;
+  color: var(--ink);
+  font-weight: 700;
+  border-bottom-color: var(--accent);
 }
 .navicon {
+  display: none;
   width: 1.3rem;
   text-align: center;
 }
 .main {
   flex: 1;
-  padding: 1.2rem;
+  width: 100%;
   max-width: 1200px;
+  margin: 0 auto;
+  padding: 1.5rem 1rem;
   min-width: 0;
 }
 .grid {
@@ -106,7 +155,7 @@ code {
   background: var(--panel);
   border: 1px solid var(--line);
   border-radius: var(--radius);
-  padding: 1rem;
+  padding: 1.25rem;
   min-width: 0;
 }
 .card-head {
@@ -126,28 +175,29 @@ code {
   border: 1px solid var(--line);
   background: var(--panel);
   color: var(--ink);
-  border-radius: 8px;
+  border-radius: 4px;
   padding: 0.5rem 0.9rem;
   font: inherit;
+  font-weight: 600;
   cursor: pointer;
   min-height: 2.4rem;
+  border-color: #cfcfd6;
 }
 .btn:hover {
-  border-color: var(--brand-2);
+  border-color: var(--ink);
 }
 .btn:disabled {
   opacity: 0.55;
   cursor: default;
 }
 .btn-primary {
-  background: var(--brand);
+  background: var(--accent);
   color: #fff;
-  border-color: var(--brand);
+  border-color: var(--accent);
 }
-@media (prefers-color-scheme: dark) {
-  .btn-primary {
-    color: #0d1b28;
-  }
+.btn-primary:hover {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
 }
 .btn-danger {
   color: var(--due);
@@ -165,7 +215,8 @@ code {
 .linklike {
   background: none;
   border: none;
-  color: var(--brand-2);
+  color: var(--link);
+  font-weight: 600;
   padding: 0;
   font: inherit;
   cursor: pointer;
@@ -444,8 +495,8 @@ input[type='file'] {
   min-height: 2.3rem;
 }
 .chip-on {
-  background: var(--brand);
-  border-color: var(--brand);
+  background: var(--accent);
+  border-color: var(--accent);
   color: #fff;
 }
 .mt {
@@ -466,6 +517,9 @@ input[type='file'] {
 .table th {
   color: var(--muted);
   font-weight: 600;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
 }
 .table .num {
   text-align: right;
@@ -475,7 +529,7 @@ input[type='file'] {
   cursor: pointer;
 }
 .table tbody tr:hover {
-  background: color-mix(in srgb, var(--brand-2) 6%, transparent);
+  background: color-mix(in srgb, var(--muted) 7%, transparent);
 }
 .filters {
   display: flex;
@@ -500,12 +554,13 @@ input[type='file'] {
   font: inherit;
   cursor: pointer;
   color: var(--muted);
-  border-bottom: 2px solid transparent;
+  font-weight: 500;
+  border-bottom: 3px solid transparent;
 }
 .tab-on {
   color: var(--ink);
-  border-bottom-color: var(--brand-2);
-  font-weight: 600;
+  border-bottom-color: var(--accent);
+  font-weight: 700;
 }
 .cards {
   display: grid;
@@ -516,28 +571,48 @@ input[type='file'] {
   display: flex;
   flex-direction: column;
   gap: 0.3rem;
-  padding: 0.8rem;
+  padding: 1rem;
   border: 1px solid var(--line);
+  border-top: 3px solid var(--accent);
   border-radius: var(--radius);
+  background: var(--panel);
   text-decoration: none;
+  font-weight: 400;
   color: var(--ink);
   align-items: flex-start;
+  transition: box-shadow 0.15s;
 }
 .tile:hover {
-  border-color: var(--brand-2);
+  text-decoration: none;
+  box-shadow: 0 2px 10px rgb(0 0 0 / 0.08);
 }
+.tile > strong:first-child {
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+/* stat blocks: big number, small grey label under it, thin divider between */
 .stats {
   display: flex;
-  gap: 2rem;
+  gap: 1rem 0;
   flex-wrap: wrap;
+  margin-bottom: 0.4rem;
 }
 .stats > div {
   display: flex;
   flex-direction: column;
+  padding: 0 1.5rem;
+  border-left: 1px solid var(--line);
+}
+.stats > div:first-child {
+  padding-left: 0;
+  border-left: 0;
 }
 .stat {
-  font-size: 1.5rem;
-  font-weight: 700;
+  font-size: 1.75rem;
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
 }
 .sheet-backdrop {
   position: fixed;
@@ -574,44 +649,41 @@ input[type='file'] {
   background: var(--ink);
   color: var(--bg);
   padding: 0.7rem 1rem;
-  border-radius: 10px;
+  border-radius: 4px;
+  border-left: 4px solid var(--accent);
   z-index: 30;
   max-width: min(90vw, 560px);
   font-size: 0.92rem;
 }
 .demo-banner {
-  background: color-mix(in srgb, var(--soon) 18%, transparent);
-  border: 1px solid var(--soon);
-  border-radius: 8px;
+  background: var(--accent-soft);
+  border: 1px solid color-mix(in srgb, var(--accent) 30%, var(--line));
+  border-left: 4px solid var(--accent);
+  border-radius: 4px;
   padding: 0.5rem 0.8rem;
   margin-bottom: 1rem;
   font-size: 0.9rem;
 }
 
-/* phone: bottom navigation, single column, full-screen sheets */
+/* phone: slim top bar with the logo, navigation as a bottom tab bar, single column, full-screen sheets */
 @media (max-width: 760px) {
-  .shell {
-    flex-direction: column;
+  .topbar-inner {
+    height: 48px;
+    padding: 0 0.8rem;
   }
-  .sidebar {
-    position: fixed;
-    bottom: 0;
-    top: auto;
-    left: 0;
-    right: 0;
-    width: 100%;
-    height: auto;
-    padding: 0.2rem 0.2rem calc(0.2rem + env(safe-area-inset-bottom));
-    border-right: none;
-    border-top: 1px solid var(--line);
-    z-index: 10;
-  }
-  .brand {
+  .brand-version {
     display: none;
   }
-  .sidebar nav {
-    display: flex;
+  .topbar nav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: var(--panel);
+    border-top: 1px solid var(--line);
+    padding: 0.15rem 0.2rem calc(0.15rem + env(safe-area-inset-bottom));
     justify-content: space-around;
+    z-index: 10;
   }
   .navlink {
     flex-direction: column;
@@ -620,9 +692,27 @@ input[type='file'] {
     padding: 0.35rem 0.2rem;
     flex: 1;
     text-align: center;
+    border: 0;
+  }
+  .navlink:hover {
+    border: 0;
+  }
+  .navlink.active {
+    color: var(--accent);
   }
   .navicon {
+    display: block;
     font-size: 1.15rem;
+  }
+  .stats {
+    gap: 0.8rem 1.5rem;
+  }
+  .stats > div {
+    padding: 0;
+    border-left: 0;
+  }
+  .stat {
+    font-size: 1.4rem;
   }
   .main {
     padding: 0.7rem 0.7rem 5.5rem;
@@ -671,11 +761,6 @@ label.chip {
 .chip:has(.sr-only:focus-visible) {
   outline: 2px solid var(--info);
   outline-offset: 2px;
-}
-@media (prefers-color-scheme: dark) {
-  .chip-on {
-    color: var(--bg);
-  }
 }
 .pick-list {
   display: flex;
@@ -897,12 +982,23 @@ label.chip {
 }
 
 .brand-version {
-  flex-basis: 100%;
-  padding-left: 2.5rem;
-  font-size: 0.7rem;
-  font-weight: 400;
+  align-self: center;
+  font-size: 0.72rem;
   color: var(--muted);
-  align-self: flex-end;
+  white-space: nowrap;
+}
+
+/* task lists: one orange accent per screen is enough, so "Log done" in long lists is an
+   orange outline that fills on hover */
+.task-actions .btn-primary,
+.incident-actions .btn-primary {
+  background: var(--panel);
+  color: var(--accent);
+}
+.task-actions .btn-primary:hover,
+.incident-actions .btn-primary:hover {
+  background: var(--accent);
+  color: #fff;
 }
 
 .inline-field {
@@ -1194,4 +1290,10 @@ label.chip {
 }
 .task-forecast {
   margin-top: 0.2rem;
+}
+/* bike cards: the distance is the headline number, like a stat block */
+.tile > strong:first-child + span {
+  font-size: 1.5rem;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
 }

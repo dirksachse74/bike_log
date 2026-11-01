@@ -7,6 +7,14 @@ UPDATING.md → "Making a release". New entries go under "Unreleased" as work is
 
 ## Unreleased
 
+### Changed
+- New look (Dirk 2026-11-01: "make our app look similar to strava.com"): white top bar with the logo and
+  a text menu (current page underlined in orange) instead of the left sidebar; on phones the menu is a
+  bottom tab bar. Light grey page, flat white cards, one orange accent for main buttons, tabs and
+  selected chips; blue links; big stat numbers with small grey labels and thin dividers; bike cards with
+  the distance as the headline. "Log done" in task lists is an orange outline. Our own logo and colours,
+  nothing copied. Nothing else changed: same screens, buttons and folded sections. See docs/ui-style.md.
+
 ### Added
 - Part life report (Dirk 2026-10-27, forum idea G3): Inventory → Part life. Per part type (folded): every
   finished part (discarded, retired, sold, returned under warranty) with lifetime km, ride hours, months
