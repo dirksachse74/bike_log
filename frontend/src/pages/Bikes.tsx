@@ -998,6 +998,13 @@ const SETUP_GROUPS: [string, string][] = [
   ['ELECTRONICS', 'Electronics'],
   ['OTHER', 'Other'],
 ]
+// inside the groupset: one branch per area (catalog categories)
+const GROUPSET_SUBS: [string, string][] = [
+  ['Drivetrain', 'Drivetrain'],
+  ['Controls', 'Shifting and controls'],
+  ['Brakes', 'Brakes'],
+  ['OTHER', 'Other'],
+]
 const CATEGORY_GROUP: Record<string, string> = {
   Drivetrain: 'GROUPSET',
   Brakes: 'GROUPSET',
@@ -1058,6 +1065,31 @@ function SetupGroups({ setup, groupset, bikeId, onChange, reload, onAddSpokes, o
     if (s.depth === 0) current = groupOf(s.component_type)
     ;(groups[current] ??= []).push(s)
   }
+  // groupset parts by area (a part mounted on another stays with it, e.g. chainrings under the crankset)
+  const subs: Record<string, SetupRow[]> = {}
+  let sub = 'OTHER'
+  for (const s of groups.GROUPSET ?? []) {
+    if (s.depth === 0) sub = s.component_type === 'BATTERY' ? 'Controls' : (meta.component_types.find((t) => t.code === s.component_type)?.category ?? 'OTHER')
+    ;(subs[sub] ??= []).push(s)
+  }
+  const row = (s: SetupRow) => (
+    <li key={s.installation_id} style={{ paddingLeft: `${s.depth * 1.2}rem` }}>
+      <span className="muted small">{slotName(s.slot)}</span>
+      <Link to={`/inventory/${s.component_id}`}>{s.label}</Link>
+      <span className="muted small">since {when(s.since)}</span>
+      {(s.component_type === 'FRONT_WHEEL' || s.component_type === 'REAR_WHEEL') && <TireSetupSelect wheelId={s.component_id} value={s.tire_setup} onSaved={reload} />}
+      {s.component_type === 'TIRE' && <PressureNote tireId={s.component_id} value={s.pressure_note} onSaved={reload} />}
+      <button className="btn btn-small" onClick={() => onChange(s)}>
+        Change
+      </button>
+      {bare.has(s.component_id) && (
+        <button className="btn btn-small" onClick={() => onInstallTire(s)}>
+          Install a tire
+        </button>
+      )}
+      {s.spokes && <SpokeLine row={s} onAdd={() => onAddSpokes(s)} onBroken={() => onBrokenSpoke(s)} />}
+    </li>
+  )
   return (
     <div className="setup-groups">
       {SETUP_GROUPS.filter(([k]) => groups[k]?.length).map(([k, label]) => {
@@ -1088,26 +1120,30 @@ function SetupGroups({ setup, groupset, bikeId, onChange, reload, onAddSpokes, o
                 </span>
               </summary>
             )}
-            <ul className="list setup">
-              {rows.map((s) => (
-                <li key={s.installation_id} style={{ paddingLeft: `${s.depth * 1.2}rem` }}>
-                  <span className="muted small">{slotName(s.slot)}</span>
-                  <Link to={`/inventory/${s.component_id}`}>{s.label}</Link>
-                  <span className="muted small">since {when(s.since)}</span>
-                  {(s.component_type === 'FRONT_WHEEL' || s.component_type === 'REAR_WHEEL') && <TireSetupSelect wheelId={s.component_id} value={s.tire_setup} onSaved={reload} />}
-                  {s.component_type === 'TIRE' && <PressureNote tireId={s.component_id} value={s.pressure_note} onSaved={reload} />}
-                  <button className="btn btn-small" onClick={() => onChange(s)}>
-                    Change
-                  </button>
-                  {bare.has(s.component_id) && (
-                    <button className="btn btn-small" onClick={() => onInstallTire(s)}>
-                      Install a tire
-                    </button>
-                  )}
-                  {s.spokes && <SpokeLine row={s} onAdd={() => onAddSpokes(s)} onBroken={() => onBrokenSpoke(s)} />}
-                </li>
-              ))}
-            </ul>
+            {k === 'GROUPSET' ? (
+              // the groupset as a tree, like a wheelset: drivetrain, brakes, shifting, each with its parts
+              <div className="setup-tree">
+                {GROUPSET_SUBS.filter(([sk]) => subs[sk]?.length).map(([sk, sl]) => (
+                  <details key={sk} className="setup-sub" data-sub={sk}>
+                    <summary>
+                      <strong>{sl}</strong>{' '}
+                      <span className="muted small">
+                        {subs[sk].length} part{subs[sk].length === 1 ? '' : 's'} ·{' '}
+                        {subs[sk]
+                          .filter((r) => r.depth === 0)
+                          .slice(0, 3)
+                          .map((r) => r.label)
+                          .join(', ')}
+                        {subs[sk].filter((r) => r.depth === 0).length > 3 ? ', …' : ''}
+                      </span>
+                    </summary>
+                    <ul className="list setup">{subs[sk].map(row)}</ul>
+                  </details>
+                ))}
+              </div>
+            ) : (
+              <ul className="list setup">{rows.map(row)}</ul>
+            )}
           </details>
         )
       })}
