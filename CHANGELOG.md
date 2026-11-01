@@ -8,6 +8,17 @@ UPDATING.md → "Making a release". New entries go under "Unreleased" as work is
 ## Unreleased
 
 ### Fixed
+- "Install a tire" said "Pick where the tire goes" with nothing to pick (Dirk 2026-11-01): a wheelset added
+  on its own had no front and rear wheel records, so a tire had nowhere to go. Every wheelset now has its
+  front and rear wheel; they are added automatically (also for existing wheelsets when the app starts),
+  from the wheelset's first day and with its km.
+
+### Added
+- Install a tire covers Dirk's three cases: **a new tire**, **a used tire (not in the app yet)** with its
+  km from before, and **move the front tire to the rear wheel** or **swap front and rear** in one click
+  (same tires, their km carry on). A spare from storage without recorded km asks for its km from before.
+
+### Fixed
 - Installing a tire was hard to find (Dirk 2026-11-01). There is now one short form, **Install a tire**:
   pick front or rear wheel, a spare tire from storage or a new one (name, price, date, shop), the date,
   Save. It is on the wheelset and wheel pages, on the bike page (Manage parts, and next to every wheel

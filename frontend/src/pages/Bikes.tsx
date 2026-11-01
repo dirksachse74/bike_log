@@ -292,7 +292,7 @@ export function BikeDetailPage() {
   useCrumb(`/bikes/${id}`, data?.name)
   const incidents = useApi<RideIncident[]>(`/bikes/${id}/incidents`)
   const openIncidents = incidents.data?.filter((r) => r.open && !r.removed).length ?? 0
-  const [sheet, setSheet] = useState<null | { kind: 'install' } | { kind: 'groupset'; replace?: boolean } | { kind: 'wheelset' } | { kind: 'costs' } | { kind: 'part'; row: SetupRow } | { kind: 'swap'; title: string; rows: SetupRow[]; remove?: boolean } | { kind: 'spokes'; row: SetupRow } | { kind: 'log' } | { kind: 'retire' } | { kind: 'installType'; type: string; under?: number }>(params.get('add') === 'groupset' ? { kind: 'groupset', replace: true } : null)
+  const [sheet, setSheet] = useState<null | { kind: 'install' } | { kind: 'groupset'; replace?: boolean } | { kind: 'wheelset' } | { kind: 'costs' } | { kind: 'part'; row: SetupRow } | { kind: 'swap'; title: string; rows: SetupRow[]; remove?: boolean } | { kind: 'spokes'; row: SetupRow } | { kind: 'log' } | { kind: 'retire' } | { kind: 'installType'; type: string; prefer?: number }>(params.get('add') === 'groupset' ? { kind: 'groupset', replace: true } : null)
   if (loading && !data) return <Loading />
   if (error && !data) return <ErrorBox error={error} onRetry={reload} />
   if (!data) return null
@@ -396,7 +396,7 @@ export function BikeDetailPage() {
             {data.setup.length === 0 ? (
               <Empty title="Nothing installed yet">Tell the app what is on the bike: Add groupset puts a whole group on in one go; Manage parts → Install a part adds single parts.</Empty>
             ) : (
-              <SetupGroups setup={data.setup} groupset={data.groupset} bikeId={data.id} onChange={(row) => setSheet({ kind: 'part', row })} reload={reload} onAddSpokes={(row) => setSheet({ kind: 'spokes', row })} onInstallTire={(row) => setSheet({ kind: 'installType', type: 'TIRE', under: row.component_id })} />
+              <SetupGroups setup={data.setup} groupset={data.groupset} bikeId={data.id} onChange={(row) => setSheet({ kind: 'part', row })} reload={reload} onAddSpokes={(row) => setSheet({ kind: 'spokes', row })} onInstallTire={(row) => setSheet({ kind: 'installType', type: 'TIRE', prefer: row.component_id })} />
             )}
           </Card>
           <ServiceStatus tasks={data.queue} reload={reload} />
@@ -474,7 +474,7 @@ export function BikeDetailPage() {
           <InstallHere
             componentType={sheet.type}
             bikeId={data.id}
-            under={sheet.under}
+            prefer={sheet.prefer}
             onCancel={() => setSheet(null)}
             onChange={(id) => {
               const row = data.setup.find((r) => r.component_id === id)

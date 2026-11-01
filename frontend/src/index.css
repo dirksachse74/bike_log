@@ -1315,3 +1315,5 @@ label.chip {
 /* Install a tire / Install (DECISIONS 107): where-list as big radio rows */
 .install-here .where-list{display:flex;flex-direction:column;gap:.35rem}
 .install-here .where-list label.check{display:flex;align-items:center;gap:.4rem;flex-wrap:wrap}
+.install-here .where-row{display:flex;align-items:center;gap:.6rem;flex-wrap:wrap}
+.install-here .move-tires{align-items:center}

@@ -1328,7 +1328,9 @@ export function ComponentDetailPage() {
           <InstallHere
             componentType={sheet === 'tire' ? 'TIRE' : data.component_type}
             part={sheet === 'install' ? data : undefined}
-            under={sheet === 'tire' ? data.id : undefined}
+            under={sheet === 'tire' ? (data.component_type !== 'WHEELSET' && data.location.parent_component_id ? data.location.parent_component_id : data.component_type !== 'WHEELSET' && data.location.bike_id ? undefined : data.id) : undefined}
+            bikeId={sheet === 'tire' && data.component_type !== 'WHEELSET' && !data.location.parent_component_id && data.location.bike_id ? data.location.bike_id : undefined}
+            prefer={sheet === 'tire' && data.component_type !== 'WHEELSET' ? data.id : undefined}
             onCancel={close}
             onChange={(id) => setSheet({ change: id })}
             onDone={(msg) => {

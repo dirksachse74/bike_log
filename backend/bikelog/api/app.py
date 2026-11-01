@@ -813,6 +813,9 @@ def create_app(factory: sessionmaker[Session], paths: DataPaths, *, token: str |
             c = inv.create_component(s, **data)
             if body.install:
                 inv.install(s, c.id, **body.install.model_dump())
+            if c.component_type == "WHEELSET":     # its front and rear wheel, so tires have somewhere to go
+                from bikelog.services import wheels
+                wheels.ensure_wheels(s, c.id)
             return _component_summary(s, c)
         return run_once(s, op_id, "component.create", fn)
 

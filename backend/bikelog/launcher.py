@@ -78,6 +78,8 @@ def prepare(paths: DataPaths, *, demo: bool = False, sample: bool = False):
         ensure_reference_data(s)
         from bikelog.services import frames
         frames.ensure_frames(s)       # every bike has a frame and fork part (DECISIONS 96)
+        from bikelog.services import wheels
+        wheels.ensure_wheels(s)       # every wheelset has a front and a rear wheel (DECISIONS 108)
         if demo:
             demo_svc.mark_demo_database(s)
             demo_svc.seed(s)
