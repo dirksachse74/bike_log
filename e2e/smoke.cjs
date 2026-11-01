@@ -479,8 +479,15 @@ async function bikeTab(page, name) {
   await ringLink.click()
   await page.getByRole('link', { name: 'open the groupset page' }).waitFor()
   check('a groupset part links back to the groupset page', true)
-  await page.goBack()
-  await page.goBack()
+  // breadcrumbs: the way we came, every step clickable
+  const crumbs = async (p = page) => (await p.locator('nav.breadcrumbs li').allInnerTexts()).join(' › ')
+  await page.locator('nav.breadcrumbs li').filter({ hasText: /chainring/i }).waitFor()
+  const ringTrail = await crumbs()
+  check('breadcrumbs: Bikes › TIME NXR › Groupset › the part', /^Bikes › TIME NXR › Groupset › .*chainring/i.test(ringTrail), ringTrail)
+  await page.locator('nav.breadcrumbs').getByRole('link', { name: 'Groupset' }).click()
+  await page.getByRole('heading', { name: 'Service tasks' }).waitFor()
+  check('breadcrumbs: a crumb goes back and the trail ends there', (await crumbs()) === 'Bikes › TIME NXR › Groupset', await crumbs())
+  await page.locator('nav.breadcrumbs').getByRole('link', { name: 'TIME NXR' }).click()
   await page.getByRole('heading', { name: 'TIME NXR' }).waitFor()
   await bikeTab(page, 'Costs')
   const bundleCost = await page.locator('.card').filter({ hasText: 'running cost' }).innerText()
@@ -852,6 +859,18 @@ async function bikeTab(page, name) {
   await page.locator('.sheet').waitFor({ state: 'detached' })
   check('Add part: Cancel closes the form and stays on Inventory', /#\/inventory$/.test(page.url()) && (await page.getByText('Not kept').count()) === 0, page.url())
 
+  // breadcrumbs from Inventory › Installed: back to the tab you came from
+  await page.goto(BASE + '#/inventory')
+  await page.getByRole('tab', { name: 'Installed' }).click()
+  await page.locator('main .list a[href*="#/inventory/"]').first().click()
+  await page.locator('nav.breadcrumbs [aria-current=page]').filter({ hasNotText: 'Part' }).waitFor()
+  const invTrail = (await page.locator('nav.breadcrumbs li').allInnerTexts()).join(' › ')
+  check('breadcrumbs: Inventory › Installed › the part', /^Inventory › Installed › .+/.test(invTrail), invTrail)
+  await page.screenshot({ path: path.join(OUT, '13-breadcrumbs.png') })
+  await page.locator('nav.breadcrumbs').getByRole('link', { name: 'Installed' }).click()
+  await page.getByRole('tab', { name: 'Installed', selected: true }).waitFor()
+  check('breadcrumbs: "Installed" opens Inventory on the Installed tab, breadcrumbs gone on the main page', /tab=installed/.test(page.url()) && (await page.locator('nav.breadcrumbs').count()) === 0, page.url())
+
   // Maintenance log: edit, delete (hidden, restorable) and restore an entry
   {
     const chainA = await page.evaluate(async () => (await (await fetch('api/components')).json()).find((c) => c.label === 'Chain A').id)
@@ -909,6 +928,20 @@ async function bikeTab(page, name) {
   await phone.locator('.sheet').getByRole('button', { name: 'Save', exact: true }).click()
   await phone.locator('.toast').filter({ hasText: 'Measure chain wear logged' }).waitFor()
   check('mobile: log chain wear measurement', true)
+  {
+    // a fresh phone tab, so the groupset page is really opened directly (no trail yet)
+    const fresh = await browser.newPage({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true })
+    await fresh.goto(BASE + '#/bikes')
+    const bikeId = await fresh.evaluate(async () => (await (await fetch('api/bikes')).json()).find((b) => b.name === 'TIME NXR').id)
+    await fresh.goto(BASE + `#/bikes/${bikeId}/groupset`)
+    await fresh.reload()
+    await fresh.locator('nav.breadcrumbs').getByRole('link', { name: 'TIME NXR' }).waitFor()
+    const of = await fresh.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1)
+    const trail = (await fresh.locator('nav.breadcrumbs li').allInnerTexts()).join(' › ')
+    check('mobile: the groupset page shows Bikes › TIME NXR › Groupset and fits the screen', trail === 'Bikes › TIME NXR › Groupset' && !of, trail)
+    await fresh.screenshot({ path: path.join(OUT, '13b-mobile-breadcrumbs.png') })
+    await fresh.close()
+  }
   for (const route of ['#/bikes', '#/rides', '#/inventory', '#/inventory?tab=history', '#/inventory?tab=shopping', '#/inventory?tab=life', '#/settings']) {
     await phone.goto(BASE + route)
     await phone.waitForTimeout(400)

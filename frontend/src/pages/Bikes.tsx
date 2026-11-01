@@ -18,6 +18,7 @@ import { PressureNote, TireSetupSelect } from '../components/TireSetup'
 import { Card, ChangeNotice, Empty, ErrorBox, Field, FormError, Loading, Sheet, StatusBadge, Tag } from '../components/ui'
 import { useApp } from '../context'
 import { centsInput, certaintyLabel, duration, euro, km, slotName, toCents, today, usageText, when } from '../format'
+import { BIKE_TABS, useCrumb } from '../crumbs'
 import { useApi } from '../hooks'
 import { RideDetailView } from './Rides'
 import type { Bike, BikeCosts, BrakeRow, Change, ComponentSummary, EventRow, GroupsetSummary, OpResult, RideIncident, RideRow, ServiceOrder, SetupRow, Task } from '../types'
@@ -276,21 +277,13 @@ function PartActions({ row, onDone }: { row: SetupRow; onDone: (c: Change) => vo
   )
 }
 
-const BIKE_TABS: [string, string][] = [
-  ['overview', 'Parts and service'],
-  ['rides', 'Rides'],
-  ['incidents', 'Incidents'],
-  ['maintenance', 'Maintenance'],
-  ['costs', 'Costs'],
-  ['history', 'Journal and history'],
-]
-
 export function BikeDetailPage() {
   const { id } = useParams()
   const { toast } = useApp()
   const [params, setParams] = useSearchParams()
   const tab = params.get('tab') ?? 'overview'
   const { data, error, loading, reload } = useApi<BikeDetail>(`/bikes/${id}`)
+  useCrumb(`/bikes/${id}`, data?.name)
   const incidents = useApi<RideIncident[]>(`/bikes/${id}/incidents`)
   const openIncidents = incidents.data?.filter((r) => r.open && !r.removed).length ?? 0
   const [sheet, setSheet] = useState<null | { kind: 'install' } | { kind: 'groupset'; replace?: boolean } | { kind: 'wheelset' } | { kind: 'costs' } | { kind: 'part'; row: SetupRow } | { kind: 'swap'; title: string; rows: SetupRow[]; remove?: boolean } | { kind: 'spokes'; row: SetupRow } | { kind: 'log' } | { kind: 'retire' }>(params.get('add') === 'groupset' ? { kind: 'groupset', replace: true } : null)

@@ -7,6 +7,7 @@ import PartTree from '../components/PartTree'
 import TaskList from '../components/TaskList'
 import { Card, Empty, ErrorBox, Loading, Tag } from '../components/ui'
 import { km, when } from '../format'
+import { useCrumb } from '../crumbs'
 import { useApi } from '../hooks'
 import EventLog from '../components/EventLog'
 import type { GroupsetPageData } from '../types'
@@ -14,6 +15,7 @@ import type { GroupsetPageData } from '../types'
 export function GroupsetPage() {
   const { id } = useParams()
   const { data, error, loading, reload } = useApi<GroupsetPageData>(`/bikes/${id}/groupset`)
+  useCrumb(`/bikes/${id}/groupset`, data ? 'Groupset' : null, data ? { [`/bikes/${data.bike_id}`]: data.bike } : undefined)
   if (loading && !data) return <Loading />
   if (error && !data) return <ErrorBox error={error} onRetry={reload} />
   if (!data) return null

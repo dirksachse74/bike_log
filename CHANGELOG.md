@@ -8,6 +8,12 @@ UPDATING.md → "Making a release". New entries go under "Unreleased" as work is
 ## Unreleased
 
 ### Added
+- Breadcrumbs on every page below a main menu item (Dirk 2026-11-01), e.g. "Inventory › Installed ›
+  Bottom bracket" or "Bikes › TIME NXR › Groupset › Rear derailleur". They show the way you came; every
+  step is a link (the tab you were on included), and going back to a step shortens the trail. A page
+  opened directly shows where it lives. They wrap on a phone.
+
+### Added
 - Maintenance log: every entry has Edit and Delete (Dirk 2026-11-01), on the part page, the bike page,
   the groupset page and Maintenance → Recently logged. Edit changes date, cost, symptom, work done,
   outcome, measurement and notes (Save / Cancel); each change is in the change log. Delete hides the

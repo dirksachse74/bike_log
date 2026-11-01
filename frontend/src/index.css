@@ -1294,3 +1294,12 @@ label.chip {
 .deleted-entries {
   margin-top: 0.5rem;
 }
+
+/* breadcrumbs (DECISIONS 104): the way you came, every step clickable; wraps on a phone */
+.breadcrumbs{margin:0 0 .75rem;font-size:.9rem}
+.breadcrumbs ol{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;align-items:center;row-gap:.2rem}
+.breadcrumbs li{display:inline-flex;align-items:center;min-width:0;max-width:100%}
+.breadcrumbs li + li::before{content:"›";margin:0 .45rem;color:var(--muted)}
+.breadcrumbs a,.breadcrumbs span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:16rem}
+.breadcrumbs [aria-current]{color:var(--ink);font-weight:600}
+@media (max-width:640px){.breadcrumbs a,.breadcrumbs span{max-width:11rem}.breadcrumbs a{padding:.2rem 0}}

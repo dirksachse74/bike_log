@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { versionProblem } from './version'
 import { HashRouter, Link, NavLink, Route, Routes } from 'react-router-dom'
+import Breadcrumbs from './components/Breadcrumbs'
 import { ErrorBox, Loading } from './components/ui'
 import { Ctx } from './context'
 import { setTimezone } from './format'
@@ -86,6 +87,7 @@ export default function App() {
                 <Link to="/settings?section=fresh-start">Settings → Fresh start</Link> removes all of it.
               </div>
             )}
+            <Breadcrumbs />
             <Routes>
               <Route path="/" element={<OverviewPage />} />
               <Route path="/bikes" element={<BikesPage />} />
