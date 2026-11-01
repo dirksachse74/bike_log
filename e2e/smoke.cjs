@@ -153,6 +153,30 @@ async function bikeTab(page, name) {
   await page.locator('.task').filter({ hasText: 'Liquid-wax top-up' }).getByText('Snoozed', { exact: true }).waitFor()
   check('snooze shows snoozed state', true)
 
+  // Install a part: create a new part right there, no trip to Inventory (Dirk 2026-11-01)
+  {
+    const tok = await page.locator('meta[name="bikelog-token"]').getAttribute('content')
+    const nb = await (await page.request.post(BASE + 'api/bikes', { headers: { 'X-BikeLog-Token': tok }, data: { name: 'Install test bike' } })).json()
+    await page.goto(BASE + `#/bikes/${nb.id}`)
+    await page.locator('.card').filter({ has: page.getByRole('heading', { name: 'Manage parts' }) }).getByRole('button', { name: 'Install a part' }).click()
+    const sh = page.locator('.sheet')
+    await sh.getByRole('button', { name: 'A new part' }).click()
+    await sh.getByLabel('Type').selectOption('SADDLE')
+    await sh.getByLabel('Name / label').fill('Test saddle new')
+    await sh.getByLabel('Price paid (optional)').fill('120')
+    const where = sh.getByLabel('Where does it go?')
+    await where.locator('option').nth(1).waitFor({ state: 'attached' })
+    await where.selectOption({ index: 1 })
+    await page.screenshot({ path: path.join(OUT, '03b-install-new-part.png'), fullPage: true })
+    await sheetButton(page, 'Save and install')
+    await page.locator('.toast').filter({ hasText: 'Test saddle new added and installed.' }).waitFor()
+    const row = await setupItem(page, 'Test saddle new')
+    check('Install a part: a new part is created and installed in one step', (await row.count()) === 1)
+    // keep later steps on the main bike: retire this one (its parts come off into storage)
+    const off = await page.request.post(BASE + `api/bikes/${nb.id}/retire`, { headers: { 'X-BikeLog-Token': tok }, data: {} })
+    if (!off.ok()) throw new Error('retire Install test bike: ' + (await off.text()))
+  }
+
   // swap chain A -> B on the bike
   await page.goto(BASE + '#/bikes')
   await page.getByRole('link', { name: /TIME NXR/ }).click()
@@ -804,7 +828,7 @@ async function bikeTab(page, name) {
     await bs.locator('.spoke-history li').first().getByRole('button', { name: 'Remove' }).click()
     await page.locator('.toast').filter({ hasText: 'Broken spoke removed.' }).waitFor()
     for (let i = 0; i < 2; i++) {
-      await page.waitForTimeout(300)
+      for (let k = 0; k < 100 && (await bs.locator('.spoke-history li').count()) !== 2 - i; k++) await page.waitForTimeout(100)
       page.once('dialog', (d) => d.accept())
       await bs.locator('.spoke-history li').first().getByRole('button', { name: 'Remove' }).click()
       await page.locator('.toast').filter({ hasText: 'Broken spoke removed.' }).last().waitFor()

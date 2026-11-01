@@ -47,7 +47,9 @@ export function ChainStateTag({ state }: { state: string }) {
 // "Groupset" in the type list: several parts at once, through the same dialog as on the bike page
 const GROUPSET = 'GROUPSET'
 
-export function ComponentForm({ onSaved, presetType, onGroupset, onCancel }: { onSaved: (c: ComponentSummary, typedLabel?: string) => void; presetType?: string; onGroupset?: (msg: string) => void; onCancel?: () => void }) {
+// Add part. With bikeId (bike page → Install a part → A new part) the part is created and installed on that
+// bike in one step: "Where does it go?" lists only that bike and is required.
+export function ComponentForm({ onSaved, presetType, onGroupset, onCancel, bikeId }: { onSaved: (c: ComponentSummary, typedLabel?: string) => void; presetType?: string; onGroupset?: (msg: string) => void; onCancel?: () => void; bikeId?: number }) {
   const { meta } = useApp()
   const [f, setF] = useState({ component_type: presetType ?? 'CHAIN', label: '', history: 'NEW', start_km: '', start_date: today(), start_estimate: true, install_slot: '', install_at: today(), notes: '', price: '', purchase_date: '', shop: '' })
   const [props, setProps] = useState<Record<string, string>>({})
@@ -163,7 +165,7 @@ export function ComponentForm({ onSaved, presetType, onGroupset, onCancel }: { o
           </label>
         </>
       )}
-      <MountPicker key={f.component_type} componentType={f.component_type} value={mount} onChange={setMount} allowSpare />
+      <MountPicker key={f.component_type} componentType={f.component_type} bikeId={bikeId} value={mount} onChange={setMount} allowSpare={!bikeId} />
       <div className="row">
         {mount && mount.slot === null && (
           <Field label="Position name">
@@ -171,15 +173,15 @@ export function ComponentForm({ onSaved, presetType, onGroupset, onCancel }: { o
           </Field>
         )}
         {mount && (
-          <Field label="Since">
+          <Field label={bikeId ? 'Installed on' : 'Since'}>
             <input type="date" value={f.install_at} onChange={(e) => setF({ ...f, install_at: e.target.value })} />
           </Field>
         )}
       </div>
       <FormError error={error} />
       <div className="form-actions">
-        <button className="btn btn-primary" disabled={busy || !f.label.trim()} onClick={save}>
-          {busy ? 'Saving…' : 'Save'}
+        <button className="btn btn-primary" disabled={busy || !f.label.trim() || (!!bikeId && !mount)} onClick={save}>
+          {busy ? 'Saving…' : bikeId ? 'Save and install' : 'Save'}
         </button>
         {onCancel && (
           <button className="btn" onClick={onCancel}>

@@ -24,6 +24,7 @@ import { centsInput, certaintyLabel, duration, euro, km, slotName, toCents, toda
 import { BIKE_TABS, useCrumb } from '../crumbs'
 import { useApi } from '../hooks'
 import { RideDetailView } from './Rides'
+import { ComponentForm } from './Inventory'
 import type { Bike, BikeCosts, BrakeRow, Change, ComponentSummary, EventRow, GroupsetSummary, OpResult, RideIncident, RideRow, ServiceOrder, SetupRow, Task } from '../types'
 
 export function BikeForm({ onSaved }: { onSaved: (b: Bike) => void }) {
@@ -179,14 +180,40 @@ interface BikeDetail extends Bike {
   away: ServiceOrder[]
 }
 
+// Install a part: one from storage, or a new part created and installed in one step (Dirk 2026-11-01:
+// "i dont want to add something to the inventory first").
 export function InstallForm({ bikeId, onDone }: { bikeId: number; onDone: (c: Change) => void }) {
-  const { meta } = useApp()
   const stored = useApi<ComponentSummary[]>('/components?state=STORED')
+  const [source, setSource] = useState<'stored' | 'new' | null>(null)
+  if (stored.loading) return <Loading />
+  const n = stored.data?.length ?? 0
+  const src = source ?? (n ? 'stored' : 'new')
+  return (
+    <div className="form">
+      <div className="chips" role="group" aria-label="Which part?">
+        <button className={`chip ${src === 'new' ? 'chip-on' : ''}`} onClick={() => setSource('new')}>
+          A new part
+        </button>
+        <button className={`chip ${src === 'stored' ? 'chip-on' : ''}`} onClick={() => setSource('stored')} disabled={!n}>
+          A part from storage ({n})
+        </button>
+      </div>
+      {src === 'new' ? (
+        <ComponentForm bikeId={bikeId} onSaved={(c) => onDone({ preview: false, deltas: [], notice: `${c.label} added and installed.` })} />
+      ) : (
+        <InstallStored bikeId={bikeId} stored={stored.data ?? []} onDone={onDone} />
+      )}
+    </div>
+  )
+}
+
+function InstallStored({ bikeId, stored, onDone }: { bikeId: number; stored: ComponentSummary[]; onDone: (c: Change) => void }) {
+  const { meta } = useApp()
   const [f, setF] = useState({ component_id: '', slot: '', at: today(), until: '' })
   const [mount, setMount] = useState<MountTarget | null>(null)
   const [preview, setPreview] = useState<Change | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const comp = stored.data?.find((c) => String(c.id) === f.component_id)
+  const comp = stored.find((c) => String(c.id) === f.component_id)
   const ctype = meta.component_types.find((t) => t.code === comp?.component_type)
   const body = () => {
     const b: Record<string, unknown> = { at: f.at }
@@ -208,8 +235,6 @@ export function InstallForm({ bikeId, onDone }: { bikeId: number; onDone: (c: Ch
       setPreview(null)
     }
   }
-  if (stored.loading) return <Loading />
-  if (!stored.data?.length) return <Empty title="No parts in storage">Add a part under Inventory first, or use Replace on an installed part.</Empty>
   return (
     <div className="form">
       <Field label="Part from storage">
@@ -221,7 +246,7 @@ export function InstallForm({ bikeId, onDone }: { bikeId: number; onDone: (c: Ch
           }}
         >
           <option value="">Pick a part…</option>
-          {stored.data.map((c) => (
+          {stored.map((c) => (
             <option key={c.id} value={c.id}>
               {c.label} ({c.type_name}, {usageText(c.usage)})
             </option>
