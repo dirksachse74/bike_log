@@ -4,6 +4,7 @@ import { useApi } from '../hooks'
 import { euro, toCents, today } from '../format'
 import type { Bike, GroupsetPlan, GroupsetTemplate, OpResult } from '../types'
 import { Empty, ErrorBox, Field, FormError, Loading, Tag } from './ui'
+import ShopPicker from './ShopPicker'
 
 const ACTION_TEXT: Record<string, string> = { INSTALL: 'install', REPLACE: 'replace', SPARE: 'spare' }
 
@@ -211,9 +212,7 @@ export default function GroupsetImport({ bikeId, onDone, initialOccupied = 'KEEP
             <Field label="Bundle price" hint="Optional; can be added later.">
               <input inputMode="decimal" placeholder="€" value={bundle.price} onChange={(e) => setBundle({ ...bundle, price: e.target.value })} />
             </Field>
-            <Field label="Shop">
-              <input value={bundle.merchant} onChange={(e) => setBundle({ ...bundle, merchant: e.target.value })} />
-            </Field>
+            <ShopPicker label="Shop" value={bundle.merchant} onChange={(v) => setBundle({ ...bundle, merchant: v })} />
             <Field label="Bought on">
               <input type="date" value={bundle.purchased_on} onChange={(e) => setBundle({ ...bundle, purchased_on: e.target.value })} />
             </Field>

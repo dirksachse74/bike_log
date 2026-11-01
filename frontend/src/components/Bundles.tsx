@@ -5,6 +5,7 @@ import { centsInput, euro, toCents, when } from '../format'
 import { useApi } from '../hooks'
 import type { BundleCandidate, BundleRow } from '../types'
 import { Card, Empty, ErrorBox, Field, FormError, Loading, Sheet, Tag } from './ui'
+import ShopPicker from './ShopPicker'
 
 // Parts bought together at one price (e.g. a groupset bundle). The bundle carries the price, its parts
 // none, so the money is counted once. Shares per part are an estimate shown for information only.
@@ -129,9 +130,7 @@ function PriceInputs({ f, setF }: { f: PriceFields; setF: (f: PriceFields) => vo
         <Field label="Bundle price" hint="What you paid for the whole bundle.">
           <input inputMode="decimal" value={f.price} onChange={(e) => setF({ ...f, price: e.target.value })} placeholder="€" />
         </Field>
-        <Field label="Shop">
-          <input value={f.merchant} onChange={(e) => setF({ ...f, merchant: e.target.value })} />
-        </Field>
+        <ShopPicker label="Shop" value={f.merchant} onChange={(v) => setF({ ...f, merchant: v })} />
         <Field label="Bought on">
           <input type="date" value={f.purchased_on} onChange={(e) => setF({ ...f, purchased_on: e.target.value })} />
         </Field>

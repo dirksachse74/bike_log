@@ -1303,3 +1303,10 @@ label.chip {
 .breadcrumbs a,.breadcrumbs span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:16rem}
 .breadcrumbs [aria-current]{color:var(--ink);font-weight:600}
 @media (max-width:640px){.breadcrumbs a,.breadcrumbs span{max-width:11rem}.breadcrumbs a{padding:.2rem 0}}
+
+/* Settings → Lists (DECISIONS 106) */
+.pick-list > summary{cursor:pointer;margin:.25rem 0 .5rem}
+.pick-list .list.rows li{flex-wrap:wrap;gap:.4rem}
+.pick-list .row-actions{margin-left:auto;display:inline-flex;gap:.3rem;flex-wrap:wrap}
+.pick-list .inline-add{display:flex;gap:.4rem;margin-top:.5rem;max-width:28rem}
+.pick-list .inline-add input{flex:1;min-width:0}

@@ -223,6 +223,11 @@ with Save / Cancel, folded "Deleted entries" with Restore), used on the part, bi
 Maintenance pages. `changelog.py` writes ENTRY_CHANGED / ENTRY_DELETED / ENTRY_RESTORED rows. Add part
 saves with "Save" and returns to the Inventory list (e2e helper `saveNewPart` opens the new part).
 
+**Pick lists (`services/picklists.py`, DECISIONS 106).** `LISTS` maps a list code (SHOP) to the text
+columns that hold its names. A before_flush hook canonicalises those columns and adds new names; rename /
+merge / hide via `/api/lists…`; dropdown names from `GET /api/lists/{code}`. Frontend: `ShopPicker`
+(select + "New shop…") in every purchase form, `PickLists` in Settings. e2e helper `pickShop`.
+
 **Labels.** Unique per part type. `inventory.free_label` numbers a repeated name on create ("(2)");
 update refuses a duplicate (DECISIONS 105).
 
@@ -361,10 +366,10 @@ warns, npm 12 blocks): run `npm install-scripts approve <pkg>`.
 Checks that must pass before every push:
 
 ```bash
-.venv/bin/python -m pytest -q backend/tests             # currently 220 passed
+.venv/bin/python -m pytest -q backend/tests             # currently 222 passed
 cd frontend && npx tsc -b && npx eslint . && npx vite build
 # browser test: start the app on a fresh data dir, then
-node e2e/smoke.cjs http://127.0.0.1:8790/ <screenshot-dir>   # currently 138/138 (the ride-form step can flake once; rerun)
+node e2e/smoke.cjs http://127.0.0.1:8790/ <screenshot-dir>   # currently 142/142 (the ride-form step can flake once; rerun)
 #   (cd backend && ../.venv/bin/python -m bikelog --no-browser --no-sample --port 8790 --data-dir <fresh dir>)
 # sample database: start on ANOTHER fresh dir WITHOUT --no-sample (port 8791), then
 node e2e/sample.cjs http://127.0.0.1:8791/ <screenshot-dir>  # banner, sample bikes, crash item, Fresh start

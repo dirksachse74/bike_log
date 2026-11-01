@@ -104,7 +104,7 @@ def _whole(c: Consumable, qty: float | None, what: str) -> float:
 
 def consumable_txn(session: Session, consumable_id: int, *, kind: str, qty: float | None, on: str,
                    cost_cents: int | None = None, note: str | None = None, packages: int | None = None,
-                   work_session_id: int | None = None) -> ConsumableTxn:
+                   work_session_id: int | None = None, shop: str | None = None) -> ConsumableTxn:
     """PURCHASE (+), RETURN to the shop (−), ADJUST (signed correction after a count), USE (−)."""
     c = get(session, consumable_id)
     if kind not in TXN_SIGN:
@@ -122,7 +122,8 @@ def consumable_txn(session: Session, consumable_id: int, *, kind: str, qty: floa
         raise DomainError("Say why the stock is corrected (e.g. 'counted drawer')")
     t = ConsumableTxn(consumable_id=c.id, kind=kind, qty=qty, occurred_on=on[:10], packages=packages,
                       cost_cents=cost_cents if kind in ("PURCHASE", "RETURN") else None, note=note,
-                      work_session_id=work_session_id)
+                      work_session_id=work_session_id,
+                      shop=(shop or "").strip() or None if kind in ("PURCHASE", "RETURN") else None)
     session.add(t)
     session.flush()
     return t
@@ -257,7 +258,7 @@ def shopping_list(session: Session) -> list[dict]:
 
 def txn_history(session: Session, consumable_id: int) -> list[dict]:
     return [{"id": t.id, "kind": t.kind, "qty": t.qty, "packages": t.packages, "on": t.occurred_on,
-             "cost_cents": t.cost_cents, "note": t.note, "component_id": t.component_id,
+             "cost_cents": t.cost_cents, "note": t.note, "shop": t.shop, "component_id": t.component_id,
              "work_session_id": t.work_session_id, "maintenance_event_id": t.maintenance_event_id,
              "voided": bool(t.voided_at)}
             for t in session.scalars(select(ConsumableTxn).where(ConsumableTxn.consumable_id == consumable_id)

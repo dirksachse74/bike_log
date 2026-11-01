@@ -29,6 +29,7 @@ export interface Bike {
   open_tasks: number
   purchase_price_cents: number | null
   purchase_date: string | null
+  shop?: string | null
   costs: BikeCosts
   shifting: string | null
   shifting_effective: string | null
@@ -144,6 +145,7 @@ export interface ComponentSummary {
   id: number
   label: string
   mark?: string | null
+  shop?: string | null
   rotation_bike_id?: number | null
   component_type: string
   type_name: string

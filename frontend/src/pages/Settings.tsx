@@ -2,6 +2,7 @@ import { useRef, useState } from 'react'
 import { api } from '../api'
 import Diagnostics from '../components/Diagnostics'
 import FreshStart from '../components/FreshStart'
+import PickLists from '../components/PickLists'
 import StravaSettings from '../components/StravaSettings'
 import VersionInfo from '../components/VersionInfo'
 import { Card, Field, FormError, Tag } from '../components/ui'
@@ -142,6 +143,7 @@ export default function SettingsPage() {
         </div>
       </Card>
       <SpareMinimums />
+      <PickLists />
       <Card title="Import rides (CSV)">
         <p className="small">
           Bike Log CSV: columns <code>source_id, date, distance_km</code> (or <code>distance_mi</code>), optional <code>duration_min, name, bike, sport_type, trainer</code>.{' '}

@@ -7,6 +7,15 @@ UPDATING.md → "Making a release". New entries go under "Unreleased" as work is
 
 ## Unreleased
 
+### Added
+- "Bought from" (shop) on Add part, a part's Edit details, a bike's purchase, stock purchases and
+  returns; bundles, groupset import and "Send away for repair" use the same field (Dirk 2026-11-01). It
+  is a dropdown of the shops you used before, with "New shop…" to type one; a new name joins the list
+  when you save, and another spelling of a known shop ("bike24" for "Bike24") is stored as the known one.
+- Settings → Lists: manage the dropdown lists, starting with Shops. Add, Rename (every record using the
+  name follows, recorded in the change log), Merge duplicates, Hide from the dropdowns. Nothing is
+  deleted. Existing bundle and repair shop names start the list.
+
 ### Changed
 - Add part: a second part with the same name (an identical spare bottom bracket) is no longer refused.
   It is saved with a number, e.g. "CEMA BB386 (2)", so the two can be told apart in every list; rename

@@ -11,6 +11,7 @@ import PartLife from '../components/PartLife'
 import PartTree from '../components/PartTree'
 import { RepairsCard, ReturnForm, SendOutForm, type IncidentPick } from '../components/ServiceOrders'
 import ProductImport from '../components/ProductImport'
+import ShopPicker from '../components/ShopPicker'
 import { DispositionForm, MoveForm, OutcomeChoice, RemoveForm, ReplaceForm } from '../components/PartChange'
 import TaskList from '../components/TaskList'
 import { PressureNote, TireSetupSelect } from '../components/TireSetup'
@@ -44,7 +45,7 @@ const GROUPSET = 'GROUPSET'
 
 export function ComponentForm({ onSaved, presetType, onGroupset, onCancel }: { onSaved: (c: ComponentSummary, typedLabel?: string) => void; presetType?: string; onGroupset?: (msg: string) => void; onCancel?: () => void }) {
   const { meta } = useApp()
-  const [f, setF] = useState({ component_type: presetType ?? 'CHAIN', label: '', history: 'NEW', start_km: '', start_date: today(), start_estimate: true, install_slot: '', install_at: today(), notes: '', price: '', purchase_date: '' })
+  const [f, setF] = useState({ component_type: presetType ?? 'CHAIN', label: '', history: 'NEW', start_km: '', start_date: today(), start_estimate: true, install_slot: '', install_at: today(), notes: '', price: '', purchase_date: '', shop: '' })
   const [mount, setMount] = useState<MountTarget | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
@@ -59,6 +60,7 @@ export function ComponentForm({ onSaved, presetType, onGroupset, onCancel }: { o
       if (Number.isNaN(price)) throw new Error('Price: enter an amount such as 49,90')
       if (price !== null) body.price_cents = price
       if (f.purchase_date) body.purchase_date = f.purchase_date
+      if (f.shop.trim()) body.shop = f.shop.trim()
       if (f.history === 'KNOWN') Object.assign(body, { starting_km: Number(f.start_km || 0), starting_date: f.start_date, starting_is_estimate: f.start_estimate })
       if (mount) {
         const slot = mount.slot ?? f.install_slot.trim().toUpperCase().replace(/\s+/g, '_')
@@ -113,6 +115,9 @@ export function ComponentForm({ onSaved, presetType, onGroupset, onCancel }: { o
         <Field label="Bought on (optional)">
           <input type="date" value={f.purchase_date} onChange={(e) => setF({ ...f, purchase_date: e.target.value })} />
         </Field>
+      </div>
+      <div className="row">
+        <ShopPicker value={f.shop} onChange={(v) => setF({ ...f, shop: v })} />
       </div>
       <Field label="Usage before tracking">
         <select value={f.history} onChange={(e) => setF({ ...f, history: e.target.value })}>
@@ -294,14 +299,14 @@ function ItemList({ rows, empty }: { rows: ItemRow[]; empty: string }) {
 }
 
 function StockTxnForm({ line, onDone }: { line: StockLine; onDone: (msg: string) => void }) {
-  const [f, setF] = useState({ kind: 'PURCHASE', qty: '', packages: '', price: '', note: '', on: today() })
+  const [f, setF] = useState({ kind: 'PURCHASE', qty: '', packages: '', price: '', note: '', on: today(), shop: '' })
   const [err, setErr] = useState<string | null>(null)
   const [opId, setOpId] = useState(newOpId)
   async function save() {
     setErr(null)
     try {
       const qty = f.qty === '' ? null : Number(f.qty.replace(',', '.'))
-      await api.post(`/consumables/${line.id}/txn`, { kind: f.kind, qty, on: f.on, note: f.note || null, packages: f.packages ? Number(f.packages) : null, cost_cents: f.price ? Math.round(Number(f.price.replace(',', '.')) * 100) : null }, opId)
+      await api.post(`/consumables/${line.id}/txn`, { kind: f.kind, qty, on: f.on, note: f.note || null, packages: f.packages ? Number(f.packages) : null, cost_cents: f.price ? Math.round(Number(f.price.replace(',', '.')) * 100) : null, shop: ['PURCHASE', 'RETURN'].includes(f.kind) ? f.shop.trim() || null : null }, opId)
       setOpId(newOpId())
       onDone({ PURCHASE: 'Purchase recorded.', RETURN: 'Return recorded.', ADJUST: 'Stock corrected.', USE: 'Use recorded.' }[f.kind] ?? 'Saved.')
     } catch (e) {
@@ -345,6 +350,11 @@ function StockTxnForm({ line, onDone }: { line: StockLine; onDone: (msg: string)
           <input value={f.note} onChange={(e) => setF({ ...f, note: e.target.value })} placeholder={f.kind === 'ADJUST' ? 'counted the drawer' : ''} />
         </Field>
       </div>
+      {(f.kind === 'PURCHASE' || f.kind === 'RETURN') && (
+        <div className="row">
+          <ShopPicker value={f.shop} onChange={(v) => setF({ ...f, shop: v })} label={f.kind === 'RETURN' ? 'Returned to (optional)' : 'Bought from (optional)'} />
+        </div>
+      )}
       <FormError error={err} />
       <div className="form-actions">
         <button className="btn btn-primary" onClick={save}>
@@ -1157,6 +1167,7 @@ export function ComponentDetailPage() {
             <>
               Price: {data.price_cents !== null ? euro(data.price_cents) : 'not entered'}
               {data.purchase_date ? ` · bought ${when(data.purchase_date)}` : ''}
+              {data.shop ? ` · from ${data.shop}` : ''}
             </>
           )}
           {data.serial_number ? ` · serial ${data.serial_number}` : ''}
@@ -1539,14 +1550,14 @@ function ChainCard({ comp, chain, onChanged }: { comp: ComponentSummary; chain: 
 }
 
 function DetailsForm({ comp, onDone }: { comp: ComponentSummary; onDone: () => void }) {
-  const [f, setF] = useState({ label: comp.label, mark: comp.mark ?? '', price: centsInput(comp.price_cents), purchase_date: comp.purchase_date ?? '', serial_number: comp.serial_number ?? '', warranty_until: comp.warranty_until ?? '', notes: comp.notes ?? '' })
+  const [f, setF] = useState({ label: comp.label, mark: comp.mark ?? '', price: centsInput(comp.price_cents), purchase_date: comp.purchase_date ?? '', serial_number: comp.serial_number ?? '', warranty_until: comp.warranty_until ?? '', notes: comp.notes ?? '', shop: comp.shop ?? '' })
   const [err, setErr] = useState<string | null>(null)
   async function save() {
     setErr(null)
     const price = toCents(f.price)
     if (Number.isNaN(price)) return setErr('Price: enter an amount such as 49,90')
     try {
-      await api.patch(`/components/${comp.id}`, { label: f.label, mark: f.mark || null, price_cents: price, purchase_date: f.purchase_date || null, serial_number: f.serial_number || null, warranty_until: f.warranty_until || null, notes: f.notes || null })
+      await api.patch(`/components/${comp.id}`, { label: f.label, mark: f.mark || null, price_cents: price, purchase_date: f.purchase_date || null, serial_number: f.serial_number || null, warranty_until: f.warranty_until || null, notes: f.notes || null, shop: f.shop.trim() || null })
       onDone()
     } catch (e) {
       setErr((e as Error).message)
@@ -1570,6 +1581,9 @@ function DetailsForm({ comp, onDone }: { comp: ComponentSummary; onDone: () => v
         <Field label="Bought on">
           <input type="date" value={f.purchase_date} onChange={(e) => setF({ ...f, purchase_date: e.target.value })} />
         </Field>
+      </div>
+      <div className="row">
+        <ShopPicker value={f.shop} onChange={(v) => setF({ ...f, shop: v })} label="Bought from" />
       </div>
       <Field label="Mark" hint={comp.component_type === 'CHAIN' ? 'How you tell it apart from identical chains, e.g. "1 punch dot next to the quick link". Paint and nail polish come off in hot wax; a punch or engraver mark on an outer plate stays.' : 'How you tell it apart from identical parts (e.g. a dot, a sticker, a colour).'}>
         <input value={f.mark} maxLength={80} onChange={(e) => setF({ ...f, mark: e.target.value })} />

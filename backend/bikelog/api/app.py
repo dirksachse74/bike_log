@@ -40,6 +40,7 @@ from bikelog.services import costs as costs_svc
 from bikelog.services import bundles as bundles_svc
 from bikelog.services import demo, diagnostics, groupsets, imports, journal, product_import, spares, stock
 from bikelog.services import worksessions as ws_svc
+from bikelog.services import picklists
 from bikelog.services import incidents as incidents_svc
 from bikelog.services import repairs as repairs_svc
 from bikelog.services import inventory as inv
@@ -73,6 +74,7 @@ class BikeIn(Body):
     purchase_price_cents: int | None = None
     purchase_date: str | None = None
     shifting: str | None = None
+    shop: str | None = None
 
 
 class BikePatch(Body):
@@ -85,6 +87,7 @@ class BikePatch(Body):
     purchase_price_cents: int | None = None
     purchase_date: str | None = None
     shifting: str | None = None
+    shop: str | None = None
 
 
 class StartingIn(Body):
@@ -136,6 +139,7 @@ class ComponentIn(Body):
     starting_is_estimate: bool = False
     storage_location: str | None = None
     tire_setup: str | None = None
+    shop: str | None = None
     install: InstallIn | None = None
 
 
@@ -154,6 +158,7 @@ class ComponentPatch(Body):
     mark: str | None = None
     rotation_bike_id: int | None = None
     warranty_until: str | None = None
+    shop: str | None = None
 
 
 class SendOutIn(Body):
@@ -396,6 +401,19 @@ class VoidIn(Body):
     reason: str
 
 
+class ListItemIn(Body):
+    name: str
+
+
+class ListItemPatch(Body):
+    name: str | None = None
+    hidden: bool | None = None
+
+
+class ListMergeIn(Body):
+    into_id: int
+
+
 class EventPatch(Body):
     at: str | None = None
     symptom: str | None = None
@@ -536,6 +554,7 @@ class TxnIn(Body):
     cost_cents: int | None = None
     note: str | None = None
     packages: int | None = None
+    shop: str | None = None
 
 
 class SettingsPatch(Body):
@@ -1129,6 +1148,34 @@ def create_app(factory: sessionmaker[Session], paths: DataPaths, *, token: str |
     def spares_check(s: Session = Depends(db)):
         return stock.spare_check(s)
 
+    # pick lists (shops), DECISIONS 106
+    @app.get("/api/lists")
+    def lists(s: Session = Depends(db)):
+        return picklists.overview(s)
+
+    @app.get("/api/lists/{code}")
+    def list_names(code: str, s: Session = Depends(db)):
+        return picklists.names(s, code)
+
+    @app.post("/api/lists/{code}", status_code=201)
+    def list_add(code: str, body: ListItemIn, s: Session = Depends(db)):
+        return picklists.add(s, code, body.name)
+
+    @app.patch("/api/lists/items/{item_id}")
+    def list_patch(item_id: int, body: ListItemPatch, s: Session = Depends(db)):
+        row = None
+        if body.name is not None:
+            row = picklists.rename(s, item_id, body.name)
+        if body.hidden is not None:
+            row = picklists.set_hidden(s, item_id, body.hidden)
+        if row is None:
+            raise DomainError("Nothing to change")
+        return row
+
+    @app.post("/api/lists/items/{item_id}/merge")
+    def list_merge(item_id: int, body: ListMergeIn, s: Session = Depends(db)):
+        return picklists.merge(s, item_id, body.into_id)
+
     @app.get("/api/shopping-list")
     def shopping_list(s: Session = Depends(db)):
         return stock.shopping_list(s)
@@ -1502,7 +1549,7 @@ def _bike_summary(s: Session, b: Bike, attribution: dict | None = None) -> dict:
     cost["per_km_cents"] = costs_svc.per_km(cost, usage["total_km"])
     return {"id": b.id, "uuid": b.uuid, "name": b.name, "maker": b.maker, "model": b.model, "year": b.year,
             "status": b.status, "strava_gear_id": b.strava_gear_id, "notes": b.notes, "usage": usage,
-            "purchase_price_cents": b.purchase_price_cents, "purchase_date": b.purchase_date, "costs": cost,
+            "purchase_price_cents": b.purchase_price_cents, "purchase_date": b.purchase_date, "shop": b.shop, "costs": cost,
             "shifting": b.shifting, "shifting_effective": inv.shifting_of(s, b),
             "open_tasks": sum(1 for t in m.queue(s, bike_id=b.id) if t["status"] in ("DUE", "OVERDUE", "ATTENTION"))}
 
@@ -1534,7 +1581,7 @@ def _component_summary(s: Session, c: Component) -> dict:
             "price_cents": c.price_cents, "serial_number": c.serial_number, "notes": c.notes,
             "retired_on": c.retired_on, "retire_reason": c.retire_reason, "disposition": c.disposition,
             "storage_location": c.storage_location, "tire_setup": c.tire_setup, "pressure_note": c.pressure_note,
-            "mark": c.mark, "rotation_bike_id": c.rotation_bike_id, "warranty_until": c.warranty_until,
+            "mark": c.mark, "rotation_bike_id": c.rotation_bike_id, "warranty_until": c.warranty_until, "shop": c.shop,
             "bundle": _bundle_ref(s, c),
             "effective_tire_setup": setup, "tire_setup_from": wheel.label if wheel is not None and wheel.id != c.id else None,
             "location": inv.location(s, c), "usage": component_usage(s, c)}
