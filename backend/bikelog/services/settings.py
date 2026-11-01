@@ -16,11 +16,12 @@ DEFAULTS = {
     "default_tire_setup": "TUBE",     # used by reminders for wheels whose tube/tubeless is not set
     "spare_minimums": '{"INNER_TUBE": 2, "TIRE": 1}',   # spares to keep per part type (JSON); 0 = no check
     "spoke_relace_after": "3",
+    "strava_known_bikes_only": "0",   # "1" = Strava sync imports only rides whose bike is in Bike Log
     "strava_ignored_gear": "[]",      # gear ids of bikes deleted here: a sync does not create them again        # broken spokes on one wheel before re-lacing it with new spokes
 }
 
 EDITABLE = {"timezone", "import_start_date", "trainer_profile_for_virtual", "default_tire_setup", "spare_minimums",
-            "spoke_relace_after"}
+            "spoke_relace_after", "strava_known_bikes_only"}
 
 
 def get(session: Session, key: str) -> str:
@@ -53,6 +54,8 @@ def set_value(session: Session, key: str, value: str, *, internal: bool = False)
             raise DomainError(f"Default tire setup must be one of {', '.join(TIRE_SETUPS)}")
     if key == "spoke_relace_after" and not (value.isdigit() and 1 <= int(value) <= 20):
         raise DomainError("Re-lace after: a whole number of broken spokes from 1 to 20")
+    if key == "strava_known_bikes_only":
+        value = "1" if str(value).lower() in ("1", "true", "yes", "on") else "0"
     if key == "spare_minimums":
         value = _spare_minimums_json(value)
     row = session.get(AppSetting, key)

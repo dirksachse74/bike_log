@@ -355,6 +355,16 @@ async function bikeTab(page, name) {
   const stravaText = await page.locator('.card').filter({ has: page.getByRole('heading', { name: 'Strava', exact: true }) }).innerText()
   check('Strava shown as not connected', /Not connected/.test(stravaText))
   await page.screenshot({ path: path.join(OUT, '04-settings.png'), fullPage: true })
+  {
+    const sw = page.getByLabel('Import only rides with known bikes')
+    await sw.click()
+    await page.getByText('Only rides with bikes known here will be imported.').waitFor()
+    const on = await page.evaluate(async () => (await (await fetch('api/settings')).json()).strava_known_bikes_only)
+    await sw.click()
+    await page.getByText('All cycling rides will be imported again.').waitFor()
+    const off = await page.evaluate(async () => (await (await fetch('api/settings')).json()).strava_known_bikes_only)
+    check('Settings → Strava: switch "Import only rides with known bikes" saves on and off', on === '1' && off === '0', `${on} ${off}`)
+  }
 
   // rides area: unassign / assign a bike per ride and in bulk; the choice survives a re-import
   await page.goto(BASE + '#/rides')

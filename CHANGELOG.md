@@ -8,6 +8,10 @@ UPDATING.md → "Making a release". New entries go under "Unreleased" as work is
 ## Unreleased
 
 ### Added
+- **Settings → Strava: "Import only rides with known bikes"** (Dirk 2026-11-01). On: a Strava ride whose
+  bike is not in Bike Log (or that has no bike) is skipped and no bike is created; rides already imported
+  stay. Add the bike later (same name as on Strava, or its gear id) and press "Re-read all since start date"
+  to bring its rides in. Off (default): as before.
 - **Notes on rides** (Dirk 2026-11-01): open a ride → Notes → Add notes, up to 2000 characters of free
   text (line breaks kept). The ride list shows the start of them. Strava and CSV imports never change them.
 - **Rides → Punctures** (Dirk 2026-11-01): puncture statistics from the flats you log on rides (Add

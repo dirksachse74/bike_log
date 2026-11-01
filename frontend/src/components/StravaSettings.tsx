@@ -15,7 +15,7 @@ interface StravaStatus {
   job: { running: boolean; rescan?: boolean; page?: number; counts?: Record<string, number>; error?: string | null; finished_at?: string | null }
 }
 
-const COUNT_LABEL: Record<string, string> = { CREATED: 'new', UPDATED: 'updated', UNCHANGED: 'unchanged', SKIPPED_NOT_CYCLING: 'not cycling', BIKES_CREATED: 'bikes created', BIKES_LINKED: 'bikes linked' }
+const COUNT_LABEL: Record<string, string> = { CREATED: 'new', UPDATED: 'updated', UNCHANGED: 'unchanged', SKIPPED_NOT_CYCLING: 'not cycling', BIKES_CREATED: 'bikes created', BIKES_LINKED: 'bikes linked', SKIPPED_UNKNOWN_BIKE: 'skipped (bike not in Bike Log)' }
 const countsText = (c?: Record<string, number>) =>
   Object.entries(c ?? {})
     .map(([k, v]) => `${v} ${COUNT_LABEL[k] ?? k.toLowerCase().replace(/_/g, ' ')}`)
@@ -25,6 +25,8 @@ const countsText = (c?: Record<string, number>) =>
 // The secret is sent once and never shown again; it is stored only in strava.env in the data folder.
 export default function StravaSettings() {
   const st = useApi<StravaStatus>('/strava/status')
+  const cfg = useApi<Record<string, string>>('/settings')
+  const knownOnly = cfg.data?.strava_known_bikes_only === '1'
   const [params, setParams] = useSearchParams()
   const [f, setF] = useState({ client_id: '', client_secret: '' })
   const [err, setErr] = useState<string | null>(null)
@@ -137,7 +139,7 @@ export default function StravaSettings() {
       {c.tokens_saved && (
         <>
           <p className="small muted">
-            Strava athlete {c.athlete_id ?? '?'} · {c.scope?.includes('activity:read_all') ? 'private rides included' : 'public rides only'}. Rides are matched to bikes by their Strava gear; unknown gear creates or links a bike with the same name.
+            Strava athlete {c.athlete_id ?? '?'} · {c.scope?.includes('activity:read_all') ? 'private rides included' : 'public rides only'}. Rides are matched to bikes by their Strava gear.
           </p>
           {running ? (
             <p className="notice">
@@ -166,6 +168,24 @@ export default function StravaSettings() {
           </div>
         </>
       )}
+      <label className="switch-row">
+        <input
+          type="checkbox"
+          aria-label="Import only rides with known bikes"
+          checked={knownOnly}
+          disabled={busy || running || !cfg.data}
+          onChange={(e) => act(() => api.patch('/settings', { strava_known_bikes_only: e.target.checked ? '1' : '0' }).then(cfg.reload), e.target.checked ? 'Only rides with bikes known here will be imported.' : 'All cycling rides will be imported again.')}
+        />{' '}
+        <span>
+          <strong>Import only rides with known bikes</strong>
+          <span className="small muted">
+            {' '}
+            {knownOnly
+              ? 'On: a ride whose Strava bike is not in Bike Log (or that has no bike) is skipped and no bike is created. Rides already here stay. Add the bike later with the same name as on Strava (or its Strava gear id) and press "Re-read all since start date" to bring its rides in.'
+              : 'Off: a ride with an unknown Strava bike links to the bike with the same name here, or creates that bike.'}
+          </span>
+        </span>
+      </label>
       {d.last_error && !running && !job.finished_at && <p className="small form-error">Last attempt failed: {d.last_error}</p>}
       <p className="small muted">
         Not yet tested against the real Strava; tell me if anything fails. {d.alternative} The app works fully without Strava.

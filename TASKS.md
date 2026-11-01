@@ -83,6 +83,7 @@ Status key: ✅ done and tested · 🟡 done, not verified where it matters · �
 ## P6b Costs and journal
 - ✅ Prices on parts (add, edit, replace, groupset import), service cost on maintenance, bike purchase price.
 - ✅ Initial and running cost per bike (bike list and bike page, with cost entries and cost per km).
+- ✅ Strava: import only rides with known bikes (DECISIONS 119).
 - ✅ Ride notes, 2000 characters (DECISIONS 118).
 - ✅ Puncture statistics, Rides → Punctures (DECISIONS 117).
 - ✅ Bike shop on Record work done (DECISIONS 116).

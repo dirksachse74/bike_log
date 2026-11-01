@@ -580,6 +580,7 @@ class SettingsPatch(Body):
     default_tire_setup: str | None = None
     spare_minimums: str | None = None
     spoke_relace_after: str | None = None
+    strava_known_bikes_only: str | None = None
 
 
 class ProfileIn(Body):

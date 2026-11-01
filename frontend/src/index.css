@@ -1352,3 +1352,13 @@ dl.props dd { margin: 0; }
   overflow-wrap: anywhere;
   margin: 0.2rem 0 0;
 }
+/* a settings switch with its explanation */
+.switch-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+  margin: 0.5rem 0;
+}
+.switch-row input {
+  margin-top: 0.25rem;
+}
