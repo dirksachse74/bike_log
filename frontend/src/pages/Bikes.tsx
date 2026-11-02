@@ -413,7 +413,7 @@ export function BikeDetailPage() {
             {data.setup.length === 0 ? (
               <Empty title="Nothing installed yet">Tell the app what is on the bike: Add groupset puts a whole group on in one go; Manage parts → Install a part adds single parts.</Empty>
             ) : (
-              <SetupGroups setup={data.setup} groupset={data.groupset} bikeId={data.id} onChange={(row) => setSheet({ kind: 'part', row })} reload={reload} onAddSpokes={(row) => setSheet({ kind: 'spokes', row })} onBrokenSpoke={(row) => setSheet({ kind: 'brokenSpokes', row })} onInstallTire={(row) => setSheet({ kind: 'installType', type: 'TIRE', prefer: row.component_id })} />
+              <SetupGroups setup={data.setup} groupset={data.groupset} bikeId={data.id} onChange={(row) => setSheet({ kind: 'part', row })} reload={reload} onAddSpokes={(row) => setSheet({ kind: 'spokes', row })} onBrokenSpoke={(row) => setSheet({ kind: 'brokenSpokes', row })} onInstallTire={(row) => setSheet({ kind: 'installType', type: 'TIRE', prefer: row.component_id })} onInstallTube={(row) => setSheet({ kind: 'installType', type: 'INNER_TUBE', prefer: row.component_id })} />
             )}
           </Card>
           <ManageParts
@@ -424,6 +424,7 @@ export function BikeDetailPage() {
             onReplaceGroupset={() => setSheet({ kind: 'groupset', replace: true })}
             onWheelset={() => setSheet({ kind: 'wheelset' })}
             onInstallTire={() => setSheet({ kind: 'installType', type: 'TIRE' })}
+            onInstallTube={() => setSheet({ kind: 'installType', type: 'INNER_TUBE' })}
           />
           <ChainRotation bikeId={data.id} refresh={data} onChanged={reload} />
         </>
@@ -496,7 +497,7 @@ export function BikeDetailPage() {
         </>
       )}
       {sheet?.kind === 'installType' && (
-        <Sheet title={`Install a ${sheet.type === 'TIRE' ? 'tire' : 'part'} · ${data.name}`} onClose={() => setSheet(null)}>
+        <Sheet title={`Install ${sheet.type === 'TIRE' ? 'a tire' : sheet.type === 'INNER_TUBE' ? 'an inner tube' : 'a part'} · ${data.name}`} onClose={() => setSheet(null)}>
           <InstallHere
             componentType={sheet.type}
             bikeId={data.id}
@@ -768,9 +769,11 @@ function RetireBike({ bike, onRetired }: { bike: BikeDetail; onRetired: () => vo
 // Everyday part changes in one place. A swap opens the normal Replace dialog for the part of that type
 // on this bike (after a pick when there are several), so spares, stock and carried-over parts work as usual.
 // wheels on this bike without a tire on them
-const bareOf = (setup: SetupRow[]) => setup.filter((w) => isWheel(w) && !setup.some((r) => r.component_type === 'TIRE' && r.parent_component_id === w.component_id))
+const bareOf = (setup: SetupRow[], type = 'TIRE') => setup.filter((w) => isWheel(w) && !setup.some((r) => r.component_type === type && r.parent_component_id === w.component_id))
+// wheels without a recorded inner tube (Dirk rides tubes; tubeless wheels need none)
+const tubelessOf = (setup: SetupRow[]) => bareOf(setup, 'INNER_TUBE').filter((w) => w.tire_setup !== 'TUBELESS' && w.tire_setup !== 'TUBULAR')
 
-function ManageParts({ setup, onSwap, onRemove, onInstall, onWheelset, onReplaceGroupset, onInstallTire }: { setup: SetupRow[]; onSwap: (title: string, rows: SetupRow[]) => void; onRemove: (rows: SetupRow[]) => void; onInstall: () => void; onWheelset: () => void; onReplaceGroupset: () => void; onInstallTire: () => void }) {
+function ManageParts({ setup, onSwap, onRemove, onInstall, onWheelset, onReplaceGroupset, onInstallTire, onInstallTube }: { setup: SetupRow[]; onSwap: (title: string, rows: SetupRow[]) => void; onRemove: (rows: SetupRow[]) => void; onInstall: () => void; onWheelset: () => void; onReplaceGroupset: () => void; onInstallTire: () => void; onInstallTube: () => void }) {
   const { meta } = useApp()
   // same grouping as Installed now: drivetrain, brakes, controls and the Di2 / AXS battery
   const groupsetParts = setup.filter((r) => r.component_type === 'BATTERY' || CATEGORY_GROUP[meta.component_types.find((t) => t.code === r.component_type)?.category ?? ''] === 'GROUPSET')
@@ -778,6 +781,7 @@ function ManageParts({ setup, onSwap, onRemove, onInstall, onWheelset, onReplace
   const wheelsets = of('WHEELSET')
   const looseWheels = setup.filter((r) => r.depth === 0 && isWheel(r))
   const bareWheels = bareOf(setup)
+  const noTube = tubelessOf(setup)
   const swaps: [string, string, SetupRow[], string][] = [
     ['Swap chain', 'Swap chain', of('CHAIN'), 'No chain installed'],
     wheelsets.length > 0
@@ -826,6 +830,11 @@ function ManageParts({ setup, onSwap, onRemove, onInstall, onWheelset, onReplace
             {bareWheels.length > 0 && (
               <button className="btn" onClick={onInstallTire} title={`No tire on ${bareWheels.map((w) => w.label).join(' and ')}`}>
                 Install a tire
+              </button>
+            )}
+            {noTube.length > 0 && (
+              <button className="btn" onClick={onInstallTube} title={`No inner tube recorded on ${noTube.map((w) => w.label).join(' and ')}. Once it is in, its km count.`}>
+                Install an inner tube
               </button>
             )}
             {looseWheels.length > 0 && (
@@ -1027,8 +1036,9 @@ function SpokeLine({ row, onAdd, onBroken }: { row: SetupRow; onAdd: () => void;
   )
 }
 
-function SetupGroups({ setup, groupset, bikeId, onChange, reload, onAddSpokes, onBrokenSpoke, onInstallTire }: { setup: SetupRow[]; groupset: GroupsetSummary | null; bikeId: number; onChange: (row: SetupRow) => void; reload: () => void; onAddSpokes: (row: SetupRow) => void; onBrokenSpoke: (row: SetupRow) => void; onInstallTire: (wheel: SetupRow) => void }) {
+function SetupGroups({ setup, groupset, bikeId, onChange, reload, onAddSpokes, onBrokenSpoke, onInstallTire, onInstallTube }: { setup: SetupRow[]; groupset: GroupsetSummary | null; bikeId: number; onChange: (row: SetupRow) => void; reload: () => void; onAddSpokes: (row: SetupRow) => void; onBrokenSpoke: (row: SetupRow) => void; onInstallTire: (wheel: SetupRow) => void; onInstallTube: (wheel: SetupRow) => void }) {
   const bare = new Set(bareOf(setup).map((w) => w.component_id))
+  const noTube = new Set(tubelessOf(setup).map((w) => w.component_id))
   const { meta } = useApp()
   const groupOf = (type: string) => {
     if (type === 'BATTERY') return 'GROUPSET' // Di2 / AXS battery belongs to the shifting
@@ -1061,6 +1071,11 @@ function SetupGroups({ setup, groupset, bikeId, onChange, reload, onAddSpokes, o
       {bare.has(s.component_id) && (
         <button className="btn btn-small" onClick={() => onInstallTire(s)}>
           Install a tire
+        </button>
+      )}
+      {noTube.has(s.component_id) && (
+        <button className="btn btn-small" onClick={() => onInstallTube(s)}>
+          Install a tube
         </button>
       )}
       {s.spokes && <SpokeLine row={s} onAdd={() => onAddSpokes(s)} onBroken={() => onBrokenSpoke(s)} />}

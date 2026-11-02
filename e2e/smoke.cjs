@@ -1222,6 +1222,16 @@ async function bikeTab(page, name) {
     await sheetButton(page, 'Save')
     await page.locator('.toast').filter({ hasText: 'TT spare tire installed: Front wheel · TT set front wheel' }).waitFor()
     check('stored tire page: Install puts it on a wheel, with its km from before', (await comp('TT spare tire')).usage.total_km === 300)
+    // an inner tube from stock: it gets its own record, its km count from now on (Dirk 2026-11-02)
+    await page.goto(BASE + `#/inventory/${tws.id}`)
+    await page.getByRole('button', { name: 'Install an inner tube' }).click()
+    await page.locator('.sheet').getByText('Rear wheel · TT set rear wheel').click()
+    await page.locator('.sheet').getByRole('button', { name: /^From stock \(Conti Race 28: \d+\)/ }).click()
+    await page.screenshot({ path: path.join(OUT, '15b-install-tube.png') })
+    await sheetButton(page, 'Save')
+    await page.locator('.toast').filter({ hasText: 'installed from stock: Rear wheel · TT set rear wheel' }).waitFor()
+    const tube = await page.evaluate(async () => (await (await fetch('api/components')).json()).find((c) => c.component_type === 'INNER_TUBE' && /TT set rear wheel/.test(c.location.text)))
+    check('Install an inner tube from stock: the tube is its own part on the wheel, starting at 0 km', !!tube && tube.usage.total_km === 0 && /^Conti Race 28/.test(tube.label), JSON.stringify(tube && { label: tube.label, km: tube.usage.total_km }))
   }
 
   // Maintenance log: edit, delete (hidden, restorable) and restore an entry

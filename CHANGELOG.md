@@ -8,6 +8,13 @@ UPDATING.md → "Making a release". New entries go under "Unreleased" as work is
 ## Unreleased
 
 ### Added
+- **Install an inner tube** (Dirk 2026-11-02) on the bike page (Add parts, and on each wheel without a tube),
+  and on the wheel and wheelset pages. Pick the wheel, then a spare, **one from stock** (e.g. "Conti Race 28"),
+  a new or a used tube. The tube gets its own record, so its km count from the install date; Punctures shows
+  them per tube model. A tube that is already there: "Replace it" (the old one keeps its km).
+- Tubes from stock (in Swap tube and when fixing a flat) on a recorded wheel are now their own part with km,
+  like tires. Before, only the stock count went down. The new tube goes in after that day's rides, so the
+  ride with the flat stays on the old tube.
 - **Remove several rides at once** (Dirk 2026-11-02). Rides → tick rides (or "select all") → **Remove rides**.
   A sheet shows how many rides, their km and what that takes off each part before you confirm. Same as removing
   one ride: they go to Removed rides, count no km and are never imported again. Under Removed rides you can tick

@@ -525,6 +525,12 @@ you disagree. Dates are 2026-10-24 unless noted.
     so the rules stay identical: soft, restorable, never re-imported, km recalculated. The UI sheet runs a dry
     run first to show the part km change. In Removed rides only user-removed rides (not "deleted at source")
     can be ticked. No hard delete.
+125. **Inner tubes are tracked parts once a wheel is recorded** (Dirk 2026-11-02: "install a tube and from that
+    point on the mileage should be counted"). `repairs.replace_at_position` draws a part from stock
+    (`stock.draw_component`, label = the stock name unless it has a product) or creates a new one for tubes as
+    for tires, installed at `<day>T23:59` for a date alone (after that day's rides). Without a recorded wheel it
+    stays a stock use (punctures still infer the model from the last fix). InstallHere has a "From stock"
+    source (POST /api/consumables/{id}/install). `punctures._collect` ignores parts put in by the flat's own fix.
 
 ## Repository
 27. Pushed only to the feature branch `claude/project-thread-6y3mmh` of the private repository. Demo
