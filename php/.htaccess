@@ -1,0 +1,6 @@
+# If your host can only serve the whole bike-log folder (not just public/), this sends visitors to public/
+# and blocks the private folders (app, config, sql, storage, tests).
+Options -Indexes
+RewriteEngine On
+RewriteRule ^(app|config|sql|storage|tests)(/|$) - [F,L]
+RewriteRule ^(?!public/)(.*)$ public/$1 [L]

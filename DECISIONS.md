@@ -619,6 +619,22 @@ you disagree. Dates are 2026-10-24 unless noted.
     so the choice is cost and latency. New databases on a server start empty (no sample); data moves by
     uploading a desktop backup (Settings → Backups → Bring data from another computer → Restore).
 
+139. **PHP + MySQL multi-user web version, separate from the Python app** (Dirk 2026-11-02: "make a php
+    version of the software. and remove the strava stuff for now. we add rides manually via a form. and add
+    user management ... it needs to be secure. and i need an admin page"; then "we need to use mysql"; on the
+    decision card he chose "Full feature match" over a lean first release). Built in `php/` of the same
+    repository: plain PHP 8.1+ without framework or Composer (runs on cheap shared hosting, upload by FTP),
+    MySQL/MariaDB through PDO prepared statements, server-rendered forms, `?r=<route>` URLs (no rewrite
+    rules needed). Every bike table has `user_id` and every query filters on it. Accounts: Argon2id,
+    email confirmation, reset links (SHA-256 stored, single use, 1 h), invitations, rate limits in MySQL,
+    audit log, admin role; deleting an account is a real delete (GDPR), everything else is voided, not
+    deleted. Catalog shared with Python through `scripts/export_php_catalog.py` → `php/app/catalog.json`.
+    Simplifications in the base (to be closed by the full port): date-only installations and rides (no
+    times), no usage profiles (indoor rides skip wheels/tires/tubes/rotors/pads), CYCLE_WINDOW rules become
+    an interval at the window end with the window as warning, PARENT_COUNT rules not yet, no cached totals.
+    Rides on a maintenance day count as after it (reminder slightly early, never late). The Python desktop
+    app and its server mode (138) stay unchanged.
+
 ## Repository
 27. Pushed only to the feature branch `claude/project-thread-6y3mmh` of the private repository. Demo
     data uses fictional Strava gear ids.

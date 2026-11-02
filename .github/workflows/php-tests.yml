@@ -1,0 +1,48 @@
+# Tests of the PHP web version (php/) against MySQL 8, for every push and pull request that changes it.
+name: PHP version tests
+
+on:
+  push:
+    paths: ["php/**", ".github/workflows/php-tests.yml"]
+  pull_request:
+    paths: ["php/**", ".github/workflows/php-tests.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  php:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      matrix:
+        php: ["8.1", "8.3"]
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: rootpw
+          MYSQL_DATABASE: bikelog_test
+          MYSQL_USER: bikelog
+          MYSQL_PASSWORD: testpw
+        ports: ["3306:3306"]
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -prootpw" --health-interval=5s --health-timeout=5s --health-retries=20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: pdo_mysql, mbstring, openssl, curl
+          coverage: none
+      - name: Lint
+        run: find php -name '*.php' -print0 | xargs -0 -n1 php -l > /dev/null
+      - name: Allow the test user to drop and create the test database
+        run: mysql -h 127.0.0.1 -uroot -prootpw -e "GRANT ALL ON \`bikelog_test\`.* TO 'bikelog'@'%'; FLUSH PRIVILEGES;"
+      - name: Tests
+        env:
+          BIKELOG_TEST_DB_HOST: 127.0.0.1
+          BIKELOG_TEST_DB_USER: bikelog
+          BIKELOG_TEST_DB_PASS: testpw
+        run: php php/tests/run.php
