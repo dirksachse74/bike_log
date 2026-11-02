@@ -18,7 +18,7 @@ function page_home(): void
     $rides = Db::all('SELECT r.*, b.name AS bike_name FROM rides r LEFT JOIN bikes b ON b.id = r.bike_id
         WHERE r.user_id = ? AND r.removed_at IS NULL ORDER BY r.ride_date DESC, r.id DESC LIMIT 5', [$uid]);
     $year = substr(today(), 0, 4);
-    $yearKm = (float)Db::value('SELECT COALESCE(SUM(distance_km),0) FROM rides WHERE user_id = ? AND removed_at IS NULL AND ride_date >= ?', [$uid, "$year-01-01"]);
+    $yearKm = (float)Db::value('SELECT COALESCE(SUM(distance_km),0) FROM rides r WHERE r.user_id = ? AND ' . Domain::COUNTED . ' AND ride_date >= ?', [$uid, "$year-01-01"]);
     View::render('dashboard', compact('bikes', 'reminders', 'unknown', 'rides', 'yearKm', 'year'), 'Overview', 'home');
 }
 
@@ -306,6 +306,17 @@ function page_inst_void(): void
         Session::flash('ok', 'Record marked as wrong. It stays in the history but no longer counts.');
     }
     redirect('part', ['id' => $i['component_id']]);
+}
+
+function page_part_in_use(): void
+{
+    $uid = (int)require_user()['id'];
+    $c = Domain::component($uid, get_int('id'));
+    if (Request::isPost()) {
+        Inventory::setInUse($uid, (int)$c['id'], post('in_use') === '1', parse_date(post('on'), true));
+        Session::flash('ok', post('in_use') === '1' ? 'In use: every ride from that day counts for it.' : 'Put away: rides no longer count for it.');
+    }
+    redirect('part', ['id' => $c['id']]);
 }
 
 function page_part_status(): void

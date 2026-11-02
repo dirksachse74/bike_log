@@ -29,6 +29,7 @@ final class UserBackups
             'work_session_id' => 'work_sessions', 'removal_session_id' => 'work_sessions'],
         'usage_adjustments' => ['component_id' => 'components'],
         'rides' => ['bike_id' => 'bikes'],
+        'ride_equipment' => ['ride_id' => 'rides', 'component_id' => 'components'],
         'maintenance_events' => ['component_id' => 'components', 'bike_id' => 'bikes', 'consumable_id' => 'consumables', 'work_session_id' => 'work_sessions'],
         'consumable_txns' => ['consumable_id' => 'consumables', 'maintenance_event_id' => 'maintenance_events', 'work_session_id' => 'work_sessions'],
         'service_rules' => ['component_id' => 'components'],

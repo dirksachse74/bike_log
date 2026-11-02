@@ -15,7 +15,10 @@ Status key: ✅ done and tested · 🟡 done, not verified where it matters · �
 - [x] Round 4a: product records and JSON product import (templates, instructions), pick list SHOP, change log.
 - [x] Round 4b: fresh start, per-user backup and restore (JSON import), diagnostics, indoor = direct-drive
       trainer profile, ride start times (already in the base release).
-- [ ] Final parity check against the desktop app.
+- [x] Parity check against the desktop app (2026-11-02): gaps listed for round 5.
+- [x] Round 5a: ride left out of the km, wheels picked per ride, bulk ride actions, CSV ride import, shoes in use.
+- [ ] Round 5b: replace a part carrying what is mounted on it, group wheels into a wheelset, product fits
+      which bike, brake overview, restore a voided maintenance entry, charge history.
 - [ ] Try it on real shared hosting (Dirk): install page, SMTP, HTTPS.
 
 ## P1 Launch and persistence

@@ -67,6 +67,9 @@ final class Reminders
         $comps = Db::all("SELECT * FROM components WHERE user_id = ? AND status = 'ACTIVE'" . ($onlyComponentId ? ' AND id = ' . (int)$onlyComponentId : ''), [$uid]);
         foreach ($comps as $c) {
             $bike = Domain::currentBike($uid, (int)$c['id']);
+            if (!$bike && !$onlyBikeId && Domain::wornNow($uid, (int)$c['id'])) {
+                $bike = Domain::RIDER;   // shoes and cleats: worn by the rider, on every bike
+            }
             if (!$bike || ($onlyBikeId && (int)$bike['id'] !== $onlyBikeId)) {
                 continue;
             }
@@ -195,7 +198,7 @@ final class Reminders
         $actName = mb_strtolower(Catalog::actionName($rule['action_code']));
         $since = $last['performed_on'] ?? null;
         $sql = 'SELECT COALESCE(SUM(distance_km),0) km, COALESCE(SUM(duration_s),0) seconds, COUNT(*) rides, SUM(distance_km IS NULL) missing_distance,
-            SUM(duration_s IS NULL) missing_duration, MIN(ride_date) first FROM rides WHERE user_id = ? AND bike_id = ? AND removed_at IS NULL';
+            SUM(duration_s IS NULL) missing_duration, MIN(ride_date) first FROM rides r WHERE r.user_id = ? AND r.bike_id = ? AND ' . Domain::COUNTED;
         $args = [$uid, $b['id']];
         if ($since) {
             $sql .= ' AND ride_date >= ?';
@@ -345,22 +348,18 @@ final class Reminders
     public static function wetRidesAfter(int $uid, array $c, ?string $after): array
     {
         $out = [];
-        foreach (Domain::bikePeriods($uid, (int)$c['id']) as $p) {
-            $from = $after !== null ? max((new DateTimeImmutable($after))->modify('+1 day')->format('Y-m-d'), $p['from']) : $p['from'];
-            if ($p['to'] !== null && $from >= $p['to']) {
-                continue;
-            }
-            $sql = "SELECT ride_date FROM rides WHERE user_id = ? AND bike_id = ? AND removed_at IS NULL AND conditions = 'WET' AND ride_date >= ?";
-            $args = [$uid, $p['bike_id'], $from];
-            if ($p['to'] !== null) {
-                $sql .= ' AND ride_date < ?';
-                $args[] = $p['to'];
-            }
-            foreach (Db::all($sql, $args) as $r) {
-                $out[] = $r['ride_date'];
+        $since = $after !== null ? (new DateTimeImmutable($after))->modify('+1 day')->format('Y-m-d') : null;
+        $parts = [];
+        $args = [];
+        foreach (Domain::usagePeriods($uid, (int)$c['id']) as $p) {
+            if ($w = Domain::periodWhere($uid, $c, $p, $since)) {
+                $parts[] = '(' . $w[0] . ')';
+                array_push($args, ...$w[1]);
             }
         }
-        sort($out);
+        if ($parts) {
+            $out = array_column(Db::all("SELECT r.ride_date FROM rides r WHERE r.conditions = 'WET' AND (" . implode(' OR ', $parts) . ') ORDER BY r.ride_date', $args), 'ride_date');
+        }
         return $out;
     }
 

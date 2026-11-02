@@ -11,7 +11,8 @@ function page_ride(): void
     $type = get_param('type');
     $choices = $type !== '' && isset(Incidents::types()[$type]) ? Incidents::choices($uid, $ride, $type) : [];
     $incidents = Incidents::list($uid, ['ride_id' => $ride['id']]);
-    View::render('rides/show', compact('ride', 'bike', 'type', 'choices', 'incidents') + ['fixData' => fix_data($uid, $incidents)],
+    $equipment = Rides::equipment($uid, $ride);
+    View::render('rides/show', compact('ride', 'bike', 'type', 'choices', 'incidents', 'equipment') + ['fixData' => fix_data($uid, $incidents)],
         ($ride['name'] ?: 'Ride') . ' · ' . $ride['ride_date'], 'rides');
 }
 

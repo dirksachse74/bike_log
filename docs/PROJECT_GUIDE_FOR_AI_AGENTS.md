@@ -29,7 +29,8 @@ MariaDB (CI: `.github/workflows/php-tests.yml`, MySQL 8, PHP 8.1 and 8.3). Domai
 counted stock, spares, shopping list), `groupsets.php`, `incidents.php` (journal, incidents and fixes,
 punctures, spokes), `chains.php` (rotation, wax applications), `money.php` (costs, bundles,
 service orders, part life), `products.php` (products, JSON product import, templates), `records.php`
-(shop pick list, change log; hooked into `Db::insert`/`Db::updateOwned`), `backups.php` (per-user
+(shop pick list, change log; hooked into `Db::insert`/`Db::updateOwned`), `rides.php` (ride left out, wheels per ride, bulk, CSV import; km of a part come from
+`Domain::usagePeriods` + `periodWhere`, never sum rides per bike for a part by hand), `backups.php` (per-user
 export, stored copies, restore with new ids, fresh start; a new table with user data must be added to
 `UserBackups::TABLES` with its reference columns). A multi-step change (groupset import, fix) runs inside one work session so it can be
 undone as a whole.

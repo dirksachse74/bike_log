@@ -22,9 +22,21 @@
   <a class="btn link" href="<?= h(url('changes', ['part' => $c['id']])) ?>">Change log</a>
 </div>
 
+<?php if (Domain::isRiderGear($c['component_type']) && $c['status'] === 'ACTIVE'): $inUse = $c['disposition'] === 'IN_USE'; ?>
+<div class="card">
+  <p><?= $inUse ? status_badge('ACTIVE') . ' In use since ' . h((string)$c['disposition_on']) . ': every ride counts, on any bike (and for the cleats on these shoes).'
+      : 'Not in use. While shoes are in use, every ride counts for them and for their cleats.' ?></p>
+  <form method="post" action="<?= h(url('part_in_use', ['id' => $c['id']])) ?>" class="row"><?= Csrf::field() ?>
+    <input type="hidden" name="in_use" value="<?= $inUse ? '0' : '1' ?>">
+    <?= field('on', $inUse ? 'Put away on' : 'In use from', today(), 'date', ['required' => true]) ?>
+    <button class="btn <?= $inUse ? '' : 'primary' ?>"><?= $inUse ? 'Put away' : 'Start using' ?></button>
+  </form>
+</div>
+<?php endif; ?>
+
 <?php if ($c['disposition'] !== 'STORED' || $c['storage_location'] || $c['tire_setup'] || $c['pressure_note'] || $c['warranty_until'] || $product): ?>
 <p class="muted">
-  <?= !$open && $c['status'] === 'ACTIVE' ? h(Inventory::dispositions()[$c['disposition']] ?? $c['disposition']) . ($c['storage_location'] ? ' · ' . h($c['storage_location']) : '') . ' · ' : '' ?>
+  <?= !$open && $c['status'] === 'ACTIVE' ? h(Catalog::raw('dispositions')[$c['disposition']] ?? $c['disposition']) . ($c['storage_location'] ? ' · ' . h($c['storage_location']) : '') . ' · ' : '' ?>
   <?= $c['tire_setup'] ? h(Catalog::raw('tire_setups')[$c['tire_setup']] ?? $c['tire_setup']) . ' · ' : '' ?>
   <?= $c['pressure_note'] ? 'Pressure ' . h($c['pressure_note']) . ' · ' : '' ?>
   <?= $c['warranty_until'] ? 'Warranty until ' . h($c['warranty_until']) . ' · ' : '' ?>
@@ -202,7 +214,7 @@
     <button class="btn small">Save</button>
   </form>
   <?php if ($dispositions): ?><table class="list"><?php foreach ($dispositions as $d): ?>
-    <tr><td><?= h($d['effective_on']) ?></td><td><?= h(Inventory::dispositions()[$d['disposition']] ?? $d['disposition']) ?></td><td class="muted"><?= h($d['note'] ?? '') ?></td></tr>
+    <tr><td><?= h($d['effective_on']) ?></td><td><?= h(Catalog::raw('dispositions')[$d['disposition']] ?? $d['disposition']) ?></td><td class="muted"><?= h($d['note'] ?? '') ?></td></tr>
   <?php endforeach; ?></table><?php endif; ?>
 </details>
 <?php endif; ?>
