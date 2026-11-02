@@ -7,6 +7,11 @@ UPDATING.md → "Making a release". New entries go under "Unreleased" as work is
 
 ## Unreleased
 
+### Changed
+- **Rides → Punctures, By inner tube / By tire** (Dirk 2026-11-02: "makes no sense to add the km"): the km of
+  tires (tubes) of one model are no longer added up. The model is a group line with its punctures; below it
+  each tire has its own line with its own km ridden, punctures and km per puncture, and a link to its page.
+
 ### Added
 - **Install an inner tube** (Dirk 2026-11-02) on the bike page (Add parts, and on each wheel without a tube),
   and on the wheel and wheelset pages. Pick the wheel, then a spare, **one from stock** (e.g. "Conti Race 28"),

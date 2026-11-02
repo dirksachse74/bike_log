@@ -50,13 +50,17 @@ def test_punctures_by_tube_and_tire_model(session):
     assert second["tube_model"] == "Conti Race 28" and not second["tube_inferred"] and second["tube_id"]
     front = rows[("2026-10-01", "Front")]
     assert front["tube_model"] == "Schwalbe Aerothan" and front["damage"] == "Tube and tire"
+    # per model each tube / tire on its own line, with its own km (Dirk: adding km of different tires makes no sense)
     by_tube = {x["model"]: x for x in rep["by_tube"]}
     conti = by_tube["Conti Race 28"]     # its own km: in after the flat ride, 200 + 50
-    assert conti["punctures"] == 1 and conti["parts"] == 1 and conti["km"] == 250
-    assert by_tube["Schwalbe Aerothan"]["punctures"] == 1 and by_tube["Schwalbe Aerothan"]["km"] == 350
-    assert by_tube["Schwalbe Aerothan"]["km_per_puncture"] == 350
+    assert conti["punctures"] == 1 and len(conti["items"]) == 1
+    assert conti["items"][0]["km"] == 250 and conti["items"][0]["km_per_puncture"] == 250 and conti["items"][0]["in_use"]
+    aero = by_tube["Schwalbe Aerothan"]["items"][0]
+    assert aero["punctures"] == 1 and aero["km"] == 350 and aero["km_per_puncture"] == 350
+    assert "km" not in by_tube["Schwalbe Aerothan"]                                 # no summed km per model
     by_tire = {x["model"]: x for x in rep["by_tire"]}
     assert by_tire["GP5000 rear"]["punctures"] == 2 and by_tire["GP5000 front"]["punctures"] == 1
+    assert by_tire["GP5000 front"]["items"][0]["km"] == 350
     assert {x["name"]: x["punctures"] for x in rep["by_wheel"]} == {"Rear": 2, "Front": 1}
     assert {x["name"]: x["punctures"] for x in rep["by_conditions"]} == {"Dry": 2, "Wet": 1}
     # a removed incident does not count
@@ -83,4 +87,25 @@ def test_stock_tube_without_a_recorded_wheel_is_inferred_from_the_last_fix(sessi
     assert rows["2026-09-10"]["tube_model"] == "Not recorded in Bike Log"
     assert rows["2026-10-01"]["tube_model"] == "Conti Race 28" and rows["2026-10-01"]["tube_inferred"]
     by_tube = {x["model"]: x for x in punctures.report(session)["by_tube"]}
-    assert by_tube["Conti Race 28"]["km"] == 250                                   # 200 + 50
+    stock_line = by_tube["Conti Race 28"]["items"][0]
+    assert stock_line["component_id"] is None and stock_line["km"] == 250 and stock_line["punctures"] == 1  # 200 + 50
+
+
+def test_two_tires_of_one_model_each_keep_their_own_km(session):
+    """Two GP5000 tires: each line shows its own km and km per puncture, nothing is added up."""
+    b = bike(session, name="Synapse")
+    fw, rw = part(session, "FRONT_WHEEL", "Zipp front"), part(session, "REAR_WHEEL", "Zipp rear")
+    for w in (fw, rw):
+        inv.install(session, w.id, at="2026-09-01", bike_id=b.id)
+    ft = part(session, "TIRE", "GP5000")
+    rt = part(session, "TIRE", "GP5000 (2)")
+    inv.install(session, ft.id, at="2026-09-01", parent_component_id=fw.id)
+    inv.install(session, rt.id, at="2026-09-15", parent_component_id=rw.id)
+    ride(session, b, "2026-09-10", 100)
+    r = ride(session, b, "2026-09-20", 60)
+    inc.log(session, r.id, incident_type="FLAT", affected=[_keys(session, r)["Rear tire: GP5000 (2)"]])
+    gp = {x["model"]: x for x in punctures.report(session)["by_tire"]}["GP5000"]
+    items = {x["label"]: x for x in gp["items"]}
+    assert gp["punctures"] == 1 and set(items) == {"GP5000", "GP5000 (2)"}
+    assert items["GP5000 (2)"]["km"] == 60 and items["GP5000 (2)"]["km_per_puncture"] == 60
+    assert items["GP5000"]["km"] == 160 and items["GP5000"]["punctures"] == 0 and items["GP5000"]["km_per_puncture"] is None

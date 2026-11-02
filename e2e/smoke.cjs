@@ -709,6 +709,8 @@ async function bikeTab(page, name) {
   await tubeTable.waitFor()
   const punctText = (await page.locator('.punctures').innerText()).replace(/\s+/g, ' ')
   check('Rides → Punctures: the flat counted, with tables by inner tube and by tire', /1 punctures?/.test(punctText) && /By inner tube/.test(punctText) && /By tire/.test(punctText) && /Rear 1/.test(punctText), punctText.slice(0, 200))
+  const tireLines = await page.locator('details.punct-models[data-what=tire] tr.punct-item').count()
+  check('Punctures: each tire on its own line under its model, with its own km', tireLines >= 1 && (await page.locator('details.punct-models[data-what=tire] tr.punct-model-head').count()) >= 1)
   await page.screenshot({ path: path.join(OUT, '09h-punctures.png'), fullPage: true })
   await page.goto(BASE + '#/bikes')
   await page.getByRole('link', { name: /TIME NXR/ }).click()

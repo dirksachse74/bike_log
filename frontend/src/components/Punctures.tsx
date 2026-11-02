@@ -23,12 +23,19 @@ interface PunctureRow {
   fixed: string | null
 }
 
+interface ItemRow {
+  component_id: number | null
+  label: string
+  km: number | null
+  punctures: number
+  km_per_puncture: number | null
+  in_use: boolean
+}
+
 interface ModelRow {
   model: string
   punctures: number
-  parts: number
-  km: number | null
-  km_per_puncture: number | null
+  items: ItemRow[]
 }
 
 interface Count {
@@ -47,6 +54,7 @@ interface Report {
   by_damage: Count[]
 }
 
+// Per model, each tube / tire on its own line with its own km (Dirk 2026-11-02: no km added up across tires)
 function ModelTable({ title, rows, what }: { title: string; rows: ModelRow[]; what: string }) {
   return (
     <details className="life-type punct-models" data-what={what} open>
@@ -59,29 +67,35 @@ function ModelTable({ title, rows, what }: { title: string; rows: ModelRow[]; wh
         <table className="table">
           <thead>
             <tr>
-              <th>Model</th>
+              <th>{what === 'tube' ? 'Tube' : 'Tire'}</th>
               <th className="num">Punctures</th>
               <th className="num">Km ridden</th>
               <th className="num">Km per puncture</th>
             </tr>
           </thead>
-          <tbody>
-            {rows.map((m) => (
-              <tr key={m.model}>
-                <td>
-                  {m.model}
-                  {m.parts > 0 && (
-                    <div className="small muted" title={`The km ridden are the km of these ${what}s together`}>
-                      {m.parts} {m.parts === 1 ? what : `${what}s`} of this model in your parts
-                    </div>
-                  )}
-                </td>
-                <td className="num">{m.punctures}</td>
-                <td className="num">{m.km != null ? km(m.km, 0) : '–'}</td>
-                <td className="num">{m.km_per_puncture != null ? km(m.km_per_puncture, 0) : m.punctures === 0 && m.km ? 'none yet' : '–'}</td>
+          {rows.map((m) => (
+            <tbody key={m.model} className="punct-model">
+              <tr className="punct-model-head">
+                <th colSpan={4} scope="rowgroup">
+                  {m.model}{' '}
+                  <span className="small muted">
+                    {m.punctures === 1 ? '1 puncture' : `${m.punctures} punctures`} · {m.items.length === 1 ? `1 ${what}` : `${m.items.length} ${what}s`}
+                  </span>
+                </th>
               </tr>
-            ))}
-          </tbody>
+              {m.items.map((x, i) => (
+                <tr key={x.component_id ?? `stock-${i}`} className="punct-item">
+                  <td>
+                    {x.component_id ? <Link to={`/inventory/${x.component_id}`}>{x.label}</Link> : <span className="muted">{x.label}</span>}
+                    {x.in_use && x.component_id && <span className="small muted"> · in use</span>}
+                  </td>
+                  <td className="num">{x.punctures}</td>
+                  <td className="num">{x.km != null ? km(x.km, 0) : '–'}</td>
+                  <td className="num">{x.km_per_puncture != null ? km(x.km_per_puncture, 0) : x.punctures === 0 && x.km ? 'none yet' : '–'}</td>
+                </tr>
+              ))}
+            </tbody>
+          ))}
         </table>
       )}
     </details>
@@ -104,8 +118,8 @@ export default function Punctures() {
   return (
     <div className="punctures">
       <p className="small muted">
-        Every flat logged on a ride (Add incident → Flat tire), per wheel. Km per puncture = km all your tubes (tires) of that model have done ÷ their punctures. Tubes taken from
-        stock have no own record: a flat on such a tube counts for the tube the last fix on that wheel put in (marked "from the last fix").
+        Every flat logged on a ride (Add incident → Flat tire), per wheel. Each tube and tire has its own line with its own km; km per puncture = its km ÷ its
+        punctures. Tubes from stock that were never installed as a part of their own count for the tube the last fix on that wheel put in (marked "from the last fix").
       </p>
       <div className="stats">
         <div>

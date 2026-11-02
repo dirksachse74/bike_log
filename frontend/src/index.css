@@ -1441,3 +1441,18 @@ dl.props dd { margin: 0; }
     gap: 0.2rem;
   }
 }
+
+/* Rides → Punctures: model as a group line, each tube / tire below it */
+.punct-models .punct-model-head th {
+  text-align: left;
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: normal;
+  font-size: inherit;
+  color: var(--ink);
+  background: #f7f7f9;
+  padding-top: 0.5rem;
+}
+.punct-models .punct-item td:first-child {
+  padding-left: 1.2rem;
+}
