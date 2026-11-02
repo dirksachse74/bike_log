@@ -14,6 +14,8 @@ UPDATING.md → "Making a release". New entries go under "Unreleased" as work is
   rides and **Restore rides**.
 
 ### Changed
+- **Rides → Punctures:** under a tube or tire model, "2 recorded" now reads "2 tires of this model in your
+  parts": how many tires (tubes) of that model you have in Bike Log; their km together are "Km ridden".
 - **Screens arranged by importance** (Dirk 2026-11-01). Each main screen now starts with what needs doing,
   then the current state, then history. Overview: a tile per bike at the top (km, how many due), then
   Upcoming tasks, rides to review and recent rides before shopping, chains and brakes. Maintenance: the

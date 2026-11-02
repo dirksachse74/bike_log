@@ -70,7 +70,11 @@ function ModelTable({ title, rows, what }: { title: string; rows: ModelRow[]; wh
               <tr key={m.model}>
                 <td>
                   {m.model}
-                  {m.parts > 0 && <div className="small muted">{m.parts} recorded</div>}
+                  {m.parts > 0 && (
+                    <div className="small muted" title={`The km ridden are the km of these ${what}s together`}>
+                      {m.parts} {m.parts === 1 ? what : `${what}s`} of this model in your parts
+                    </div>
+                  )}
                 </td>
                 <td className="num">{m.punctures}</td>
                 <td className="num">{m.km != null ? km(m.km, 0) : '–'}</td>
