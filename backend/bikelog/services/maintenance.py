@@ -42,7 +42,7 @@ SAFETY_NOTE = "Reminders follow recorded usage only. They never confirm that a p
 
 def _event_sort(session: Session, action_code: str, w) -> str:
     """A liquid-wax top-up logged with a date only was done after that day's rides (e.g. after a wet ride): it
-    counts from the end of the day, so that day's km stay before it (DECISIONS 136)."""
+    counts from the end of the day, so that day's km stay before it (DECISIONS 137)."""
     if action_code == "WAX_LIQUID" and w.date_only:
         return parse_when(f"{w.local_date}T23:59:59", settings.tz(session)).utc
     return w.utc
@@ -759,7 +759,7 @@ def _top_up_rule_on(session: Session, comp: Component) -> bool:
 def _add_wet_ride(session: Session, comp: Component, rule: ServiceRule, res: dict) -> None:
     """A wet ride since the last lube/wax makes a chain-lube rule due (ride conditions set per ride). On a waxed
     chain with the liquid-wax top-up reminder on, a wet ride asks for a top-up instead of a hot wax (Dirk
-    2026-11-02, DECISIONS 136; the hot wax then follows after_top_up_km after the top-up)."""
+    2026-11-02, DECISIONS 137; the hot wax then follows after_top_up_km after the top-up)."""
     action = ACTIONS.get(rule.action_code)
     if comp.component_type != "CHAIN" or not action or action.kind != "LUBRICATE":
         return

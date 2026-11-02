@@ -592,7 +592,12 @@ you disagree. Dates are 2026-10-24 unless noted.
     hot wax = none), ridden_km and days_on while it was the latest, active, ended_by {n, type}, and next_due
     on the active row only (after a hot wax: top-up window and hot wax; after a top-up: hot wax, from
     chain_history's due km). `current` feeds the "Current:" line. chain_history stays for the API and rotation.
-136. **Wet ride asks for a liquid wax top-up** (Dirk 2026-11-02: "if it rains and i flag a ride as wet, will i
+
+136. **No personal name in the shared app** (Dirk 2026-11-02). Publisher / CompanyName = "Bike Log" in
+    bikelog.iss and bikelog.spec; the release workflow comment uses `<owner>`. Dirk may rename his GitHub
+    account to hide his real name; nothing in the code depends on the owner name except docs/clone URLs.
+
+137. **Wet ride asks for a liquid wax top-up** (Dirk 2026-11-02: "if it rains and i flag a ride as wet, will i
     get a reminder to use liquid wax top up?"). Before, a wet ride made the hot wax due. Now `_cycle_status`
     of the WAX_LIQUID rule is DUE with "Top-up recommended: wet ride on <date>" when a wet ride came after the
     last top-up (or the hot wax) of the cycle, even outside the 250–300 km window and even if a top-up was
@@ -600,9 +605,6 @@ you disagree. Dates are 2026-10-24 unless noted.
     only sorts at 23:59:59 that day (`_event_sort`), so the wet ride's km stay before it and the hot wax falls
     due after_top_up_km after the top-up, not after the start of the day.
 
-136. **No personal name in the shared app** (Dirk 2026-11-02). Publisher / CompanyName = "Bike Log" in
-    bikelog.iss and bikelog.spec; the release workflow comment uses `<owner>`. Dirk may rename his GitHub
-    account to hide his real name; nothing in the code depends on the owner name except docs/clone URLs.
-
+## Repository
 27. Pushed only to the feature branch `claude/project-thread-6y3mmh` of the private repository. Demo
     data uses fictional Strava gear ids.
