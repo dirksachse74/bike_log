@@ -161,3 +161,26 @@ def test_upgrade_to_0021_puts_the_mark_in_the_name(tmp_path):
     raw.close()
     assert rows == {1: ("XT chain", None), 2: ("XT chain [B]", "B"), 3: ("KMC [2 dots]", "2 dots"),
                     4: ("GP5000 [A]", "A"), 5: ("GP5000 [A]", "A"), 6: ("Arione", None)}
+
+
+def test_upgrade_to_0022_gives_hot_wax_rules_200km_after_a_top_up(tmp_path):
+    paths = DataPaths(tmp_path / "d").ensure()
+    eng = make_engine(paths.database)
+    _upgrade_to(eng, "0021")
+    raw = sqlite3.connect(paths.database)
+    raw.executescript("""
+        INSERT INTO component (id, uuid, component_type, label, prior_usage, status, created_at, updated_at)
+            VALUES (1, 'c-1', 'CHAIN', 'XT', 'NEW', 'ACTIVE', 'x', 'x');
+        INSERT INTO service_rule (uuid, rule_code, name, component_id, action_code, "trigger", reset_actions_json,
+            origin, active, created_at, updated_at, interval_km) VALUES ('r-1', 'CHAIN_HOT_WAX', 'Hot wax', 1,
+            'WAX_HOT', 'INTERVAL', '["WAX_HOT"]', 'PERSONAL', 1, 'x', 'x', 450),
+            ('r-2', 'CHAIN_WEAR_CHECK', 'Wear', 1, 'CHAIN_MEASURE_WEAR', 'INTERVAL', '["CHAIN_MEASURE_WEAR"]',
+            'PERSONAL', 1, 'x', 'x', 1000);
+    """)
+    raw.commit()
+    raw.close()
+    upgrade_database(eng, paths)
+    raw = sqlite3.connect(paths.database)
+    after = dict(raw.execute("SELECT uuid, after_top_up_km FROM service_rule").fetchall())
+    raw.close()
+    assert after == {"r-1": 200, "r-2": None}

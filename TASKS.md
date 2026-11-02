@@ -19,7 +19,7 @@ Status key: ✅ done and tested · 🟡 done, not verified where it matters · �
 - ✅ Frame and fork as parts (km, serial, warranty until, warranty replacement, frame history).
 - ✅ Retire or delete a bike (delete only without history; Strava does not re-create it; Retired bikes list; Restore).
 - ✅ Manage parts as Add / Remove / Change parts with a Groupset sub-group (change one part, replace whole groupset); Add groupset only on a bike without one; incident buttons on one line.
-- ✅ Chain rotation: mark per part, rotation card on the bike (on / waxed, ready / dirty), swap prompt from the 500 km hot-wax rule with one-click swap, Wax chains batch, rotation history, wax cycles per chain. Add picker offers chains from other rotations and from stock, "Other chains" says where the rest are (DECISIONS 131).
+- ✅ Chain rotation: mark per part, rotation card on the bike (on / waxed, ready / dirty), swap prompt from the 500 km hot-wax rule with one-click swap, Wax chains batch, rotation history, wax cycles per chain (with liquid-wax top-ups; hot wax 200 km after a top-up, DECISIONS 133). Add picker offers chains from other rotations and from stock, "Other chains" says where the rest are (DECISIONS 131).
 - ✅ Drill-down: part page "Parts on it" tree (wheelset → wheels → hub/spokes/tire, crankset → chainrings); groupset one line on the bike + groupset page (stats, tasks, incidents, log, journal, parts tree).
 - ✅ Spokes per wheel with broken-spoke count, "Broken spoke" incident and fix, re-lace reminder after 3 (Settings).
 - ✅ Install a part: create a new part and install it in one step (DECISIONS 112).

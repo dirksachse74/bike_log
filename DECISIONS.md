@@ -568,6 +568,14 @@ you disagree. Dates are 2026-10-24 unless noted.
     the "(B)" suffixes of 129 (migration 0021 turns "Name (B)" into "Name [B]" with mark B and appends existing
     marks). Marks are at most 20 characters (checked when changed) and contain no brackets. Other part types
     still get "(2)" for a repeated name without a mark.
+133. **Hot wax after a liquid-wax top-up** (Dirk 2026-11-02: "300km hot wax, followed by a liquid wax top-up,
+    then a fresh hot wax after another 200km … sometimes … a liquid wax top-up and then a fresh hot wax after
+    200km"). This replaces "a top-up never postpones the hot wax" (acceptance 2 of the brief, now changed): the
+    hot-wax rule has `after_top_up_km` (default 200, migration 0022 sets it on every WAX_HOT rule); with a
+    top-up after the last hot wax the hot wax is due at (km at the top-up + after_top_up_km), otherwise at
+    interval_km. So a top-up can bring the hot wax forward or move it later. Empty = old behaviour.
+    `chains.chain_history` lists `top_ups` [{date, at_km}] per cycle and, for the current one,
+    km_since_top_up / hot_wax_due_at_km / hot_wax_left_km; the rotation timeline has kind TOP_UP.
 
 ## Repository
 27. Pushed only to the feature branch `claude/project-thread-6y3mmh` of the private repository. Demo

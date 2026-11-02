@@ -326,6 +326,7 @@ class DefaultRule:
     interval_months: int | None = None
     window_min_km: float | None = None
     window_max_km: float | None = None
+    after_top_up_km: float | None = None     # hot wax: due this many km after a liquid-wax top-up
     cycle_action_code: str | None = None     # CYCLE_WINDOW: action that starts a new cycle
     reset_actions: tuple[str, ...] = ()      # default: (action_code,)
     warn_km: float | None = None
@@ -340,7 +341,8 @@ class DefaultRule:
 
 
 DEFAULT_RULES: list[DefaultRule] = [
-    DefaultRule("CHAIN_HOT_WAX", "Hot wax chain", "CHAIN", "WAX_HOT", interval_km=500, warn_km=50),
+    DefaultRule("CHAIN_HOT_WAX", "Hot wax chain", "CHAIN", "WAX_HOT", interval_km=500, warn_km=50,
+                after_top_up_km=200),
     DefaultRule("CHAIN_LIQUID_WAX", "Liquid-wax top-up", "CHAIN", "WAX_LIQUID", trigger="CYCLE_WINDOW",
                 window_min_km=250, window_max_km=300, cycle_action_code="WAX_HOT", warn_km=25),
     DefaultRule("CHAIN_WEAR_CHECK", "Measure chain wear", "CHAIN", "CHAIN_MEASURE_WEAR", interval_km=1000,

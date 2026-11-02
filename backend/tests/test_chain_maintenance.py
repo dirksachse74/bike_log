@@ -34,19 +34,45 @@ def test_260km_ride_triggers_liquid_wax(session, chain_bike):
     assert any(t["rule_code"] == "CHAIN_LIQUID_WAX" for t in m.queue(session, today=TODAY))
 
 
-def test_liquid_wax_leaves_hot_wax_due_at_500km(session, chain_bike):
-    """Acceptance 2."""
+def test_liquid_wax_moves_hot_wax_to_200km_after_it(session, chain_bike):
+    """Acceptance 2, changed by Dirk 2026-11-02 (DECISIONS 133): "300km hot wax, followed by a liquid wax
+    top-up, then a fresh hot wax after another 200km". Without a top-up the hot wax stays at 500 km."""
     b, chain = chain_bike
-    ride(session, b, "2026-10-02", 270)
+    ride(session, b, "2026-10-02", 300)
+    assert status(session, chain, "CHAIN_HOT_WAX")["remaining_km"] == 200     # no top-up yet: 500 km
     m.log_event(session, action_code="WAX_LIQUID", component_id=chain.id, at="2026-10-03")
     assert status(session, chain, "CHAIN_LIQUID_WAX")["status"] == "DONE_THIS_CYCLE"
-    ride(session, b, "2026-10-04", 229)
-    assert status(session, chain, "CHAIN_HOT_WAX")["status"] == "DUE_SOON"   # 499 km
-    ride(session, b, "2026-10-05", 1)
+    ride(session, b, "2026-10-04", 151)
+    assert status(session, chain, "CHAIN_HOT_WAX")["status"] == "DUE_SOON"   # 451 km, due at 500
+    ride(session, b, "2026-10-05", 49)
     hot = status(session, chain, "CHAIN_HOT_WAX")
-    assert hot["status"] == "DUE" and hot["used_km"] == 500
-    assert "500 km since last hot wax on 2026-10-01" in hot["explanation"]
+    assert hot["status"] == "DUE" and hot["used_km"] == 500 and hot["interval_km"] == 500
+    assert ("500 km since last hot wax on 2026-10-01; liquid wax top-up on 2026-10-03 at 300 km, hot wax 200 km "
+            "after it (due at 500 km)") in hot["explanation"]
     assert status(session, chain, "CHAIN_LIQUID_WAX")["status"] == "DONE_THIS_CYCLE"  # still one per cycle
+
+
+def test_early_top_up_after_70km_moves_hot_wax_to_270km(session, chain_bike):
+    """Dirk's chain [A]: hot wax 1.10., 70 km on 6.10., liquid wax top-up 7.10. → hot wax due at 270 km."""
+    from bikelog.services import chains
+    b, chain = chain_bike
+    ride(session, b, "2026-10-06", 70)
+    m.log_event(session, action_code="WAX_LIQUID", component_id=chain.id, at="2026-10-07")
+    hot = status(session, chain, "CHAIN_HOT_WAX")
+    assert hot["interval_km"] == 270 and hot["remaining_km"] == 200 and hot["top_up_at_km"] == 70
+    assert "70 km since last hot wax on 2026-10-01; liquid wax top-up on 2026-10-07 at 70 km" in hot["explanation"]
+    ride(session, b, "2026-10-08", 30)
+    (cycle,) = chains.chain_history(session, chain)
+    assert cycle["top_ups"] == [{"date": "2026-10-07", "at_km": 70}]
+    assert (cycle["km"], cycle["km_since_top_up"], cycle["hot_wax_due_at_km"], cycle["hot_wax_left_km"]) == (100, 30, 270, 170)
+    # the interval after a top-up is a personal setting per chain; empty = top-ups do not move the hot wax
+    m.set_component_rule(session, chain.id, rule_code="CHAIN_HOT_WAX", after_top_up_km=150)
+    assert status(session, chain, "CHAIN_HOT_WAX")["interval_km"] == 220
+    m.set_component_rule(session, chain.id, rule_code="CHAIN_HOT_WAX", after_top_up_km=None)
+    assert status(session, chain, "CHAIN_HOT_WAX")["interval_km"] == 500
+    m.log_event(session, action_code="WAX_HOT", component_id=chain.id, at="2026-10-09")
+    hist = chains.chain_history(session, chain)
+    assert [c["top_ups"] for c in hist] == [[{"date": "2026-10-07", "at_km": 70}], []]
 
 
 def test_top_up_window_states(session, chain_bike):

@@ -20,6 +20,7 @@ def ensure_reference_data(session: Session) -> None:
             rule_code=d.rule_code, name=d.name, component_type=d.component_type, action_code=d.action_code,
             trigger=d.trigger, interval_km=d.interval_km, interval_months=d.interval_months,
             window_min_km=d.window_min_km, window_max_km=d.window_max_km, cycle_action_code=d.cycle_action_code,
+            after_top_up_km=d.after_top_up_km,
             reset_actions_json=json.dumps(list(d.reset_actions or (d.action_code,))),
             warn_km=d.warn_km, warn_days=d.warn_days, origin=d.origin, requires_setup=d.requires_setup,
             interval_hours=d.interval_hours, warn_hours=d.warn_hours, interval_count=d.interval_count,

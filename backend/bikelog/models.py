@@ -510,6 +510,8 @@ class ServiceRule(Base):
     interval_months: Mapped[int | None] = mapped_column(Integer)
     window_min_km: Mapped[float | None] = mapped_column(Float)
     window_max_km: Mapped[float | None] = mapped_column(Float)
+    # hot wax: due this many km after a liquid-wax top-up in the cycle (Dirk: top-up, then hot wax 200 km later)
+    after_top_up_km: Mapped[float | None] = mapped_column(Float)
     cycle_action_code: Mapped[str | None] = mapped_column(String(32))
     reset_actions_json: Mapped[str] = mapped_column(Text, default="[]")
     warn_km: Mapped[float | None] = mapped_column(Float)

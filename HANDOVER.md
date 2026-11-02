@@ -49,8 +49,8 @@ Options: `--no-browser`, `--port N`, `--data-dir PATH`, `--backup`, `--export`, 
 ## Checks actually run (final run on this commit)
 | Check | Result |
 |---|---|
-| Backend tests `pytest -q backend/tests` | 258 passed |
-| Required tests: 260 km liquid wax · liquid wax keeps hot wax at 500 km · chain swap · edit/remove/restore once · reimport no duplicates · bleed keeps fluid deadline · DB upgrade keeps records | all pass (test_chain_maintenance, test_rides, test_imports, test_brakes_rules, test_migrations_backup) |
+| Backend tests `pytest -q backend/tests` | 260 passed |
+| Required tests: 260 km liquid wax · liquid wax top-up moves hot wax to 200 km after it (DECISIONS 133) · chain swap · edit/remove/restore once · reimport no duplicates · bleed keeps fluid deadline · DB upgrade keeps records | all pass (test_chain_maintenance, test_rides, test_imports, test_brakes_rules, test_migrations_backup) |
 | Dirk's replacement examples (tube, patch, bar tape, rewrap, tire move, pads 3→2 + undo, stock modes) | pass (test_replacement_stock.py, test_api.py) |
 | Frontend `tsc -b`, `eslint .`, `vite build` | pass |
 | Browser automation `e2e/smoke.cjs` against the real app (desktop 1280×900 and phone 390×844) | 182/182 |
