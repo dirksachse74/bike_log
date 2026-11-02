@@ -17,6 +17,15 @@ BMC Roadmachine, Cannondale Synapse Di2, Cube SL Road SL, Cannondale Synapse HiM
 It runs on his Windows PC: one program starts a local web server on `127.0.0.1` and opens the browser.
 Nothing is hosted or deployed. Data stays in his user folder.
 
+**Second codebase: `php/` (2026-11-02, DECISIONS 139).** A multi-user web version in plain PHP 8.1+ and
+MySQL for cheap shared hosting: accounts, admin page, no Strava, rides by hand. It is independent of the
+Python app (no shared code at runtime); only the catalog is shared, via `scripts/export_php_catalog.py` →
+`php/app/catalog.json` (re-run it after changing `backend/bikelog/catalog.py`). Dirk wants a full feature
+match before it is released: `php/README.md` lists what is done and what is still to port (also TASKS.md).
+Rules there: every bike query filters on `user_id`; every POST checks the CSRF token; no inline JS (CSP);
+schema changes are new files `php/sql/migrations/NNN_*.sql`; tests `php php/tests/run.php` need MySQL or
+MariaDB (CI: `.github/workflows/php-tests.yml`, MySQL 8, PHP 8.1 and 8.3).
+
 ### Product principles (from Dirk's brief; do not break them)
 
 1. **Start with incomplete data.** Every number says whether it is known, estimated (≈) or a minimum (≥).
@@ -92,6 +101,9 @@ e2e/smoke.cjs            browser test against the real running app; e2e/fixtures
 docs/                    ui-style.md (look and feel), strava.md, groupsets.md, product-import.md, csv-import.md,
                          product-templates/ (generated JSON schemas/examples + AGENT_INSTRUCTIONS.md)
 packaging/               bikelog.spec (PyInstaller), entry.py, bikelog.iss (Inno Setup), README.md
+php/                     PHP + MySQL multi-user web version (separate codebase, see section 1 and php/README.md)
+scripts/export_php_catalog.py  writes php/app/catalog.json from catalog.py
+.github/workflows/php-tests.yml  PHP tests on MySQL 8
 .github/workflows/release.yml  Windows build + install/update test + GitHub Release (tag vX.Y.Z or Run workflow)
 scripts/release_notes.py text of a release page: docs/INSTALL.md + the version's CHANGELOG part
 ```

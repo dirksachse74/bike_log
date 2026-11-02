@@ -2,6 +2,19 @@
 
 Status key: ✅ done and tested · 🟡 done, not verified where it matters · ⏳ pending · 💡 later
 
+## PHP multi-user web version (php/, DECISIONS 139) — full feature match before release
+
+- [x] Base: accounts (sign-up, email confirmation, reset, invitations), admin page, bikes, parts, install
+      history and per-part km, rides form, maintenance, reminders, supplies, tests on MySQL (php/tests).
+- [ ] Round 2: groupset import, wheels/tire setup cards, spokes, punctures and incidents, spares and counted
+      stock, spare minimums and shopping list, frame and fork as one part.
+- [ ] Round 3: chain rotation and wax cycle (liquid top-up window, after_top_up_km, wet rides), PARENT_COUNT
+      (quick link), purchase bundles and costs, journal, repairs (send away), service orders, part life
+      report and forecast.
+- [ ] Round 4: product records and JSON product import, pick lists (shops), fresh start, per-user backup and
+      restore (JSON import), diagnostics and change log, ride times (not only dates), usage profiles.
+- [ ] Try it on real shared hosting (Dirk): install page, SMTP, HTTPS.
+
 ## P1 Launch and persistence
 - ✅ Single launcher on 127.0.0.1, single instance, data folder outside install folder.
 - ✅ Migrations at start with pre-upgrade backup; refuses a newer database.

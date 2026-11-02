@@ -1,0 +1,59 @@
+// Bike Log (PHP): small progressive enhancements. Every page also works without JavaScript.
+(function () {
+  'use strict';
+
+  // confirmation before destructive forms
+  document.addEventListener('submit', function (e) {
+    var f = e.target;
+    if (f.dataset && f.dataset.confirm && !window.confirm(f.dataset.confirm)) {
+      e.preventDefault();
+    }
+  });
+
+  // maintenance form: offer only the actions that fit the chosen part, then its results
+  var logForm = document.querySelector('[data-log-form]');
+  if (logForm) {
+    var data = JSON.parse(document.getElementById('log-data').textContent);
+    var target = logForm.querySelector('[data-target]');
+    var action = logForm.querySelector('[data-action]');
+    var outcome = logForm.querySelector('[data-outcome]');
+    var outWrap = logForm.querySelector('[data-outcome-wrap]');
+    var measWrap = logForm.querySelector('[data-measure-wrap]');
+    var unit = logForm.querySelector('[data-unit]');
+    var label = function (code) { return code.charAt(0) + code.slice(1).toLowerCase().replace(/_/g, ' '); };
+    var typeOf = function () { var v = target.value; return v.indexOf('b:') === 0 ? 'BIKE' : (data.types[v] || ''); };
+    var fillActions = function () {
+      var acts = data.actions[typeOf()] || {};
+      var keep = action.value || data.pre;
+      action.innerHTML = '';
+      var first = document.createElement('option');
+      first.value = ''; first.textContent = target.value ? 'Choose...' : 'Choose the part first';
+      action.appendChild(first);
+      Object.keys(acts).forEach(function (code) {
+        var o = document.createElement('option');
+        o.value = code; o.textContent = acts[code].name;
+        if (code === keep) { o.selected = true; }
+        action.appendChild(o);
+      });
+      fillOutcome();
+    };
+    var fillOutcome = function () {
+      var a = (data.actions[typeOf()] || {})[action.value];
+      outcome.innerHTML = '';
+      outWrap.hidden = !(a && a.outcomes.length);
+      measWrap.hidden = !(a && a.measure);
+      unit.textContent = a && a.unit ? '(' + a.unit + ')' : '';
+      if (a && a.outcomes.length) {
+        var blank = document.createElement('option');
+        blank.value = ''; blank.textContent = a.measure ? 'From the measurement' : 'Choose...';
+        outcome.appendChild(blank);
+        a.outcomes.forEach(function (c) {
+          var o = document.createElement('option'); o.value = c; o.textContent = label(c); outcome.appendChild(o);
+        });
+      }
+    };
+    target.addEventListener('change', fillActions);
+    action.addEventListener('change', fillOutcome);
+    fillActions();
+  }
+})();

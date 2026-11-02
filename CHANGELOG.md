@@ -8,6 +8,12 @@ UPDATING.md → "Making a release". New entries go under "Unreleased" as work is
 ## Unreleased
 
 ### Added
+- **Bike Log for the web in PHP + MySQL, for several users** (Dirk 2026-11-02, work in progress, not
+  released). New folder `php/`, independent of the desktop app: accounts with email confirmation, password
+  reset by email, admin page (users, invitations, audit log, site settings, backups, database updates),
+  bikes, parts with install history and per-part km, rides by hand (no Strava), maintenance, reminders that
+  explain their numbers, supplies. Install steps for shared hosting: php/README.md. The remaining desktop
+  features follow before it counts as ready.
 - **Bike Log on your own server with Google sign-in** (Dirk 2026-11-02). `--server` mode: only the Google
   accounts you list can sign in, HTTPS through Caddy, a backup every day while it runs, Strava connects
   through your own domain. Docker setup with a one-time install script and optional nightly updates:
