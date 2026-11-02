@@ -2951,5 +2951,6524 @@
   "GravelRide",
   "MountainBikeRide",
   "EBikeRide"
- ]
+ ],
+ "groupset_templates": [
+  {
+   "code": "SHIMANO_ULTEGRA_DI2_R8100",
+   "name": "Shimano Ultegra Di2 R8100 · 2×12 · hydraulic disc",
+   "maker": "Shimano",
+   "series": "Ultegra R8100 Di2",
+   "label_prefix": "Ultegra",
+   "speeds": 12,
+   "source": "Retailer listings of the R8100 Di2 groupset and its parts, 2026-10-25; not yet checked against productinfo.shimano.com",
+   "checked_on": "2026-10-25",
+   "verified": false,
+   "notes": "Semi-wireless Di2: the levers talk wirelessly to the derailleurs and run on coin cells; derailleurs are wired to the internal battery. Charge through the port on the rear derailleur.",
+   "options": [
+    {
+     "key": "crank_length",
+     "label": "Crank length",
+     "default": "172.5",
+     "choices": [
+      {
+       "value": "160",
+       "label": "160 mm",
+       "vars": {
+        "crank_length": "160"
+       }
+      },
+      {
+       "value": "165",
+       "label": "165 mm",
+       "vars": {
+        "crank_length": "165"
+       }
+      },
+      {
+       "value": "170",
+       "label": "170 mm",
+       "vars": {
+        "crank_length": "170"
+       }
+      },
+      {
+       "value": "172.5",
+       "label": "172.5 mm",
+       "vars": {
+        "crank_length": "172.5"
+       }
+      },
+      {
+       "value": "175",
+       "label": "175 mm",
+       "vars": {
+        "crank_length": "175"
+       }
+      }
+     ]
+    },
+    {
+     "key": "gearing",
+     "label": "Chainrings",
+     "default": "52-36",
+     "choices": [
+      {
+       "value": "50-34",
+       "label": "50-34 (compact)",
+       "vars": {
+        "outer": "50",
+        "inner": "34"
+       }
+      },
+      {
+       "value": "52-36",
+       "label": "52-36 (mid-compact)",
+       "vars": {
+        "outer": "52",
+        "inner": "36"
+       }
+      }
+     ]
+    },
+    {
+     "key": "power_meter",
+     "label": "Crankset",
+     "default": "NO",
+     "choices": [
+      {
+       "value": "NO",
+       "label": "FC-R8100 (no power meter)",
+       "vars": {
+        "crank_model": "FC-R8100",
+        "power_meter": "none"
+       }
+      },
+      {
+       "value": "YES",
+       "label": "FC-R8100-P (dual-sided power meter)",
+       "vars": {
+        "crank_model": "FC-R8100-P",
+        "power_meter": "dual-sided, built in"
+       }
+      }
+     ]
+    },
+    {
+     "key": "cassette",
+     "label": "Cassette",
+     "default": "11-34",
+     "choices": [
+      {
+       "value": "11-30",
+       "label": "11-30",
+       "vars": {
+        "cassette": "11-30",
+        "sprockets": "11-12-13-14-15-16-17-19-21-24-27-30"
+       }
+      },
+      {
+       "value": "11-34",
+       "label": "11-34",
+       "vars": {
+        "cassette": "11-34",
+        "sprockets": "11-12-13-14-15-17-19-21-24-27-30-34"
+       }
+      }
+     ]
+    },
+    {
+     "key": "rotor_front",
+     "label": "Front rotor",
+     "default": "160",
+     "choices": [
+      {
+       "value": "160",
+       "label": "160 mm",
+       "vars": {
+        "rotor_front": "160"
+       }
+      },
+      {
+       "value": "140",
+       "label": "140 mm",
+       "vars": {
+        "rotor_front": "140"
+       }
+      }
+     ]
+    },
+    {
+     "key": "rotor_rear",
+     "label": "Rear rotor",
+     "default": "140",
+     "choices": [
+      {
+       "value": "160",
+       "label": "160 mm",
+       "vars": {
+        "rotor_rear": "160"
+       }
+      },
+      {
+       "value": "140",
+       "label": "140 mm",
+       "vars": {
+        "rotor_rear": "140"
+       }
+      }
+     ]
+    },
+    {
+     "key": "bottom_bracket",
+     "label": "Bottom bracket",
+     "default": "BSA",
+     "choices": [
+      {
+       "value": "BSA",
+       "label": "Threaded BSA 68 mm (SM-BB-R60)",
+       "vars": {
+        "bb_model": "SM-BB-R60",
+        "bb_standard": "BSA threaded, 68 mm shell"
+       }
+      },
+      {
+       "value": "BB86",
+       "label": "Press-fit BB86 (SM-BB72-41B)",
+       "vars": {
+        "bb_model": "SM-BB72-41B",
+        "bb_standard": "Press-fit BB86 / BB92 (41 mm)"
+       }
+      },
+      {
+       "value": "NONE",
+       "label": "Other / keep my bottom bracket",
+       "vars": {}
+      }
+     ]
+    }
+   ],
+   "items": [
+    {
+     "key": "shifters",
+     "type": "SHIFTERS",
+     "name": "Di2 levers",
+     "model": "ST-R8170",
+     "specs": {
+      "function": "Dual control levers, 2×12 Di2, hydraulic disc brake",
+      "connection": "Wireless to the derailleurs",
+      "power": "CR1632 coin cell in each lever",
+      "brake fluid": "Shimano mineral oil"
+     },
+     "mount": {
+      "slot": "SHIFTERS"
+     }
+    },
+    {
+     "key": "front_derailleur",
+     "type": "FRONT_DERAILLEUR",
+     "name": "front derailleur",
+     "model": "FD-R8150",
+     "specs": {
+      "speeds": "2×12",
+      "mount": "Braze-on",
+      "max chainring": "52T",
+      "front capacity": "16T",
+      "wire": "EW-SD300"
+     },
+     "mount": {
+      "slot": "FRONT_DERAILLEUR"
+     }
+    },
+    {
+     "key": "rear_derailleur",
+     "type": "REAR_DERAILLEUR",
+     "name": "rear derailleur",
+     "model": "RD-R8150",
+     "specs": {
+      "speeds": "12",
+      "max low sprocket": "34T",
+      "total capacity": "39T",
+      "charging": "Charging port for EW-EC300",
+      "wire": "EW-SD300"
+     },
+     "mount": {
+      "slot": "REAR_DERAILLEUR"
+     }
+    },
+    {
+     "key": "pulley_upper",
+     "type": "PULLEY_WHEEL",
+     "name": "upper pulley (guide)",
+     "model": "RD-R8150 guide pulley",
+     "specs": {
+      "speeds": "12",
+      "teeth": "13"
+     },
+     "mount": {
+      "parent": "rear_derailleur",
+      "slot": "PULLEY_UPPER"
+     }
+    },
+    {
+     "key": "pulley_lower",
+     "type": "PULLEY_WHEEL",
+     "name": "lower pulley (tension)",
+     "model": "RD-R8150 tension pulley",
+     "specs": {
+      "speeds": "12",
+      "teeth": "13"
+     },
+     "mount": {
+      "parent": "rear_derailleur",
+      "slot": "PULLEY_LOWER"
+     }
+    },
+    {
+     "key": "crankset",
+     "type": "CRANKSET",
+     "name": "crankset",
+     "model": "{crank_model} {crank_length} mm",
+     "specs": {
+      "speeds": "2×12",
+      "crank length": "{crank_length} mm",
+      "chainrings": "{outer}-{inner}T",
+      "spindle": "Hollowtech II, 24 mm",
+      "power meter": "{power_meter}"
+     },
+     "mount": {
+      "slot": "CRANKSET"
+     }
+    },
+    {
+     "key": "chainring_outer",
+     "type": "CHAINRING",
+     "name": "outer chainring {outer}T",
+     "model": "FC-R8100 chainring {outer}T",
+     "specs": {
+      "teeth": "{outer}",
+      "position": "outer",
+      "for": "FC-R8100 {outer}-{inner}T"
+     },
+     "mount": {
+      "parent": "crankset",
+      "slot": "CHAINRING_OUTER"
+     }
+    },
+    {
+     "key": "chainring_inner",
+     "type": "CHAINRING",
+     "name": "inner chainring {inner}T",
+     "model": "FC-R8100 chainring {inner}T",
+     "specs": {
+      "teeth": "{inner}",
+      "position": "inner",
+      "for": "FC-R8100 {outer}-{inner}T"
+     },
+     "mount": {
+      "parent": "crankset",
+      "slot": "CHAINRING_INNER"
+     }
+    },
+    {
+     "key": "bottom_bracket",
+     "type": "BOTTOM_BRACKET",
+     "name": "bottom bracket",
+     "model": "{bb_model}",
+     "specs": {
+      "standard": "{bb_standard}",
+      "spindle": "24 mm (Hollowtech II)"
+     },
+     "mount": {
+      "slot": "BOTTOM_BRACKET"
+     },
+     "when": {
+      "bottom_bracket": [
+       "BSA",
+       "BB86"
+      ]
+     }
+    },
+    {
+     "key": "cassette",
+     "type": "CASSETTE",
+     "name": "cassette {cassette}",
+     "model": "CS-R8100-12 {cassette}",
+     "specs": {
+      "speeds": "12",
+      "range": "{cassette}T",
+      "sprockets": "{sprockets}",
+      "freehub": "Shimano HG 11-speed road (and 12-speed road) freehub"
+     },
+     "mount": {
+      "wheel": "REAR_WHEEL",
+      "slot": "CASSETTE"
+     }
+    },
+    {
+     "key": "chain",
+     "type": "CHAIN",
+     "name": "chain",
+     "model": "CN-M8100",
+     "specs": {
+      "speeds": "12 (Hyperglide+)",
+      "links": "116 (shorten to fit)",
+      "joining": "Quick link SM-CN910-12"
+     },
+     "mount": {
+      "slot": "CHAIN"
+     }
+    },
+    {
+     "key": "quick_link",
+     "type": "QUICK_LINK",
+     "name": "quick link",
+     "model": "SM-CN910-12",
+     "specs": {
+      "speeds": "12",
+      "reuse": "Shimano recommends a new link after opening"
+     },
+     "mount": {
+      "parent": "chain",
+      "slot": "QUICK_LINK"
+     }
+    },
+    {
+     "key": "brake_front",
+     "type": "BRAKE_CIRCUIT",
+     "name": "front brake",
+     "model": "BR-R8170 front",
+     "specs": {
+      "caliper": "BR-R8170, flat mount, 2 pistons",
+      "lever": "ST-R8170",
+      "hose": "SM-BH90-JK-SSR",
+      "fluid": "Shimano mineral oil",
+      "rotor": "140 / 160 mm"
+     },
+     "mount": {
+      "slot": "FRONT_BRAKE"
+     }
+    },
+    {
+     "key": "brake_rear",
+     "type": "BRAKE_CIRCUIT",
+     "name": "rear brake",
+     "model": "BR-R8170 rear",
+     "specs": {
+      "caliper": "BR-R8170, flat mount, 2 pistons",
+      "lever": "ST-R8170",
+      "hose": "SM-BH90-JK-SSR",
+      "fluid": "Shimano mineral oil",
+      "rotor": "140 / 160 mm"
+     },
+     "mount": {
+      "slot": "REAR_BRAKE"
+     }
+    },
+    {
+     "key": "pads_front",
+     "type": "BRAKE_PADS",
+     "name": "front pads",
+     "model": "L05A-RF",
+     "specs": {
+      "compound": "Resin",
+      "cooling": "Fins",
+      "fits": "BR-R8170 (also K05S-RX resin, no fins)"
+     },
+     "mount": {
+      "slot": "FRONT_PADS"
+     }
+    },
+    {
+     "key": "pads_rear",
+     "type": "BRAKE_PADS",
+     "name": "rear pads",
+     "model": "L05A-RF",
+     "specs": {
+      "compound": "Resin",
+      "cooling": "Fins",
+      "fits": "BR-R8170 (also K05S-RX resin, no fins)"
+     },
+     "mount": {
+      "slot": "REAR_PADS"
+     }
+    },
+    {
+     "key": "rotor_front",
+     "type": "BRAKE_ROTOR",
+     "name": "front rotor {rotor_front} mm",
+     "model": "RT-CL800 {rotor_front} mm",
+     "specs": {
+      "size": "{rotor_front} mm",
+      "mount": "Center Lock",
+      "technology": "Ice Tech Freeza",
+      "alternative": "RT-MT800 (same size) is also listed for this caliper"
+     },
+     "mount": {
+      "wheel": "FRONT_WHEEL",
+      "slot": "ROTOR"
+     }
+    },
+    {
+     "key": "rotor_rear",
+     "type": "BRAKE_ROTOR",
+     "name": "rear rotor {rotor_rear} mm",
+     "model": "RT-CL800 {rotor_rear} mm",
+     "specs": {
+      "size": "{rotor_rear} mm",
+      "mount": "Center Lock",
+      "technology": "Ice Tech Freeza",
+      "alternative": "RT-MT800 (same size) is also listed for this caliper"
+     },
+     "mount": {
+      "wheel": "REAR_WHEEL",
+      "slot": "ROTOR"
+     }
+    },
+    {
+     "key": "battery",
+     "type": "BATTERY",
+     "name": "Di2 battery",
+     "model": "BT-DN300",
+     "specs": {
+      "type": "Internal (seatpost or frame)",
+      "ports": "3 × EW-SD300",
+      "charging": "EW-EC300 cable at the rear derailleur port"
+     },
+     "mount": {
+      "slot": "BATTERY"
+     }
+    },
+    {
+     "key": "wires",
+     "type": "DI2_WIRES",
+     "name": "Di2 wires",
+     "model": "EW-SD300 wire set",
+     "specs": {
+      "connects": "Battery to front and rear derailleur",
+      "lengths": "Depend on the frame; measure before ordering"
+     },
+     "mount": {
+      "slot": "DI2_WIRES"
+     },
+     "default": false
+    }
+   ]
+  },
+  {
+   "code": "SHIMANO_DURA_ACE_DI2_R9200",
+   "name": "Shimano Dura-Ace Di2 R9200 · 2×12 · hydraulic disc",
+   "maker": "Shimano",
+   "series": "Dura-Ace R9200 Di2",
+   "label_prefix": "Dura-Ace",
+   "speeds": 12,
+   "source": "Retailer listings of the R9270 Di2 groupset (tunecycles.com.au, wheelandsprocket.com, bike24.com, evo.com), 2026-10-26; not yet checked against productinfo.shimano.com",
+   "checked_on": "2026-10-26",
+   "verified": false,
+   "notes": "Semi-wireless Di2 like Ultegra R8100: wireless levers on coin cells, derailleurs wired to the internal BT-DN300 battery, charged at the rear derailleur.",
+   "options": [
+    {
+     "key": "crank_length",
+     "label": "Crank length",
+     "default": "172.5",
+     "choices": [
+      {
+       "value": "160",
+       "label": "160 mm",
+       "vars": {
+        "crank_length": "160"
+       }
+      },
+      {
+       "value": "165",
+       "label": "165 mm",
+       "vars": {
+        "crank_length": "165"
+       }
+      },
+      {
+       "value": "170",
+       "label": "170 mm",
+       "vars": {
+        "crank_length": "170"
+       }
+      },
+      {
+       "value": "172.5",
+       "label": "172.5 mm",
+       "vars": {
+        "crank_length": "172.5"
+       }
+      },
+      {
+       "value": "175",
+       "label": "175 mm",
+       "vars": {
+        "crank_length": "175"
+       }
+      }
+     ]
+    },
+    {
+     "key": "gearing",
+     "label": "Chainrings",
+     "default": "52-36",
+     "choices": [
+      {
+       "value": "50-34",
+       "label": "50-34 (compact)",
+       "vars": {
+        "outer": "50",
+        "inner": "34"
+       }
+      },
+      {
+       "value": "52-36",
+       "label": "52-36 (mid-compact)",
+       "vars": {
+        "outer": "52",
+        "inner": "36"
+       }
+      },
+      {
+       "value": "54-40",
+       "label": "54-40",
+       "vars": {
+        "outer": "54",
+        "inner": "40"
+       }
+      }
+     ]
+    },
+    {
+     "key": "power_meter",
+     "label": "Crankset",
+     "default": "NO",
+     "choices": [
+      {
+       "value": "NO",
+       "label": "FC-R9200 (no power meter)",
+       "vars": {
+        "crank_model": "FC-R9200",
+        "power_meter": "none"
+       }
+      },
+      {
+       "value": "YES",
+       "label": "FC-R9200-P (dual-sided power meter)",
+       "vars": {
+        "crank_model": "FC-R9200-P",
+        "power_meter": "dual-sided, built in"
+       }
+      }
+     ]
+    },
+    {
+     "key": "cassette",
+     "label": "Cassette",
+     "default": "11-30",
+     "choices": [
+      {
+       "value": "11-30",
+       "label": "11-30",
+       "vars": {
+        "cassette": "11-30",
+        "sprockets": "11-12-13-14-15-16-17-19-21-24-27-30",
+        "cassette_model": "CS-R9200-12 11-30"
+       }
+      },
+      {
+       "value": "11-34",
+       "label": "11-34",
+       "vars": {
+        "cassette": "11-34",
+        "sprockets": "11-12-13-14-15-17-19-21-24-27-30-34",
+        "cassette_model": "CS-R9200-12 11-34"
+       }
+      }
+     ]
+    },
+    {
+     "key": "rotor_front",
+     "label": "Front rotor",
+     "default": "160",
+     "choices": [
+      {
+       "value": "160",
+       "label": "160 mm",
+       "vars": {
+        "rotor_front": "160"
+       }
+      },
+      {
+       "value": "140",
+       "label": "140 mm",
+       "vars": {
+        "rotor_front": "140"
+       }
+      }
+     ]
+    },
+    {
+     "key": "rotor_rear",
+     "label": "Rear rotor",
+     "default": "140",
+     "choices": [
+      {
+       "value": "160",
+       "label": "160 mm",
+       "vars": {
+        "rotor_rear": "160"
+       }
+      },
+      {
+       "value": "140",
+       "label": "140 mm",
+       "vars": {
+        "rotor_rear": "140"
+       }
+      }
+     ]
+    },
+    {
+     "key": "bottom_bracket",
+     "label": "Bottom bracket",
+     "default": "BSA",
+     "choices": [
+      {
+       "value": "BSA",
+       "label": "Threaded BSA 68 mm (SM-BB-R9100)",
+       "vars": {
+        "bb_model": "SM-BB-R9100",
+        "bb_standard": "BSA threaded, 68 mm shell"
+       }
+      },
+      {
+       "value": "PF",
+       "label": "Press-fit BB86 / BB92 (SM-BB92-41B)",
+       "vars": {
+        "bb_model": "SM-BB92-41B",
+        "bb_standard": "Press-fit BB86 / BB92 (41 mm)"
+       }
+      },
+      {
+       "value": "NONE",
+       "label": "Other / keep my bottom bracket",
+       "vars": {}
+      }
+     ]
+    }
+   ],
+   "items": [
+    {
+     "key": "shifters",
+     "type": "SHIFTERS",
+     "name": "Di2 levers",
+     "model": "ST-R9270",
+     "specs": {
+      "function": "Dual control levers, 2×12 Di2, hydraulic disc brake",
+      "connection": "Wireless to the derailleurs",
+      "power": "CR1632 coin cell in each lever",
+      "brake fluid": "Shimano mineral oil"
+     },
+     "mount": {
+      "slot": "SHIFTERS"
+     }
+    },
+    {
+     "key": "front_derailleur",
+     "type": "FRONT_DERAILLEUR",
+     "name": "front derailleur",
+     "model": "FD-R9250",
+     "specs": {
+      "speeds": "2×12",
+      "mount": "Braze-on",
+      "wire": "EW-SD300"
+     },
+     "mount": {
+      "slot": "FRONT_DERAILLEUR"
+     }
+    },
+    {
+     "key": "rear_derailleur",
+     "type": "REAR_DERAILLEUR",
+     "name": "rear derailleur",
+     "model": "RD-R9250",
+     "specs": {
+      "speeds": "12",
+      "max low sprocket": "34T",
+      "charging": "Charging port for EW-EC300",
+      "wire": "EW-SD300"
+     },
+     "mount": {
+      "slot": "REAR_DERAILLEUR"
+     }
+    },
+    {
+     "key": "pulley_upper",
+     "type": "PULLEY_WHEEL",
+     "name": "upper pulley (guide)",
+     "model": "RD-R9250 guide pulley",
+     "specs": {
+      "speeds": "12",
+      "teeth": "13"
+     },
+     "mount": {
+      "parent": "rear_derailleur",
+      "slot": "PULLEY_UPPER"
+     }
+    },
+    {
+     "key": "pulley_lower",
+     "type": "PULLEY_WHEEL",
+     "name": "lower pulley (tension)",
+     "model": "RD-R9250 tension pulley",
+     "specs": {
+      "speeds": "12",
+      "teeth": "13"
+     },
+     "mount": {
+      "parent": "rear_derailleur",
+      "slot": "PULLEY_LOWER"
+     }
+    },
+    {
+     "key": "crankset",
+     "type": "CRANKSET",
+     "name": "crankset",
+     "model": "{crank_model} {crank_length} mm",
+     "specs": {
+      "speeds": "2×12",
+      "crank length": "{crank_length} mm",
+      "chainrings": "{outer}-{inner}T",
+      "spindle": "Hollowtech II, 24 mm",
+      "power meter": "{power_meter}"
+     },
+     "mount": {
+      "slot": "CRANKSET"
+     }
+    },
+    {
+     "key": "chainring_outer",
+     "type": "CHAINRING",
+     "name": "outer chainring {outer}T",
+     "model": "FC-R9200 chainring {outer}T",
+     "specs": {
+      "teeth": "{outer}",
+      "position": "outer",
+      "for": "{outer}-{inner}T"
+     },
+     "mount": {
+      "parent": "crankset",
+      "slot": "CHAINRING_OUTER"
+     }
+    },
+    {
+     "key": "chainring_inner",
+     "type": "CHAINRING",
+     "name": "inner chainring {inner}T",
+     "model": "FC-R9200 chainring {inner}T",
+     "specs": {
+      "teeth": "{inner}",
+      "position": "inner",
+      "for": "{outer}-{inner}T"
+     },
+     "mount": {
+      "parent": "crankset",
+      "slot": "CHAINRING_INNER"
+     }
+    },
+    {
+     "key": "bottom_bracket",
+     "type": "BOTTOM_BRACKET",
+     "name": "bottom bracket",
+     "model": "{bb_model}",
+     "specs": {
+      "standard": "{bb_standard}",
+      "spindle": "24 mm (Hollowtech II)"
+     },
+     "mount": {
+      "slot": "BOTTOM_BRACKET"
+     },
+     "when": {
+      "bottom_bracket": [
+       "BSA",
+       "PF"
+      ]
+     }
+    },
+    {
+     "key": "cassette",
+     "type": "CASSETTE",
+     "name": "cassette {cassette}",
+     "model": "{cassette_model}",
+     "specs": {
+      "speeds": "12",
+      "range": "{cassette}T",
+      "sprockets": "{sprockets}",
+      "freehub": "Shimano HG 12-speed road freehub (11-34 also on 11-speed road)"
+     },
+     "mount": {
+      "wheel": "REAR_WHEEL",
+      "slot": "CASSETTE"
+     }
+    },
+    {
+     "key": "chain",
+     "type": "CHAIN",
+     "name": "chain",
+     "model": "CN-M9100",
+     "specs": {
+      "speeds": "12 (Hyperglide+)",
+      "links": "116 (shorten to fit)",
+      "joining": "Quick link SM-CN910-12"
+     },
+     "mount": {
+      "slot": "CHAIN"
+     }
+    },
+    {
+     "key": "quick_link",
+     "type": "QUICK_LINK",
+     "name": "quick link",
+     "model": "SM-CN910-12",
+     "specs": {
+      "speeds": "12",
+      "reuse": "Shimano recommends a new link after opening"
+     },
+     "mount": {
+      "parent": "chain",
+      "slot": "QUICK_LINK"
+     }
+    },
+    {
+     "key": "brake_front",
+     "type": "BRAKE_CIRCUIT",
+     "name": "front brake",
+     "model": "BR-R9270 front",
+     "specs": {
+      "caliper": "BR-R9270, flat mount, 2 pistons",
+      "lever": "ST-R9270",
+      "hose": "SM-BH90-SBM",
+      "fluid": "Shimano mineral oil",
+      "rotor": "140 / 160 mm"
+     },
+     "mount": {
+      "slot": "FRONT_BRAKE"
+     }
+    },
+    {
+     "key": "brake_rear",
+     "type": "BRAKE_CIRCUIT",
+     "name": "rear brake",
+     "model": "BR-R9270 rear",
+     "specs": {
+      "caliper": "BR-R9270, flat mount, 2 pistons",
+      "lever": "ST-R9270",
+      "hose": "SM-BH90-SBM",
+      "fluid": "Shimano mineral oil",
+      "rotor": "140 / 160 mm"
+     },
+     "mount": {
+      "slot": "REAR_BRAKE"
+     }
+    },
+    {
+     "key": "pads_front",
+     "type": "BRAKE_PADS",
+     "name": "front pads",
+     "model": "L05A-RF",
+     "specs": {
+      "compound": "Resin",
+      "cooling": "Fins",
+      "fits": "BR-R9270 (check the caliper manual)"
+     },
+     "mount": {
+      "slot": "FRONT_PADS"
+     }
+    },
+    {
+     "key": "pads_rear",
+     "type": "BRAKE_PADS",
+     "name": "rear pads",
+     "model": "L05A-RF",
+     "specs": {
+      "compound": "Resin",
+      "cooling": "Fins",
+      "fits": "BR-R9270 (check the caliper manual)"
+     },
+     "mount": {
+      "slot": "REAR_PADS"
+     }
+    },
+    {
+     "key": "rotor_front",
+     "type": "BRAKE_ROTOR",
+     "name": "front rotor {rotor_front} mm",
+     "model": "RT-CL900 {rotor_front} mm",
+     "specs": {
+      "size": "{rotor_front} mm",
+      "mount": "Center Lock",
+      "technology": "Ice Tech Freeza"
+     },
+     "mount": {
+      "wheel": "FRONT_WHEEL",
+      "slot": "ROTOR"
+     }
+    },
+    {
+     "key": "rotor_rear",
+     "type": "BRAKE_ROTOR",
+     "name": "rear rotor {rotor_rear} mm",
+     "model": "RT-CL900 {rotor_rear} mm",
+     "specs": {
+      "size": "{rotor_rear} mm",
+      "mount": "Center Lock",
+      "technology": "Ice Tech Freeza"
+     },
+     "mount": {
+      "wheel": "REAR_WHEEL",
+      "slot": "ROTOR"
+     }
+    },
+    {
+     "key": "battery",
+     "type": "BATTERY",
+     "name": "Di2 battery",
+     "model": "BT-DN300",
+     "specs": {
+      "system": "Shimano Di2",
+      "mount": "internal (seatpost or frame)",
+      "charging": "EW-EC300 cable at the rear derailleur port"
+     },
+     "mount": {
+      "slot": "BATTERY"
+     }
+    },
+    {
+     "key": "wires",
+     "type": "DI2_WIRES",
+     "name": "Di2 wires",
+     "model": "EW-SD300 wire set",
+     "specs": {
+      "connects": "Battery to front and rear derailleur",
+      "lengths": "Depend on the frame; measure before ordering"
+     },
+     "mount": {
+      "slot": "DI2_WIRES"
+     },
+     "default": false
+    }
+   ]
+  },
+  {
+   "code": "SHIMANO_105_DI2_R7150",
+   "name": "Shimano 105 Di2 R7150 · 2×12 · hydraulic disc",
+   "maker": "Shimano",
+   "series": "105 R7150 Di2",
+   "label_prefix": "105",
+   "speeds": 12,
+   "source": "Retailer listings and reviews of the 105 R7100/R7150 groupsets (bike24.com, bike-components.de, road.cc, bikeradar.com, tunecycles.com.au), 2026-10-26; not yet checked against productinfo.shimano.com",
+   "checked_on": "2026-10-26",
+   "verified": false,
+   "notes": "Semi-wireless Di2 like Ultegra R8100: wireless levers on coin cells, derailleurs wired to the internal BT-DN300 battery, charged at the rear derailleur.",
+   "options": [
+    {
+     "key": "crank_length",
+     "label": "Crank length",
+     "default": "172.5",
+     "choices": [
+      {
+       "value": "160",
+       "label": "160 mm",
+       "vars": {
+        "crank_length": "160"
+       }
+      },
+      {
+       "value": "165",
+       "label": "165 mm",
+       "vars": {
+        "crank_length": "165"
+       }
+      },
+      {
+       "value": "170",
+       "label": "170 mm",
+       "vars": {
+        "crank_length": "170"
+       }
+      },
+      {
+       "value": "172.5",
+       "label": "172.5 mm",
+       "vars": {
+        "crank_length": "172.5"
+       }
+      },
+      {
+       "value": "175",
+       "label": "175 mm",
+       "vars": {
+        "crank_length": "175"
+       }
+      }
+     ]
+    },
+    {
+     "key": "gearing",
+     "label": "Chainrings",
+     "default": "50-34",
+     "choices": [
+      {
+       "value": "50-34",
+       "label": "50-34 (compact)",
+       "vars": {
+        "outer": "50",
+        "inner": "34"
+       }
+      },
+      {
+       "value": "52-36",
+       "label": "52-36 (mid-compact)",
+       "vars": {
+        "outer": "52",
+        "inner": "36"
+       }
+      }
+     ]
+    },
+    {
+     "key": "cassette",
+     "label": "Cassette",
+     "default": "11-34",
+     "choices": [
+      {
+       "value": "11-34",
+       "label": "11-34",
+       "vars": {
+        "cassette": "11-34",
+        "sprockets": "11-12-13-14-15-17-19-21-24-27-30-34",
+        "cassette_model": "CS-R7101-12 11-34"
+       }
+      },
+      {
+       "value": "11-36",
+       "label": "11-36",
+       "vars": {
+        "cassette": "11-36",
+        "sprockets": "11-12-13-14-15-17-19-21-24-28-32-36",
+        "cassette_model": "CS-R7101-12 11-36"
+       }
+      }
+     ]
+    },
+    {
+     "key": "rotor_front",
+     "label": "Front rotor",
+     "default": "160",
+     "choices": [
+      {
+       "value": "160",
+       "label": "160 mm",
+       "vars": {
+        "rotor_front": "160"
+       }
+      },
+      {
+       "value": "140",
+       "label": "140 mm",
+       "vars": {
+        "rotor_front": "140"
+       }
+      }
+     ]
+    },
+    {
+     "key": "rotor_rear",
+     "label": "Rear rotor",
+     "default": "140",
+     "choices": [
+      {
+       "value": "160",
+       "label": "160 mm",
+       "vars": {
+        "rotor_rear": "160"
+       }
+      },
+      {
+       "value": "140",
+       "label": "140 mm",
+       "vars": {
+        "rotor_rear": "140"
+       }
+      }
+     ]
+    },
+    {
+     "key": "bottom_bracket",
+     "label": "Bottom bracket",
+     "default": "BSA",
+     "choices": [
+      {
+       "value": "BSA",
+       "label": "Threaded BSA 68 mm (SM-BB-R60)",
+       "vars": {
+        "bb_model": "SM-BB-R60",
+        "bb_standard": "BSA threaded, 68 mm shell"
+       }
+      },
+      {
+       "value": "PF",
+       "label": "Press-fit BB86 / BB92 (SM-BB72-41B)",
+       "vars": {
+        "bb_model": "SM-BB72-41B",
+        "bb_standard": "Press-fit BB86 / BB92 (41 mm)"
+       }
+      },
+      {
+       "value": "NONE",
+       "label": "Other / keep my bottom bracket",
+       "vars": {}
+      }
+     ]
+    }
+   ],
+   "items": [
+    {
+     "key": "shifters",
+     "type": "SHIFTERS",
+     "name": "Di2 levers",
+     "model": "ST-R7170",
+     "specs": {
+      "function": "Dual control levers, 2×12 Di2, hydraulic disc brake",
+      "connection": "Wireless to the derailleurs",
+      "power": "CR1632 coin cell in each lever",
+      "brake fluid": "Shimano mineral oil"
+     },
+     "mount": {
+      "slot": "SHIFTERS"
+     }
+    },
+    {
+     "key": "front_derailleur",
+     "type": "FRONT_DERAILLEUR",
+     "name": "front derailleur",
+     "model": "FD-R7150",
+     "specs": {
+      "speeds": "2×12",
+      "mount": "Braze-on",
+      "wire": "EW-SD300"
+     },
+     "mount": {
+      "slot": "FRONT_DERAILLEUR"
+     }
+    },
+    {
+     "key": "rear_derailleur",
+     "type": "REAR_DERAILLEUR",
+     "name": "rear derailleur",
+     "model": "RD-R7150",
+     "specs": {
+      "speeds": "12",
+      "max low sprocket": "36T",
+      "charging": "Charging port for EW-EC300",
+      "wire": "EW-SD300"
+     },
+     "mount": {
+      "slot": "REAR_DERAILLEUR"
+     }
+    },
+    {
+     "key": "pulley_upper",
+     "type": "PULLEY_WHEEL",
+     "name": "upper pulley (guide)",
+     "model": "RD-R7150 guide pulley",
+     "specs": {
+      "speeds": "12",
+      "teeth": "13"
+     },
+     "mount": {
+      "parent": "rear_derailleur",
+      "slot": "PULLEY_UPPER"
+     }
+    },
+    {
+     "key": "pulley_lower",
+     "type": "PULLEY_WHEEL",
+     "name": "lower pulley (tension)",
+     "model": "RD-R7150 tension pulley",
+     "specs": {
+      "speeds": "12",
+      "teeth": "13"
+     },
+     "mount": {
+      "parent": "rear_derailleur",
+      "slot": "PULLEY_LOWER"
+     }
+    },
+    {
+     "key": "crankset",
+     "type": "CRANKSET",
+     "name": "crankset",
+     "model": "FC-R7100 {crank_length} mm",
+     "specs": {
+      "speeds": "2×12",
+      "crank length": "{crank_length} mm",
+      "chainrings": "{outer}-{inner}T",
+      "spindle": "Hollowtech II, 24 mm"
+     },
+     "mount": {
+      "slot": "CRANKSET"
+     }
+    },
+    {
+     "key": "chainring_outer",
+     "type": "CHAINRING",
+     "name": "outer chainring {outer}T",
+     "model": "FC-R7100 chainring {outer}T",
+     "specs": {
+      "teeth": "{outer}",
+      "position": "outer",
+      "for": "{outer}-{inner}T"
+     },
+     "mount": {
+      "parent": "crankset",
+      "slot": "CHAINRING_OUTER"
+     }
+    },
+    {
+     "key": "chainring_inner",
+     "type": "CHAINRING",
+     "name": "inner chainring {inner}T",
+     "model": "FC-R7100 chainring {inner}T",
+     "specs": {
+      "teeth": "{inner}",
+      "position": "inner",
+      "for": "{outer}-{inner}T"
+     },
+     "mount": {
+      "parent": "crankset",
+      "slot": "CHAINRING_INNER"
+     }
+    },
+    {
+     "key": "bottom_bracket",
+     "type": "BOTTOM_BRACKET",
+     "name": "bottom bracket",
+     "model": "{bb_model}",
+     "specs": {
+      "standard": "{bb_standard}",
+      "spindle": "24 mm (Hollowtech II)"
+     },
+     "mount": {
+      "slot": "BOTTOM_BRACKET"
+     },
+     "when": {
+      "bottom_bracket": [
+       "BSA",
+       "PF"
+      ]
+     }
+    },
+    {
+     "key": "cassette",
+     "type": "CASSETTE",
+     "name": "cassette {cassette}",
+     "model": "{cassette_model}",
+     "specs": {
+      "speeds": "12",
+      "range": "{cassette}T",
+      "sprockets": "{sprockets}",
+      "freehub": "Shimano HG road freehub (11-36 is also sold as CS-HG710-12)"
+     },
+     "mount": {
+      "wheel": "REAR_WHEEL",
+      "slot": "CASSETTE"
+     }
+    },
+    {
+     "key": "chain",
+     "type": "CHAIN",
+     "name": "chain",
+     "model": "CN-M7100",
+     "specs": {
+      "speeds": "12 (Hyperglide+)",
+      "links": "116 or 126 (shorten to fit)",
+      "joining": "Quick link SM-CN910-12"
+     },
+     "mount": {
+      "slot": "CHAIN"
+     }
+    },
+    {
+     "key": "quick_link",
+     "type": "QUICK_LINK",
+     "name": "quick link",
+     "model": "SM-CN910-12",
+     "specs": {
+      "speeds": "12",
+      "reuse": "Shimano recommends a new link after opening"
+     },
+     "mount": {
+      "parent": "chain",
+      "slot": "QUICK_LINK"
+     }
+    },
+    {
+     "key": "brake_front",
+     "type": "BRAKE_CIRCUIT",
+     "name": "front brake",
+     "model": "BR-R7170 front",
+     "specs": {
+      "caliper": "BR-R7170, flat mount, 2 pistons",
+      "lever": "ST-R7170",
+      "fluid": "Shimano mineral oil",
+      "rotor": "140 / 160 mm"
+     },
+     "mount": {
+      "slot": "FRONT_BRAKE"
+     }
+    },
+    {
+     "key": "brake_rear",
+     "type": "BRAKE_CIRCUIT",
+     "name": "rear brake",
+     "model": "BR-R7170 rear",
+     "specs": {
+      "caliper": "BR-R7170, flat mount, 2 pistons",
+      "lever": "ST-R7170",
+      "fluid": "Shimano mineral oil",
+      "rotor": "140 / 160 mm"
+     },
+     "mount": {
+      "slot": "REAR_BRAKE"
+     }
+    },
+    {
+     "key": "pads_front",
+     "type": "BRAKE_PADS",
+     "name": "front pads",
+     "model": "L05A-RF",
+     "specs": {
+      "compound": "Resin",
+      "cooling": "Fins",
+      "fits": "BR-R7170 (check the caliper manual)"
+     },
+     "mount": {
+      "slot": "FRONT_PADS"
+     }
+    },
+    {
+     "key": "pads_rear",
+     "type": "BRAKE_PADS",
+     "name": "rear pads",
+     "model": "L05A-RF",
+     "specs": {
+      "compound": "Resin",
+      "cooling": "Fins",
+      "fits": "BR-R7170 (check the caliper manual)"
+     },
+     "mount": {
+      "slot": "REAR_PADS"
+     }
+    },
+    {
+     "key": "rotor_front",
+     "type": "BRAKE_ROTOR",
+     "name": "front rotor {rotor_front} mm",
+     "model": "RT-CL800 {rotor_front} mm",
+     "specs": {
+      "size": "{rotor_front} mm",
+      "mount": "Center Lock",
+      "alternative": "105 kits also ship with SM-RT70 rotors"
+     },
+     "mount": {
+      "wheel": "FRONT_WHEEL",
+      "slot": "ROTOR"
+     }
+    },
+    {
+     "key": "rotor_rear",
+     "type": "BRAKE_ROTOR",
+     "name": "rear rotor {rotor_rear} mm",
+     "model": "RT-CL800 {rotor_rear} mm",
+     "specs": {
+      "size": "{rotor_rear} mm",
+      "mount": "Center Lock",
+      "alternative": "105 kits also ship with SM-RT70 rotors"
+     },
+     "mount": {
+      "wheel": "REAR_WHEEL",
+      "slot": "ROTOR"
+     }
+    },
+    {
+     "key": "battery",
+     "type": "BATTERY",
+     "name": "Di2 battery",
+     "model": "BT-DN300",
+     "specs": {
+      "system": "Shimano Di2",
+      "mount": "internal (seatpost or frame)",
+      "charging": "EW-EC300 cable at the rear derailleur port"
+     },
+     "mount": {
+      "slot": "BATTERY"
+     }
+    },
+    {
+     "key": "wires",
+     "type": "DI2_WIRES",
+     "name": "Di2 wires",
+     "model": "EW-SD300 wire set",
+     "specs": {
+      "connects": "Battery to front and rear derailleur",
+      "lengths": "Depend on the frame; measure before ordering"
+     },
+     "mount": {
+      "slot": "DI2_WIRES"
+     },
+     "default": false
+    }
+   ]
+  },
+  {
+   "code": "SHIMANO_105_R7100",
+   "name": "Shimano 105 R7100 mechanical · 2×12 · hydraulic disc",
+   "maker": "Shimano",
+   "series": "105 R7100",
+   "label_prefix": "105",
+   "speeds": 12,
+   "source": "Retailer listings and reviews of the 105 R7100/R7150 groupsets (bike24.com, bike-components.de, road.cc, bikeradar.com, tunecycles.com.au), 2026-10-26; not yet checked against productinfo.shimano.com",
+   "checked_on": "2026-10-26",
+   "verified": false,
+   "notes": "Cable shifting with hydraulic disc brakes (Shimano: the mechanical 105 R7100 is hydraulic-only). Set the bike's shifting to Mechanical so the cable reminders apply.",
+   "options": [
+    {
+     "key": "crank_length",
+     "label": "Crank length",
+     "default": "172.5",
+     "choices": [
+      {
+       "value": "160",
+       "label": "160 mm",
+       "vars": {
+        "crank_length": "160"
+       }
+      },
+      {
+       "value": "165",
+       "label": "165 mm",
+       "vars": {
+        "crank_length": "165"
+       }
+      },
+      {
+       "value": "170",
+       "label": "170 mm",
+       "vars": {
+        "crank_length": "170"
+       }
+      },
+      {
+       "value": "172.5",
+       "label": "172.5 mm",
+       "vars": {
+        "crank_length": "172.5"
+       }
+      },
+      {
+       "value": "175",
+       "label": "175 mm",
+       "vars": {
+        "crank_length": "175"
+       }
+      }
+     ]
+    },
+    {
+     "key": "gearing",
+     "label": "Chainrings",
+     "default": "50-34",
+     "choices": [
+      {
+       "value": "50-34",
+       "label": "50-34 (compact)",
+       "vars": {
+        "outer": "50",
+        "inner": "34"
+       }
+      },
+      {
+       "value": "52-36",
+       "label": "52-36 (mid-compact)",
+       "vars": {
+        "outer": "52",
+        "inner": "36"
+       }
+      }
+     ]
+    },
+    {
+     "key": "cassette",
+     "label": "Cassette",
+     "default": "11-34",
+     "choices": [
+      {
+       "value": "11-34",
+       "label": "11-34",
+       "vars": {
+        "cassette": "11-34",
+        "sprockets": "11-12-13-14-15-17-19-21-24-27-30-34",
+        "cassette_model": "CS-R7101-12 11-34"
+       }
+      },
+      {
+       "value": "11-36",
+       "label": "11-36",
+       "vars": {
+        "cassette": "11-36",
+        "sprockets": "11-12-13-14-15-17-19-21-24-28-32-36",
+        "cassette_model": "CS-R7101-12 11-36"
+       }
+      }
+     ]
+    },
+    {
+     "key": "rotor_front",
+     "label": "Front rotor",
+     "default": "160",
+     "choices": [
+      {
+       "value": "160",
+       "label": "160 mm",
+       "vars": {
+        "rotor_front": "160"
+       }
+      },
+      {
+       "value": "140",
+       "label": "140 mm",
+       "vars": {
+        "rotor_front": "140"
+       }
+      }
+     ]
+    },
+    {
+     "key": "rotor_rear",
+     "label": "Rear rotor",
+     "default": "140",
+     "choices": [
+      {
+       "value": "160",
+       "label": "160 mm",
+       "vars": {
+        "rotor_rear": "160"
+       }
+      },
+      {
+       "value": "140",
+       "label": "140 mm",
+       "vars": {
+        "rotor_rear": "140"
+       }
+      }
+     ]
+    },
+    {
+     "key": "bottom_bracket",
+     "label": "Bottom bracket",
+     "default": "BSA",
+     "choices": [
+      {
+       "value": "BSA",
+       "label": "Threaded BSA 68 mm (SM-BB-R60)",
+       "vars": {
+        "bb_model": "SM-BB-R60",
+        "bb_standard": "BSA threaded, 68 mm shell"
+       }
+      },
+      {
+       "value": "PF",
+       "label": "Press-fit BB86 / BB92 (SM-BB72-41B)",
+       "vars": {
+        "bb_model": "SM-BB72-41B",
+        "bb_standard": "Press-fit BB86 / BB92 (41 mm)"
+       }
+      },
+      {
+       "value": "NONE",
+       "label": "Other / keep my bottom bracket",
+       "vars": {}
+      }
+     ]
+    }
+   ],
+   "items": [
+    {
+     "key": "shifters",
+     "type": "SHIFTERS",
+     "name": "levers",
+     "model": "ST-R7120",
+     "specs": {
+      "function": "Dual control levers, 2×12 mechanical, hydraulic disc brake",
+      "brake fluid": "Shimano mineral oil"
+     },
+     "mount": {
+      "slot": "SHIFTERS"
+     }
+    },
+    {
+     "key": "front_derailleur",
+     "type": "FRONT_DERAILLEUR",
+     "name": "front derailleur",
+     "model": "FD-R7100",
+     "specs": {
+      "speeds": "2×12",
+      "mount": "Braze-on (band clamp version also sold)"
+     },
+     "mount": {
+      "slot": "FRONT_DERAILLEUR"
+     }
+    },
+    {
+     "key": "rear_derailleur",
+     "type": "REAR_DERAILLEUR",
+     "name": "rear derailleur",
+     "model": "RD-R7100",
+     "specs": {
+      "speeds": "12",
+      "max low sprocket": "36T",
+      "design": "Shadow RD"
+     },
+     "mount": {
+      "slot": "REAR_DERAILLEUR"
+     }
+    },
+    {
+     "key": "pulley_upper",
+     "type": "PULLEY_WHEEL",
+     "name": "upper pulley (guide)",
+     "model": "RD-R7100 guide pulley",
+     "specs": {
+      "speeds": "12",
+      "teeth": "13"
+     },
+     "mount": {
+      "parent": "rear_derailleur",
+      "slot": "PULLEY_UPPER"
+     }
+    },
+    {
+     "key": "pulley_lower",
+     "type": "PULLEY_WHEEL",
+     "name": "lower pulley (tension)",
+     "model": "RD-R7100 tension pulley",
+     "specs": {
+      "speeds": "12",
+      "teeth": "13"
+     },
+     "mount": {
+      "parent": "rear_derailleur",
+      "slot": "PULLEY_LOWER"
+     }
+    },
+    {
+     "key": "crankset",
+     "type": "CRANKSET",
+     "name": "crankset",
+     "model": "FC-R7100 {crank_length} mm",
+     "specs": {
+      "speeds": "2×12",
+      "crank length": "{crank_length} mm",
+      "chainrings": "{outer}-{inner}T",
+      "spindle": "Hollowtech II, 24 mm"
+     },
+     "mount": {
+      "slot": "CRANKSET"
+     }
+    },
+    {
+     "key": "chainring_outer",
+     "type": "CHAINRING",
+     "name": "outer chainring {outer}T",
+     "model": "FC-R7100 chainring {outer}T",
+     "specs": {
+      "teeth": "{outer}",
+      "position": "outer",
+      "for": "{outer}-{inner}T"
+     },
+     "mount": {
+      "parent": "crankset",
+      "slot": "CHAINRING_OUTER"
+     }
+    },
+    {
+     "key": "chainring_inner",
+     "type": "CHAINRING",
+     "name": "inner chainring {inner}T",
+     "model": "FC-R7100 chainring {inner}T",
+     "specs": {
+      "teeth": "{inner}",
+      "position": "inner",
+      "for": "{outer}-{inner}T"
+     },
+     "mount": {
+      "parent": "crankset",
+      "slot": "CHAINRING_INNER"
+     }
+    },
+    {
+     "key": "bottom_bracket",
+     "type": "BOTTOM_BRACKET",
+     "name": "bottom bracket",
+     "model": "{bb_model}",
+     "specs": {
+      "standard": "{bb_standard}",
+      "spindle": "24 mm (Hollowtech II)"
+     },
+     "mount": {
+      "slot": "BOTTOM_BRACKET"
+     },
+     "when": {
+      "bottom_bracket": [
+       "BSA",
+       "PF"
+      ]
+     }
+    },
+    {
+     "key": "cassette",
+     "type": "CASSETTE",
+     "name": "cassette {cassette}",
+     "model": "{cassette_model}",
+     "specs": {
+      "speeds": "12",
+      "range": "{cassette}T",
+      "sprockets": "{sprockets}",
+      "freehub": "Shimano HG road freehub (11-36 is also sold as CS-HG710-12)"
+     },
+     "mount": {
+      "wheel": "REAR_WHEEL",
+      "slot": "CASSETTE"
+     }
+    },
+    {
+     "key": "chain",
+     "type": "CHAIN",
+     "name": "chain",
+     "model": "CN-M7100",
+     "specs": {
+      "speeds": "12 (Hyperglide+)",
+      "links": "116 or 126 (shorten to fit)",
+      "joining": "Quick link SM-CN910-12"
+     },
+     "mount": {
+      "slot": "CHAIN"
+     }
+    },
+    {
+     "key": "quick_link",
+     "type": "QUICK_LINK",
+     "name": "quick link",
+     "model": "SM-CN910-12",
+     "specs": {
+      "speeds": "12",
+      "reuse": "Shimano recommends a new link after opening"
+     },
+     "mount": {
+      "parent": "chain",
+      "slot": "QUICK_LINK"
+     }
+    },
+    {
+     "key": "brake_front",
+     "type": "BRAKE_CIRCUIT",
+     "name": "front brake",
+     "model": "BR-R7170 front",
+     "specs": {
+      "caliper": "BR-R7170, flat mount, 2 pistons",
+      "lever": "ST-R7120",
+      "fluid": "Shimano mineral oil",
+      "rotor": "140 / 160 mm"
+     },
+     "mount": {
+      "slot": "FRONT_BRAKE"
+     }
+    },
+    {
+     "key": "brake_rear",
+     "type": "BRAKE_CIRCUIT",
+     "name": "rear brake",
+     "model": "BR-R7170 rear",
+     "specs": {
+      "caliper": "BR-R7170, flat mount, 2 pistons",
+      "lever": "ST-R7120",
+      "fluid": "Shimano mineral oil",
+      "rotor": "140 / 160 mm"
+     },
+     "mount": {
+      "slot": "REAR_BRAKE"
+     }
+    },
+    {
+     "key": "pads_front",
+     "type": "BRAKE_PADS",
+     "name": "front pads",
+     "model": "L05A-RF",
+     "specs": {
+      "compound": "Resin",
+      "cooling": "Fins",
+      "fits": "BR-R7170 (check the caliper manual)"
+     },
+     "mount": {
+      "slot": "FRONT_PADS"
+     }
+    },
+    {
+     "key": "pads_rear",
+     "type": "BRAKE_PADS",
+     "name": "rear pads",
+     "model": "L05A-RF",
+     "specs": {
+      "compound": "Resin",
+      "cooling": "Fins",
+      "fits": "BR-R7170 (check the caliper manual)"
+     },
+     "mount": {
+      "slot": "REAR_PADS"
+     }
+    },
+    {
+     "key": "rotor_front",
+     "type": "BRAKE_ROTOR",
+     "name": "front rotor {rotor_front} mm",
+     "model": "RT-CL800 {rotor_front} mm",
+     "specs": {
+      "size": "{rotor_front} mm",
+      "mount": "Center Lock",
+      "alternative": "105 kits also ship with SM-RT70 rotors"
+     },
+     "mount": {
+      "wheel": "FRONT_WHEEL",
+      "slot": "ROTOR"
+     }
+    },
+    {
+     "key": "rotor_rear",
+     "type": "BRAKE_ROTOR",
+     "name": "rear rotor {rotor_rear} mm",
+     "model": "RT-CL800 {rotor_rear} mm",
+     "specs": {
+      "size": "{rotor_rear} mm",
+      "mount": "Center Lock",
+      "alternative": "105 kits also ship with SM-RT70 rotors"
+     },
+     "mount": {
+      "wheel": "REAR_WHEEL",
+      "slot": "ROTOR"
+     }
+    },
+    {
+     "key": "cable_rear",
+     "type": "SHIFT_CABLE",
+     "name": "rear shift cable",
+     "model": "Shimano road shift cable (OT-SP41 set)",
+     "specs": {
+      "position": "rear"
+     },
+     "mount": {
+      "slot": "SHIFT_CABLE_REAR"
+     }
+    },
+    {
+     "key": "housing_rear",
+     "type": "SHIFT_HOUSING",
+     "name": "rear shift housing",
+     "model": "Shimano OT-SP41 shift housing",
+     "specs": {
+      "position": "rear"
+     },
+     "mount": {
+      "slot": "SHIFT_HOUSING_REAR"
+     }
+    },
+    {
+     "key": "cable_front",
+     "type": "SHIFT_CABLE",
+     "name": "front shift cable",
+     "model": "Shimano road shift cable (OT-SP41 set)",
+     "specs": {
+      "position": "front"
+     },
+     "mount": {
+      "slot": "SHIFT_CABLE_FRONT"
+     }
+    },
+    {
+     "key": "housing_front",
+     "type": "SHIFT_HOUSING",
+     "name": "front shift housing",
+     "model": "Shimano OT-SP41 shift housing",
+     "specs": {
+      "position": "front"
+     },
+     "mount": {
+      "slot": "SHIFT_HOUSING_FRONT"
+     }
+    }
+   ]
+  },
+  {
+   "code": "SHIMANO_GRX_DI2_RX825_2X12",
+   "name": "Shimano GRX Di2 RX825 · 2×12 · hydraulic disc",
+   "maker": "Shimano",
+   "series": "GRX RX825 Di2",
+   "label_prefix": "GRX",
+   "speeds": 12,
+   "source": "Retailer listings and launch news of GRX RX820/RX825 (bike-components.de, bike24.com, eatsleepcycle.com, veloplus.ee, road.cc), 2026-10-26; not yet checked against productinfo.shimano.com",
+   "checked_on": "2026-10-26",
+   "verified": false,
+   "notes": "Semi-wireless Di2: wireless levers on coin cells, derailleurs wired to the internal BT-DN300 battery.",
+   "options": [
+    {
+     "key": "crank_length",
+     "label": "Crank length",
+     "default": "172.5",
+     "choices": [
+      {
+       "value": "165",
+       "label": "165 mm",
+       "vars": {
+        "crank_length": "165"
+       }
+      },
+      {
+       "value": "170",
+       "label": "170 mm",
+       "vars": {
+        "crank_length": "170"
+       }
+      },
+      {
+       "value": "172.5",
+       "label": "172.5 mm",
+       "vars": {
+        "crank_length": "172.5"
+       }
+      },
+      {
+       "value": "175",
+       "label": "175 mm",
+       "vars": {
+        "crank_length": "175"
+       }
+      }
+     ]
+    },
+    {
+     "key": "gearing",
+     "label": "Chainrings",
+     "default": "48-31",
+     "choices": [
+      {
+       "value": "48-31",
+       "label": "48-31",
+       "vars": {
+        "outer": "48",
+        "inner": "31"
+       }
+      }
+     ]
+    },
+    {
+     "key": "cassette",
+     "label": "Cassette",
+     "default": "11-36",
+     "choices": [
+      {
+       "value": "11-34",
+       "label": "11-34",
+       "vars": {
+        "cassette": "11-34",
+        "sprockets": "11-12-13-14-15-17-19-21-24-27-30-34",
+        "cassette_model": "CS-HG710-12 11-34"
+       }
+      },
+      {
+       "value": "11-36",
+       "label": "11-36",
+       "vars": {
+        "cassette": "11-36",
+        "sprockets": "11-12-13-14-15-17-19-21-24-28-32-36",
+        "cassette_model": "CS-HG710-12 11-36"
+       }
+      }
+     ]
+    },
+    {
+     "key": "rotor_front",
+     "label": "Front rotor",
+     "default": "160",
+     "choices": [
+      {
+       "value": "160",
+       "label": "160 mm",
+       "vars": {
+        "rotor_front": "160"
+       }
+      },
+      {
+       "value": "140",
+       "label": "140 mm",
+       "vars": {
+        "rotor_front": "140"
+       }
+      }
+     ]
+    },
+    {
+     "key": "rotor_rear",
+     "label": "Rear rotor",
+     "default": "160",
+     "choices": [
+      {
+       "value": "160",
+       "label": "160 mm",
+       "vars": {
+        "rotor_rear": "160"
+       }
+      },
+      {
+       "value": "140",
+       "label": "140 mm",
+       "vars": {
+        "rotor_rear": "140"
+       }
+      }
+     ]
+    },
+    {
+     "key": "bottom_bracket",
+     "label": "Bottom bracket",
+     "default": "BSA",
+     "choices": [
+      {
+       "value": "BSA",
+       "label": "Threaded BSA 68 mm (SM-BB-R60)",
+       "vars": {
+        "bb_model": "SM-BB-R60",
+        "bb_standard": "BSA threaded, 68 mm shell"
+       }
+      },
+      {
+       "value": "PF",
+       "label": "Press-fit BB86 / BB92 (SM-BB72-41B)",
+       "vars": {
+        "bb_model": "SM-BB72-41B",
+        "bb_standard": "Press-fit BB86 / BB92 (41 mm)"
+       }
+      },
+      {
+       "value": "NONE",
+       "label": "Other / keep my bottom bracket",
+       "vars": {}
+      }
+     ]
+    }
+   ],
+   "items": [
+    {
+     "key": "shifters",
+     "type": "SHIFTERS",
+     "name": "Di2 levers",
+     "model": "ST-RX825",
+     "specs": {
+      "function": "Dual control levers, 2×12 Di2, hydraulic disc brake",
+      "connection": "Wireless to the derailleurs",
+      "power": "Coin cell in each lever",
+      "brake fluid": "Shimano mineral oil"
+     },
+     "mount": {
+      "slot": "SHIFTERS"
+     }
+    },
+    {
+     "key": "front_derailleur",
+     "type": "FRONT_DERAILLEUR",
+     "name": "front derailleur",
+     "model": "FD-RX825",
+     "specs": {
+      "speeds": "2×12",
+      "mount": "Braze-on",
+      "wire": "EW-SD300"
+     },
+     "mount": {
+      "slot": "FRONT_DERAILLEUR"
+     }
+    },
+    {
+     "key": "rear_derailleur",
+     "type": "REAR_DERAILLEUR",
+     "name": "rear derailleur",
+     "model": "RD-RX825",
+     "specs": {
+      "speeds": "12",
+      "max low sprocket": "36T",
+      "clutch": "Shadow RD+",
+      "charging": "Charging port for EW-EC300"
+     },
+     "mount": {
+      "slot": "REAR_DERAILLEUR"
+     }
+    },
+    {
+     "key": "pulley_upper",
+     "type": "PULLEY_WHEEL",
+     "name": "upper pulley (guide)",
+     "model": "RD-RX825 guide pulley",
+     "specs": {
+      "speeds": "12",
+      "teeth": "13"
+     },
+     "mount": {
+      "parent": "rear_derailleur",
+      "slot": "PULLEY_UPPER"
+     }
+    },
+    {
+     "key": "pulley_lower",
+     "type": "PULLEY_WHEEL",
+     "name": "lower pulley (tension)",
+     "model": "RD-RX825 tension pulley",
+     "specs": {
+      "speeds": "12",
+      "teeth": "13"
+     },
+     "mount": {
+      "parent": "rear_derailleur",
+      "slot": "PULLEY_LOWER"
+     }
+    },
+    {
+     "key": "crankset",
+     "type": "CRANKSET",
+     "name": "crankset",
+     "model": "FC-RX820-2 {crank_length} mm",
+     "specs": {
+      "speeds": "2×12",
+      "crank length": "{crank_length} mm",
+      "chainrings": "{outer}-{inner}T",
+      "spindle": "Hollowtech II, 24 mm"
+     },
+     "mount": {
+      "slot": "CRANKSET"
+     }
+    },
+    {
+     "key": "chainring_outer",
+     "type": "CHAINRING",
+     "name": "outer chainring {outer}T",
+     "model": "FC-RX820-2 chainring {outer}T",
+     "specs": {
+      "teeth": "{outer}",
+      "position": "outer",
+      "for": "{outer}-{inner}T"
+     },
+     "mount": {
+      "parent": "crankset",
+      "slot": "CHAINRING_OUTER"
+     }
+    },
+    {
+     "key": "chainring_inner",
+     "type": "CHAINRING",
+     "name": "inner chainring {inner}T",
+     "model": "FC-RX820-2 chainring {inner}T",
+     "specs": {
+      "teeth": "{inner}",
+      "position": "inner",
+      "for": "{outer}-{inner}T"
+     },
+     "mount": {
+      "parent": "crankset",
+      "slot": "CHAINRING_INNER"
+     }
+    },
+    {
+     "key": "bottom_bracket",
+     "type": "BOTTOM_BRACKET",
+     "name": "bottom bracket",
+     "model": "{bb_model}",
+     "specs": {
+      "standard": "{bb_standard}",
+      "spindle": "24 mm (Hollowtech II)"
+     },
+     "mount": {
+      "slot": "BOTTOM_BRACKET"
+     },
+     "when": {
+      "bottom_bracket": [
+       "BSA",
+       "PF"
+      ]
+     }
+    },
+    {
+     "key": "cassette",
+     "type": "CASSETTE",
+     "name": "cassette {cassette}",
+     "model": "{cassette_model}",
+     "specs": {
+      "speeds": "12",
+      "range": "{cassette}T",
+      "sprockets": "{sprockets}",
+      "freehub": "Shimano HG road freehub"
+     },
+     "mount": {
+      "wheel": "REAR_WHEEL",
+      "slot": "CASSETTE"
+     }
+    },
+    {
+     "key": "chain",
+     "type": "CHAIN",
+     "name": "chain",
+     "model": "CN-M8100",
+     "specs": {
+      "speeds": "12 (Hyperglide+)",
+      "links": "126 (shorten to fit)",
+      "joining": "Quick link SM-CN910-12"
+     },
+     "mount": {
+      "slot": "CHAIN"
+     }
+    },
+    {
+     "key": "quick_link",
+     "type": "QUICK_LINK",
+     "name": "quick link",
+     "model": "SM-CN910-12",
+     "specs": {
+      "speeds": "12",
+      "reuse": "Shimano recommends a new link after opening"
+     },
+     "mount": {
+      "parent": "chain",
+      "slot": "QUICK_LINK"
+     }
+    },
+    {
+     "key": "brake_front",
+     "type": "BRAKE_CIRCUIT",
+     "name": "front brake",
+     "model": "BR-RX820 front",
+     "specs": {
+      "caliper": "BR-RX820, flat mount, 2 pistons",
+      "lever": "ST-RX825",
+      "fluid": "Shimano mineral oil",
+      "rotor": "140 / 160 mm"
+     },
+     "mount": {
+      "slot": "FRONT_BRAKE"
+     }
+    },
+    {
+     "key": "brake_rear",
+     "type": "BRAKE_CIRCUIT",
+     "name": "rear brake",
+     "model": "BR-RX820 rear",
+     "specs": {
+      "caliper": "BR-RX820, flat mount, 2 pistons",
+      "lever": "ST-RX825",
+      "fluid": "Shimano mineral oil",
+      "rotor": "140 / 160 mm"
+     },
+     "mount": {
+      "slot": "REAR_BRAKE"
+     }
+    },
+    {
+     "key": "pads_front",
+     "type": "BRAKE_PADS",
+     "name": "front pads",
+     "model": "L05A-RF",
+     "specs": {
+      "compound": "Resin",
+      "cooling": "Fins",
+      "fits": "BR-RX820 (check the caliper manual)"
+     },
+     "mount": {
+      "slot": "FRONT_PADS"
+     }
+    },
+    {
+     "key": "pads_rear",
+     "type": "BRAKE_PADS",
+     "name": "rear pads",
+     "model": "L05A-RF",
+     "specs": {
+      "compound": "Resin",
+      "cooling": "Fins",
+      "fits": "BR-RX820 (check the caliper manual)"
+     },
+     "mount": {
+      "slot": "REAR_PADS"
+     }
+    },
+    {
+     "key": "rotor_front",
+     "type": "BRAKE_ROTOR",
+     "name": "front rotor {rotor_front} mm",
+     "model": "RT-MT800 {rotor_front} mm",
+     "specs": {
+      "size": "{rotor_front} mm",
+      "mount": "Center Lock",
+      "technology": "Ice Tech Freeza"
+     },
+     "mount": {
+      "wheel": "FRONT_WHEEL",
+      "slot": "ROTOR"
+     }
+    },
+    {
+     "key": "rotor_rear",
+     "type": "BRAKE_ROTOR",
+     "name": "rear rotor {rotor_rear} mm",
+     "model": "RT-MT800 {rotor_rear} mm",
+     "specs": {
+      "size": "{rotor_rear} mm",
+      "mount": "Center Lock",
+      "technology": "Ice Tech Freeza"
+     },
+     "mount": {
+      "wheel": "REAR_WHEEL",
+      "slot": "ROTOR"
+     }
+    },
+    {
+     "key": "battery",
+     "type": "BATTERY",
+     "name": "Di2 battery",
+     "model": "BT-DN300",
+     "specs": {
+      "system": "Shimano Di2",
+      "mount": "internal (seatpost or frame)",
+      "charging": "EW-EC300 cable at the rear derailleur port"
+     },
+     "mount": {
+      "slot": "BATTERY"
+     }
+    },
+    {
+     "key": "wires",
+     "type": "DI2_WIRES",
+     "name": "Di2 wires",
+     "model": "EW-SD300 wire set",
+     "specs": {
+      "connects": "Battery to front and rear derailleur",
+      "lengths": "Depend on the frame; measure before ordering"
+     },
+     "mount": {
+      "slot": "DI2_WIRES"
+     },
+     "default": false
+    }
+   ]
+  },
+  {
+   "code": "SHIMANO_GRX_RX820_1X12",
+   "name": "Shimano GRX RX820 mechanical · 1×12 · hydraulic disc",
+   "maker": "Shimano",
+   "series": "GRX RX820",
+   "label_prefix": "GRX",
+   "speeds": 12,
+   "source": "Retailer listings and launch news of GRX RX820/RX825 (bike-components.de, bike24.com, eatsleepcycle.com, veloplus.ee, road.cc), 2026-10-26; not yet checked against productinfo.shimano.com",
+   "checked_on": "2026-10-26",
+   "verified": false,
+   "notes": "Cable shifting, one chainring. The 10-45 / 10-51 cassettes need a Shimano Micro Spline freehub. Set the bike's shifting to Mechanical so the cable reminders apply.",
+   "options": [
+    {
+     "key": "crank_length",
+     "label": "Crank length",
+     "default": "172.5",
+     "choices": [
+      {
+       "value": "165",
+       "label": "165 mm",
+       "vars": {
+        "crank_length": "165"
+       }
+      },
+      {
+       "value": "170",
+       "label": "170 mm",
+       "vars": {
+        "crank_length": "170"
+       }
+      },
+      {
+       "value": "172.5",
+       "label": "172.5 mm",
+       "vars": {
+        "crank_length": "172.5"
+       }
+      },
+      {
+       "value": "175",
+       "label": "175 mm",
+       "vars": {
+        "crank_length": "175"
+       }
+      }
+     ]
+    },
+    {
+     "key": "ring",
+     "label": "Chainring",
+     "default": "40",
+     "choices": [
+      {
+       "value": "38",
+       "label": "38T",
+       "vars": {
+        "ring": "38"
+       }
+      },
+      {
+       "value": "40",
+       "label": "40T",
+       "vars": {
+        "ring": "40"
+       }
+      },
+      {
+       "value": "42",
+       "label": "42T",
+       "vars": {
+        "ring": "42"
+       }
+      }
+     ]
+    },
+    {
+     "key": "cassette",
+     "label": "Cassette",
+     "default": "10-45",
+     "choices": [
+      {
+       "value": "10-45",
+       "label": "10-45",
+       "vars": {
+        "cassette": "10-45",
+        "sprockets": "10-12-14-16-18-21-24-28-32-36-40-45",
+        "cassette_model": "CS-M8100-12 10-45"
+       }
+      },
+      {
+       "value": "10-51",
+       "label": "10-51",
+       "vars": {
+        "cassette": "10-51",
+        "sprockets": "10-12-14-16-18-21-24-28-33-39-45-51",
+        "cassette_model": "CS-M8100-12 10-51"
+       }
+      }
+     ]
+    },
+    {
+     "key": "rotor_front",
+     "label": "Front rotor",
+     "default": "160",
+     "choices": [
+      {
+       "value": "160",
+       "label": "160 mm",
+       "vars": {
+        "rotor_front": "160"
+       }
+      },
+      {
+       "value": "140",
+       "label": "140 mm",
+       "vars": {
+        "rotor_front": "140"
+       }
+      }
+     ]
+    },
+    {
+     "key": "rotor_rear",
+     "label": "Rear rotor",
+     "default": "160",
+     "choices": [
+      {
+       "value": "160",
+       "label": "160 mm",
+       "vars": {
+        "rotor_rear": "160"
+       }
+      },
+      {
+       "value": "140",
+       "label": "140 mm",
+       "vars": {
+        "rotor_rear": "140"
+       }
+      }
+     ]
+    },
+    {
+     "key": "bottom_bracket",
+     "label": "Bottom bracket",
+     "default": "BSA",
+     "choices": [
+      {
+       "value": "BSA",
+       "label": "Threaded BSA 68 mm (SM-BB-R60)",
+       "vars": {
+        "bb_model": "SM-BB-R60",
+        "bb_standard": "BSA threaded, 68 mm shell"
+       }
+      },
+      {
+       "value": "PF",
+       "label": "Press-fit BB86 / BB92 (SM-BB72-41B)",
+       "vars": {
+        "bb_model": "SM-BB72-41B",
+        "bb_standard": "Press-fit BB86 / BB92 (41 mm)"
+       }
+      },
+      {
+       "value": "NONE",
+       "label": "Other / keep my bottom bracket",
+       "vars": {}
+      }
+     ]
+    }
+   ],
+   "items": [
+    {
+     "key": "shifters",
+     "type": "SHIFTERS",
+     "name": "levers",
+     "model": "ST-RX820",
+     "specs": {
+      "function": "Shift/brake lever right (1×12 mechanical) + brake lever left, hydraulic disc",
+      "brake fluid": "Shimano mineral oil"
+     },
+     "mount": {
+      "slot": "SHIFTERS"
+     }
+    },
+    {
+     "key": "rear_derailleur",
+     "type": "REAR_DERAILLEUR",
+     "name": "rear derailleur",
+     "model": "RD-RX822-SGS",
+     "specs": {
+      "speeds": "12",
+      "max low sprocket": "51T",
+      "clutch": "Shadow RD+"
+     },
+     "mount": {
+      "slot": "REAR_DERAILLEUR"
+     }
+    },
+    {
+     "key": "pulley_upper",
+     "type": "PULLEY_WHEEL",
+     "name": "upper pulley (guide)",
+     "model": "RD-RX822 guide pulley",
+     "specs": {
+      "speeds": "12",
+      "teeth": "13"
+     },
+     "mount": {
+      "parent": "rear_derailleur",
+      "slot": "PULLEY_UPPER"
+     }
+    },
+    {
+     "key": "pulley_lower",
+     "type": "PULLEY_WHEEL",
+     "name": "lower pulley (tension)",
+     "model": "RD-RX822 tension pulley",
+     "specs": {
+      "speeds": "12",
+      "teeth": "13"
+     },
+     "mount": {
+      "parent": "rear_derailleur",
+      "slot": "PULLEY_LOWER"
+     }
+    },
+    {
+     "key": "crankset",
+     "type": "CRANKSET",
+     "name": "crankset",
+     "model": "FC-RX820-1 {crank_length} mm",
+     "specs": {
+      "speeds": "1×12",
+      "crank length": "{crank_length} mm",
+      "chainring": "{ring}T",
+      "spindle": "Hollowtech II, 24 mm"
+     },
+     "mount": {
+      "slot": "CRANKSET"
+     }
+    },
+    {
+     "key": "chainring",
+     "type": "CHAINRING",
+     "name": "chainring {ring}T",
+     "model": "SM-CRX820-1 {ring}T",
+     "specs": {
+      "teeth": "{ring}",
+      "position": "single (1×)"
+     },
+     "mount": {
+      "parent": "crankset",
+      "slot": "CHAINRING_OUTER"
+     }
+    },
+    {
+     "key": "bottom_bracket",
+     "type": "BOTTOM_BRACKET",
+     "name": "bottom bracket",
+     "model": "{bb_model}",
+     "specs": {
+      "standard": "{bb_standard}",
+      "spindle": "24 mm (Hollowtech II)"
+     },
+     "mount": {
+      "slot": "BOTTOM_BRACKET"
+     },
+     "when": {
+      "bottom_bracket": [
+       "BSA",
+       "PF"
+      ]
+     }
+    },
+    {
+     "key": "cassette",
+     "type": "CASSETTE",
+     "name": "cassette {cassette}",
+     "model": "{cassette_model}",
+     "specs": {
+      "speeds": "12",
+      "range": "{cassette}T",
+      "sprockets": "{sprockets}",
+      "freehub": "Shimano Micro Spline"
+     },
+     "mount": {
+      "wheel": "REAR_WHEEL",
+      "slot": "CASSETTE"
+     }
+    },
+    {
+     "key": "chain",
+     "type": "CHAIN",
+     "name": "chain",
+     "model": "CN-M8100",
+     "specs": {
+      "speeds": "12 (Hyperglide+)",
+      "links": "126 (shorten to fit)",
+      "joining": "Quick link SM-CN910-12"
+     },
+     "mount": {
+      "slot": "CHAIN"
+     }
+    },
+    {
+     "key": "quick_link",
+     "type": "QUICK_LINK",
+     "name": "quick link",
+     "model": "SM-CN910-12",
+     "specs": {
+      "speeds": "12",
+      "reuse": "Shimano recommends a new link after opening"
+     },
+     "mount": {
+      "parent": "chain",
+      "slot": "QUICK_LINK"
+     }
+    },
+    {
+     "key": "brake_front",
+     "type": "BRAKE_CIRCUIT",
+     "name": "front brake",
+     "model": "BR-RX820 front",
+     "specs": {
+      "caliper": "BR-RX820, flat mount, 2 pistons",
+      "lever": "ST-RX820",
+      "fluid": "Shimano mineral oil",
+      "rotor": "140 / 160 mm"
+     },
+     "mount": {
+      "slot": "FRONT_BRAKE"
+     }
+    },
+    {
+     "key": "brake_rear",
+     "type": "BRAKE_CIRCUIT",
+     "name": "rear brake",
+     "model": "BR-RX820 rear",
+     "specs": {
+      "caliper": "BR-RX820, flat mount, 2 pistons",
+      "lever": "ST-RX820",
+      "fluid": "Shimano mineral oil",
+      "rotor": "140 / 160 mm"
+     },
+     "mount": {
+      "slot": "REAR_BRAKE"
+     }
+    },
+    {
+     "key": "pads_front",
+     "type": "BRAKE_PADS",
+     "name": "front pads",
+     "model": "L05A-RF",
+     "specs": {
+      "compound": "Resin",
+      "cooling": "Fins",
+      "fits": "BR-RX820 (check the caliper manual)"
+     },
+     "mount": {
+      "slot": "FRONT_PADS"
+     }
+    },
+    {
+     "key": "pads_rear",
+     "type": "BRAKE_PADS",
+     "name": "rear pads",
+     "model": "L05A-RF",
+     "specs": {
+      "compound": "Resin",
+      "cooling": "Fins",
+      "fits": "BR-RX820 (check the caliper manual)"
+     },
+     "mount": {
+      "slot": "REAR_PADS"
+     }
+    },
+    {
+     "key": "rotor_front",
+     "type": "BRAKE_ROTOR",
+     "name": "front rotor {rotor_front} mm",
+     "model": "RT-MT800 {rotor_front} mm",
+     "specs": {
+      "size": "{rotor_front} mm",
+      "mount": "Center Lock",
+      "technology": "Ice Tech Freeza"
+     },
+     "mount": {
+      "wheel": "FRONT_WHEEL",
+      "slot": "ROTOR"
+     }
+    },
+    {
+     "key": "rotor_rear",
+     "type": "BRAKE_ROTOR",
+     "name": "rear rotor {rotor_rear} mm",
+     "model": "RT-MT800 {rotor_rear} mm",
+     "specs": {
+      "size": "{rotor_rear} mm",
+      "mount": "Center Lock",
+      "technology": "Ice Tech Freeza"
+     },
+     "mount": {
+      "wheel": "REAR_WHEEL",
+      "slot": "ROTOR"
+     }
+    },
+    {
+     "key": "cable_rear",
+     "type": "SHIFT_CABLE",
+     "name": "rear shift cable",
+     "model": "Shimano shift cable",
+     "specs": {
+      "position": "rear"
+     },
+     "mount": {
+      "slot": "SHIFT_CABLE_REAR"
+     }
+    },
+    {
+     "key": "housing_rear",
+     "type": "SHIFT_HOUSING",
+     "name": "rear shift housing",
+     "model": "Shimano shift housing",
+     "specs": {
+      "position": "rear"
+     },
+     "mount": {
+      "slot": "SHIFT_HOUSING_REAR"
+     }
+    }
+   ]
+  },
+  {
+   "code": "SRAM_RED_AXS_E1_2X12",
+   "name": "SRAM RED AXS E1 · 2×12 · hydraulic disc",
+   "maker": "SRAM",
+   "series": "RED AXS E1",
+   "label_prefix": "RED",
+   "speeds": 12,
+   "source": "Retailer listings, reviews and SRAM support articles (tunecycles.com.au, bike-components.de, bike24.com, rosebikes, merlincycles.com, bikerumor.com, bikeradar.com, cyclingnews.com, support.sram.com), 2026-10-26; not yet checked against SRAM's own spec sheets",
+   "checked_on": "2026-10-26",
+   "verified": false,
+   "notes": "2024 RED AXS (E1). Rear derailleur up to 36T. Each derailleur has its own AXS battery.",
+   "options": [
+    {
+     "key": "crank_length",
+     "label": "Crank length",
+     "default": "172.5",
+     "choices": [
+      {
+       "value": "160",
+       "label": "160 mm",
+       "vars": {
+        "crank_length": "160"
+       }
+      },
+      {
+       "value": "165",
+       "label": "165 mm",
+       "vars": {
+        "crank_length": "165"
+       }
+      },
+      {
+       "value": "167.5",
+       "label": "167.5 mm",
+       "vars": {
+        "crank_length": "167.5"
+       }
+      },
+      {
+       "value": "170",
+       "label": "170 mm",
+       "vars": {
+        "crank_length": "170"
+       }
+      },
+      {
+       "value": "172.5",
+       "label": "172.5 mm",
+       "vars": {
+        "crank_length": "172.5"
+       }
+      },
+      {
+       "value": "175",
+       "label": "175 mm",
+       "vars": {
+        "crank_length": "175"
+       }
+      }
+     ]
+    },
+    {
+     "key": "gearing",
+     "label": "Chainrings",
+     "default": "48-35",
+     "choices": [
+      {
+       "value": "46-33",
+       "label": "46-33",
+       "vars": {
+        "outer": "46",
+        "inner": "33"
+       }
+      },
+      {
+       "value": "48-35",
+       "label": "48-35",
+       "vars": {
+        "outer": "48",
+        "inner": "35"
+       }
+      },
+      {
+       "value": "50-37",
+       "label": "50-37",
+       "vars": {
+        "outer": "50",
+        "inner": "37"
+       }
+      }
+     ]
+    },
+    {
+     "key": "power_meter",
+     "label": "Crankset",
+     "default": "NO",
+     "choices": [
+      {
+       "value": "NO",
+       "label": "RED E1 carbon crankset",
+       "vars": {
+        "power_meter": "none"
+       }
+      },
+      {
+       "value": "YES",
+       "label": "RED E1 power meter crankset",
+       "vars": {
+        "power_meter": "built-in spindle/spider power meter"
+       }
+      }
+     ]
+    },
+    {
+     "key": "cassette",
+     "label": "Cassette",
+     "default": "10-33",
+     "choices": [
+      {
+       "value": "10-28",
+       "label": "10-28",
+       "vars": {
+        "cassette": "10-28",
+        "sprockets": "10-11-12-13-14-15-16-17-19-21-24-28",
+        "cassette_model": "RED XG-1290 E1 10-28"
+       }
+      },
+      {
+       "value": "10-30",
+       "label": "10-30",
+       "vars": {
+        "cassette": "10-30",
+        "sprockets": "10-11-12-13-14-15-17-19-21-24-27-30",
+        "cassette_model": "RED XG-1290 E1 10-30"
+       }
+      },
+      {
+       "value": "10-33",
+       "label": "10-33",
+       "vars": {
+        "cassette": "10-33",
+        "sprockets": "10-11-12-13-14-15-17-19-21-24-28-33",
+        "cassette_model": "RED XG-1290 E1 10-33"
+       }
+      },
+      {
+       "value": "10-36",
+       "label": "10-36",
+       "vars": {
+        "cassette": "10-36",
+        "sprockets": "10-12-13-14-15-17-19-21-24-28-32-36",
+        "cassette_model": "RED XG-1290 E1 10-36"
+       }
+      }
+     ]
+    },
+    {
+     "key": "rotor_front",
+     "label": "Front rotor",
+     "default": "160",
+     "choices": [
+      {
+       "value": "160",
+       "label": "160 mm",
+       "vars": {
+        "rotor_front": "160"
+       }
+      },
+      {
+       "value": "140",
+       "label": "140 mm",
+       "vars": {
+        "rotor_front": "140"
+       }
+      }
+     ]
+    },
+    {
+     "key": "rotor_rear",
+     "label": "Rear rotor",
+     "default": "140",
+     "choices": [
+      {
+       "value": "160",
+       "label": "160 mm",
+       "vars": {
+        "rotor_rear": "160"
+       }
+      },
+      {
+       "value": "140",
+       "label": "140 mm",
+       "vars": {
+        "rotor_rear": "140"
+       }
+      }
+     ]
+    },
+    {
+     "key": "bottom_bracket",
+     "label": "Bottom bracket",
+     "default": "BSA",
+     "choices": [
+      {
+       "value": "BSA",
+       "label": "Threaded BSA 68 mm (DUB BSA)",
+       "vars": {
+        "bb_model": "SRAM DUB BSA road bottom bracket",
+        "bb_standard": "BSA threaded, 68 mm shell"
+       }
+      },
+      {
+       "value": "PF",
+       "label": "Press-fit (DUB PF86 / BB92)",
+       "vars": {
+        "bb_model": "SRAM DUB PressFit road bottom bracket",
+        "bb_standard": "Press-fit 86.5 / 92 mm"
+       }
+      },
+      {
+       "value": "NONE",
+       "label": "Other / keep my bottom bracket",
+       "vars": {}
+      }
+     ]
+    }
+   ],
+   "items": [
+    {
+     "key": "shifters",
+     "type": "SHIFTERS",
+     "name": "AXS levers",
+     "model": "RED E1 AXS HRD shift-brake levers",
+     "specs": {
+      "function": "Wireless AXS shift-brake levers, hydraulic disc brake",
+      "power": "CR2032 coin cell in each lever",
+      "brake fluid": "DOT 5.1"
+     },
+     "mount": {
+      "slot": "SHIFTERS"
+     }
+    },
+    {
+     "key": "front_derailleur",
+     "type": "FRONT_DERAILLEUR",
+     "name": "front derailleur",
+     "model": "RED E1 AXS front derailleur",
+     "specs": {
+      "speeds": "2×12",
+      "mount": "Braze-on"
+     },
+     "mount": {
+      "slot": "FRONT_DERAILLEUR"
+     }
+    },
+    {
+     "key": "rear_derailleur",
+     "type": "REAR_DERAILLEUR",
+     "name": "rear derailleur",
+     "model": "RED E1 AXS rear derailleur",
+     "specs": {
+      "speeds": "12",
+      "max low sprocket": "36T"
+     },
+     "mount": {
+      "slot": "REAR_DERAILLEUR"
+     }
+    },
+    {
+     "key": "pulley_upper",
+     "type": "PULLEY_WHEEL",
+     "name": "upper pulley (guide)",
+     "model": "RED E1 AXS rear derailleur guide pulley",
+     "specs": {
+      "speeds": "12",
+      "teeth": "12"
+     },
+     "mount": {
+      "parent": "rear_derailleur",
+      "slot": "PULLEY_UPPER"
+     }
+    },
+    {
+     "key": "pulley_lower",
+     "type": "PULLEY_WHEEL",
+     "name": "lower pulley (tension)",
+     "model": "RED E1 AXS rear derailleur tension pulley",
+     "specs": {
+      "speeds": "12",
+      "teeth": "12"
+     },
+     "mount": {
+      "parent": "rear_derailleur",
+      "slot": "PULLEY_LOWER"
+     }
+    },
+    {
+     "key": "battery_rear",
+     "type": "BATTERY",
+     "name": "AXS battery (rear derailleur)",
+     "model": "SRAM AXS battery",
+     "specs": {
+      "system": "SRAM AXS",
+      "mount": "on the rear derailleur",
+      "charging": "SRAM AXS charger (USB)"
+     },
+     "mount": {
+      "parent": "rear_derailleur",
+      "slot": "BATTERY"
+     },
+     "rules": {
+      "DI2_BATTERY_CHARGE": {
+       "name": "Charge AXS battery",
+       "interval_km": null,
+       "warn_km": null,
+       "interval_hours": 55,
+       "warn_hours": 10,
+       "notes": "SRAM: about 60 h of riding per charge for AXS road derailleurs (support.sram.com); 55 h leaves a margin. Not verified for this exact derailleur."
+      }
+     }
+    },
+    {
+     "key": "battery_front",
+     "type": "BATTERY",
+     "name": "AXS battery (front derailleur)",
+     "model": "SRAM AXS battery",
+     "specs": {
+      "system": "SRAM AXS",
+      "mount": "on the front derailleur",
+      "charging": "SRAM AXS charger (USB)"
+     },
+     "mount": {
+      "parent": "front_derailleur",
+      "slot": "BATTERY"
+     },
+     "rules": {
+      "DI2_BATTERY_CHARGE": {
+       "name": "Charge AXS battery",
+       "interval_km": null,
+       "warn_km": null,
+       "interval_hours": 55,
+       "warn_hours": 10,
+       "notes": "SRAM: about 60 h of riding per charge for AXS road derailleurs (support.sram.com); 55 h leaves a margin. Not verified for this exact derailleur."
+      }
+     }
+    },
+    {
+     "key": "crankset",
+     "type": "CRANKSET",
+     "name": "crankset",
+     "model": "RED E1 crankset {crank_length} mm",
+     "specs": {
+      "speeds": "2×12",
+      "crank length": "{crank_length} mm",
+      "chainrings": "{outer}-{inner}T",
+      "spindle": "DUB (28.99 mm)",
+      "power meter": "{power_meter}"
+     },
+     "mount": {
+      "slot": "CRANKSET"
+     }
+    },
+    {
+     "key": "chainring_outer",
+     "type": "CHAINRING",
+     "name": "outer chainring {outer}T",
+     "model": "RED E1 chainring {outer}T",
+     "specs": {
+      "teeth": "{outer}",
+      "position": "outer",
+      "for": "{outer}-{inner}T"
+     },
+     "mount": {
+      "parent": "crankset",
+      "slot": "CHAINRING_OUTER"
+     }
+    },
+    {
+     "key": "chainring_inner",
+     "type": "CHAINRING",
+     "name": "inner chainring {inner}T",
+     "model": "RED E1 chainring {inner}T",
+     "specs": {
+      "teeth": "{inner}",
+      "position": "inner",
+      "for": "{outer}-{inner}T"
+     },
+     "mount": {
+      "parent": "crankset",
+      "slot": "CHAINRING_INNER"
+     }
+    },
+    {
+     "key": "bottom_bracket",
+     "type": "BOTTOM_BRACKET",
+     "name": "bottom bracket",
+     "model": "{bb_model}",
+     "specs": {
+      "standard": "{bb_standard}",
+      "spindle": "DUB (28.99 mm)"
+     },
+     "mount": {
+      "slot": "BOTTOM_BRACKET"
+     },
+     "when": {
+      "bottom_bracket": [
+       "BSA",
+       "PF"
+      ]
+     }
+    },
+    {
+     "key": "cassette",
+     "type": "CASSETTE",
+     "name": "cassette {cassette}",
+     "model": "{cassette_model}",
+     "specs": {
+      "speeds": "12",
+      "range": "{cassette}T",
+      "sprockets": "{sprockets}",
+      "freehub": "SRAM XDR"
+     },
+     "mount": {
+      "wheel": "REAR_WHEEL",
+      "slot": "CASSETTE"
+     }
+    },
+    {
+     "key": "chain",
+     "type": "CHAIN",
+     "name": "chain",
+     "model": "RED E1 Flattop chain",
+     "specs": {
+      "speeds": "12 (Flattop)",
+      "joining": "Flattop PowerLock"
+     },
+     "mount": {
+      "slot": "CHAIN"
+     }
+    },
+    {
+     "key": "quick_link",
+     "type": "QUICK_LINK",
+     "name": "quick link",
+     "model": "SRAM Flattop PowerLock",
+     "specs": {
+      "speeds": "12",
+      "reuse": "SRAM: single use, fit a new one after opening"
+     },
+     "mount": {
+      "parent": "chain",
+      "slot": "QUICK_LINK"
+     }
+    },
+    {
+     "key": "brake_front",
+     "type": "BRAKE_CIRCUIT",
+     "name": "front brake",
+     "model": "RED E1 AXS HRD caliper front",
+     "specs": {
+      "caliper": "Flat mount, 2 pistons",
+      "fluid": "DOT 5.1",
+      "rotor": "140 / 160 mm"
+     },
+     "mount": {
+      "slot": "FRONT_BRAKE"
+     }
+    },
+    {
+     "key": "brake_rear",
+     "type": "BRAKE_CIRCUIT",
+     "name": "rear brake",
+     "model": "RED E1 AXS HRD caliper rear",
+     "specs": {
+      "caliper": "Flat mount, 2 pistons",
+      "fluid": "DOT 5.1",
+      "rotor": "140 / 160 mm"
+     },
+     "mount": {
+      "slot": "REAR_BRAKE"
+     }
+    },
+    {
+     "key": "pads_front",
+     "type": "BRAKE_PADS",
+     "name": "front pads",
+     "model": "SRAM road disc brake pads (organic)",
+     "specs": {
+      "compound": "Organic",
+      "fits": "RED E1 HRD calipers"
+     },
+     "mount": {
+      "slot": "FRONT_PADS"
+     }
+    },
+    {
+     "key": "pads_rear",
+     "type": "BRAKE_PADS",
+     "name": "rear pads",
+     "model": "SRAM road disc brake pads (organic)",
+     "specs": {
+      "compound": "Organic",
+      "fits": "RED E1 HRD calipers"
+     },
+     "mount": {
+      "slot": "REAR_PADS"
+     }
+    },
+    {
+     "key": "rotor_front",
+     "type": "BRAKE_ROTOR",
+     "name": "front rotor {rotor_front} mm",
+     "model": "SRAM Paceline X {rotor_front} mm",
+     "specs": {
+      "size": "{rotor_front} mm",
+      "mount": "Center Lock or 6-bolt (check your hubs)"
+     },
+     "mount": {
+      "wheel": "FRONT_WHEEL",
+      "slot": "ROTOR"
+     }
+    },
+    {
+     "key": "rotor_rear",
+     "type": "BRAKE_ROTOR",
+     "name": "rear rotor {rotor_rear} mm",
+     "model": "SRAM Paceline X {rotor_rear} mm",
+     "specs": {
+      "size": "{rotor_rear} mm",
+      "mount": "Center Lock or 6-bolt (check your hubs)"
+     },
+     "mount": {
+      "wheel": "REAR_WHEEL",
+      "slot": "ROTOR"
+     }
+    }
+   ]
+  },
+  {
+   "code": "SRAM_FORCE_AXS_2X12",
+   "name": "SRAM Force AXS · 2×12 · hydraulic disc",
+   "maker": "SRAM",
+   "series": "Force AXS",
+   "label_prefix": "Force",
+   "speeds": 12,
+   "source": "Retailer listings, reviews and SRAM support articles (tunecycles.com.au, bike-components.de, bike24.com, rosebikes, merlincycles.com, bikerumor.com, bikeradar.com, cyclingnews.com, support.sram.com), 2026-10-26; not yet checked against SRAM's own spec sheets",
+   "checked_on": "2026-10-26",
+   "verified": false,
+   "notes": "Force AXS (2023 D2 generation). Rear derailleur up to 36T. Each derailleur has its own AXS battery.",
+   "options": [
+    {
+     "key": "crank_length",
+     "label": "Crank length",
+     "default": "172.5",
+     "choices": [
+      {
+       "value": "160",
+       "label": "160 mm",
+       "vars": {
+        "crank_length": "160"
+       }
+      },
+      {
+       "value": "165",
+       "label": "165 mm",
+       "vars": {
+        "crank_length": "165"
+       }
+      },
+      {
+       "value": "167.5",
+       "label": "167.5 mm",
+       "vars": {
+        "crank_length": "167.5"
+       }
+      },
+      {
+       "value": "170",
+       "label": "170 mm",
+       "vars": {
+        "crank_length": "170"
+       }
+      },
+      {
+       "value": "172.5",
+       "label": "172.5 mm",
+       "vars": {
+        "crank_length": "172.5"
+       }
+      },
+      {
+       "value": "175",
+       "label": "175 mm",
+       "vars": {
+        "crank_length": "175"
+       }
+      }
+     ]
+    },
+    {
+     "key": "gearing",
+     "label": "Chainrings",
+     "default": "48-35",
+     "choices": [
+      {
+       "value": "46-33",
+       "label": "46-33",
+       "vars": {
+        "outer": "46",
+        "inner": "33"
+       }
+      },
+      {
+       "value": "48-35",
+       "label": "48-35",
+       "vars": {
+        "outer": "48",
+        "inner": "35"
+       }
+      }
+     ]
+    },
+    {
+     "key": "power_meter",
+     "label": "Crankset",
+     "default": "NO",
+     "choices": [
+      {
+       "value": "NO",
+       "label": "Force crankset",
+       "vars": {
+        "power_meter": "none"
+       }
+      },
+      {
+       "value": "YES",
+       "label": "Force power meter crankset",
+       "vars": {
+        "power_meter": "built-in spindle/spider power meter"
+       }
+      }
+     ]
+    },
+    {
+     "key": "cassette",
+     "label": "Cassette",
+     "default": "10-33",
+     "choices": [
+      {
+       "value": "10-28",
+       "label": "10-28",
+       "vars": {
+        "cassette": "10-28",
+        "sprockets": "10-11-12-13-14-15-16-17-19-21-24-28",
+        "cassette_model": "Force XG-1270 10-28"
+       }
+      },
+      {
+       "value": "10-30",
+       "label": "10-30",
+       "vars": {
+        "cassette": "10-30",
+        "sprockets": "10-11-12-13-14-15-17-19-21-24-27-30",
+        "cassette_model": "Force XG-1270 10-30"
+       }
+      },
+      {
+       "value": "10-33",
+       "label": "10-33",
+       "vars": {
+        "cassette": "10-33",
+        "sprockets": "10-11-12-13-14-15-17-19-21-24-28-33",
+        "cassette_model": "Force XG-1270 10-33"
+       }
+      },
+      {
+       "value": "10-36",
+       "label": "10-36",
+       "vars": {
+        "cassette": "10-36",
+        "sprockets": "10-12-13-14-15-17-19-21-24-28-32-36",
+        "cassette_model": "Force XG-1270 10-36"
+       }
+      }
+     ]
+    },
+    {
+     "key": "rotor_front",
+     "label": "Front rotor",
+     "default": "160",
+     "choices": [
+      {
+       "value": "160",
+       "label": "160 mm",
+       "vars": {
+        "rotor_front": "160"
+       }
+      },
+      {
+       "value": "140",
+       "label": "140 mm",
+       "vars": {
+        "rotor_front": "140"
+       }
+      }
+     ]
+    },
+    {
+     "key": "rotor_rear",
+     "label": "Rear rotor",
+     "default": "140",
+     "choices": [
+      {
+       "value": "160",
+       "label": "160 mm",
+       "vars": {
+        "rotor_rear": "160"
+       }
+      },
+      {
+       "value": "140",
+       "label": "140 mm",
+       "vars": {
+        "rotor_rear": "140"
+       }
+      }
+     ]
+    },
+    {
+     "key": "bottom_bracket",
+     "label": "Bottom bracket",
+     "default": "BSA",
+     "choices": [
+      {
+       "value": "BSA",
+       "label": "Threaded BSA 68 mm (DUB BSA)",
+       "vars": {
+        "bb_model": "SRAM DUB BSA road bottom bracket",
+        "bb_standard": "BSA threaded, 68 mm shell"
+       }
+      },
+      {
+       "value": "PF",
+       "label": "Press-fit (DUB PF86 / BB92)",
+       "vars": {
+        "bb_model": "SRAM DUB PressFit road bottom bracket",
+        "bb_standard": "Press-fit 86.5 / 92 mm"
+       }
+      },
+      {
+       "value": "NONE",
+       "label": "Other / keep my bottom bracket",
+       "vars": {}
+      }
+     ]
+    }
+   ],
+   "items": [
+    {
+     "key": "shifters",
+     "type": "SHIFTERS",
+     "name": "AXS levers",
+     "model": "Force AXS HRD shift-brake levers",
+     "specs": {
+      "function": "Wireless AXS shift-brake levers, hydraulic disc brake",
+      "power": "CR2032 coin cell in each lever",
+      "brake fluid": "DOT 5.1"
+     },
+     "mount": {
+      "slot": "SHIFTERS"
+     }
+    },
+    {
+     "key": "front_derailleur",
+     "type": "FRONT_DERAILLEUR",
+     "name": "front derailleur",
+     "model": "Force AXS front derailleur",
+     "specs": {
+      "speeds": "2×12",
+      "mount": "Braze-on"
+     },
+     "mount": {
+      "slot": "FRONT_DERAILLEUR"
+     }
+    },
+    {
+     "key": "rear_derailleur",
+     "type": "REAR_DERAILLEUR",
+     "name": "rear derailleur",
+     "model": "Force AXS rear derailleur",
+     "specs": {
+      "speeds": "12",
+      "max low sprocket": "36T"
+     },
+     "mount": {
+      "slot": "REAR_DERAILLEUR"
+     }
+    },
+    {
+     "key": "pulley_upper",
+     "type": "PULLEY_WHEEL",
+     "name": "upper pulley (guide)",
+     "model": "Force AXS rear derailleur guide pulley",
+     "specs": {
+      "speeds": "12",
+      "teeth": "12"
+     },
+     "mount": {
+      "parent": "rear_derailleur",
+      "slot": "PULLEY_UPPER"
+     }
+    },
+    {
+     "key": "pulley_lower",
+     "type": "PULLEY_WHEEL",
+     "name": "lower pulley (tension)",
+     "model": "Force AXS rear derailleur tension pulley",
+     "specs": {
+      "speeds": "12",
+      "teeth": "12"
+     },
+     "mount": {
+      "parent": "rear_derailleur",
+      "slot": "PULLEY_LOWER"
+     }
+    },
+    {
+     "key": "battery_rear",
+     "type": "BATTERY",
+     "name": "AXS battery (rear derailleur)",
+     "model": "SRAM AXS battery",
+     "specs": {
+      "system": "SRAM AXS",
+      "mount": "on the rear derailleur",
+      "charging": "SRAM AXS charger (USB)"
+     },
+     "mount": {
+      "parent": "rear_derailleur",
+      "slot": "BATTERY"
+     },
+     "rules": {
+      "DI2_BATTERY_CHARGE": {
+       "name": "Charge AXS battery",
+       "interval_km": null,
+       "warn_km": null,
+       "interval_hours": 55,
+       "warn_hours": 10,
+       "notes": "SRAM: about 60 h of riding per charge for AXS road derailleurs (support.sram.com); 55 h leaves a margin. Not verified for this exact derailleur."
+      }
+     }
+    },
+    {
+     "key": "battery_front",
+     "type": "BATTERY",
+     "name": "AXS battery (front derailleur)",
+     "model": "SRAM AXS battery",
+     "specs": {
+      "system": "SRAM AXS",
+      "mount": "on the front derailleur",
+      "charging": "SRAM AXS charger (USB)"
+     },
+     "mount": {
+      "parent": "front_derailleur",
+      "slot": "BATTERY"
+     },
+     "rules": {
+      "DI2_BATTERY_CHARGE": {
+       "name": "Charge AXS battery",
+       "interval_km": null,
+       "warn_km": null,
+       "interval_hours": 55,
+       "warn_hours": 10,
+       "notes": "SRAM: about 60 h of riding per charge for AXS road derailleurs (support.sram.com); 55 h leaves a margin. Not verified for this exact derailleur."
+      }
+     }
+    },
+    {
+     "key": "crankset",
+     "type": "CRANKSET",
+     "name": "crankset",
+     "model": "Force crankset {crank_length} mm",
+     "specs": {
+      "speeds": "2×12",
+      "crank length": "{crank_length} mm",
+      "chainrings": "{outer}-{inner}T",
+      "spindle": "DUB (28.99 mm)",
+      "power meter": "{power_meter}"
+     },
+     "mount": {
+      "slot": "CRANKSET"
+     }
+    },
+    {
+     "key": "chainring_outer",
+     "type": "CHAINRING",
+     "name": "outer chainring {outer}T",
+     "model": "Force chainring {outer}T",
+     "specs": {
+      "teeth": "{outer}",
+      "position": "outer",
+      "for": "{outer}-{inner}T"
+     },
+     "mount": {
+      "parent": "crankset",
+      "slot": "CHAINRING_OUTER"
+     }
+    },
+    {
+     "key": "chainring_inner",
+     "type": "CHAINRING",
+     "name": "inner chainring {inner}T",
+     "model": "Force chainring {inner}T",
+     "specs": {
+      "teeth": "{inner}",
+      "position": "inner",
+      "for": "{outer}-{inner}T"
+     },
+     "mount": {
+      "parent": "crankset",
+      "slot": "CHAINRING_INNER"
+     }
+    },
+    {
+     "key": "bottom_bracket",
+     "type": "BOTTOM_BRACKET",
+     "name": "bottom bracket",
+     "model": "{bb_model}",
+     "specs": {
+      "standard": "{bb_standard}",
+      "spindle": "DUB (28.99 mm)"
+     },
+     "mount": {
+      "slot": "BOTTOM_BRACKET"
+     },
+     "when": {
+      "bottom_bracket": [
+       "BSA",
+       "PF"
+      ]
+     }
+    },
+    {
+     "key": "cassette",
+     "type": "CASSETTE",
+     "name": "cassette {cassette}",
+     "model": "{cassette_model}",
+     "specs": {
+      "speeds": "12",
+      "range": "{cassette}T",
+      "sprockets": "{sprockets}",
+      "freehub": "SRAM XDR"
+     },
+     "mount": {
+      "wheel": "REAR_WHEEL",
+      "slot": "CASSETTE"
+     }
+    },
+    {
+     "key": "chain",
+     "type": "CHAIN",
+     "name": "chain",
+     "model": "Force Flattop chain",
+     "specs": {
+      "speeds": "12 (Flattop)",
+      "joining": "Flattop PowerLock"
+     },
+     "mount": {
+      "slot": "CHAIN"
+     }
+    },
+    {
+     "key": "quick_link",
+     "type": "QUICK_LINK",
+     "name": "quick link",
+     "model": "SRAM Flattop PowerLock",
+     "specs": {
+      "speeds": "12",
+      "reuse": "SRAM: single use, fit a new one after opening"
+     },
+     "mount": {
+      "parent": "chain",
+      "slot": "QUICK_LINK"
+     }
+    },
+    {
+     "key": "brake_front",
+     "type": "BRAKE_CIRCUIT",
+     "name": "front brake",
+     "model": "Force AXS HRD caliper front",
+     "specs": {
+      "caliper": "Flat mount, 2 pistons",
+      "fluid": "DOT 5.1",
+      "rotor": "140 / 160 mm"
+     },
+     "mount": {
+      "slot": "FRONT_BRAKE"
+     }
+    },
+    {
+     "key": "brake_rear",
+     "type": "BRAKE_CIRCUIT",
+     "name": "rear brake",
+     "model": "Force AXS HRD caliper rear",
+     "specs": {
+      "caliper": "Flat mount, 2 pistons",
+      "fluid": "DOT 5.1",
+      "rotor": "140 / 160 mm"
+     },
+     "mount": {
+      "slot": "REAR_BRAKE"
+     }
+    },
+    {
+     "key": "pads_front",
+     "type": "BRAKE_PADS",
+     "name": "front pads",
+     "model": "SRAM road disc brake pads (organic)",
+     "specs": {
+      "compound": "Organic",
+      "fits": "Force HRD calipers"
+     },
+     "mount": {
+      "slot": "FRONT_PADS"
+     }
+    },
+    {
+     "key": "pads_rear",
+     "type": "BRAKE_PADS",
+     "name": "rear pads",
+     "model": "SRAM road disc brake pads (organic)",
+     "specs": {
+      "compound": "Organic",
+      "fits": "Force HRD calipers"
+     },
+     "mount": {
+      "slot": "REAR_PADS"
+     }
+    },
+    {
+     "key": "rotor_front",
+     "type": "BRAKE_ROTOR",
+     "name": "front rotor {rotor_front} mm",
+     "model": "SRAM CenterLine XR {rotor_front} mm",
+     "specs": {
+      "size": "{rotor_front} mm",
+      "mount": "Center Lock or 6-bolt (check your hubs)"
+     },
+     "mount": {
+      "wheel": "FRONT_WHEEL",
+      "slot": "ROTOR"
+     }
+    },
+    {
+     "key": "rotor_rear",
+     "type": "BRAKE_ROTOR",
+     "name": "rear rotor {rotor_rear} mm",
+     "model": "SRAM CenterLine XR {rotor_rear} mm",
+     "specs": {
+      "size": "{rotor_rear} mm",
+      "mount": "Center Lock or 6-bolt (check your hubs)"
+     },
+     "mount": {
+      "wheel": "REAR_WHEEL",
+      "slot": "ROTOR"
+     }
+    }
+   ]
+  },
+  {
+   "code": "SRAM_RIVAL_AXS_2X12",
+   "name": "SRAM Rival AXS · 2×12 · hydraulic disc",
+   "maker": "SRAM",
+   "series": "Rival AXS",
+   "label_prefix": "Rival",
+   "speeds": 12,
+   "source": "Retailer listings, reviews and SRAM support articles (tunecycles.com.au, bike-components.de, bike24.com, rosebikes, merlincycles.com, bikerumor.com, bikeradar.com, cyclingnews.com, support.sram.com), 2026-10-26; not yet checked against SRAM's own spec sheets",
+   "checked_on": "2026-10-26",
+   "verified": false,
+   "notes": "Rival AXS. Rear derailleur up to 36T. Each derailleur has its own AXS battery.",
+   "options": [
+    {
+     "key": "crank_length",
+     "label": "Crank length",
+     "default": "172.5",
+     "choices": [
+      {
+       "value": "160",
+       "label": "160 mm",
+       "vars": {
+        "crank_length": "160"
+       }
+      },
+      {
+       "value": "165",
+       "label": "165 mm",
+       "vars": {
+        "crank_length": "165"
+       }
+      },
+      {
+       "value": "167.5",
+       "label": "167.5 mm",
+       "vars": {
+        "crank_length": "167.5"
+       }
+      },
+      {
+       "value": "170",
+       "label": "170 mm",
+       "vars": {
+        "crank_length": "170"
+       }
+      },
+      {
+       "value": "172.5",
+       "label": "172.5 mm",
+       "vars": {
+        "crank_length": "172.5"
+       }
+      },
+      {
+       "value": "175",
+       "label": "175 mm",
+       "vars": {
+        "crank_length": "175"
+       }
+      }
+     ]
+    },
+    {
+     "key": "gearing",
+     "label": "Chainrings",
+     "default": "46-33",
+     "choices": [
+      {
+       "value": "46-33",
+       "label": "46-33",
+       "vars": {
+        "outer": "46",
+        "inner": "33"
+       }
+      },
+      {
+       "value": "48-35",
+       "label": "48-35",
+       "vars": {
+        "outer": "48",
+        "inner": "35"
+       }
+      }
+     ]
+    },
+    {
+     "key": "power_meter",
+     "label": "Crankset",
+     "default": "NO",
+     "choices": [
+      {
+       "value": "NO",
+       "label": "Rival crankset",
+       "vars": {
+        "power_meter": "none"
+       }
+      },
+      {
+       "value": "YES",
+       "label": "Rival power meter crankset (left side)",
+       "vars": {
+        "power_meter": "built-in spindle/spider power meter"
+       }
+      }
+     ]
+    },
+    {
+     "key": "cassette",
+     "label": "Cassette",
+     "default": "10-36",
+     "choices": [
+      {
+       "value": "10-30",
+       "label": "10-30",
+       "vars": {
+        "cassette": "10-30",
+        "sprockets": "10-11-12-13-14-15-17-19-21-24-27-30",
+        "cassette_model": "Rival XG-1250 10-30"
+       }
+      },
+      {
+       "value": "10-36",
+       "label": "10-36",
+       "vars": {
+        "cassette": "10-36",
+        "sprockets": "10-12-13-14-15-17-19-21-24-28-32-36",
+        "cassette_model": "Rival XG-1250 10-36"
+       }
+      }
+     ]
+    },
+    {
+     "key": "rotor_front",
+     "label": "Front rotor",
+     "default": "160",
+     "choices": [
+      {
+       "value": "160",
+       "label": "160 mm",
+       "vars": {
+        "rotor_front": "160"
+       }
+      },
+      {
+       "value": "140",
+       "label": "140 mm",
+       "vars": {
+        "rotor_front": "140"
+       }
+      }
+     ]
+    },
+    {
+     "key": "rotor_rear",
+     "label": "Rear rotor",
+     "default": "140",
+     "choices": [
+      {
+       "value": "160",
+       "label": "160 mm",
+       "vars": {
+        "rotor_rear": "160"
+       }
+      },
+      {
+       "value": "140",
+       "label": "140 mm",
+       "vars": {
+        "rotor_rear": "140"
+       }
+      }
+     ]
+    },
+    {
+     "key": "bottom_bracket",
+     "label": "Bottom bracket",
+     "default": "BSA",
+     "choices": [
+      {
+       "value": "BSA",
+       "label": "Threaded BSA 68 mm (DUB BSA)",
+       "vars": {
+        "bb_model": "SRAM DUB BSA road bottom bracket",
+        "bb_standard": "BSA threaded, 68 mm shell"
+       }
+      },
+      {
+       "value": "PF",
+       "label": "Press-fit (DUB PF86 / BB92)",
+       "vars": {
+        "bb_model": "SRAM DUB PressFit road bottom bracket",
+        "bb_standard": "Press-fit 86.5 / 92 mm"
+       }
+      },
+      {
+       "value": "NONE",
+       "label": "Other / keep my bottom bracket",
+       "vars": {}
+      }
+     ]
+    }
+   ],
+   "items": [
+    {
+     "key": "shifters",
+     "type": "SHIFTERS",
+     "name": "AXS levers",
+     "model": "Rival AXS HRD shift-brake levers",
+     "specs": {
+      "function": "Wireless AXS shift-brake levers, hydraulic disc brake",
+      "power": "CR2032 coin cell in each lever",
+      "brake fluid": "DOT 5.1"
+     },
+     "mount": {
+      "slot": "SHIFTERS"
+     }
+    },
+    {
+     "key": "front_derailleur",
+     "type": "FRONT_DERAILLEUR",
+     "name": "front derailleur",
+     "model": "Rival AXS front derailleur",
+     "specs": {
+      "speeds": "2×12",
+      "mount": "Braze-on"
+     },
+     "mount": {
+      "slot": "FRONT_DERAILLEUR"
+     }
+    },
+    {
+     "key": "rear_derailleur",
+     "type": "REAR_DERAILLEUR",
+     "name": "rear derailleur",
+     "model": "Rival AXS rear derailleur",
+     "specs": {
+      "speeds": "12",
+      "max low sprocket": "36T"
+     },
+     "mount": {
+      "slot": "REAR_DERAILLEUR"
+     }
+    },
+    {
+     "key": "pulley_upper",
+     "type": "PULLEY_WHEEL",
+     "name": "upper pulley (guide)",
+     "model": "Rival AXS rear derailleur guide pulley",
+     "specs": {
+      "speeds": "12",
+      "teeth": "12"
+     },
+     "mount": {
+      "parent": "rear_derailleur",
+      "slot": "PULLEY_UPPER"
+     }
+    },
+    {
+     "key": "pulley_lower",
+     "type": "PULLEY_WHEEL",
+     "name": "lower pulley (tension)",
+     "model": "Rival AXS rear derailleur tension pulley",
+     "specs": {
+      "speeds": "12",
+      "teeth": "12"
+     },
+     "mount": {
+      "parent": "rear_derailleur",
+      "slot": "PULLEY_LOWER"
+     }
+    },
+    {
+     "key": "battery_rear",
+     "type": "BATTERY",
+     "name": "AXS battery (rear derailleur)",
+     "model": "SRAM AXS battery",
+     "specs": {
+      "system": "SRAM AXS",
+      "mount": "on the rear derailleur",
+      "charging": "SRAM AXS charger (USB)"
+     },
+     "mount": {
+      "parent": "rear_derailleur",
+      "slot": "BATTERY"
+     },
+     "rules": {
+      "DI2_BATTERY_CHARGE": {
+       "name": "Charge AXS battery",
+       "interval_km": null,
+       "warn_km": null,
+       "interval_hours": 55,
+       "warn_hours": 10,
+       "notes": "SRAM: about 60 h of riding per charge for AXS road derailleurs (support.sram.com); 55 h leaves a margin. Not verified for this exact derailleur."
+      }
+     }
+    },
+    {
+     "key": "battery_front",
+     "type": "BATTERY",
+     "name": "AXS battery (front derailleur)",
+     "model": "SRAM AXS battery",
+     "specs": {
+      "system": "SRAM AXS",
+      "mount": "on the front derailleur",
+      "charging": "SRAM AXS charger (USB)"
+     },
+     "mount": {
+      "parent": "front_derailleur",
+      "slot": "BATTERY"
+     },
+     "rules": {
+      "DI2_BATTERY_CHARGE": {
+       "name": "Charge AXS battery",
+       "interval_km": null,
+       "warn_km": null,
+       "interval_hours": 55,
+       "warn_hours": 10,
+       "notes": "SRAM: about 60 h of riding per charge for AXS road derailleurs (support.sram.com); 55 h leaves a margin. Not verified for this exact derailleur."
+      }
+     }
+    },
+    {
+     "key": "crankset",
+     "type": "CRANKSET",
+     "name": "crankset",
+     "model": "Rival crankset {crank_length} mm",
+     "specs": {
+      "speeds": "2×12",
+      "crank length": "{crank_length} mm",
+      "chainrings": "{outer}-{inner}T",
+      "spindle": "DUB (28.99 mm)",
+      "power meter": "{power_meter}"
+     },
+     "mount": {
+      "slot": "CRANKSET"
+     }
+    },
+    {
+     "key": "chainring_outer",
+     "type": "CHAINRING",
+     "name": "outer chainring {outer}T",
+     "model": "Rival chainring {outer}T",
+     "specs": {
+      "teeth": "{outer}",
+      "position": "outer",
+      "for": "{outer}-{inner}T"
+     },
+     "mount": {
+      "parent": "crankset",
+      "slot": "CHAINRING_OUTER"
+     }
+    },
+    {
+     "key": "chainring_inner",
+     "type": "CHAINRING",
+     "name": "inner chainring {inner}T",
+     "model": "Rival chainring {inner}T",
+     "specs": {
+      "teeth": "{inner}",
+      "position": "inner",
+      "for": "{outer}-{inner}T"
+     },
+     "mount": {
+      "parent": "crankset",
+      "slot": "CHAINRING_INNER"
+     }
+    },
+    {
+     "key": "bottom_bracket",
+     "type": "BOTTOM_BRACKET",
+     "name": "bottom bracket",
+     "model": "{bb_model}",
+     "specs": {
+      "standard": "{bb_standard}",
+      "spindle": "DUB (28.99 mm)"
+     },
+     "mount": {
+      "slot": "BOTTOM_BRACKET"
+     },
+     "when": {
+      "bottom_bracket": [
+       "BSA",
+       "PF"
+      ]
+     }
+    },
+    {
+     "key": "cassette",
+     "type": "CASSETTE",
+     "name": "cassette {cassette}",
+     "model": "{cassette_model}",
+     "specs": {
+      "speeds": "12",
+      "range": "{cassette}T",
+      "sprockets": "{sprockets}",
+      "freehub": "SRAM XDR"
+     },
+     "mount": {
+      "wheel": "REAR_WHEEL",
+      "slot": "CASSETTE"
+     }
+    },
+    {
+     "key": "chain",
+     "type": "CHAIN",
+     "name": "chain",
+     "model": "Rival Flattop chain",
+     "specs": {
+      "speeds": "12 (Flattop)",
+      "joining": "Flattop PowerLock"
+     },
+     "mount": {
+      "slot": "CHAIN"
+     }
+    },
+    {
+     "key": "quick_link",
+     "type": "QUICK_LINK",
+     "name": "quick link",
+     "model": "SRAM Flattop PowerLock",
+     "specs": {
+      "speeds": "12",
+      "reuse": "SRAM: single use, fit a new one after opening"
+     },
+     "mount": {
+      "parent": "chain",
+      "slot": "QUICK_LINK"
+     }
+    },
+    {
+     "key": "brake_front",
+     "type": "BRAKE_CIRCUIT",
+     "name": "front brake",
+     "model": "Rival AXS HRD caliper front",
+     "specs": {
+      "caliper": "Flat mount, 2 pistons",
+      "fluid": "DOT 5.1",
+      "rotor": "140 / 160 mm"
+     },
+     "mount": {
+      "slot": "FRONT_BRAKE"
+     }
+    },
+    {
+     "key": "brake_rear",
+     "type": "BRAKE_CIRCUIT",
+     "name": "rear brake",
+     "model": "Rival AXS HRD caliper rear",
+     "specs": {
+      "caliper": "Flat mount, 2 pistons",
+      "fluid": "DOT 5.1",
+      "rotor": "140 / 160 mm"
+     },
+     "mount": {
+      "slot": "REAR_BRAKE"
+     }
+    },
+    {
+     "key": "pads_front",
+     "type": "BRAKE_PADS",
+     "name": "front pads",
+     "model": "SRAM road disc brake pads (organic)",
+     "specs": {
+      "compound": "Organic",
+      "fits": "Rival HRD calipers"
+     },
+     "mount": {
+      "slot": "FRONT_PADS"
+     }
+    },
+    {
+     "key": "pads_rear",
+     "type": "BRAKE_PADS",
+     "name": "rear pads",
+     "model": "SRAM road disc brake pads (organic)",
+     "specs": {
+      "compound": "Organic",
+      "fits": "Rival HRD calipers"
+     },
+     "mount": {
+      "slot": "REAR_PADS"
+     }
+    },
+    {
+     "key": "rotor_front",
+     "type": "BRAKE_ROTOR",
+     "name": "front rotor {rotor_front} mm",
+     "model": "SRAM CenterLine {rotor_front} mm",
+     "specs": {
+      "size": "{rotor_front} mm",
+      "mount": "Center Lock or 6-bolt (check your hubs)"
+     },
+     "mount": {
+      "wheel": "FRONT_WHEEL",
+      "slot": "ROTOR"
+     }
+    },
+    {
+     "key": "rotor_rear",
+     "type": "BRAKE_ROTOR",
+     "name": "rear rotor {rotor_rear} mm",
+     "model": "SRAM CenterLine {rotor_rear} mm",
+     "specs": {
+      "size": "{rotor_rear} mm",
+      "mount": "Center Lock or 6-bolt (check your hubs)"
+     },
+     "mount": {
+      "wheel": "REAR_WHEEL",
+      "slot": "ROTOR"
+     }
+    }
+   ]
+  },
+  {
+   "code": "SRAM_APEX_XPLR_1X12",
+   "name": "SRAM Apex XPLR · 1×12 · hydraulic disc",
+   "maker": "SRAM",
+   "series": "Apex XPLR",
+   "label_prefix": "Apex",
+   "speeds": 12,
+   "source": "Retailer listings, reviews and SRAM support articles (tunecycles.com.au, bike-components.de, bike24.com, rosebikes, merlincycles.com, bikerumor.com, bikeradar.com, cyclingnews.com, support.sram.com), 2026-10-26; not yet checked against SRAM's own spec sheets",
+   "checked_on": "2026-10-26",
+   "verified": false,
+   "notes": "Entry-level 1× group, wireless (AXS) or with cables. The 11-44 XPLR cassette fits a standard 11-speed freehub. For the mechanical version set the bike's shifting to Mechanical so the cable reminders apply.",
+   "options": [
+    {
+     "key": "shifting",
+     "label": "Shifting",
+     "default": "AXS",
+     "choices": [
+      {
+       "value": "AXS",
+       "label": "AXS (wireless)",
+       "vars": {
+        "lever_model": "Apex AXS HRD shift-brake levers",
+        "rd_model": "Apex XPLR AXS rear derailleur",
+        "lever_power": "CR2032 coin cell in the right lever"
+       }
+      },
+      {
+       "value": "MECH",
+       "label": "Mechanical (cable)",
+       "vars": {
+        "lever_model": "Apex 1 HRD shift-brake levers",
+        "rd_model": "Apex XPLR rear derailleur",
+        "lever_power": "none (cable)"
+       }
+      }
+     ]
+    },
+    {
+     "key": "crank_length",
+     "label": "Crank length",
+     "default": "172.5",
+     "choices": [
+      {
+       "value": "165",
+       "label": "165 mm",
+       "vars": {
+        "crank_length": "165"
+       }
+      },
+      {
+       "value": "170",
+       "label": "170 mm",
+       "vars": {
+        "crank_length": "170"
+       }
+      },
+      {
+       "value": "172.5",
+       "label": "172.5 mm",
+       "vars": {
+        "crank_length": "172.5"
+       }
+      },
+      {
+       "value": "175",
+       "label": "175 mm",
+       "vars": {
+        "crank_length": "175"
+       }
+      }
+     ]
+    },
+    {
+     "key": "ring",
+     "label": "Chainring",
+     "default": "40",
+     "choices": [
+      {
+       "value": "38",
+       "label": "38T",
+       "vars": {
+        "ring": "38"
+       }
+      },
+      {
+       "value": "40",
+       "label": "40T",
+       "vars": {
+        "ring": "40"
+       }
+      },
+      {
+       "value": "42",
+       "label": "42T",
+       "vars": {
+        "ring": "42"
+       }
+      }
+     ]
+    },
+    {
+     "key": "cassette",
+     "label": "Cassette",
+     "default": "11-44",
+     "choices": [
+      {
+       "value": "11-44",
+       "label": "11-44",
+       "vars": {
+        "cassette": "11-44",
+        "sprockets": "11-13-15-17-19-21-24-28-32-36-40-44",
+        "cassette_model": "Apex XPLR PG-1231 11-44"
+       }
+      }
+     ]
+    },
+    {
+     "key": "rotor_front",
+     "label": "Front rotor",
+     "default": "160",
+     "choices": [
+      {
+       "value": "160",
+       "label": "160 mm",
+       "vars": {
+        "rotor_front": "160"
+       }
+      },
+      {
+       "value": "140",
+       "label": "140 mm",
+       "vars": {
+        "rotor_front": "140"
+       }
+      }
+     ]
+    },
+    {
+     "key": "rotor_rear",
+     "label": "Rear rotor",
+     "default": "160",
+     "choices": [
+      {
+       "value": "160",
+       "label": "160 mm",
+       "vars": {
+        "rotor_rear": "160"
+       }
+      },
+      {
+       "value": "140",
+       "label": "140 mm",
+       "vars": {
+        "rotor_rear": "140"
+       }
+      }
+     ]
+    },
+    {
+     "key": "bottom_bracket",
+     "label": "Bottom bracket",
+     "default": "BSA",
+     "choices": [
+      {
+       "value": "BSA",
+       "label": "Threaded BSA 68 mm (DUB BSA)",
+       "vars": {
+        "bb_model": "SRAM DUB BSA road bottom bracket",
+        "bb_standard": "BSA threaded, 68 mm shell"
+       }
+      },
+      {
+       "value": "PF",
+       "label": "Press-fit (DUB PF86 / BB92)",
+       "vars": {
+        "bb_model": "SRAM DUB PressFit road bottom bracket",
+        "bb_standard": "Press-fit 86.5 / 92 mm"
+       }
+      },
+      {
+       "value": "NONE",
+       "label": "Other / keep my bottom bracket",
+       "vars": {}
+      }
+     ]
+    }
+   ],
+   "items": [
+    {
+     "key": "shifters",
+     "type": "SHIFTERS",
+     "name": "levers",
+     "model": "{lever_model}",
+     "specs": {
+      "function": "1×12 shift-brake lever right, brake lever left, hydraulic disc",
+      "power": "{lever_power}",
+      "brake fluid": "DOT 5.1"
+     },
+     "mount": {
+      "slot": "SHIFTERS"
+     }
+    },
+    {
+     "key": "rear_derailleur",
+     "type": "REAR_DERAILLEUR",
+     "name": "rear derailleur",
+     "model": "{rd_model}",
+     "specs": {
+      "speeds": "12",
+      "max low sprocket": "44T",
+      "clutch": "yes"
+     },
+     "mount": {
+      "slot": "REAR_DERAILLEUR"
+     }
+    },
+    {
+     "key": "pulley_upper",
+     "type": "PULLEY_WHEEL",
+     "name": "upper pulley (guide)",
+     "model": "Apex XPLR rear derailleur guide pulley",
+     "specs": {
+      "speeds": "12",
+      "teeth": "12"
+     },
+     "mount": {
+      "parent": "rear_derailleur",
+      "slot": "PULLEY_UPPER"
+     }
+    },
+    {
+     "key": "pulley_lower",
+     "type": "PULLEY_WHEEL",
+     "name": "lower pulley (tension)",
+     "model": "Apex XPLR rear derailleur tension pulley",
+     "specs": {
+      "speeds": "12",
+      "teeth": "12"
+     },
+     "mount": {
+      "parent": "rear_derailleur",
+      "slot": "PULLEY_LOWER"
+     }
+    },
+    {
+     "key": "battery_rear",
+     "type": "BATTERY",
+     "name": "AXS battery (rear derailleur)",
+     "model": "SRAM AXS battery",
+     "specs": {
+      "system": "SRAM AXS",
+      "mount": "on the rear derailleur",
+      "charging": "SRAM AXS charger (USB)"
+     },
+     "mount": {
+      "parent": "rear_derailleur",
+      "slot": "BATTERY"
+     },
+     "rules": {
+      "DI2_BATTERY_CHARGE": {
+       "name": "Charge AXS battery",
+       "interval_km": null,
+       "warn_km": null,
+       "interval_hours": 55,
+       "warn_hours": 10,
+       "notes": "SRAM: about 60 h of riding per charge for AXS road derailleurs (support.sram.com); 55 h leaves a margin. Not verified for this exact derailleur."
+      }
+     },
+     "when": {
+      "shifting": [
+       "AXS"
+      ]
+     }
+    },
+    {
+     "key": "crankset",
+     "type": "CRANKSET",
+     "name": "crankset",
+     "model": "Apex 1 Wide crankset {crank_length} mm",
+     "specs": {
+      "speeds": "1×12",
+      "crank length": "{crank_length} mm",
+      "chainring": "{ring}T",
+      "spindle": "DUB (28.99 mm)"
+     },
+     "mount": {
+      "slot": "CRANKSET"
+     }
+    },
+    {
+     "key": "chainring",
+     "type": "CHAINRING",
+     "name": "chainring {ring}T",
+     "model": "Apex X-Sync chainring {ring}T",
+     "specs": {
+      "teeth": "{ring}",
+      "position": "single (1×)"
+     },
+     "mount": {
+      "parent": "crankset",
+      "slot": "CHAINRING_OUTER"
+     }
+    },
+    {
+     "key": "bottom_bracket",
+     "type": "BOTTOM_BRACKET",
+     "name": "bottom bracket",
+     "model": "{bb_model}",
+     "specs": {
+      "standard": "{bb_standard}",
+      "spindle": "DUB (28.99 mm)"
+     },
+     "mount": {
+      "slot": "BOTTOM_BRACKET"
+     },
+     "when": {
+      "bottom_bracket": [
+       "BSA",
+       "PF"
+      ]
+     }
+    },
+    {
+     "key": "cassette",
+     "type": "CASSETTE",
+     "name": "cassette {cassette}",
+     "model": "{cassette_model}",
+     "specs": {
+      "speeds": "12",
+      "range": "{cassette}T",
+      "sprockets": "{sprockets}",
+      "freehub": "Standard 11-speed (HG) freehub"
+     },
+     "mount": {
+      "wheel": "REAR_WHEEL",
+      "slot": "CASSETTE"
+     }
+    },
+    {
+     "key": "chain",
+     "type": "CHAIN",
+     "name": "chain",
+     "model": "Apex Flattop chain",
+     "specs": {
+      "speeds": "12 (Flattop)",
+      "joining": "Flattop PowerLock"
+     },
+     "mount": {
+      "slot": "CHAIN"
+     }
+    },
+    {
+     "key": "quick_link",
+     "type": "QUICK_LINK",
+     "name": "quick link",
+     "model": "SRAM Flattop PowerLock",
+     "specs": {
+      "speeds": "12",
+      "reuse": "SRAM: single use, fit a new one after opening"
+     },
+     "mount": {
+      "parent": "chain",
+      "slot": "QUICK_LINK"
+     }
+    },
+    {
+     "key": "brake_front",
+     "type": "BRAKE_CIRCUIT",
+     "name": "front brake",
+     "model": "Apex HRD caliper front",
+     "specs": {
+      "caliper": "Flat mount, 2 pistons",
+      "fluid": "DOT 5.1",
+      "rotor": "160 mm"
+     },
+     "mount": {
+      "slot": "FRONT_BRAKE"
+     }
+    },
+    {
+     "key": "brake_rear",
+     "type": "BRAKE_CIRCUIT",
+     "name": "rear brake",
+     "model": "Apex HRD caliper rear",
+     "specs": {
+      "caliper": "Flat mount, 2 pistons",
+      "fluid": "DOT 5.1",
+      "rotor": "160 mm"
+     },
+     "mount": {
+      "slot": "REAR_BRAKE"
+     }
+    },
+    {
+     "key": "pads_front",
+     "type": "BRAKE_PADS",
+     "name": "front pads",
+     "model": "SRAM road disc brake pads (organic)",
+     "specs": {
+      "compound": "Organic",
+      "fits": "Apex HRD calipers"
+     },
+     "mount": {
+      "slot": "FRONT_PADS"
+     }
+    },
+    {
+     "key": "pads_rear",
+     "type": "BRAKE_PADS",
+     "name": "rear pads",
+     "model": "SRAM road disc brake pads (organic)",
+     "specs": {
+      "compound": "Organic",
+      "fits": "Apex HRD calipers"
+     },
+     "mount": {
+      "slot": "REAR_PADS"
+     }
+    },
+    {
+     "key": "rotor_front",
+     "type": "BRAKE_ROTOR",
+     "name": "front rotor {rotor_front} mm",
+     "model": "SRAM CenterLine {rotor_front} mm",
+     "specs": {
+      "size": "{rotor_front} mm",
+      "mount": "6-bolt or Center Lock (check your hubs)"
+     },
+     "mount": {
+      "wheel": "FRONT_WHEEL",
+      "slot": "ROTOR"
+     }
+    },
+    {
+     "key": "rotor_rear",
+     "type": "BRAKE_ROTOR",
+     "name": "rear rotor {rotor_rear} mm",
+     "model": "SRAM CenterLine {rotor_rear} mm",
+     "specs": {
+      "size": "{rotor_rear} mm",
+      "mount": "6-bolt or Center Lock (check your hubs)"
+     },
+     "mount": {
+      "wheel": "REAR_WHEEL",
+      "slot": "ROTOR"
+     }
+    },
+    {
+     "key": "cable_rear",
+     "type": "SHIFT_CABLE",
+     "name": "rear shift cable",
+     "model": "SRAM shift cable",
+     "specs": {
+      "position": "rear"
+     },
+     "mount": {
+      "slot": "SHIFT_CABLE_REAR"
+     },
+     "when": {
+      "shifting": [
+       "MECH"
+      ]
+     }
+    },
+    {
+     "key": "housing_rear",
+     "type": "SHIFT_HOUSING",
+     "name": "rear shift housing",
+     "model": "SRAM shift housing",
+     "specs": {
+      "position": "rear"
+     },
+     "mount": {
+      "slot": "SHIFT_HOUSING_REAR"
+     },
+     "when": {
+      "shifting": [
+       "MECH"
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "code": "SRAM_RED_XPLR_AXS_1X13",
+   "name": "SRAM RED XPLR AXS · 1×13 · hydraulic disc (gravel)",
+   "maker": "SRAM",
+   "series": "RED XPLR AXS 13-speed",
+   "label_prefix": "RED",
+   "speeds": 13,
+   "source": "Retailer listings, reviews and SRAM support articles (tunecycles.com.au, bike-components.de, bike24.com, rosebikes, merlincycles.com, bikerumor.com, bikeradar.com, cyclingnews.com, support.sram.com), 2026-10-26; not yet checked against SRAM's own spec sheets",
+   "checked_on": "2026-10-26",
+   "verified": false,
+   "notes": "13-speed 1× gravel group. The full-mount rear derailleur needs a UDH frame (SRAM: chainstay 415 mm or longer, 47.5 mm chainline) and only works with the 10-46 XPLR 13-speed cassette and Flattop chains. One AXS battery, on the rear derailleur.",
+   "options": [
+    {
+     "key": "crank_length",
+     "label": "Crank length",
+     "default": "172.5",
+     "choices": [
+      {
+       "value": "160",
+       "label": "160 mm",
+       "vars": {
+        "crank_length": "160"
+       }
+      },
+      {
+       "value": "165",
+       "label": "165 mm",
+       "vars": {
+        "crank_length": "165"
+       }
+      },
+      {
+       "value": "167.5",
+       "label": "167.5 mm",
+       "vars": {
+        "crank_length": "167.5"
+       }
+      },
+      {
+       "value": "170",
+       "label": "170 mm",
+       "vars": {
+        "crank_length": "170"
+       }
+      },
+      {
+       "value": "172.5",
+       "label": "172.5 mm",
+       "vars": {
+        "crank_length": "172.5"
+       }
+      },
+      {
+       "value": "175",
+       "label": "175 mm",
+       "vars": {
+        "crank_length": "175"
+       }
+      }
+     ]
+    },
+    {
+     "key": "ring",
+     "label": "Chainring",
+     "default": "42",
+     "choices": [
+      {
+       "value": "38",
+       "label": "38T",
+       "vars": {
+        "ring": "38"
+       }
+      },
+      {
+       "value": "40",
+       "label": "40T",
+       "vars": {
+        "ring": "40"
+       }
+      },
+      {
+       "value": "42",
+       "label": "42T",
+       "vars": {
+        "ring": "42"
+       }
+      },
+      {
+       "value": "44",
+       "label": "44T",
+       "vars": {
+        "ring": "44"
+       }
+      },
+      {
+       "value": "46",
+       "label": "46T",
+       "vars": {
+        "ring": "46"
+       }
+      }
+     ]
+    },
+    {
+     "key": "cassette",
+     "label": "Cassette",
+     "default": "10-46",
+     "choices": [
+      {
+       "value": "10-46",
+       "label": "10-46",
+       "vars": {
+        "cassette": "10-46",
+        "sprockets": "10-11-12-13-15-17-19-21-24-28-32-38-46",
+        "cassette_model": "RED XPLR XG-1391 E1 10-46"
+       }
+      }
+     ]
+    },
+    {
+     "key": "rotor_front",
+     "label": "Front rotor",
+     "default": "160",
+     "choices": [
+      {
+       "value": "160",
+       "label": "160 mm",
+       "vars": {
+        "rotor_front": "160"
+       }
+      },
+      {
+       "value": "140",
+       "label": "140 mm",
+       "vars": {
+        "rotor_front": "140"
+       }
+      }
+     ]
+    },
+    {
+     "key": "rotor_rear",
+     "label": "Rear rotor",
+     "default": "160",
+     "choices": [
+      {
+       "value": "160",
+       "label": "160 mm",
+       "vars": {
+        "rotor_rear": "160"
+       }
+      },
+      {
+       "value": "140",
+       "label": "140 mm",
+       "vars": {
+        "rotor_rear": "140"
+       }
+      }
+     ]
+    },
+    {
+     "key": "bottom_bracket",
+     "label": "Bottom bracket",
+     "default": "BSA",
+     "choices": [
+      {
+       "value": "BSA",
+       "label": "Threaded BSA 68 mm (DUB BSA)",
+       "vars": {
+        "bb_model": "SRAM DUB BSA road bottom bracket",
+        "bb_standard": "BSA threaded, 68 mm shell"
+       }
+      },
+      {
+       "value": "PF",
+       "label": "Press-fit (DUB PF86 / BB92)",
+       "vars": {
+        "bb_model": "SRAM DUB PressFit road bottom bracket",
+        "bb_standard": "Press-fit 86.5 / 92 mm"
+       }
+      },
+      {
+       "value": "NONE",
+       "label": "Other / keep my bottom bracket",
+       "vars": {}
+      }
+     ]
+    }
+   ],
+   "items": [
+    {
+     "key": "shifters",
+     "type": "SHIFTERS",
+     "name": "AXS levers",
+     "model": "RED AXS HRD shift-brake levers",
+     "specs": {
+      "function": "Wireless AXS shift-brake levers, hydraulic disc brake",
+      "power": "CR2032 coin cell in each lever",
+      "brake fluid": "DOT 5.1",
+      "note": "Same levers as the 2× road group; the left lever's button shifts down on 1×"
+     },
+     "mount": {
+      "slot": "SHIFTERS"
+     }
+    },
+    {
+     "key": "rear_derailleur",
+     "type": "REAR_DERAILLEUR",
+     "name": "rear derailleur",
+     "model": "RED XPLR AXS rear derailleur",
+     "specs": {
+      "speeds": "13",
+      "mount": "Full mount (UDH)",
+      "cassette": "XPLR 10-46 only"
+     },
+     "mount": {
+      "slot": "REAR_DERAILLEUR"
+     }
+    },
+    {
+     "key": "pulley_upper",
+     "type": "PULLEY_WHEEL",
+     "name": "upper pulley (guide)",
+     "model": "RED XPLR AXS rear derailleur guide pulley",
+     "specs": {
+      "speeds": "13",
+      "teeth": "12"
+     },
+     "mount": {
+      "parent": "rear_derailleur",
+      "slot": "PULLEY_UPPER"
+     }
+    },
+    {
+     "key": "pulley_lower",
+     "type": "PULLEY_WHEEL",
+     "name": "lower pulley (tension)",
+     "model": "RED XPLR AXS rear derailleur tension pulley",
+     "specs": {
+      "speeds": "13",
+      "teeth": "12"
+     },
+     "mount": {
+      "parent": "rear_derailleur",
+      "slot": "PULLEY_LOWER"
+     }
+    },
+    {
+     "key": "battery_rear",
+     "type": "BATTERY",
+     "name": "AXS battery (rear derailleur)",
+     "model": "SRAM AXS battery",
+     "specs": {
+      "system": "SRAM AXS",
+      "mount": "on the rear derailleur",
+      "charging": "SRAM AXS charger (USB)"
+     },
+     "mount": {
+      "parent": "rear_derailleur",
+      "slot": "BATTERY"
+     },
+     "rules": {
+      "DI2_BATTERY_CHARGE": {
+       "name": "Charge AXS battery",
+       "interval_km": null,
+       "warn_km": null,
+       "interval_hours": 55,
+       "warn_hours": 10,
+       "notes": "SRAM: about 60 h of riding per charge for AXS road derailleurs (support.sram.com); 55 h leaves a margin. Not verified for this exact derailleur."
+      }
+     }
+    },
+    {
+     "key": "crankset",
+     "type": "CRANKSET",
+     "name": "crankset",
+     "model": "RED XPLR crankset 1× {crank_length} mm",
+     "specs": {
+      "speeds": "1×13",
+      "crank length": "{crank_length} mm",
+      "chainring": "{ring}T",
+      "spindle": "DUB (28.99 mm)",
+      "chainline": "47.5 mm"
+     },
+     "mount": {
+      "slot": "CRANKSET"
+     }
+    },
+    {
+     "key": "chainring",
+     "type": "CHAINRING",
+     "name": "chainring {ring}T",
+     "model": "RED XPLR X-Sync chainring {ring}T",
+     "specs": {
+      "teeth": "{ring}",
+      "position": "single (1×)"
+     },
+     "mount": {
+      "parent": "crankset",
+      "slot": "CHAINRING_OUTER"
+     }
+    },
+    {
+     "key": "bottom_bracket",
+     "type": "BOTTOM_BRACKET",
+     "name": "bottom bracket",
+     "model": "{bb_model}",
+     "specs": {
+      "standard": "{bb_standard}",
+      "spindle": "DUB (28.99 mm)"
+     },
+     "mount": {
+      "slot": "BOTTOM_BRACKET"
+     },
+     "when": {
+      "bottom_bracket": [
+       "BSA",
+       "PF"
+      ]
+     }
+    },
+    {
+     "key": "cassette",
+     "type": "CASSETTE",
+     "name": "cassette {cassette}",
+     "model": "{cassette_model}",
+     "specs": {
+      "speeds": "13",
+      "range": "{cassette}T",
+      "sprockets": "{sprockets}",
+      "freehub": "SRAM XDR"
+     },
+     "mount": {
+      "wheel": "REAR_WHEEL",
+      "slot": "CASSETTE"
+     }
+    },
+    {
+     "key": "chain",
+     "type": "CHAIN",
+     "name": "chain",
+     "model": "RED Flattop chain 12/13-speed",
+     "specs": {
+      "speeds": "12/13 (Flattop)",
+      "joining": "Flattop PowerLock"
+     },
+     "mount": {
+      "slot": "CHAIN"
+     }
+    },
+    {
+     "key": "quick_link",
+     "type": "QUICK_LINK",
+     "name": "quick link",
+     "model": "SRAM Flattop PowerLock",
+     "specs": {
+      "speeds": "12/13",
+      "reuse": "SRAM: single use, fit a new one after opening"
+     },
+     "mount": {
+      "parent": "chain",
+      "slot": "QUICK_LINK"
+     }
+    },
+    {
+     "key": "brake_front",
+     "type": "BRAKE_CIRCUIT",
+     "name": "front brake",
+     "model": "RED AXS HRD caliper front",
+     "specs": {
+      "caliper": "Flat mount, 2 pistons",
+      "fluid": "DOT 5.1",
+      "rotor": "160 mm"
+     },
+     "mount": {
+      "slot": "FRONT_BRAKE"
+     }
+    },
+    {
+     "key": "brake_rear",
+     "type": "BRAKE_CIRCUIT",
+     "name": "rear brake",
+     "model": "RED AXS HRD caliper rear",
+     "specs": {
+      "caliper": "Flat mount, 2 pistons",
+      "fluid": "DOT 5.1",
+      "rotor": "160 mm"
+     },
+     "mount": {
+      "slot": "REAR_BRAKE"
+     }
+    },
+    {
+     "key": "pads_front",
+     "type": "BRAKE_PADS",
+     "name": "front pads",
+     "model": "SRAM road disc brake pads (organic)",
+     "specs": {
+      "compound": "Organic",
+      "fits": "RED HRD calipers"
+     },
+     "mount": {
+      "slot": "FRONT_PADS"
+     }
+    },
+    {
+     "key": "pads_rear",
+     "type": "BRAKE_PADS",
+     "name": "rear pads",
+     "model": "SRAM road disc brake pads (organic)",
+     "specs": {
+      "compound": "Organic",
+      "fits": "RED HRD calipers"
+     },
+     "mount": {
+      "slot": "REAR_PADS"
+     }
+    },
+    {
+     "key": "rotor_front",
+     "type": "BRAKE_ROTOR",
+     "name": "front rotor {rotor_front} mm",
+     "model": "SRAM Paceline X {rotor_front} mm",
+     "specs": {
+      "size": "{rotor_front} mm",
+      "mount": "Center Lock or 6-bolt (check your hubs)"
+     },
+     "mount": {
+      "wheel": "FRONT_WHEEL",
+      "slot": "ROTOR"
+     }
+    },
+    {
+     "key": "rotor_rear",
+     "type": "BRAKE_ROTOR",
+     "name": "rear rotor {rotor_rear} mm",
+     "model": "SRAM Paceline X {rotor_rear} mm",
+     "specs": {
+      "size": "{rotor_rear} mm",
+      "mount": "Center Lock or 6-bolt (check your hubs)"
+     },
+     "mount": {
+      "wheel": "REAR_WHEEL",
+      "slot": "ROTOR"
+     }
+    }
+   ]
+  },
+  {
+   "code": "SRAM_FORCE_XPLR_AXS_1X13",
+   "name": "SRAM Force XPLR AXS · 1×13 · hydraulic disc (gravel)",
+   "maker": "SRAM",
+   "series": "Force XPLR AXS 13-speed",
+   "label_prefix": "Force",
+   "speeds": 13,
+   "source": "Retailer listings, reviews and SRAM support articles (tunecycles.com.au, bike-components.de, bike24.com, rosebikes, merlincycles.com, bikerumor.com, bikeradar.com, cyclingnews.com, support.sram.com), 2026-10-26; not yet checked against SRAM's own spec sheets",
+   "checked_on": "2026-10-26",
+   "verified": false,
+   "notes": "13-speed 1× gravel group. The full-mount rear derailleur needs a UDH frame (SRAM: chainstay 415 mm or longer, 47.5 mm chainline) and only works with the 10-46 XPLR 13-speed cassette and Flattop chains. One AXS battery, on the rear derailleur.",
+   "options": [
+    {
+     "key": "crank_length",
+     "label": "Crank length",
+     "default": "172.5",
+     "choices": [
+      {
+       "value": "160",
+       "label": "160 mm",
+       "vars": {
+        "crank_length": "160"
+       }
+      },
+      {
+       "value": "165",
+       "label": "165 mm",
+       "vars": {
+        "crank_length": "165"
+       }
+      },
+      {
+       "value": "167.5",
+       "label": "167.5 mm",
+       "vars": {
+        "crank_length": "167.5"
+       }
+      },
+      {
+       "value": "170",
+       "label": "170 mm",
+       "vars": {
+        "crank_length": "170"
+       }
+      },
+      {
+       "value": "172.5",
+       "label": "172.5 mm",
+       "vars": {
+        "crank_length": "172.5"
+       }
+      },
+      {
+       "value": "175",
+       "label": "175 mm",
+       "vars": {
+        "crank_length": "175"
+       }
+      }
+     ]
+    },
+    {
+     "key": "ring",
+     "label": "Chainring",
+     "default": "42",
+     "choices": [
+      {
+       "value": "38",
+       "label": "38T",
+       "vars": {
+        "ring": "38"
+       }
+      },
+      {
+       "value": "40",
+       "label": "40T",
+       "vars": {
+        "ring": "40"
+       }
+      },
+      {
+       "value": "42",
+       "label": "42T",
+       "vars": {
+        "ring": "42"
+       }
+      },
+      {
+       "value": "44",
+       "label": "44T",
+       "vars": {
+        "ring": "44"
+       }
+      },
+      {
+       "value": "46",
+       "label": "46T",
+       "vars": {
+        "ring": "46"
+       }
+      }
+     ]
+    },
+    {
+     "key": "cassette",
+     "label": "Cassette",
+     "default": "10-46",
+     "choices": [
+      {
+       "value": "10-46",
+       "label": "10-46",
+       "vars": {
+        "cassette": "10-46",
+        "sprockets": "10-11-12-13-15-17-19-21-24-28-32-38-46",
+        "cassette_model": "Force XPLR XG-1371 E1 10-46"
+       }
+      }
+     ]
+    },
+    {
+     "key": "rotor_front",
+     "label": "Front rotor",
+     "default": "160",
+     "choices": [
+      {
+       "value": "160",
+       "label": "160 mm",
+       "vars": {
+        "rotor_front": "160"
+       }
+      },
+      {
+       "value": "140",
+       "label": "140 mm",
+       "vars": {
+        "rotor_front": "140"
+       }
+      }
+     ]
+    },
+    {
+     "key": "rotor_rear",
+     "label": "Rear rotor",
+     "default": "160",
+     "choices": [
+      {
+       "value": "160",
+       "label": "160 mm",
+       "vars": {
+        "rotor_rear": "160"
+       }
+      },
+      {
+       "value": "140",
+       "label": "140 mm",
+       "vars": {
+        "rotor_rear": "140"
+       }
+      }
+     ]
+    },
+    {
+     "key": "bottom_bracket",
+     "label": "Bottom bracket",
+     "default": "BSA",
+     "choices": [
+      {
+       "value": "BSA",
+       "label": "Threaded BSA 68 mm (DUB BSA)",
+       "vars": {
+        "bb_model": "SRAM DUB BSA road bottom bracket",
+        "bb_standard": "BSA threaded, 68 mm shell"
+       }
+      },
+      {
+       "value": "PF",
+       "label": "Press-fit (DUB PF86 / BB92)",
+       "vars": {
+        "bb_model": "SRAM DUB PressFit road bottom bracket",
+        "bb_standard": "Press-fit 86.5 / 92 mm"
+       }
+      },
+      {
+       "value": "NONE",
+       "label": "Other / keep my bottom bracket",
+       "vars": {}
+      }
+     ]
+    }
+   ],
+   "items": [
+    {
+     "key": "shifters",
+     "type": "SHIFTERS",
+     "name": "AXS levers",
+     "model": "Force AXS HRD shift-brake levers",
+     "specs": {
+      "function": "Wireless AXS shift-brake levers, hydraulic disc brake",
+      "power": "CR2032 coin cell in each lever",
+      "brake fluid": "DOT 5.1",
+      "note": "Same levers as the 2× road group; the left lever's button shifts down on 1×"
+     },
+     "mount": {
+      "slot": "SHIFTERS"
+     }
+    },
+    {
+     "key": "rear_derailleur",
+     "type": "REAR_DERAILLEUR",
+     "name": "rear derailleur",
+     "model": "Force XPLR AXS rear derailleur",
+     "specs": {
+      "speeds": "13",
+      "mount": "Full mount (UDH)",
+      "cassette": "XPLR 10-46 only"
+     },
+     "mount": {
+      "slot": "REAR_DERAILLEUR"
+     }
+    },
+    {
+     "key": "pulley_upper",
+     "type": "PULLEY_WHEEL",
+     "name": "upper pulley (guide)",
+     "model": "Force XPLR AXS rear derailleur guide pulley",
+     "specs": {
+      "speeds": "13",
+      "teeth": "12"
+     },
+     "mount": {
+      "parent": "rear_derailleur",
+      "slot": "PULLEY_UPPER"
+     }
+    },
+    {
+     "key": "pulley_lower",
+     "type": "PULLEY_WHEEL",
+     "name": "lower pulley (tension)",
+     "model": "Force XPLR AXS rear derailleur tension pulley",
+     "specs": {
+      "speeds": "13",
+      "teeth": "12"
+     },
+     "mount": {
+      "parent": "rear_derailleur",
+      "slot": "PULLEY_LOWER"
+     }
+    },
+    {
+     "key": "battery_rear",
+     "type": "BATTERY",
+     "name": "AXS battery (rear derailleur)",
+     "model": "SRAM AXS battery",
+     "specs": {
+      "system": "SRAM AXS",
+      "mount": "on the rear derailleur",
+      "charging": "SRAM AXS charger (USB)"
+     },
+     "mount": {
+      "parent": "rear_derailleur",
+      "slot": "BATTERY"
+     },
+     "rules": {
+      "DI2_BATTERY_CHARGE": {
+       "name": "Charge AXS battery",
+       "interval_km": null,
+       "warn_km": null,
+       "interval_hours": 55,
+       "warn_hours": 10,
+       "notes": "SRAM: about 60 h of riding per charge for AXS road derailleurs (support.sram.com); 55 h leaves a margin. Not verified for this exact derailleur."
+      }
+     }
+    },
+    {
+     "key": "crankset",
+     "type": "CRANKSET",
+     "name": "crankset",
+     "model": "Force XPLR crankset 1× {crank_length} mm",
+     "specs": {
+      "speeds": "1×13",
+      "crank length": "{crank_length} mm",
+      "chainring": "{ring}T",
+      "spindle": "DUB (28.99 mm)",
+      "chainline": "47.5 mm"
+     },
+     "mount": {
+      "slot": "CRANKSET"
+     }
+    },
+    {
+     "key": "chainring",
+     "type": "CHAINRING",
+     "name": "chainring {ring}T",
+     "model": "Force XPLR X-Sync chainring {ring}T",
+     "specs": {
+      "teeth": "{ring}",
+      "position": "single (1×)"
+     },
+     "mount": {
+      "parent": "crankset",
+      "slot": "CHAINRING_OUTER"
+     }
+    },
+    {
+     "key": "bottom_bracket",
+     "type": "BOTTOM_BRACKET",
+     "name": "bottom bracket",
+     "model": "{bb_model}",
+     "specs": {
+      "standard": "{bb_standard}",
+      "spindle": "DUB (28.99 mm)"
+     },
+     "mount": {
+      "slot": "BOTTOM_BRACKET"
+     },
+     "when": {
+      "bottom_bracket": [
+       "BSA",
+       "PF"
+      ]
+     }
+    },
+    {
+     "key": "cassette",
+     "type": "CASSETTE",
+     "name": "cassette {cassette}",
+     "model": "{cassette_model}",
+     "specs": {
+      "speeds": "13",
+      "range": "{cassette}T",
+      "sprockets": "{sprockets}",
+      "freehub": "SRAM XDR"
+     },
+     "mount": {
+      "wheel": "REAR_WHEEL",
+      "slot": "CASSETTE"
+     }
+    },
+    {
+     "key": "chain",
+     "type": "CHAIN",
+     "name": "chain",
+     "model": "Force Flattop chain 12/13-speed",
+     "specs": {
+      "speeds": "12/13 (Flattop)",
+      "joining": "Flattop PowerLock"
+     },
+     "mount": {
+      "slot": "CHAIN"
+     }
+    },
+    {
+     "key": "quick_link",
+     "type": "QUICK_LINK",
+     "name": "quick link",
+     "model": "SRAM Flattop PowerLock",
+     "specs": {
+      "speeds": "12/13",
+      "reuse": "SRAM: single use, fit a new one after opening"
+     },
+     "mount": {
+      "parent": "chain",
+      "slot": "QUICK_LINK"
+     }
+    },
+    {
+     "key": "brake_front",
+     "type": "BRAKE_CIRCUIT",
+     "name": "front brake",
+     "model": "Force AXS HRD caliper front",
+     "specs": {
+      "caliper": "Flat mount, 2 pistons",
+      "fluid": "DOT 5.1",
+      "rotor": "160 mm"
+     },
+     "mount": {
+      "slot": "FRONT_BRAKE"
+     }
+    },
+    {
+     "key": "brake_rear",
+     "type": "BRAKE_CIRCUIT",
+     "name": "rear brake",
+     "model": "Force AXS HRD caliper rear",
+     "specs": {
+      "caliper": "Flat mount, 2 pistons",
+      "fluid": "DOT 5.1",
+      "rotor": "160 mm"
+     },
+     "mount": {
+      "slot": "REAR_BRAKE"
+     }
+    },
+    {
+     "key": "pads_front",
+     "type": "BRAKE_PADS",
+     "name": "front pads",
+     "model": "SRAM road disc brake pads (organic)",
+     "specs": {
+      "compound": "Organic",
+      "fits": "Force HRD calipers"
+     },
+     "mount": {
+      "slot": "FRONT_PADS"
+     }
+    },
+    {
+     "key": "pads_rear",
+     "type": "BRAKE_PADS",
+     "name": "rear pads",
+     "model": "SRAM road disc brake pads (organic)",
+     "specs": {
+      "compound": "Organic",
+      "fits": "Force HRD calipers"
+     },
+     "mount": {
+      "slot": "REAR_PADS"
+     }
+    },
+    {
+     "key": "rotor_front",
+     "type": "BRAKE_ROTOR",
+     "name": "front rotor {rotor_front} mm",
+     "model": "SRAM CenterLine XR {rotor_front} mm",
+     "specs": {
+      "size": "{rotor_front} mm",
+      "mount": "Center Lock or 6-bolt (check your hubs)"
+     },
+     "mount": {
+      "wheel": "FRONT_WHEEL",
+      "slot": "ROTOR"
+     }
+    },
+    {
+     "key": "rotor_rear",
+     "type": "BRAKE_ROTOR",
+     "name": "rear rotor {rotor_rear} mm",
+     "model": "SRAM CenterLine XR {rotor_rear} mm",
+     "specs": {
+      "size": "{rotor_rear} mm",
+      "mount": "Center Lock or 6-bolt (check your hubs)"
+     },
+     "mount": {
+      "wheel": "REAR_WHEEL",
+      "slot": "ROTOR"
+     }
+    }
+   ]
+  }
+ ],
+ "dispositions": {
+  "STORED": "Stored as a reusable spare",
+  "AWAITING_SERVICE": "Awaiting inspection or repair",
+  "RETIRED": "Retired from use",
+  "DISCARDED": "Discarded",
+  "SOLD": "Sold or given away",
+  "IN_USE": "In use (worn by the rider)",
+  "WARRANTY_RETURN": "Returned under warranty"
+ },
+ "stock_units": {
+  "INNER_TUBE": [
+   "tube",
+   "one tube"
+  ],
+  "SPOKES": [
+   "spoke",
+   "one spoke (with nipple) for repairs"
+  ],
+  "BRAKE_PADS": [
+   "set",
+   "one pad set for one caliper"
+  ],
+  "BRAKE_ROTOR": [
+   "rotor",
+   "one rotor"
+  ],
+  "CHAIN": [
+   "chain",
+   "one complete chain"
+  ],
+  "QUICK_LINK": [
+   "link",
+   "one complete connector"
+  ],
+  "BAR_TAPE": [
+   "package",
+   "one package; record its coverage (e.g. one handlebar)"
+  ],
+  "TIRE": [
+   "tire",
+   "one tire"
+  ]
+ },
+ "incident_types": {
+  "FLAT": "Flat tire",
+  "SHIFTING": "Shifting problem",
+  "CHAIN": "Dropped or broken chain",
+  "BRAKES": "Brake problem",
+  "BATTERY": "Empty battery",
+  "LOOSE": "Loose or slipping part",
+  "NOISE": "Creak or noise",
+  "SPOKE": "Broken spoke",
+  "WHEEL": "Wheel problem (out of true, rim, hub)",
+  "PEDAL": "Pedal or cleat problem",
+  "FIT": "Fitting problem (rider)",
+  "CRASH": "Crash",
+  "DEFECT": "Defect / mechanical",
+  "OTHER": "Other incident"
+ },
+ "incident_options": {
+  "FLAT": [
+   {
+    "key": "FRONT_TUBE",
+    "label": "Front tube",
+    "types": [
+     "INNER_TUBE"
+    ],
+    "within": [
+     "FRONT_WHEEL"
+    ]
+   },
+   {
+    "key": "FRONT_TIRE",
+    "label": "Front tire",
+    "types": [
+     "TIRE"
+    ],
+    "within": [
+     "FRONT_WHEEL"
+    ]
+   },
+   {
+    "key": "REAR_TUBE",
+    "label": "Rear tube",
+    "types": [
+     "INNER_TUBE"
+    ],
+    "within": [
+     "REAR_WHEEL"
+    ]
+   },
+   {
+    "key": "REAR_TIRE",
+    "label": "Rear tire",
+    "types": [
+     "TIRE"
+    ],
+    "within": [
+     "REAR_WHEEL"
+    ]
+   }
+  ],
+  "SHIFTING": [
+   {
+    "key": "FD",
+    "label": "Front derailleur",
+    "types": [
+     "FRONT_DERAILLEUR"
+    ],
+    "within": []
+   },
+   {
+    "key": "RD",
+    "label": "Rear derailleur",
+    "types": [
+     "REAR_DERAILLEUR"
+    ],
+    "within": []
+   },
+   {
+    "key": "SHIFTERS",
+    "label": "Shifters",
+    "types": [
+     "SHIFTERS"
+    ],
+    "within": []
+   },
+   {
+    "key": "HANGER",
+    "label": "Derailleur hanger",
+    "types": [
+     "DERAILLEUR_HANGER"
+    ],
+    "within": []
+   },
+   {
+    "key": "DI2",
+    "label": "Di2 / AXS battery",
+    "types": [
+     "BATTERY"
+    ],
+    "within": []
+   },
+   {
+    "key": "SHIFT_CABLE",
+    "label": "Shift cable or housing",
+    "types": [
+     "SHIFT_CABLE",
+     "SHIFT_HOUSING"
+    ],
+    "within": []
+   }
+  ],
+  "CHAIN": [
+   {
+    "key": "CHAIN",
+    "label": "Chain",
+    "types": [
+     "CHAIN"
+    ],
+    "within": []
+   },
+   {
+    "key": "QUICK_LINK",
+    "label": "Quick link",
+    "types": [
+     "QUICK_LINK"
+    ],
+    "within": []
+   },
+   {
+    "key": "FD",
+    "label": "Front derailleur",
+    "types": [
+     "FRONT_DERAILLEUR"
+    ],
+    "within": []
+   },
+   {
+    "key": "RD",
+    "label": "Rear derailleur",
+    "types": [
+     "REAR_DERAILLEUR"
+    ],
+    "within": []
+   },
+   {
+    "key": "CHAINRING",
+    "label": "Chainring",
+    "types": [
+     "CHAINRING"
+    ],
+    "within": []
+   }
+  ],
+  "BRAKES": [
+   {
+    "key": "FRONT_BRAKE",
+    "label": "Front brake",
+    "types": [
+     "BRAKE_CIRCUIT"
+    ],
+    "within": [
+     "FRONT_BRAKE"
+    ]
+   },
+   {
+    "key": "REAR_BRAKE",
+    "label": "Rear brake",
+    "types": [
+     "BRAKE_CIRCUIT"
+    ],
+    "within": [
+     "REAR_BRAKE"
+    ]
+   },
+   {
+    "key": "FRONT_PADS",
+    "label": "Front pads",
+    "types": [
+     "BRAKE_PADS"
+    ],
+    "within": [
+     "FRONT_PADS"
+    ]
+   },
+   {
+    "key": "REAR_PADS",
+    "label": "Rear pads",
+    "types": [
+     "BRAKE_PADS"
+    ],
+    "within": [
+     "REAR_PADS"
+    ]
+   },
+   {
+    "key": "FRONT_ROTOR",
+    "label": "Front rotor",
+    "types": [
+     "BRAKE_ROTOR"
+    ],
+    "within": [
+     "FRONT_WHEEL"
+    ]
+   },
+   {
+    "key": "REAR_ROTOR",
+    "label": "Rear rotor",
+    "types": [
+     "BRAKE_ROTOR"
+    ],
+    "within": [
+     "REAR_WHEEL"
+    ]
+   }
+  ],
+  "BATTERY": [
+   {
+    "key": "DI2",
+    "label": "Di2 / AXS system",
+    "types": [
+     "BATTERY"
+    ],
+    "within": []
+   },
+   {
+    "key": "POWER_METER",
+    "label": "Power meter",
+    "types": [
+     "POWER_METER",
+     "POWER_METER_PEDALS"
+    ],
+    "within": []
+   },
+   {
+    "key": "COMPUTER",
+    "label": "Head unit / computer",
+    "types": [
+     "BIKE_COMPUTER"
+    ],
+    "within": []
+   },
+   {
+    "key": "SPEED_SENSOR",
+    "label": "Speed sensor",
+    "types": [
+     "SENSOR"
+    ],
+    "within": [
+     "SENSOR_SPEED"
+    ]
+   },
+   {
+    "key": "CADENCE_SENSOR",
+    "label": "Cadence sensor",
+    "types": [
+     "SENSOR"
+    ],
+    "within": [
+     "SENSOR_CADENCE"
+    ]
+   },
+   {
+    "key": "LIGHTS",
+    "label": "Lights",
+    "types": [
+     "LIGHT"
+    ],
+    "within": []
+   },
+   {
+    "key": "RADAR",
+    "label": "Radar",
+    "types": [
+     "RADAR"
+    ],
+    "within": []
+   }
+  ],
+  "LOOSE": [
+   {
+    "key": "STEM",
+    "label": "Stem (loose handlebar)",
+    "types": [
+     "STEM"
+    ],
+    "within": []
+   },
+   {
+    "key": "HANDLEBAR",
+    "label": "Handlebar",
+    "types": [
+     "HANDLEBAR"
+    ],
+    "within": []
+   },
+   {
+    "key": "HEADSET",
+    "label": "Headset",
+    "types": [
+     "HEADSET"
+    ],
+    "within": []
+   },
+   {
+    "key": "SEATPOST",
+    "label": "Seatpost (slipping)",
+    "types": [
+     "SEATPOST"
+    ],
+    "within": []
+   },
+   {
+    "key": "SADDLE",
+    "label": "Saddle",
+    "types": [
+     "SADDLE"
+    ],
+    "within": []
+   },
+   {
+    "key": "BAR_TAPE",
+    "label": "Bar tape",
+    "types": [
+     "BAR_TAPE"
+    ],
+    "within": []
+   },
+   {
+    "key": "FRONT_WHEEL",
+    "label": "Front wheel / thru-axle",
+    "types": [
+     "FRONT_WHEEL"
+    ],
+    "within": []
+   },
+   {
+    "key": "REAR_WHEEL",
+    "label": "Rear wheel / thru-axle",
+    "types": [
+     "REAR_WHEEL"
+    ],
+    "within": []
+   }
+  ],
+  "NOISE": [
+   {
+    "key": "BB",
+    "label": "Bottom bracket",
+    "types": [
+     "BOTTOM_BRACKET"
+    ],
+    "within": []
+   },
+   {
+    "key": "HEADSET",
+    "label": "Headset",
+    "types": [
+     "HEADSET"
+    ],
+    "within": []
+   },
+   {
+    "key": "PEDALS",
+    "label": "Pedals",
+    "types": [
+     "PEDALS",
+     "POWER_METER_PEDALS"
+    ],
+    "within": []
+   },
+   {
+    "key": "CRANKSET",
+    "label": "Crankset",
+    "types": [
+     "CRANKSET"
+    ],
+    "within": []
+   },
+   {
+    "key": "FRONT_HUB",
+    "label": "Front hub",
+    "types": [
+     "HUB",
+     "HUB_BEARINGS"
+    ],
+    "within": [
+     "FRONT_WHEEL"
+    ]
+   },
+   {
+    "key": "REAR_HUB",
+    "label": "Rear hub / freehub",
+    "types": [
+     "HUB",
+     "HUB_BEARINGS"
+    ],
+    "within": [
+     "REAR_WHEEL"
+    ]
+   },
+   {
+    "key": "CHAIN",
+    "label": "Chain",
+    "types": [
+     "CHAIN"
+    ],
+    "within": []
+   },
+   {
+    "key": "SEATPOST",
+    "label": "Seatpost / saddle",
+    "types": [
+     "SEATPOST",
+     "SADDLE"
+    ],
+    "within": []
+   }
+  ],
+  "SPOKE": [
+   {
+    "key": "FRONT_WHEEL",
+    "label": "Front wheel",
+    "types": [
+     "FRONT_WHEEL"
+    ],
+    "within": []
+   },
+   {
+    "key": "REAR_WHEEL",
+    "label": "Rear wheel",
+    "types": [
+     "REAR_WHEEL"
+    ],
+    "within": []
+   }
+  ],
+  "WHEEL": [
+   {
+    "key": "FRONT_WHEEL",
+    "label": "Front wheel",
+    "types": [
+     "FRONT_WHEEL"
+    ],
+    "within": []
+   },
+   {
+    "key": "REAR_WHEEL",
+    "label": "Rear wheel",
+    "types": [
+     "REAR_WHEEL"
+    ],
+    "within": []
+   },
+   {
+    "key": "FRONT_SPOKES",
+    "label": "Front spokes",
+    "types": [
+     "SPOKES"
+    ],
+    "within": [
+     "FRONT_WHEEL"
+    ]
+   },
+   {
+    "key": "REAR_SPOKES",
+    "label": "Rear spokes",
+    "types": [
+     "SPOKES"
+    ],
+    "within": [
+     "REAR_WHEEL"
+    ]
+   }
+  ],
+  "PEDAL": [
+   {
+    "key": "PEDALS",
+    "label": "Pedals",
+    "types": [
+     "PEDALS",
+     "POWER_METER_PEDALS"
+    ],
+    "within": []
+   },
+   {
+    "key": "CLEATS",
+    "label": "Cleats",
+    "types": [
+     "CLEATS"
+    ],
+    "within": []
+   },
+   {
+    "key": "SHOES",
+    "label": "Shoes",
+    "types": [
+     "SHOES"
+    ],
+    "within": []
+   }
+  ],
+  "FIT": [
+   {
+    "key": "NUMB_HANDS",
+    "label": "Numb hands",
+    "types": [],
+    "within": []
+   },
+   {
+    "key": "NUMB_TOES",
+    "label": "Numb toes",
+    "types": [],
+    "within": []
+   },
+   {
+    "key": "SADDLE_SORE",
+    "label": "Saddle pain",
+    "types": [],
+    "within": []
+   },
+   {
+    "key": "BACK_PAIN",
+    "label": "Back pain",
+    "types": [],
+    "within": []
+   },
+   {
+    "key": "NECK_PAIN",
+    "label": "Neck pain",
+    "types": [],
+    "within": []
+   },
+   {
+    "key": "SHOULDER_PAIN",
+    "label": "Shoulder pain",
+    "types": [],
+    "within": []
+   },
+   {
+    "key": "KNEE_PAIN",
+    "label": "Knee pain",
+    "types": [],
+    "within": []
+   },
+   {
+    "key": "LEG_PAIN",
+    "label": "Leg pain",
+    "types": [],
+    "within": []
+   },
+   {
+    "key": "CRAMPS",
+    "label": "Cramps",
+    "types": [],
+    "within": []
+   }
+  ],
+  "CRASH": [
+   {
+    "key": "BIKE",
+    "label": "Whole bike",
+    "types": [],
+    "within": []
+   },
+   {
+    "key": "FRAME",
+    "label": "Frame and fork",
+    "types": [
+     "FRAME"
+    ],
+    "within": []
+   },
+   {
+    "key": "RIDER",
+    "label": "Rider (injury)",
+    "types": [],
+    "within": []
+   },
+   {
+    "key": "FRONT_WHEEL",
+    "label": "Front wheel",
+    "types": [
+     "FRONT_WHEEL"
+    ],
+    "within": []
+   },
+   {
+    "key": "REAR_WHEEL",
+    "label": "Rear wheel",
+    "types": [
+     "REAR_WHEEL"
+    ],
+    "within": []
+   },
+   {
+    "key": "RD",
+    "label": "Rear derailleur",
+    "types": [
+     "REAR_DERAILLEUR"
+    ],
+    "within": []
+   },
+   {
+    "key": "HANGER",
+    "label": "Derailleur hanger",
+    "types": [
+     "DERAILLEUR_HANGER"
+    ],
+    "within": []
+   },
+   {
+    "key": "SHIFTERS",
+    "label": "Shifters",
+    "types": [
+     "SHIFTERS"
+    ],
+    "within": []
+   },
+   {
+    "key": "HANDLEBAR",
+    "label": "Handlebar",
+    "types": [
+     "HANDLEBAR"
+    ],
+    "within": []
+   },
+   {
+    "key": "BAR_TAPE",
+    "label": "Bar tape",
+    "types": [
+     "BAR_TAPE"
+    ],
+    "within": []
+   },
+   {
+    "key": "SADDLE",
+    "label": "Saddle",
+    "types": [
+     "SADDLE"
+    ],
+    "within": []
+   },
+   {
+    "key": "COMPUTER",
+    "label": "Head unit / computer",
+    "types": [
+     "BIKE_COMPUTER"
+    ],
+    "within": []
+   }
+  ]
+ },
+ "tire_setups": {
+  "TUBE": "Inner tube",
+  "TUBELESS": "Tubeless (sealant)",
+  "TUBULAR": "Tubular"
+ }
 }

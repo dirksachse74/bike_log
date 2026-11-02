@@ -2,7 +2,7 @@
 $u = Auth::user();
 $flash = Session::takeFlash();
 unset($_SESSION['old']);
-$nav = [['home', 'Overview'], ['bikes', 'Bikes'], ['rides', 'Rides'], ['parts', 'Parts'], ['maintenance', 'Maintenance'], ['supplies', 'Supplies']];
+$nav = [['home', 'Overview'], ['bikes', 'Bikes'], ['rides', 'Rides'], ['parts', 'Parts'], ['spares', 'Spares'], ['maintenance', 'Maintenance'], ['supplies', 'Supplies']];
 $site = Settings::get('site_name');
 ?><!doctype html>
 <html lang="en">

@@ -634,6 +634,14 @@ you disagree. Dates are 2026-10-24 unless noted.
     an interval at the window end with the window as warning, PARENT_COUNT rules not yet, no cached totals.
     Rides on a maintenance day count as after it (reminder slightly early, never late). The Python desktop
     app and its server mode (138) stay unchanged.
+    Round 2 (migration 002) follows the desktop rules: work sessions make a groupset import or an incident
+    fix undoable in one step (parts it created are deleted, installs voided, removals reopened); removed
+    parts get a disposition (STORED, AWAITING_SERVICE, DISCARDED ...; discarded/sold/retired retire the
+    part); counted stock is a consumable line with `tracking_mode = COUNTED` and a part type, and taking one
+    out creates an individual part in the same transaction; spare minimums, spoke limit and default tire
+    setup are per-user settings (`user_settings`); incidents are journal entries sharing `incident_group`,
+    one per affected part or position; punctures list each tire or tube with its own km, never summed per
+    model. The auto frame part does not stop a bike without other history from being deleted.
 
 ## Repository
 27. Pushed only to the feature branch `claude/project-thread-6y3mmh` of the private repository. Demo

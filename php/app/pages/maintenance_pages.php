@@ -210,7 +210,8 @@ function page_supply_edit(): void
     $uid = (int)require_user()['id'];
     $id = get_int('id');
     $item = $id ? (Db::one('SELECT * FROM consumables WHERE id = ? AND user_id = ?', [$id, $uid]) ?? throw new NotFound('Not found.'))
-        : ['id' => 0, 'kind' => 'WAX', 'name' => '', 'maker' => '', 'unit' => 'ml', 'track_stock' => 1, 'notes' => '', 'archived_at' => null];
+        : ['id' => 0, 'kind' => get_param('mode') === 'COUNTED' ? 'OTHER' : 'WAX', 'name' => '', 'maker' => '', 'unit' => 'ml', 'track_stock' => 1, 'notes' => '',
+            'archived_at' => null, 'tracking_mode' => get_param('mode') === 'COUNTED' ? 'COUNTED' : 'BULK', 'component_type' => null, 'min_stock' => null, 'storage_location' => ''];
     if (Request::isPost()) {
         if (post('do') === 'archive' || post('do') === 'unarchive') {
             Db::updateOwned('consumables', $id, $uid, ['archived_at' => post('do') === 'archive' ? now_utc() : null]);
@@ -223,7 +224,21 @@ function page_supply_edit(): void
             throw new UserError('You already have a supply with that name.');
         }
         $row = ['kind' => isset(Catalog::CONSUMABLE_KINDS[post('kind')]) ? post('kind') : 'OTHER', 'name' => post('name'),
-            'maker' => nullable(post('maker')), 'unit' => post('unit') ?: 'ml', 'track_stock' => post('track_stock') === '1' ? 1 : 0, 'notes' => nullable(post('notes'))];
+            'maker' => nullable(post('maker')), 'unit' => post('unit') ?: 'ml', 'track_stock' => post('track_stock') === '1' ? 1 : 0, 'notes' => nullable(post('notes')),
+            'min_stock' => parse_number(post('min_stock'), 'Keep at least'), 'storage_location' => nullable(mb_substr(post('storage_location'), 0, 160))];
+        $units = Catalog::raw('stock_units');
+        if (post('tracking_mode') === 'COUNTED') {
+            if (!isset($units[post('component_type')])) {
+                throw new UserError('Counted stock: choose what kind of part it is.');
+            }
+            $row['tracking_mode'] = 'COUNTED';
+            $row['component_type'] = post('component_type');
+            $row['unit'] = $units[post('component_type')][0];
+            $row['kind'] = 'OTHER';
+        } else {
+            $row['tracking_mode'] = 'BULK';
+            $row['component_type'] = null;
+        }
         if ($id) {
             Db::updateOwned('consumables', $id, $uid, $row);
         } else {

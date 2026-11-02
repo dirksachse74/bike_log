@@ -51,7 +51,11 @@ function page_bike(): void
     $history = Db::all('SELECT i.*, c.label, c.mark, c.component_type FROM installations i JOIN components c ON c.id = i.component_id
         WHERE i.user_id = ? AND i.bike_id = ? ORDER BY COALESCE(i.removed_on, i.installed_on) DESC, i.id DESC LIMIT 40', [$uid, $bike['id']]);
     $changeDays = Domain::changeDays($uid, (int)$bike['id']);
-    View::render('bikes/show', compact('bike', 'parts', 'stats', 'reminders', 'rides', 'events', 'history', 'date', 'changeDays'), $bike['name'], 'bikes');
+    $incidents = Incidents::list($uid, ['bike_id' => $bike['id'], 'open' => 1]);
+    $fixData = fix_data($uid, $incidents);
+    $journal = Journal::entries($uid, (int)$bike['id'], null, true);
+    View::render('bikes/show', compact('bike', 'parts', 'stats', 'reminders', 'rides', 'events', 'history', 'date', 'changeDays', 'incidents', 'fixData', 'journal'),
+        $bike['name'], 'bikes');
 }
 
 function page_bike_edit(): void
@@ -81,6 +85,7 @@ function page_bike_edit(): void
         } else {
             $id = Db::insert('bikes', $row + ['user_id' => $uid, 'created_at' => now_utc()]);
         }
+        Inventory::ensureFrame($uid, $id);
         Session::flash('ok', 'Bike saved.');
         redirect('bike', ['id' => $id]);
     }
@@ -102,11 +107,22 @@ function page_bike_status(): void
         Session::flash('ok', 'Bike is active again.');
     } elseif (post('do') === 'delete') {
         $used = (int)Db::value('SELECT (SELECT COUNT(*) FROM rides WHERE bike_id = ?) + (SELECT COUNT(*) FROM installations WHERE bike_id = ?)
-            + (SELECT COUNT(*) FROM maintenance_events WHERE bike_id = ?)', [$bike['id'], $bike['id'], $bike['id']]);
+            + (SELECT COUNT(*) FROM maintenance_events WHERE bike_id = ?) + (SELECT COUNT(*) FROM journal_entries WHERE bike_id = ?)
+            - (SELECT COUNT(*) FROM installations WHERE bike_id = ? AND note = ? AND removed_on IS NULL AND voided_at IS NULL)',
+            [$bike['id'], $bike['id'], $bike['id'], $bike['id'], $bike['id'], Inventory::AUTO_FRAME_NOTE]);
         if ($used > 0) {
             throw new UserError('This bike has rides, parts or maintenance in its history, so it can only be retired, not deleted.');
         }
-        Db::run('DELETE FROM bikes WHERE id = ? AND user_id = ?', [$bike['id'], $uid]);
+        Db::tx(function () use ($uid, $bike) {
+            $frames = Db::all('SELECT component_id FROM installations WHERE user_id = ? AND bike_id = ? AND note = ?', [$uid, $bike['id'], Inventory::AUTO_FRAME_NOTE]);
+            Db::run('DELETE FROM installations WHERE user_id = ? AND bike_id = ?', [$uid, $bike['id']]);
+            foreach ($frames as $f) {
+                if (!Db::one('SELECT id FROM installations WHERE component_id = ?', [$f['component_id']])) {
+                    Db::run('DELETE FROM components WHERE id = ? AND user_id = ?', [$f['component_id'], $uid]);
+                }
+            }
+            Db::run('DELETE FROM bikes WHERE id = ? AND user_id = ?', [$bike['id'], $uid]);
+        });
         Session::flash('ok', 'Bike deleted (it had no history).');
         redirect('bikes');
     }
@@ -153,7 +169,14 @@ function page_part(): void
     $adjustments = Db::all('SELECT * FROM usage_adjustments WHERE user_id = ? AND component_id = ? ORDER BY effective_on DESC', [$uid, $c['id']]);
     $reminders = $c['status'] === 'ACTIVE' && $bike ? Reminders::forUser($uid, null, (int)$c['id']) : [];
     $rules = Reminders::rulesFor($uid, $c);
-    View::render('parts/show', compact('c', 'totals', 'installs', 'open', 'bike', 'children', 'events', 'adjustments', 'reminders', 'rules'),
+    $journal = Journal::entries($uid, null, (int)$c['id'], true);
+    $spokes = in_array($c['component_type'], ['FRONT_WHEEL', 'REAR_WHEEL'], true) ? Incidents::spokeInfo($uid, $c) : null;
+    $spokeStock = $spokes ? Db::all("SELECT id, name FROM consumables WHERE user_id = ? AND tracking_mode = 'COUNTED' AND component_type = 'SPOKES' AND archived_at IS NULL", [$uid]) : [];
+    $incidents = Incidents::list($uid, ['component_id' => $c['id']]);
+    $dispositions = Db::all('SELECT * FROM component_dispositions WHERE user_id = ? AND component_id = ? ORDER BY effective_on DESC, id DESC', [$uid, $c['id']]);
+    $product = $c['product_id'] ? Db::one('SELECT * FROM products WHERE id = ? AND user_id = ?', [$c['product_id'], $uid]) : null;
+    View::render('parts/show', compact('c', 'totals', 'installs', 'open', 'bike', 'children', 'events', 'adjustments', 'reminders', 'rules',
+        'journal', 'spokes', 'spokeStock', 'incidents', 'dispositions', 'product'),
         Domain::componentName($c), 'parts');
 }
 
@@ -163,7 +186,7 @@ function page_part_edit(): void
     $id = get_int('id');
     $c = $id ? Domain::component($uid, $id) : ['id' => 0, 'component_type' => get_param('type', 'CHAIN'), 'label' => '', 'maker' => '', 'model' => '',
         'mark' => '', 'serial_number' => '', 'prior_usage' => 'NEW', 'starting_km' => null, 'starting_km_estimate' => 0, 'tire_setup' => null,
-        'purchase_date' => '', 'price_cents' => null, 'shop' => '', 'notes' => ''];
+        'purchase_date' => '', 'price_cents' => null, 'shop' => '', 'notes' => '', 'storage_location' => '', 'pressure_note' => '', 'warranty_until' => ''];
     if (Request::isPost()) {
         $type = $id ? $c['component_type'] : post('component_type');
         if (!Catalog::type($type)) {
@@ -182,9 +205,11 @@ function page_part_edit(): void
             'label' => mb_substr($label, 0, 160), 'maker' => nullable(post('maker')), 'model' => nullable(post('model')),
             'mark' => nullable(post('mark')), 'serial_number' => nullable(post('serial_number')), 'prior_usage' => $prior,
             'starting_km' => $prior === 'RECORDED' ? $start : null, 'starting_km_estimate' => post('starting_km_estimate') === '1' ? 1 : 0,
-            'tire_setup' => in_array($type, ['FRONT_WHEEL', 'REAR_WHEEL'], true) && in_array(post('tire_setup'), ['TUBE', 'TUBELESS', 'TUBULAR'], true) ? post('tire_setup') : null,
+            'tire_setup' => in_array($type, ['FRONT_WHEEL', 'REAR_WHEEL', 'WHEELSET'], true) && in_array(post('tire_setup'), ['TUBE', 'TUBELESS', 'TUBULAR'], true) ? post('tire_setup') : null,
             'purchase_date' => parse_date(post('purchase_date')), 'price_cents' => parse_money_cents(post('price')),
             'shop' => nullable(post('shop')), 'notes' => nullable(post('notes')), 'updated_at' => now_utc(),
+            'storage_location' => nullable(mb_substr(post('storage_location'), 0, 160)), 'pressure_note' => nullable(mb_substr(post('pressure_note'), 0, 80)),
+            'warranty_until' => parse_date(post('warranty_until')),
         ];
         if ($id) {
             Db::updateOwned('components', $id, $uid, $row);
@@ -198,6 +223,9 @@ function page_part_edit(): void
             if ($bikeId || $parentId) {
                 Domain::install($uid, $id, $bikeId ?: null, $parentId ?: null, post('slot') ?: Catalog::slots($type)[0],
                     parse_date(post('installed_on'), true));
+            }
+            if ($type === 'WHEELSET') {
+                Inventory::ensureWheels($uid, $id, ($bikeId || $parentId) ? parse_date(post('installed_on'), true) : null);
             }
             return $id;
         });
@@ -234,7 +262,9 @@ function page_part_install(): void
         $target = post('target');   // "b:12" or "p:34"
         $bikeId = str_starts_with($target, 'b:') ? (int)substr($target, 2) : null;
         $parentId = str_starts_with($target, 'p:') ? (int)substr($target, 2) : null;
-        Domain::install($uid, (int)$c['id'], $bikeId, $parentId, post('slot'), parse_date(post('installed_on'), true), nullable(post('note')));
+        Domain::install($uid, (int)$c['id'], $bikeId, $parentId, post('slot'), parse_date(post('installed_on'), true), nullable(post('note')),
+            true, null, isset(Inventory::dispositions()[post('old_outcome')]) ? post('old_outcome') : null);
+        Inventory::ensureWheels($uid, (int)$c['id'], parse_date(post('installed_on'), true));
         Session::flash('ok', 'Installed. Rides from ' . post('installed_on') . ' on count for this part.');
         redirect('part', ['id' => $c['id']]);
     }
@@ -248,7 +278,12 @@ function page_inst_remove(): void
     $uid = (int)require_user()['id'];
     $i = Db::one('SELECT * FROM installations WHERE id = ? AND user_id = ?', [get_int('id'), $uid]) ?? throw new NotFound('Record not found.');
     if (Request::isPost()) {
-        Domain::remove($uid, (int)$i['id'], parse_date(post('removed_on'), true), nullable(post('reason')));
+        $outcome = post('outcome');
+        if ($outcome !== '' && isset(Inventory::dispositions()[$outcome])) {
+            Inventory::removeWithOutcome($uid, (int)$i['id'], parse_date(post('removed_on'), true), $outcome, nullable(post('reason')));
+        } else {
+            Domain::remove($uid, (int)$i['id'], parse_date(post('removed_on'), true), nullable(post('reason')));
+        }
         Session::flash('ok', 'Removed. Rides from ' . post('removed_on') . ' on no longer count for this part.');
     }
     redirect('part', ['id' => $i['component_id']]);
@@ -276,6 +311,12 @@ function page_part_status(): void
         } elseif (post('do') === 'restore') {
             Db::updateOwned('components', (int)$c['id'], $uid, ['status' => 'ACTIVE', 'retired_on' => null, 'retire_reason' => null, 'updated_at' => now_utc()]);
             Session::flash('ok', 'Part is active again.');
+        } elseif (post('do') === 'disposition') {
+            if (Domain::openInstallation($uid, (int)$c['id'])) {
+                throw new UserError('Remove it from where it is first; then say what happened to it.');
+            }
+            Inventory::setDisposition($uid, (int)$c['id'], post('disposition'), parse_date(post('on'), true), nullable(post('note')));
+            Session::flash('ok', 'Saved.');
         }
     }
     redirect('part', ['id' => $c['id']]);

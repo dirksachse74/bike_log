@@ -6,8 +6,8 @@ Status key: ✅ done and tested · 🟡 done, not verified where it matters · �
 
 - [x] Base: accounts (sign-up, email confirmation, reset, invitations), admin page, bikes, parts, install
       history and per-part km, rides form, maintenance, reminders, supplies, tests on MySQL (php/tests).
-- [ ] Round 2: groupset import, wheels/tire setup cards, spokes, punctures and incidents, spares and counted
-      stock, spare minimums and shopping list, frame and fork as one part.
+- [x] Round 2: groupset import, wheels/tire setup, spokes, punctures and incidents, spares and counted
+      stock, spare minimums and shopping list, frame and fork as one part, notes and issues (journal).
 - [ ] Round 3: chain rotation and wax cycle (liquid top-up window, after_top_up_km, wet rides), PARENT_COUNT
       (quick link), purchase bundles and costs, journal, repairs (send away), service orders, part life
       report and forecast.

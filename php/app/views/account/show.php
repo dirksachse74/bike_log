@@ -1,3 +1,4 @@
+<p><a class="btn" href="<?= h(url('my_settings')) ?>">My settings: spares to keep, broken spokes, tire setup</a></p>
 <section class="card">
   <h2>Profile</h2>
   <form method="post" action="<?= h(url('account')) ?>"><?= Csrf::field() ?><input type="hidden" name="do" value="profile">

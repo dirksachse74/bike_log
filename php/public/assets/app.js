@@ -10,6 +10,19 @@
     }
   });
 
+  // incident fix forms: "Replaced with" and "The old part" only when it was replaced
+  document.querySelectorAll('[data-fix]').forEach(function (f) {
+    var act = f.querySelector('[data-fix-action]');
+    var sync = function () {
+      f.querySelectorAll('[data-fix-for]').forEach(function (el) {
+        var wrap = el.tagName === 'LABEL' ? el : el.closest('label');
+        if (wrap) { wrap.hidden = el.getAttribute('data-fix-for') !== act.value; }
+      });
+    };
+    act.addEventListener('change', sync);
+    sync();
+  });
+
   // maintenance form: offer only the actions that fit the chosen part, then its results
   var logForm = document.querySelector('[data-log-form]');
   if (logForm) {
