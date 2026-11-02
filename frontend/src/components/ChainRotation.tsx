@@ -232,10 +232,17 @@ function WaxForm({ data, onDone }: { data: ChainRotationData; onDone: (text: str
         </select>
       </Field>
       {onChain && then !== null && <p className="small muted">{onChain.label} comes off first (stored, keeps its km) and is waxed with the others if ticked.</p>}
-      <Field label="Wax used (optional)">
-        <select value={supply} onChange={(e) => setSupply(e.target.value)}>
+      <Field
+        label="Wax used (optional)"
+        hint={
+          <>
+            Your wax is kept under <Link to="/inventory?tab=supplies">Inventory → Supplies</Link> (add one there with Add supply).
+          </>
+        }
+      >
+        <select aria-label="Wax used" value={supply} onChange={(e) => setSupply(e.target.value)}>
           <option value="">Not recorded</option>
-          {supplies.data?.map((c) => (
+          {supplies.data?.filter((c) => ['WAX', 'LUBE', 'OTHER'].includes(c.kind)).map((c) => (
             <option key={c.id} value={c.id}>
               {c.name}
             </option>

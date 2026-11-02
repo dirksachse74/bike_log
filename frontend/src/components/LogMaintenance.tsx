@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { api, newOpId } from '../api'
 import { useApp } from '../context'
 import { toCents, today } from '../format'
@@ -67,6 +68,8 @@ export default function LogMaintenance({ bikeId, componentId, actionCode, onDone
   }, [meta.actions, setup, componentId, comp.data])
   const act = meta.actions.find((a) => a.code === action) ?? null
   const bikeLevel = !!act && !componentId && onBike(act)
+  // waxing and lubing the chain: the product, no amount or cost (Dirk 2026-11-02)
+  const lube = act?.kind === 'LUBRICATE'
   const candidates = act && !componentId && !bikeLevel ? setup.filter((s) => applies(act, s.component_type)) : []
 
   useEffect(() => {
@@ -227,31 +230,51 @@ export default function LogMaintenance({ bikeId, componentId, actionCode, onDone
           )}
           {act.fields.includes('consumable') && (
             <div className="row">
-              <Field label="Product used (optional)">
-                <select value={form.consumable_id} onChange={set('consumable_id')}>
+              <Field
+                label="Product used (optional)"
+                hint={
+                  <>
+                    Your wax, lube and other supplies are kept under <Link to="/inventory?tab=supplies">Inventory → Supplies</Link> (add one there with Add supply).
+                  </>
+                }
+              >
+                <select aria-label="Product used" value={form.consumable_id} onChange={set('consumable_id')}>
                   <option value="">—</option>
-                  {consumables.data?.map((c) => (
+                  {consumables.data?.filter((c) => !lube || ['WAX', 'LUBE', 'OTHER'].includes(c.kind)).map((c) => (
                     <option key={c.id} value={c.id}>
                       {c.name}
                     </option>
                   ))}
                 </select>
               </Field>
-              <Field label="Amount">
-                <input inputMode="decimal" value={form.consumable_qty} onChange={set('consumable_qty')} placeholder="unknown" />
-              </Field>
+              {!lube && (
+                <Field label="Amount">
+                  <input inputMode="decimal" value={form.consumable_qty} onChange={set('consumable_qty')} placeholder="unknown" />
+                </Field>
+              )}
             </div>
           )}
           <div className="row">
             <Field label="Notes (optional)">
               <input value={form.notes} onChange={set('notes')} />
             </Field>
-            <Field label="Cost (optional)" hint="Shop fee or service price; supplies from stock are counted separately.">
-              <input inputMode="decimal" value={form.cost} onChange={set('cost')} placeholder="€" />
-            </Field>
+            {!lube && (
+              <Field label="Cost (optional)" hint="Shop fee or service price; supplies from stock are counted separately.">
+                <input inputMode="decimal" value={form.cost} onChange={set('cost')} placeholder="€" />
+              </Field>
+            )}
           </div>
           <div className="row">
-            <ShopPicker value={form.shop} onChange={(v) => setForm({ ...form, shop: v })} label="Done by a bike shop (optional)" />
+              <ShopPicker
+                value={form.shop}
+                onChange={(v) => setForm({ ...form, shop: v })}
+                label="Done by a bike shop (optional)"
+                hint={
+                  <>
+                    Pick a shop or "New shop…". Rename, merge or hide shops under <Link to="/settings">Settings → Lists</Link>.
+                  </>
+                }
+              />
           </div>
         </>
       )}

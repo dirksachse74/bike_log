@@ -46,6 +46,7 @@ LABELS = {
     "retire_reason": "retire reason", "disposition": "state when not installed", "storage_location": "stored at",
     "tire_setup": "tire setup", "pressure_note": "tire pressure", "bundle_id": "bought in bundle", "mark": "mark", "rotation_bike_id": "chain rotation of bike", "warranty_until": "warranty until", "component_type": "type",
 }
+_BIKE_FIELDS = ("rotation_bike_id",)    # stored as a bike id; the log shows the bike's name
 _SETUP = {"TUBE": "inner tube", "TUBELESS": "tubeless (sealant)", "TUBULAR": "tubular"}
 _PRIOR = {"NEW": "new", "RECORDED": "recorded", "UNKNOWN": "unknown"}
 
@@ -94,6 +95,9 @@ def _fmt(session: Session, field: str, value) -> str | None:
         from bikelog.models import PurchaseBundle
         b = session.get(PurchaseBundle, value)
         return b.name if b else f"#{value}"
+    if field in _BIKE_FIELDS:
+        b = session.get(Bike, value)
+        return b.name if b else f"bike #{value}"
     if field == "tire_setup":
         return _SETUP.get(value, value)
     if field == "prior_usage":
@@ -279,8 +283,15 @@ def entries(session: Session, *, bike_id: int | None = None, component_id: int |
         q = q.where(ChangeLog.component_id == component_id)
     q = q.order_by(ChangeLog.id.desc()).limit(limit)
     labels = dict(session.execute(select(Component.id, Component.label)).all())
+    bike_labels = {LABELS[f] for f in _BIKE_FIELDS}
+
+    def shown(field: str | None, value: str | None) -> str | None:
+        # entries written before bike names were logged hold the bare id ("3")
+        if field in bike_labels and value and value.isdigit():
+            return _fmt(session, "rotation_bike_id", int(value))
+        return value
     return [{"id": c.id, "changed_at": c.changed_at, "action": c.action, "field": c.field,
-             "old_value": c.old_value, "new_value": c.new_value, "source": c.source,
+             "old_value": shown(c.field, c.old_value), "new_value": shown(c.field, c.new_value), "source": c.source,
              "who": SOURCES.get(c.source, c.source), "via": c.via,
              "component_id": c.component_id, "component": labels.get(c.component_id) if bike_id is not None else None}
             for c in session.scalars(q)]

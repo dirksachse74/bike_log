@@ -499,6 +499,12 @@ you disagree. Dates are 2026-10-24 unless noted.
     SKIPPED_UNKNOWN_BIKE, cursor still advances). Already imported rides keep being updated. Re-read
     (rescan) picks skipped rides up once the bike exists. UI: switch in StravaSettings (shown connected or not).
 
+120. **Lubrication entries are product only** (Dirk 2026-11-02). LogMaintenance hides Amount and Cost for actions
+    of kind LUBRICATE (hot wax, liquid wax, lube) and lists only WAX/LUBE/OTHER supplies; hints link to
+    Inventory → Supplies and Settings → Lists (ShopPicker `hint`). The API still accepts amount and cost.
+121. **Change log shows names, not ids** for bike references (`changelog._BIKE_FIELDS`: rotation_bike_id);
+    `entries` turns a bare id stored earlier into the bike's name when shown.
+
 ## Repository
 27. Pushed only to the feature branch `claude/project-thread-6y3mmh` of the private repository. Demo
     data uses fictional Strava gear ids.

@@ -7,6 +7,15 @@ UPDATING.md → "Making a release". New entries go under "Unreleased" as work is
 
 ## Unreleased
 
+### Changed
+- **Record work done → Hot wax / liquid wax / lube** (Dirk 2026-11-02): no Amount and no Cost field any
+  more; the product list shows wax and lube, with a link to **Inventory → Supplies** where they are kept.
+  The shop field links to **Settings → Lists**, where shops are renamed, merged or hidden.
+
+### Fixed
+- The change log of a chain said "changed chain rotation of bike: 3": 3 was the bike's internal number. It
+  now shows the bike's name (also for entries already written).
+
 ### Added
 - **Settings → Strava: "Import only rides with known bikes"** (Dirk 2026-11-01). On: a Strava ride whose
   bike is not in Bike Log (or that has no bike) is skipped and no bike is created; rides already imported
