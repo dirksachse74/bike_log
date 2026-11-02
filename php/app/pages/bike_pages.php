@@ -183,7 +183,8 @@ function page_part(): void
     $incidentChoices = $order ? [] : ServiceOrders::incidentChoices($uid, $c);
     $bundle = $c['bundle_id'] ? Db::one('SELECT * FROM purchase_bundles WHERE id = ? AND voided_at IS NULL', [$c['bundle_id']]) : null;
     $product = $c['product_id'] ? Db::one('SELECT * FROM products WHERE id = ? AND user_id = ?', [$c['product_id'], $uid]) : null;
-    View::render('parts/show', compact('c', 'totals', 'installs', 'open', 'bike', 'children', 'events', 'adjustments', 'reminders', 'rules',
+    $charges = Workshop::chargeHistory($uid, $c);
+    View::render('parts/show', compact('c', 'charges', 'totals', 'installs', 'open', 'bike', 'children', 'events', 'adjustments', 'reminders', 'rules',
         'journal', 'spokes', 'spokeStock', 'incidents', 'dispositions', 'product', 'waxRows', 'parentsServed', 'order', 'orders', 'incidentChoices', 'bundle'),
         Domain::componentName($c), 'parts');
 }

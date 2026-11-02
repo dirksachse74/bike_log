@@ -230,17 +230,18 @@ final class Domain
     }
 
     /** SQL condition (on rides r) and its arguments for one usage period, from $since on. Null = no rides. */
-    public static function periodWhere(int $uid, array $component, array $p, ?string $since = null): ?array
+    public static function periodWhere(int $uid, array $component, array $p, ?string $since = null, ?string $until = null): ?array
     {
         $from = $since !== null ? max($since, $p['from']) : $p['from'];
-        if ($p['to'] !== null && $from >= $p['to']) {
+        $to = $until !== null && ($p['to'] === null || $until < $p['to']) ? $until : $p['to'];
+        if ($to !== null && $from >= $to) {
             return null;
         }
         $sql = 'r.user_id = ? AND ' . self::COUNTED . ' AND r.ride_date >= ?';
         $args = [$uid, $from];
-        if ($p['to'] !== null) {
+        if ($to !== null) {
             $sql .= ' AND r.ride_date < ?';
-            $args[] = $p['to'];
+            $args[] = $to;
         }
         if ($p['kind'] === 'BIKE') {
             $sql .= ' AND r.bike_id = ? AND NOT EXISTS (SELECT 1 FROM ride_equipment e WHERE e.ride_id = r.id AND e.slot = ?)';
@@ -259,16 +260,16 @@ final class Domain
     }
 
     /**
-     * Usage of a part from rides (optionally only rides on/after $since, a date).
+     * Usage of a part from rides (optionally only rides on/after $since and before $until, dates).
      * Returns km (known distances), hours, rides, missing_distance, missing_duration.
      */
-    public static function rideUsage(int $uid, array $component, ?string $since = null): array
+    public static function rideUsage(int $uid, array $component, ?string $since = null, ?string $until = null): array
     {
         $acc = ['km' => 0.0, 'seconds' => 0, 'rides' => 0, 'missing_distance' => 0, 'missing_duration' => 0];
         $parts = [];
         $args = [];
         foreach (self::usagePeriods($uid, (int)$component['id']) as $p) {
-            if ($w = self::periodWhere($uid, $component, $p, $since)) {
+            if ($w = self::periodWhere($uid, $component, $p, $since, $until)) {
                 $parts[] = '(' . $w[0] . ')';
                 array_push($args, ...$w[1]);
             }
@@ -518,6 +519,8 @@ final class Domain
                 'user_id' => $uid, 'action_code' => $action['code'], 'component_id' => $e['component_id'] ?: null, 'bike_id' => $bikeId,
                 'performed_on' => $e['performed_on'], 'outcome' => $outcome, 'measurement_value' => $e['measurement_value'],
                 'measurement_unit' => $e['measurement_value'] !== null ? ($action['unit'] ?? null) : null,
+                'symptom' => isset($e['symptom']) && $e['symptom'] !== '' ? mb_substr((string)$e['symptom'], 0, 500) : null,
+                'work_done' => isset($e['work_done']) && $e['work_done'] !== '' ? mb_substr((string)$e['work_done'], 0, 500) : null,
                 'consumable_id' => $e['consumable_id'] ?: null, 'consumable_qty' => $e['consumable_qty'],
                 'cost_cents' => $e['cost_cents'], 'shop' => $e['shop'], 'notes' => $e['notes'], 'created_at' => now_utc(),
             ]);
@@ -535,14 +538,33 @@ final class Domain
             throw new UserError('Please say why this entry is wrong.');
         }
         Db::tx(function () use ($uid, $eventId, $reason) {
+            $now = now_utc();   // the same moment on the entry and its supplies, so a restore brings back exactly these
             $n = Db::run('UPDATE maintenance_events SET voided_at = ?, void_reason = ? WHERE id = ? AND user_id = ? AND voided_at IS NULL',
-                [now_utc(), $reason, $eventId, $uid])->rowCount();
+                [$now, $reason, $eventId, $uid])->rowCount();
             if ($n !== 1) {
                 throw new NotFound('Entry not found.');
             }
-            Db::run('UPDATE consumable_txns SET voided_at = ? WHERE maintenance_event_id = ? AND user_id = ?', [now_utc(), $eventId, $uid]);
+            Db::run('UPDATE consumable_txns SET voided_at = ? WHERE maintenance_event_id = ? AND user_id = ? AND voided_at IS NULL', [$now, $eventId, $uid]);
             $e = Db::one('SELECT bike_id, component_id, action_code FROM maintenance_events WHERE id = ?', [$eventId]);
             ChangeLog::note($uid, 'work', $eventId, Catalog::actionName($e['action_code']) . " voided: $reason",
+                $e['bike_id'] ? (int)$e['bike_id'] : null, $e['component_id'] ? (int)$e['component_id'] : null);
+        });
+    }
+
+    /** Bring back an entry marked as wrong (with the supplies it used). One taken back by an undo of its whole step cannot. */
+    public static function restoreMaintenance(int $uid, int $eventId): void
+    {
+        Db::tx(function () use ($uid, $eventId) {
+            $e = Db::one('SELECT * FROM maintenance_events WHERE id = ? AND user_id = ?', [$eventId, $uid]) ?? throw new NotFound('Entry not found.');
+            if ($e['voided_at'] === null) {
+                return;
+            }
+            if (str_starts_with((string)$e['void_reason'], 'undone')) {
+                throw new UserError('This entry was taken back with Undo of its whole step. Record the work again instead.');
+            }
+            Db::run('UPDATE consumable_txns SET voided_at = NULL WHERE maintenance_event_id = ? AND user_id = ? AND voided_at = ?', [$eventId, $uid, $e['voided_at']]);
+            Db::run('UPDATE maintenance_events SET voided_at = NULL, void_reason = NULL WHERE id = ?', [$eventId]);
+            ChangeLog::note($uid, 'work', $eventId, Catalog::actionName($e['action_code']) . ' restored',
                 $e['bike_id'] ? (int)$e['bike_id'] : null, $e['component_id'] ? (int)$e['component_id'] : null);
         });
     }

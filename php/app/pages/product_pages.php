@@ -27,6 +27,18 @@ function page_product(): void
         Session::flash('ok', 'Added as a spare.');
         redirect('part', ['id' => $cid]);
     }
+    if (Request::isPost() && post('do') === 'fit') {
+        Workshop::setFit($uid, (int)$p['id'], (int)post('bike_id'), post('verified') === '1', nullable(post('note')));
+        Session::flash('ok', 'Saved. The Replace form shows this when you change a part on that bike.');
+        redirect('product', ['id' => $p['id']]);
+    }
+    if (Request::isPost() && post('do') === 'unfit') {
+        Workshop::removeFit($uid, (int)$p['id'], (int)post('bike_id'));
+        Session::flash('ok', 'Removed.');
+        redirect('product', ['id' => $p['id']]);
+    }
+    $fits = Workshop::fits($uid, (int)$p['id']);
+    $bikes = Db::all("SELECT id, name FROM bikes WHERE user_id = ? AND status = 'ACTIVE' ORDER BY name", [$uid]);
     $fields = [];
     foreach (Products::specFields($p['component_type']) as $f) {
         $fields[$f['key']] = $f;
@@ -37,7 +49,7 @@ function page_product(): void
     }
     unset($c);
     $specs = json_decode((string)$p['specs_json'], true) ?: [];
-    View::render('products/show', compact('p', 'fields', 'parts', 'specs'), Products::name($p), 'parts');
+    View::render('products/show', compact('p', 'fields', 'parts', 'specs', 'fits', 'bikes'), Products::name($p), 'parts');
 }
 
 function page_product_edit(): void

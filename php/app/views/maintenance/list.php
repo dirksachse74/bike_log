@@ -2,6 +2,7 @@
   <a class="btn primary" href="<?= h(url('log')) ?>">+ Log maintenance</a>
   <a class="btn" href="<?= h(url('reminders')) ?>">Reminders</a>
   <a class="btn" href="<?= h(url('rules')) ?>">Service intervals</a>
+  <a class="btn" href="<?= h(url('brakes')) ?>">Brakes</a>
 </div>
 <?php if (!$events): ?><p class="muted">Nothing logged yet.</p><?php endif; ?>
 <table class="list">

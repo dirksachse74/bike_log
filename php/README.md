@@ -105,6 +105,7 @@ php/
                    incidents, fixes, punctures, spokes), chains.php (rotation, wax table), money.php (costs, bundles, repairs, part life),
                    products.php (products, JSON import), records.php (shop list, change log),
                    backups.php (per-user backup, restore, fresh start), rides.php (CSV import, bulk, wheels per ride),
+                   workshop.php (replace with carry-over, wheels into a wheelset, product fits, brakes, charging),
                    pages/*.php (one function per route), routes.php, views/ (templates)
   sql/migrations/  NNN_name.sql, applied in order (install page / Admin → System)
   config/          config.sample.php (copy to config.php, never commit it)
@@ -143,6 +144,8 @@ Done in round 4b: backups and restore per user, fresh start, diagnostics, indoor
 Done in round 5a: rides left out of the km, wheels picked for one ride, several rides at once, CSV ride
 import, shoes in use.
 
-Still to port (round 5b): replacing a part with what is mounted on it moving along, grouping wheels into a
-wheelset, which bike a product fits, the brake overview, restoring a voided maintenance entry, charge history.
-Strava stays out for now.
+Done in round 5b: replace a part (spare, stock, same product, new item) with what is mounted on it moving
+along, wheels into a wheelset, which bikes a product fits, the Brakes page, symptom and work done,
+restoring an entry marked as wrong, charge history.
+
+Every desktop feature is now in the web version except Strava, which stays out for now.

@@ -8,6 +8,10 @@
     <label data-outcome-wrap hidden>Result<select name="outcome" data-outcome></select></label>
     <label data-measure-wrap hidden>Measured <span data-unit></span><input type="text" name="measurement_value" inputmode="decimal"><small>The result is set from the limits if you leave it empty.</small></label>
   </div>
+  <div class="row">
+    <label data-symptom-wrap hidden>Symptom<input type="text" name="symptom" maxlength="500" value="<?= h(old('symptom')) ?>" placeholder="spongy lever, noise ..."></label>
+    <label data-work-wrap hidden>Work done<input type="text" name="work_done" maxlength="500" value="<?= h(old('work_done')) ?>" placeholder="lever bleed, mineral oil ..."></label>
+  </div>
   <div class="row" data-consumable-wrap>
     <label>Supply used<select name="consumable_id"><?= options(array_column($consumables, 'name', 'id'), old('consumable_id'), true, 'None') ?></select></label>
     <?= field('consumable_qty', 'Amount', old('consumable_qty'), 'text', ['inputmode' => 'decimal', 'data-help' => 'Optional; taken from stock.']) ?>

@@ -45,6 +45,15 @@ UPDATING.md → "Making a release". New entries go under "Unreleased" as work is
   to assign a bike, leave out, count again, remove or restore; import rides from a CSV file (own columns
   or Strava's "Download your data" activities.csv; check first, the same file again adds nothing, your
   edits stay); shoes "in use" count every ride on any bike, and so do the cleats on them.
+  Round 5b, which completes the feature match: **Replace** on an installed part (a stored spare, one from
+  counted stock, a new one of the same product or a new item; what happens to the old part; parts on it
+  such as the quick link or the tire move over when ticked, a quick link due for replacement stays behind;
+  one step you can undo), **put the wheels into a wheelset** (bike page, when the wheels sit directly on
+  the bike), **which bikes a product fits** (checked or not, with a note; product page; shown in the
+  Replace form), a **Brakes** page (fluid reminder, last fluid change, last bleed with symptom and work
+  done), **symptom and work done** on maintenance entries that have them (bleed, repair, headset ...),
+  **Restore** for an entry marked as wrong (with the supplies it used), and **Charging** on pedals,
+  batteries and computers (km, ride time, rides and days since the last charge, per charge and on average).
 - **Bike Log on your own server with Google sign-in** (Dirk 2026-11-02). `--server` mode: only the Google
   accounts you list can sign in, HTTPS through Caddy, a backup every day while it runs, Strava connects
   through your own domain. Docker setup with a one-time install script and optional nightly updates:

@@ -15,7 +15,7 @@ final class Routes
             'home' => 'page_home', 'reminders' => 'page_reminders', 'snooze' => 'page_snooze',
             'bikes' => 'page_bikes', 'bike' => 'page_bike', 'bike_edit' => 'page_bike_edit', 'bike_status' => 'page_bike_status',
             'parts' => 'page_parts', 'part' => 'page_part', 'part_edit' => 'page_part_edit', 'part_install' => 'page_part_install',
-            'part_status' => 'page_part_status', 'part_in_use' => 'page_part_in_use', 'inst_remove' => 'page_inst_remove', 'inst_void' => 'page_inst_void', 'adjust' => 'page_adjust',
+            'part_status' => 'page_part_status', 'part_replace' => 'page_part_replace', 'group_wheels' => 'page_group_wheels', 'brakes' => 'page_brakes', 'event_restore' => 'page_event_restore', 'part_in_use' => 'page_part_in_use', 'inst_remove' => 'page_inst_remove', 'inst_void' => 'page_inst_void', 'adjust' => 'page_adjust',
             'rides' => 'page_rides', 'ride_do' => 'page_ride_do', 'rides_bulk' => 'page_rides_bulk', 'ride_import' => 'page_ride_import', 'ride_edit' => 'page_ride_edit', 'ride_status' => 'page_ride_status',
             'maintenance' => 'page_maintenance', 'log' => 'page_log', 'event_void' => 'page_event_void',
             'rules' => 'page_rules', 'rule_edit' => 'page_rule_edit', 'rule_delete' => 'page_rule_delete',

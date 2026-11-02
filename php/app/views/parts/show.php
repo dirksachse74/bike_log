@@ -16,6 +16,7 @@
 <div class="actions">
   <?php if ($c['status'] === 'ACTIVE'): ?>
   <a class="btn primary" href="<?= h(url('log', ['part' => $c['id']])) ?>">Log maintenance</a>
+  <?php if ($open): ?><a class="btn" href="<?= h(url('part_replace', ['id' => $c['id']])) ?>">Replace</a><?php endif; ?>
   <a class="btn" href="<?= h(url('part_install', ['id' => $c['id']])) ?>"><?= $open ? 'Move' : 'Install' ?></a>
   <?php endif; ?>
   <a class="btn" href="<?= h(url('part_edit', ['id' => $c['id']])) ?>">Edit</a>
@@ -76,6 +77,24 @@
     <tr><td><span class="muted"><?= h(Catalog::typeName($ch['component_type'])) ?>:</span> <a href="<?= h(url('part', ['id' => $ch['id']])) ?>"><?= h(Domain::componentName($ch)) ?></a></td>
       <td><?= h(Catalog::slotName($ch['slot'])) ?></td><td>since <?= h($ch['installed_on']) ?></td></tr>
   <?php endforeach; ?></table>
+</section>
+<?php endif; ?>
+
+<?php if ($charges !== null): $sl = $charges['since_last']; $avg = $charges['average']; ?>
+<section><h2>Charging</h2>
+  <?php if (!$charges['charges']): ?><p class="muted">No charge logged yet. Log one with Log maintenance → <?= h(Catalog::actionName($charges['actions'][0])) ?>.</p>
+  <?php else: ?>
+  <p>Since the last charge (<?= h($sl['charged_on']) ?>): <strong><?= h(km($sl['km'], 1)) ?></strong>, <?= h(number_format($sl['hours'], 1)) ?> h ride time, <?= (int)$sl['rides'] ?> rides, <?= (int)$sl['days'] ?> days.
+    <?= $sl['rides_without_time'] ? '<span class="muted">(' . (int)$sl['rides_without_time'] . ' rides without a time)</span>' : '' ?></p>
+  <?php if ($avg): ?><p class="muted">On average between charges: <?= h(km($avg['km'], 1)) ?>, <?= h(number_format($avg['hours'], 1)) ?> h, <?= (int)$avg['days'] ?> days (<?= (int)$avg['charges'] ?> charges).</p><?php endif; ?>
+  <details><summary>Every charge (<?= count($charges['charges']) ?>)</summary>
+    <table class="list"><thead><tr><th>Charged</th><th>Until</th><th class="num">Km</th><th class="num">Hours</th><th class="num">Rides</th><th class="num">Days</th></tr></thead>
+    <?php foreach ($charges['charges'] as $ch): ?>
+      <tr><td><?= h($ch['charged_on']) ?></td><td><?= $ch['until'] ? h($ch['until']) : '<span class="muted">now</span>' ?></td><td class="num"><?= h(km($ch['km'], 1)) ?></td>
+        <td class="num"><?= h(number_format($ch['hours'], 1)) ?></td><td class="num"><?= (int)$ch['rides'] ?></td><td class="num"><?= (int)$ch['days'] ?></td></tr>
+    <?php endforeach; ?></table>
+  </details>
+  <?php endif; ?>
 </section>
 <?php endif; ?>
 
@@ -161,11 +180,14 @@
   <?php foreach ($events as $e): ?>
     <tr class="<?= $e['voided_at'] ? 'voided' : '' ?>"><td><?= h($e['performed_on']) ?></td><td><?= h(Catalog::actionName($e['action_code'])) ?></td>
       <td><?= h($e['outcome'] ? Catalog::label($e['outcome']) : '') ?><?= $e['measurement_value'] !== null ? ' ' . h((float)$e['measurement_value'] . ' ' . $e['measurement_unit']) : '' ?>
-        <?= $e['consumable_name'] ? '<span class="muted">· ' . h($e['consumable_name']) . '</span>' : '' ?> <span class="muted"><?= h($e['notes'] ?? '') ?></span>
+        <?= $e['consumable_name'] ? '<span class="muted">· ' . h($e['consumable_name']) . '</span>' : '' ?>
+        <?= $e['symptom'] ? '<span>· symptom: ' . h($e['symptom']) . '</span>' : '' ?> <?= $e['work_done'] ? '<span>· done: ' . h($e['work_done']) . '</span>' : '' ?>
+        <span class="muted"><?= h($e['notes'] ?? '') ?></span>
         <?= $e['voided_at'] ? '<span class="muted">Wrong entry: ' . h($e['void_reason']) . '</span>' : '' ?></td>
       <td><?php if (!$e['voided_at']): ?><details class="inline"><summary class="btn small">Wrong?</summary>
         <form method="post" action="<?= h(url('event_void', ['id' => $e['id']])) ?>" class="row"><?= Csrf::field() ?>
-          <input type="text" name="reason" placeholder="What was wrong" required><button class="btn small danger">Mark as wrong</button></form></details><?php endif; ?></td></tr>
+          <input type="text" name="reason" placeholder="What was wrong" required><button class="btn small danger">Mark as wrong</button></form></details>
+        <?php elseif (!str_starts_with((string)$e['void_reason'], 'undone')): ?><?= post_button('event_restore', ['id' => $e['id']], 'Restore', 'btn small') ?><?php endif; ?></td></tr>
   <?php endforeach; ?>
   </table>
 </section>

@@ -21,7 +21,8 @@ Nothing is hosted or deployed. Data stays in his user folder.
 MySQL for cheap shared hosting: accounts, admin page, no Strava, rides by hand. It is independent of the
 Python app (no shared code at runtime); only the catalog is shared, via `scripts/export_php_catalog.py` →
 `php/app/catalog.json` (re-run it after changing `backend/bikelog/catalog.py`). Dirk wants a full feature
-match before it is released: `php/README.md` lists what is done and what is still to port (also TASKS.md).
+match before it is released; since round 5b (2026-11-02) every desktop feature except Strava is ported
+(`php/README.md`, TASKS.md).
 Rules there: every bike query filters on `user_id`; every POST checks the CSRF token; no inline JS (CSP);
 schema changes are new files `php/sql/migrations/NNN_*.sql`; tests `php php/tests/run.php` need MySQL or
 MariaDB (CI: `.github/workflows/php-tests.yml`, MySQL 8, PHP 8.1 and 8.3). Domain modules: `domain.php`
@@ -32,7 +33,8 @@ service orders, part life), `products.php` (products, JSON product import, templ
 (shop pick list, change log; hooked into `Db::insert`/`Db::updateOwned`), `rides.php` (ride left out, wheels per ride, bulk, CSV import; km of a part come from
 `Domain::usagePeriods` + `periodWhere`, never sum rides per bike for a part by hand), `backups.php` (per-user
 export, stored copies, restore with new ids, fresh start; a new table with user data must be added to
-`UserBackups::TABLES` with its reference columns). A multi-step change (groupset import, fix) runs inside one work session so it can be
+`UserBackups::TABLES` with its reference columns), `workshop.php` (replace a part with carry-over, wheels
+into a wheelset, product–bike fits, brake overview, charge history). A multi-step change (groupset import, fix) runs inside one work session so it can be
 undone as a whole.
 
 ### Product principles (from Dirk's brief; do not break them)

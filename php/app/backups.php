@@ -23,6 +23,7 @@ final class UserBackups
         'bikes' => [],
         'purchase_bundles' => ['work_session_id' => 'work_sessions'],
         'consumables' => ['product_id' => 'products'],
+        'product_bike_fit' => ['product_id' => 'products', 'bike_id' => 'bikes'],
         'components' => ['product_id' => 'products', 'bundle_id' => 'purchase_bundles', 'from_stock_txn_id' => 'consumable_txns',
             'work_session_id' => 'work_sessions', 'rotation_bike_id' => 'bikes'],
         'installations' => ['component_id' => 'components', 'bike_id' => 'bikes', 'parent_component_id' => 'components',

@@ -672,6 +672,15 @@ you disagree. Dates are 2026-10-24 unless noted.
     left out of the km (rides.excluded_reason) counts nowhere (Domain::COUNTED). CSV import identity is
     (source_kind, source_ref); a ride imported before is never touched again (local edits win, removed
     stays removed), a simplification of imports.py which updates source values under local overrides.
+    Round 5b (migration 007): `Workshop` (php/app/workshop.php) ports inventory.replace, group_wheels,
+    spares.replace_options/compatibility and maintenance.brake_overview/charge_history. A replace is one work
+    session: carried children are taken off the old part and refitted on the new one; a carried child whose
+    position the chosen spare already fills stays on the old part (the desktop app refuses instead; the web
+    form says which ones stayed). ensureWheels runs after a wheelset replace, so a new wheelset only gets
+    wheel records when the wheels did not move over. Fits live in `product_bike_fit` (VERIFIED/UNVERIFIED,
+    SAME_PRODUCT and UNKNOWN are derived). Charge gaps use Domain::rideUsage with an until date (rides on
+    the day of a charge count after it). A voided entry and its supply use get the same voided_at so a
+    restore brings back exactly those; an entry voided by an undo cannot be restored.
 
 ## Repository
 27. Pushed only to the feature branch `claude/project-thread-6y3mmh` of the private repository. Demo
