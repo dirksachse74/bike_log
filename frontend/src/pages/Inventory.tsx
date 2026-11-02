@@ -876,6 +876,7 @@ interface ComponentDetail extends ComponentSummary {
   frame_history: FrameHistory | null
   spokes: SpokeInfo | null
   tire_tube: Record<'TIRE' | 'INNER_TUBE', { current: MountedRow | null; history: MountedRow[] }> | null
+  charging: { charges: ChargeRow[]; since_last: ChargeRow | null; average: { km: number; hours: number; days: number; charges: number } | null } | null
   service_orders: ServiceOrder[]
   incident_choices: IncidentPick[]
 }
@@ -895,6 +896,70 @@ interface MountedRow {
 
 // A wheel's tire and inner tube (Dirk 2026-11-02): the one on it now with its own km since it went in, and
 // every one that was on this wheel before, with its km here, its punctures and how it came off.
+interface ChargeRow {
+  event_id: number
+  charged_on: string
+  until: string | null
+  days: number
+  km: number
+  hours: number
+  rides: number
+  rides_without_time: number
+}
+
+// Charges of a battery-powered part with the riding in between (Dirk 2026-11-02: "when i charged them, i want
+// to log it with a date and i want to see time and mileage between charges").
+function ChargingCard({ data, onCharge }: { data: NonNullable<ComponentDetail['charging']>; onCharge: () => void }) {
+  const h = (v: number) => `${v.toLocaleString(undefined, { maximumFractionDigits: 1 })} h`
+  const s = data.since_last
+  return (
+    <Card title="Charging" className="span-2" actions={<button className="btn btn-small" onClick={onCharge}>Log a charge</button>}>
+      {s ? (
+        <p className="small charge-now">
+          <strong>Since the last charge</strong> on {when(s.charged_on)}: {h(s.hours)} of riding · {km(s.km, 0)} · {s.rides} ride{s.rides === 1 ? '' : 's'} · {s.days} day{s.days === 1 ? '' : 's'}
+          {s.rides_without_time > 0 && <span className="muted"> ({s.rides_without_time} without a ride time)</span>}
+        </p>
+      ) : (
+        <p className="small muted">No charge logged yet. Log the last one (a date is enough) to start counting.</p>
+      )}
+      {data.average && (
+        <p className="small muted">
+          On average between charges: {h(data.average.hours)} · {km(data.average.km, 0)} · {data.average.days} days ({data.average.charges} full period{data.average.charges === 1 ? '' : 's'})
+        </p>
+      )}
+      {data.charges.length > 0 && (
+        <details>
+          <summary className="small">All charges ({data.charges.length})</summary>
+          <table className="table">
+            <thead>
+              <tr>
+                <th>Charged</th>
+                <th>Until</th>
+                <th className="num">Riding</th>
+                <th className="num">Km</th>
+                <th className="num">Rides</th>
+                <th className="num">Days</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.charges.map((c) => (
+                <tr key={c.event_id}>
+                  <td>{when(c.charged_on)}</td>
+                  <td>{c.until ? when(c.until) : 'now'}</td>
+                  <td className="num">{h(c.hours)}</td>
+                  <td className="num">{km(c.km, 0)}</td>
+                  <td className="num">{c.rides}</td>
+                  <td className="num">{c.days}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </details>
+      )}
+    </Card>
+  )
+}
+
 function TireTubeCard({ data, onInstall, onReplace }: { data: NonNullable<ComponentDetail['tire_tube']>; onInstall: (kind: 'tire' | 'tube') => void; onReplace: (id: number) => void }) {
   const kinds = [
     ['INNER_TUBE', 'Inner tube', 'tube'],
@@ -1292,7 +1357,7 @@ export function ComponentDetailPage() {
           </div>
           <div>
             <span className="stat">{u.ride_count}</span>
-            <span className="muted small">rides</span>
+            <span className="muted small">rides · {u.hours.toLocaleString(undefined, { maximumFractionDigits: 1 })} h riding</span>
           </div>
           <div>
             <span className="stat">{inv.state_text}</span>
@@ -1360,6 +1425,7 @@ export function ComponentDetailPage() {
       </Card>
       {/* a wheel: the tire and tube on it come first (Dirk 2026-11-02) */}
       {data.tire_tube && <TireTubeCard data={data.tire_tube} onInstall={(k) => setSheet(k)} onReplace={(id) => setSheet({ change: id })} />}
+      {data.charging && <ChargingCard data={data.charging} onCharge={() => setSheet('log')} />}
       <RepairsCard orders={data.service_orders} componentId={data.id} onBack={(o) => setSheet({ back: o })} />
       <Card title="Service status" className="span-2">
         <TaskList tasks={data.service_status} onChange={reload} emptyText="No service rules for this part." />

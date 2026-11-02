@@ -12,7 +12,7 @@ import uuid
 from dataclasses import dataclass
 from datetime import date
 
-from sqlalchemy import func, select
+from sqlalchemy import case, func, select
 from sqlalchemy.orm import Session
 
 from bikelog.catalog import (
@@ -1268,3 +1268,44 @@ def installed_parts_for_action(session: Session, bike_id: int, action_code: str)
         if action_applies(action, row["component_type"]):
             out.append(row)
     return out
+
+
+# ---------------------------------------------------------------- charging
+
+def _usage_between(session: Session, comp_id: int, start: str, end: str | None) -> dict:
+    q = select(func.sum(UsageContribution.km), func.sum(UsageContribution.duration_s), func.count(),
+               func.sum(case((UsageContribution.duration_s.is_(None), 1), else_=0))).where(
+        UsageContribution.component_id == comp_id, UsageContribution.state == "COUNTED",
+        UsageContribution.sort_utc >= start)
+    if end:
+        q = q.where(UsageContribution.sort_utc < end)
+    km, secs, rides, no_time = session.execute(q).one()
+    return {"km": round(float(km or 0), 1), "hours": round((secs or 0) / 3600, 1), "rides": rides or 0,
+            "rides_without_time": int(no_time or 0)}
+
+
+def charge_history(session: Session, comp: Component) -> dict | None:
+    """Every charge of a part that is charged (power-meter pedals, Di2 battery, computer …), newest first,
+    with the riding between one charge and the next: km, ride hours, rides and days (Dirk 2026-11-02:
+    "i want to see time and mileage between charges"). ``since_last`` is the running count."""
+    actions = [a for a in CHARGE_ACTIONS if action_applies(ACTIONS[a], comp.component_type)]
+    if not actions:
+        return None
+    events = list(session.scalars(select(MaintenanceEvent).where(
+        MaintenanceEvent.component_id == comp.id, MaintenanceEvent.action_code.in_(actions),
+        MaintenanceEvent.voided_at.is_(None)).order_by(MaintenanceEvent.sort_utc, MaintenanceEvent.id)))
+    today = today_local(settings.tz(session))
+    rows = []
+    for n, e in enumerate(events):
+        nxt = events[n + 1] if n + 1 < len(events) else None
+        until = nxt.performed_on if nxt else today.isoformat()
+        rows.append({"event_id": e.id, "charged_on": e.performed_on, "until": nxt.performed_on if nxt else None,
+                     "days": (date.fromisoformat(until[:10]) - date.fromisoformat(e.performed_on[:10])).days,
+                     **_usage_between(session, comp.id, e.sort_utc, nxt.sort_utc if nxt else None)})
+    done = [r for r in rows if r["until"]]
+    avg = None
+    if done:
+        avg = {"km": round(sum(r["km"] for r in done) / len(done), 1),
+               "hours": round(sum(r["hours"] for r in done) / len(done), 1),
+               "days": round(sum(r["days"] for r in done) / len(done)), "charges": len(done)}
+    return {"charges": list(reversed(rows)), "since_last": rows[-1] if rows else None, "average": avg}

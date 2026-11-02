@@ -576,6 +576,16 @@ you disagree. Dates are 2026-10-24 unless noted.
     interval_km. So a top-up can bring the hot wax forward or move it later. Empty = old behaviour.
     `chains.chain_history` lists `top_ups` [{date, at_km}] per cycle and, for the current one,
     km_since_top_up / hot_wax_due_at_km / hot_wax_left_km; the rotation timeline has kind TOP_UP.
+134. **Service intervals and charging** (Dirk 2026-11-02 batch). Most of the batch existed: bar tape is a part
+    type (product = brand + model, price, bought on/from, install date; km and now ride hours on the part
+    page), "Add km from before" gives pedals their km from a previous bike, brake fluid is the BRAKE_FLUID rule
+    on each hydraulic brake circuit (24 months), and the charge reminders were set on 2026-10-26 (Assioma
+    80 h; Di2 BT-DN300 800 km). Researched again: BT-DN300 about 1,000 km per charge on most retailer pages
+    (front shifting uses most), Assioma PRO RS at least 60 h, 160 h after Favero's 2026 firmware update; both
+    retailer-sourced, not verified with the makers, so the defaults keep a margin. New: Settings → Service
+    intervals edits the type defaults (PATCH /api/rules/{id}; GET /api/rules adds `own_values`, the number of
+    part/bike overrides), and `maintenance.charge_history` (component detail `charging`) lists charges with
+    km / ride hours / rides / days between them.
 
 ## Repository
 27. Pushed only to the feature branch `claude/project-thread-6y3mmh` of the private repository. Demo

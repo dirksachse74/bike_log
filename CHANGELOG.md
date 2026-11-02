@@ -8,6 +8,15 @@ UPDATING.md → "Making a release". New entries go under "Unreleased" as work is
 ## Unreleased
 
 ### Added
+- **Settings → Service intervals** (Dirk 2026-11-02): one place for every reminder's default, grouped (Chain
+  and waxing, Charging and batteries, Brakes, …, Whole bike), each in plain words ("every 500 km; after a
+  liquid wax top-up: 200 km later · reminds you 50 km before") with its source note and Edit (km / hours /
+  months, how early to remind, on/off). Parts with their own value keep it and are counted. Maintenance links
+  there instead of its old read-only list.
+- **Charging card** on every part that is charged (power-meter pedals, Di2 battery, power meter, computer,
+  lights, radar): riding since the last charge (hours, km, rides, days), the average between charges and all
+  charges with the riding between each (folded). "Log a charge" opens Record work done.
+- Part pages show **ride hours** next to the ride count.
 - **Delete a bike for good** (Dirk 2026-11-02): bike → Retire or delete → "Delete … for good". It lists what
   goes, asks you to type the bike's name and keeps a backup first (Settings → Backups → Restore brings it back).
   The bike and its rides then appear nowhere (bike list, overview, rides, incidents, punctures, pickers); rides

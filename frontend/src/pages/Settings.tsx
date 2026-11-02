@@ -9,6 +9,7 @@ import { Card, Field, FormError, Tag } from '../components/ui'
 import { useApp } from '../context'
 import { when } from '../format'
 import { useApi } from '../hooks'
+import ServiceIntervals from '../components/ServiceIntervals'
 
 interface ImportResult {
   batch_id: number
@@ -142,6 +143,7 @@ export default function SettingsPage() {
           </div>
         </div>
       </Card>
+      <ServiceIntervals />
       <SpareMinimums />
       <PickLists />
       <Card title="Import rides (CSV)">
