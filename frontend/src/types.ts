@@ -148,6 +148,7 @@ export interface Location {
 export interface ComponentSummary {
   id: number
   label: string
+  name?: string
   mark?: string | null
   shop?: string | null
   rotation_bike_id?: number | null

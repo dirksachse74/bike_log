@@ -15,7 +15,7 @@ from __future__ import annotations
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from bikelog.catalog import COMPONENT_TYPES, SAME_NAME_TYPES, STOCK_UNITS, TRACKING_MODES
+from bikelog.catalog import COMPONENT_TYPES, LETTER_TYPES, SAME_NAME_TYPES, STOCK_UNITS, TRACKING_MODES
 from bikelog.models import Component, Consumable, ConsumableTxn, Product
 from bikelog.services.errors import DomainError, NotFound
 from bikelog.services.inventory import create_component, open_installation
@@ -168,7 +168,7 @@ def draw_component(session: Session, consumable_id: int, *, on: str, label: str 
 def _stock_label(session: Session, c: Consumable) -> str:
     if not c.product_id and c.name:
         return c.name          # "Conti Race 28" (tires and tubes may share a name; others get "(2)"), DECISIONS 127
-    if c.product_id and c.component_type in SAME_NAME_TYPES:
+    if c.product_id and c.component_type in (*SAME_NAME_TYPES, *LETTER_TYPES):
         p = session.get(Product, c.product_id)
         return f"{p.maker or ''} {p.model}".strip()     # just the product name (DECISIONS 129)
     base = COMPONENT_TYPES[c.component_type].name

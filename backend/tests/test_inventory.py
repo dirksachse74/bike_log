@@ -31,9 +31,10 @@ def test_quick_add_needs_only_type_and_label(session):
 def test_three_individually_labelled_chains(session):
     for label in ("Chain A", "Chain B", "Chain C"):
         part(session, "CHAIN", label)
-    # a second identical chain keeps the typed name with a letter (DECISIONS 105, 129); other parts a number
-    assert part(session, "CHAIN", "Chain A").label == "Chain A (B)"
-    assert part(session, "CHAIN", "Chain A").label == "Chain A (C)"
+    # a second identical chain gets the next letter as its mark (DECISIONS 132); other parts a number
+    b = part(session, "CHAIN", "Chain A")
+    assert (b.label, b.mark) == ("Chain A [B]", "B")
+    assert part(session, "CHAIN", "Chain A").label == "Chain A [C]"
     assert part(session, "SADDLE", "Arione").label == "Arione"
     assert part(session, "SADDLE", "Arione").label == "Arione (2)"
 
@@ -43,6 +44,34 @@ def test_tires_and_tubes_keep_their_product_name_without_a_number(session):
     a, b = part(session, "TIRE", "GP5000 28"), part(session, "TIRE", "GP5000 28")
     t1, t2 = part(session, "INNER_TUBE", "Conti Race 28"), part(session, "INNER_TUBE", "Conti Race 28")
     assert a.id != b.id and a.label == b.label == "GP5000 28" and t1.label == t2.label == "Conti Race 28"
+
+
+def test_the_mark_is_part_of_the_name(session):
+    """Dirk 2026-11-02: name "Shimano XT CN-M8100 12-fach Kette", mark "A" → "… Kette [A]"; same for tires."""
+    from bikelog.services.errors import Conflict
+    xt = "Shimano XT CN-M8100 12-fach Kette"
+    a = part(session, "CHAIN", xt)
+    b = part(session, "CHAIN", xt)
+    assert (a.label, b.label) == (xt, f"{xt} [B]")
+    inv.update_component(session, a.id, mark="A")          # renaming to the same name with a mark is fine
+    assert (a.label, a.mark, inv.name_of(a)) == (f"{xt} [A]", "A", xt)
+    assert part(session, "CHAIN", xt).label == f"{xt} [C]"
+    inv.update_component(session, b.id, label=xt, mark="D")      # the form sends the name and the mark
+    assert b.label == f"{xt} [D]"
+    inv.update_component(session, b.id, label=f"{xt} [D]")      # an unchanged full name is no rename
+    assert b.label == f"{xt} [D]"
+    with pytest.raises(Conflict, match=r"Another chain is already called .*\[A\]\"\. Give it a different mark"):
+        inv.update_component(session, b.id, mark="A")
+    session.rollback()
+    c = part(session, "CHAIN", "KMC X12", mark="1")
+    assert (c.label, c.mark) == ("KMC X12 [1]", "1")
+    inv.update_component(session, c.id, mark=None)
+    assert c.label == "KMC X12"
+    t1 = part(session, "TIRE", "GP5000 28", mark="A")
+    t2 = part(session, "TIRE", "GP5000 28", mark="A")          # tires may even share name and mark
+    assert t1.label == t2.label == "GP5000 28 [A]" and part(session, "TIRE", "GP5000 28").label == "GP5000 28"
+    with pytest.raises(DomainError, match="short"):
+        inv.update_component(session, t1.id, mark="x" * 21)
 
 
 def test_install_remove_reinstall_preserves_lifetime_across_bikes(session):

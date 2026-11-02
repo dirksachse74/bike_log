@@ -345,9 +345,15 @@ async function bikeTab(page, name) {
 
   // chain rotation: a mark tells identical chains apart; the bike shows which is on, ready or dirty
   await page.getByRole('button', { name: 'Edit details' }).click()
-  await page.locator('.sheet').getByLabel('Mark').fill('1 punch dot')
+  await page.locator('.sheet').getByLabel('Mark').fill('dot')
   await sheetButton(page, 'Save')
-  await page.locator('h2 .mark, .card-title .mark, .mark').filter({ hasText: '1 punch dot' }).first().waitFor()
+  await page.getByText('Chain A [dot]').first().waitFor()
+  check('a mark is shown after the name: "Chain A [dot]"', true)
+  await page.getByRole('button', { name: 'Edit details' }).click()
+  check('Edit details shows the name without the mark', (await page.locator('.sheet').getByLabel('Name / label').inputValue()) === 'Chain A')
+  await page.locator('.sheet').getByLabel('Mark').fill('')
+  await sheetButton(page, 'Save')
+  await page.getByText('Chain A [dot]').first().waitFor({ state: 'detached' })
   const chainCard = page.locator('.card').filter({ has: page.getByRole('heading', { name: 'Chain rotation and wax cycles' }) })
   check('chain page: in the rotation of the bike it went on, with its wax cycles',
     (await chainCard.getByLabel('Chain rotation').locator('option:checked').innerText()) === 'TIME NXR' && (await chainCard.locator('tbody tr').count()) === 1)
@@ -357,7 +363,7 @@ async function bikeTab(page, name) {
   await rotation.locator('li[data-chain="Chain A"]').waitFor()
   const rowA = await rotation.locator('li[data-chain="Chain A"]').innerText()
   const rowB = await rotation.locator('li[data-chain="Chain B"]').innerText()
-  check('rotation card: Chain A (with its mark) dirty, Chain B on the bike', /1 punch dot/.test(rowA) && /dirty, waiting for wax/.test(rowA) && /on the bike/.test(rowB), `${rowA} | ${rowB}`.replace(/\s+/g, ' '))
+  check('rotation card: Chain A dirty, Chain B on the bike', /dirty, waiting for wax/.test(rowA) && /on the bike/.test(rowB), `${rowA} | ${rowB}`.replace(/\s+/g, ' '))
   const addOpts = await rotation.getByLabel('Add a chain to the rotation').locator('option').allInnerTexts()
   check('rotation card offers stored chains to add (Chain C)', addOpts.includes('Chain C'), addOpts.join(' | '))
   await rotation.getByRole('button', { name: 'Wax chains' }).first().click()

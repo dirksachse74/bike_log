@@ -20,7 +20,12 @@ UPDATING.md → "Making a release". New entries go under "Unreleased" as work is
 - **Retired bikes are no longer on the overview** (Bikes still lists them under Retired).
 - **Names of tires and inner tubes**: just the product name; two "GP5000 28" tires are fine, no "(2)", "(3)"
   any more (existing ones are renamed). You tell them apart by where they are and since when.
-- **Chains** with the same name get letters: "Chain (B)", "(C)" … (existing "(2)" become "(B)").
+- **The mark is part of the name** (Dirk 2026-11-02): name "Shimano XT CN-M8100 12-fach Kette" with mark "A"
+  is listed everywhere as "Shimano XT CN-M8100 12-fach Kette [A]". Two chains may share a name when their
+  marks differ; a second chain of the same name gets the next letter as its mark by itself ("[B]", "[C]" …).
+  Tires and tubes work the same and may even share name and mark. Edit details shows Name and Mark apart;
+  Add part has a Mark field. Marks are short (20 characters). Existing chains "Chain (B)" become "Chain [B]"
+  (mark B), and parts that already had a mark show it after the name.
 - **Install a tire / an inner tube from a wheel page** offers only that wheel. A position that already has one
   says "already has X. To put a different tube there, replace that one: Replace X".
 

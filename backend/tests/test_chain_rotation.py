@@ -15,8 +15,7 @@ def setup(session):
     b = bike(session)
     a = part(session, "CHAIN", "Chain A")
     c = part(session, "CHAIN", "Chain B")
-    inv.update_component(session, a.id, mark="1 punch dot next to the quick link")
-    inv.update_component(session, c.id, mark="2 punch dots", rotation_bike_id=b.id)
+    inv.update_component(session, c.id, rotation_bike_id=b.id)
     m.log_batch(session, action_code="WAX_HOT", at="2026-09-01", component_ids=[a.id, c.id])
     inv.install(session, a.id, at="2026-09-01T10:00", bike_id=b.id, slot="CHAIN")
     return b, a, c
@@ -32,7 +31,6 @@ def test_rotation_states_prompts_and_one_click_swap(session):
     inv.update_component(session, spare.id, rotation_bike_id=b.id)
     assert chains.rotation(session, b.id)["candidates"] == []
     inv.update_component(session, spare.id, rotation_bike_id=None)
-    assert {r["label"]: r["mark"] for r in rot["chains"]}["Chain B"] == "2 punch dots"
     ride(session, b, "2026-09-10", 460)                    # within the 50 km warning of 500
     rot = chains.rotation(session, b.id)
     assert rot["prompt"]["kind"] == "SWAP" and rot["prompt"]["to"] == c.id
@@ -91,7 +89,7 @@ def test_chain_rotation_over_http(engine, paths):
     r = client.post(f"/api/bikes/{bid}/chains/wax", json={"component_ids": [aid], "at": "2026-09-06"})
     assert r.status_code == 200 and "Hot waxed Chain A" in r.json()["result"]["text"]
     detail = client.get(f"/api/components/{aid}").json()
-    assert detail["mark"].startswith("1 punch dot") and len(detail["chain"]["cycles"]) == 2
+    assert len(detail["chain"]["cycles"]) == 2
     assert client.patch(f"/api/components/{aid}", json={"mark": "x" * 81}).status_code in (400, 422)
 
 

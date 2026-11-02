@@ -137,3 +137,27 @@ def test_upgrade_to_0017_moves_di2_wires_from_other_to_the_groupset(tmp_path):
     raw.close()
     assert types == {"Ultegra Di2 wires": "DI2_WIRES", "Junction A EW-RS910": "DI2_JUNCTION", "Bell": "OTHER"}
     assert product == "DI2_WIRES" and in_groupset("DI2_WIRES") and in_groupset("DI2_JUNCTION")
+
+
+def test_upgrade_to_0021_puts_the_mark_in_the_name(tmp_path):
+    paths = DataPaths(tmp_path / "d").ensure()
+    eng = make_engine(paths.database)
+    _upgrade_to(eng, "0020")
+    raw = sqlite3.connect(paths.database)
+    raw.executescript("""
+        INSERT INTO component (id, uuid, component_type, label, mark, prior_usage, status, created_at, updated_at)
+            VALUES (1, 'c-1', 'CHAIN', 'XT chain', NULL, 'NEW', 'ACTIVE', 'x', 'x'),
+                   (2, 'c-2', 'CHAIN', 'XT chain (B)', NULL, 'NEW', 'ACTIVE', 'x', 'x'),
+                   (3, 'c-3', 'CHAIN', 'KMC', '2 dots', 'NEW', 'ACTIVE', 'x', 'x'),
+                   (4, 'c-4', 'TIRE', 'GP5000', 'A', 'NEW', 'ACTIVE', 'x', 'x'),
+                   (5, 'c-5', 'TIRE', 'GP5000', 'A', 'NEW', 'ACTIVE', 'x', 'x'),
+                   (6, 'c-6', 'SADDLE', 'Arione', NULL, 'NEW', 'ACTIVE', 'x', 'x');
+    """)
+    raw.commit()
+    raw.close()
+    upgrade_database(eng, paths)
+    raw = sqlite3.connect(paths.database)
+    rows = {i: (label, mark) for i, label, mark in raw.execute("SELECT id, label, mark FROM component")}
+    raw.close()
+    assert rows == {1: ("XT chain", None), 2: ("XT chain [B]", "B"), 3: ("KMC [2 dots]", "2 dots"),
+                    4: ("GP5000 [A]", "A"), 5: ("GP5000 [A]", "A"), 6: ("Arione", None)}
