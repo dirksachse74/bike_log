@@ -8,7 +8,7 @@
 #    download on the run page for 7 days, nothing published).
 #
 # Where the release goes: this repository, unless the repository variable RELEASES_REPO names another
-# repository (e.g. a public "dirksachse74/bike_log-releases"); that needs the secret RELEASES_TOKEN, a
+# repository (e.g. a public "<owner>/bike_log-releases"); that needs the secret RELEASES_TOKEN, a
 # fine-grained token with "Contents: Read and write" on that repository.
 name: Release (Windows installer)
 

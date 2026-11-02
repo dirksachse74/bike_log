@@ -7,6 +7,10 @@ UPDATING.md → "Making a release". New entries go under "Unreleased" as work is
 
 ## Unreleased
 
+### Changed
+- The installer and BikeLog.exe name "Bike Log" as publisher instead of a person's name (Windows Installed apps,
+  file properties), so a shared installer does not show who built it (Dirk 2026-11-02).
+
 ### Added
 - **Settings → Service intervals** (Dirk 2026-11-02): one place for every reminder's default, grouped (Chain
   and waxing, Charging and batteries, Brakes, …, Whole bike), each in plain words ("every 500 km; after a

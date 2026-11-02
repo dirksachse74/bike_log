@@ -600,6 +600,9 @@ you disagree. Dates are 2026-10-24 unless noted.
     only sorts at 23:59:59 that day (`_event_sort`), so the wet ride's km stay before it and the hot wax falls
     due after_top_up_km after the top-up, not after the start of the day.
 
-## Repository
+136. **No personal name in the shared app** (Dirk 2026-11-02). Publisher / CompanyName = "Bike Log" in
+    bikelog.iss and bikelog.spec; the release workflow comment uses `<owner>`. Dirk may rename his GitHub
+    account to hide his real name; nothing in the code depends on the owner name except docs/clone URLs.
+
 27. Pushed only to the feature branch `claude/project-thread-6y3mmh` of the private repository. Demo
     data uses fictional Strava gear ids.
