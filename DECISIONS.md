@@ -597,5 +597,14 @@ you disagree. Dates are 2026-10-24 unless noted.
     bikelog.iss and bikelog.spec; the release workflow comment uses `<owner>`. Dirk may rename his GitHub
     account to hide his real name; nothing in the code depends on the owner name except docs/clone URLs.
 
+137. **Wet ride asks for a liquid wax top-up** (Dirk 2026-11-02: "if it rains and i flag a ride as wet, will i
+    get a reminder to use liquid wax top up?"). Before, a wet ride made the hot wax due. Now `_cycle_status`
+    of the WAX_LIQUID rule is DUE with "Top-up recommended: wet ride on <date>" when a wet ride came after the
+    last top-up (or the hot wax) of the cycle, even outside the 250–300 km window and even if a top-up was
+    done earlier in the cycle; `_add_wet_ride` skips WAX_HOT while that rule is on. A top-up logged with a date
+    only sorts at 23:59:59 that day (`_event_sort`), so the wet ride's km stay before it and the hot wax falls
+    due after_top_up_km after the top-up, not after the start of the day.
+
+## Repository
 27. Pushed only to the feature branch `claude/project-thread-6y3mmh` of the private repository. Demo
     data uses fictional Strava gear ids.

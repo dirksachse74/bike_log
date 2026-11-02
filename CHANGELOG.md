@@ -30,6 +30,11 @@ UPDATING.md → "Making a release". New entries go under "Unreleased" as work is
   Patched) shows "defect · puncture <date>".
 
 ### Changed
+- **Wet ride → liquid wax top-up reminder** (Dirk 2026-11-02): a ride marked wet on a waxed chain makes the
+  liquid wax top-up due right away ("Top-up recommended: wet ride on 2026-11-02 …"), also again after an
+  earlier top-up, until a top-up or hot wax is logged after that ride. It can be snoozed. The hot wax is no
+  longer asked for after a wet ride (only when the top-up reminder is switched off). A top-up logged with a
+  date only counts after that day's rides.
 - **Wax table on the chain page** (Dirk 2026-11-02): one row per wax application, newest first: # · Date ·
   Type (hot wax / liquid wax top-up) · Product · At chain km (km since the last hot wax when applied) ·
   Ridden on it · Days on · Active · Ended by · Next due ("Hot wax at 279 km (159 km left)"). A "Current:" line

@@ -40,6 +40,14 @@ SAFETY_NOTE = "Reminders follow recorded usage only. They never confirm that a p
 
 # ---------------------------------------------------------------- events
 
+def _event_sort(session: Session, action_code: str, w) -> str:
+    """A liquid-wax top-up logged with a date only was done after that day's rides (e.g. after a wet ride): it
+    counts from the end of the day, so that day's km stay before it (DECISIONS 137)."""
+    if action_code == "WAX_LIQUID" and w.date_only:
+        return parse_when(f"{w.local_date}T23:59:59", settings.tz(session)).utc
+    return w.utc
+
+
 def log_event(session: Session, *, action_code: str, at: str, component_id: int | None = None,
               bike_id: int | None = None, symptom: str | None = None, work_done: str | None = None,
               outcome: str | None = None, measurement_value: float | None = None, measurement_unit: str | None = None,
@@ -75,8 +83,9 @@ def log_event(session: Session, *, action_code: str, at: str, component_id: int 
     if consumable_id is not None and not session.get(Consumable, consumable_id):
         raise NotFound("Consumable not found")
     w = parse_when(at, settings.tz(session))
+    sort_utc = _event_sort(session, action_code, w)
     ev = MaintenanceEvent(action_code=action_code, component_id=component_id, bike_id=bike_id, performed_at=w.raw,
-                          performed_on=w.local_date, sort_utc=w.utc, symptom=symptom, work_done=work_done,
+                          performed_on=w.local_date, sort_utc=sort_utc, symptom=symptom, work_done=work_done,
                           outcome=outcome, measurement_value=measurement_value, measurement_unit=measurement_unit,
                           consumable_id=consumable_id, consumable_qty=consumable_qty, cost_cents=cost_cents,
                           notes=notes, batch_ref=batch_ref, work_session_id=work_session_id,
@@ -175,7 +184,7 @@ def update_event(session: Session, event_id: int, **fields) -> MaintenanceEvent:
         raise DomainError("The cost cannot be negative")
     if fields.get("at"):
         w = parse_when(fields["at"], settings.tz(session))
-        ev.performed_at, ev.performed_on, ev.sort_utc = w.raw, w.local_date, w.utc
+        ev.performed_at, ev.performed_on, ev.sort_utc = w.raw, w.local_date, _event_sort(session, ev.action_code, w)
     for k in EDITABLE[1:]:
         if k in fields:
             setattr(ev, k, fields[k])
@@ -730,16 +739,33 @@ def _forecast(subj: _Subject, res: dict, since_utc: str, today: date) -> dict | 
             "text": text}
 
 
+def _wet_rides_since(session: Session, comp_id: int, since_utc: str | None,
+                     event: MaintenanceEvent | None = None) -> list[str]:
+    """Dates of wet rides after an instant. A wax logged with a date only covers that day's rides (it was done
+    after riding), so then only rides on later days count."""
+    q = select(Ride.ride_date).join(UsageContribution, UsageContribution.ride_id == Ride.id).where(
+        UsageContribution.component_id == comp_id, UsageContribution.state == "COUNTED", Ride.conditions == "WET")
+    if event is not None and len(event.performed_at) == 10:
+        q = q.where(Ride.ride_date > event.performed_on)
+    elif since_utc:
+        q = q.where(UsageContribution.sort_utc > since_utc)
+    return list(session.scalars(q.order_by(Ride.sort_utc)))
+
+
+def _top_up_rule_on(session: Session, comp: Component) -> bool:
+    return any(r.action_code == "WAX_LIQUID" and r.trigger == "CYCLE_WINDOW" for r in effective_rules(session, comp))
+
+
 def _add_wet_ride(session: Session, comp: Component, rule: ServiceRule, res: dict) -> None:
-    """A wet ride since the last lube/wax makes a chain-lube rule due (ride conditions set per ride)."""
+    """A wet ride since the last lube/wax makes a chain-lube rule due (ride conditions set per ride). On a waxed
+    chain with the liquid-wax top-up reminder on, a wet ride asks for a top-up instead of a hot wax (Dirk
+    2026-11-02, DECISIONS 137; the hot wax then follows after_top_up_km after the top-up)."""
     action = ACTIONS.get(rule.action_code)
     if comp.component_type != "CHAIN" or not action or action.kind != "LUBRICATE":
         return
-    q = select(Ride.ride_date).join(UsageContribution, UsageContribution.ride_id == Ride.id).where(
-        UsageContribution.component_id == comp.id, UsageContribution.state == "COUNTED", Ride.conditions == "WET")
-    if res.get("since_utc"):
-        q = q.where(UsageContribution.sort_utc > res["since_utc"])
-    wet = list(session.scalars(q.order_by(Ride.sort_utc)))
+    if rule.action_code == "WAX_HOT" and _top_up_rule_on(session, comp):
+        return
+    wet = _wet_rides_since(session, comp.id, res.get("since_utc"))
     if not wet:
         return
     res["status"] = _worst(res["status"], "DUE")
@@ -865,6 +891,21 @@ def _cycle_status(session: Session, comp: Component, rule: ServiceRule, act_name
         .order_by(MaintenanceEvent.sort_utc))
     out = {"used_km": used, "window_min_km": lo, "window_max_km": hi, "cycle_started": start.performed_on,
            "last_done": done.performed_on if done else None}
+    if rule.action_code == "WAX_LIQUID":
+        # Dirk 2026-11-02: a wet ride on a waxed chain → top up (again) now, whatever the window says
+        last_top = session.scalar(select(MaintenanceEvent).where(
+            MaintenanceEvent.component_id == comp.id, MaintenanceEvent.action_code.in_(_reset_actions(rule)),
+            MaintenanceEvent.voided_at.is_(None), MaintenanceEvent.sort_utc >= start.sort_utc)
+            .order_by(MaintenanceEvent.sort_utc.desc()))
+        wet = _wet_rides_since(session, comp.id, (last_top or start).sort_utc, last_top or start)
+        if wet:
+            n = len(wet)
+            out.update(status="DUE", wet_rides=n,
+                       explanation=f"Top-up recommended: wet ride on {wet[-1]}"
+                                   + (f" ({n} wet rides since the last wax)" if n > 1 else "")
+                                   + f". Wax washes off in the rain; a {act_name} after a wet ride keeps the chain "
+                                     f"running smoothly ({used:,.0f} km since {cycle_act} on {start.performed_on}).")
+            return out
     if done:
         at_km = usage_since(session, comp.id, start.sort_utc) - usage_since(session, comp.id, done.sort_utc)
         out["status"] = "DONE_THIS_CYCLE"

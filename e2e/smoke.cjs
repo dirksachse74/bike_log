@@ -1330,7 +1330,7 @@ async function bikeTab(page, name) {
   const phone = await browser.newPage({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true })
   phone.on('pageerror', (e) => consoleErrors.push(e.message))
   await phone.goto(BASE)
-  await phone.locator('.task').first().waitFor()
+  await phone.locator('.task').first().waitFor({ state: 'attached' })   // overview loaded (tasks may sit in a folded group)
   const navVisible = await phone.locator('.topbar nav').isVisible()
   const overflow = await phone.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1)
   check('mobile: bottom navigation visible, no horizontal overflow', navVisible && !overflow, `overflow=${overflow}`)
