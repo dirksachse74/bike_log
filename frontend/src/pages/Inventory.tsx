@@ -886,6 +886,7 @@ interface MountedRow {
   punctures: number
   ended: string | null
   current: boolean
+  defect: { since: string; group: string; ride_id: number | null } | null
 }
 
 // A wheel's tire and inner tube (Dirk 2026-11-02): the one on it now with its own km since it went in, and
@@ -909,6 +910,11 @@ function TireTubeCard({ data, onInstall, onReplace }: { data: NonNullable<Compon
                 <Link to={`/inventory/${cur.component_id}`}>{cur.label}</Link> · in since {when(cur.installed_at)} · <strong>{km(cur.km_here, 0)}</strong> on this wheel
                 {cur.km_total > cur.km_here + 0.5 && <span className="muted"> ({km(cur.km_total, 0)} in total)</span>}
                 {cur.punctures > 0 && <span className="muted"> · {cur.punctures === 1 ? '1 puncture' : `${cur.punctures} punctures`}</span>}{' '}
+                {cur.defect && (
+                  <Tag tone="bad" title="A puncture is logged and not fixed yet. Fix it on the ride (Fix → Replaced or Patched), or replace the tube here.">
+                    defect · puncture {when(cur.defect.since)}
+                  </Tag>
+                )}{' '}
                 <button className="btn btn-small" onClick={() => onReplace(cur.component_id)}>
                   Replace {kind}
                 </button>
@@ -947,7 +953,10 @@ function TireTubeCard({ data, onInstall, onReplace }: { data: NonNullable<Compon
                         <td>{h.removed_at ? when(h.removed_at) : '–'}</td>
                         <td className="num">{km(h.km_here, 0)}</td>
                         <td className="num">{h.punctures}</td>
-                        <td className="small">{h.ended ?? '–'}</td>
+                        <td className="small">
+                          {h.ended ?? '–'}
+                          {h.defect && <Tag tone="bad">defect</Tag>}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -1490,9 +1499,10 @@ export function ComponentDetailPage() {
           <InstallHere
             componentType={sheet === 'tire' ? 'TIRE' : sheet === 'tube' ? 'INNER_TUBE' : data.component_type}
             part={sheet === 'install' ? data : undefined}
-            under={sheet === 'tire' || sheet === 'tube' ? (data.component_type !== 'WHEELSET' && data.location.parent_component_id ? data.location.parent_component_id : data.component_type !== 'WHEELSET' && data.location.bike_id ? undefined : data.id) : undefined}
-            bikeId={(sheet === 'tire' || sheet === 'tube') && data.component_type !== 'WHEELSET' && !data.location.parent_component_id && data.location.bike_id ? data.location.bike_id : undefined}
-            prefer={(sheet === 'tire' || sheet === 'tube') && data.component_type !== 'WHEELSET' ? data.id : undefined}
+            // from a wheel: only that wheel (Dirk 2026-11-02); from a wheelset: its two wheels
+            under={sheet === 'tire' || sheet === 'tube' ? (['FRONT_WHEEL', 'REAR_WHEEL'].includes(data.component_type) || data.component_type === 'WHEELSET' ? data.id : data.location.parent_component_id ?? undefined) : undefined}
+            bikeId={(sheet === 'tire' || sheet === 'tube') && !['FRONT_WHEEL', 'REAR_WHEEL'].includes(data.component_type) && data.component_type !== 'WHEELSET' && data.location.bike_id ? data.location.bike_id : undefined}
+            prefer={(sheet === 'tire' || sheet === 'tube') && ['FRONT_WHEEL', 'REAR_WHEEL'].includes(data.component_type) ? data.id : undefined}
             onCancel={close}
             onChange={(id) => setSheet({ change: id })}
             onDone={(msg) => {

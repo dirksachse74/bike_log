@@ -70,6 +70,8 @@ class Bike(Base):
     shifting: Mapped[str | None] = mapped_column(String(12))
     # where it was bought (a name from the SHOP pick list, services/picklists.py)
     shop: Mapped[str | None] = mapped_column(Text)
+    # deleted for good (services/bike_purge.py): in no list any more; history stays in the file
+    deleted_at: Mapped[str | None] = mapped_column(String(20))
 
 
 class PurchaseBundle(Base):
@@ -96,7 +98,9 @@ class Component(Base):
     """One physical part you own. Identity never changes, whatever bike it is on."""
     __tablename__ = "component"
     __table_args__ = (
-        UniqueConstraint("component_type", "label", name="uq_component_type_label"),
+        # names are unique per type, except tires and inner tubes: two "GP5000" are fine (0020, DECISIONS 129)
+        Index("uq_component_type_label", "component_type", "label", unique=True,
+              sqlite_where=text("component_type NOT IN ('TIRE', 'INNER_TUBE')")),
         CheckConstraint("status IN ('ACTIVE','RETIRED')", name="ck_component_status"),
         CheckConstraint("prior_usage IN ('NEW','RECORDED','UNKNOWN')", name="ck_component_prior_usage"),
     )

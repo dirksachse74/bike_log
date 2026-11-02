@@ -1211,7 +1211,7 @@ async function bikeTab(page, name) {
     check('tires, case 3: Swap front and rear tire, km kept', /rear wheel/.test(used.location.text) && /front wheel/.test(fresh.location.text) && used.usage.total_km === 1200, `${used.location.text} / ${fresh.location.text}`)
     await page.getByRole('button', { name: 'Install a tire' }).click()
     await where.getByText('has TT used tire').waitFor()
-    check('Install a tire: wheels with a tire show it, with Replace it', (await page.locator('.sheet').getByRole('button', { name: 'Replace it' }).count()) === 2)
+    check('Install a tire: a wheel that has a tire says so, with "Replace <that tire>"', (await page.locator('.sheet').getByRole('button', { name: /^Replace TT (used|new) tire$/ }).count()) === 2)
     await sheetButton(page, 'Cancel')
     // a stored spare: Install on its page, km from before asked because none is recorded
     await page.waitForTimeout(1100)   // the removal must come after the swap (times are kept to the second)
@@ -1242,6 +1242,14 @@ async function bikeTab(page, name) {
     check('wheel page: Tire and inner tube shows the current tube, its install date and its own km, with Replace tube',
       ttText.includes(tube.label) && /in since/.test(ttText) && /on this wheel/.test(ttText) && (await tt.getByRole('button', { name: 'Replace tube' }).count()) === 1, ttText)
     await page.screenshot({ path: path.join(OUT, '15c-wheel-tire-tube.png') })
+    // from a wheel page, Install an inner tube offers only that wheel (Dirk 2026-11-02)
+    await page.getByRole('button', { name: 'Install an inner tube' }).first().click()
+    const wh = page.locator('.sheet [role=radiogroup][aria-label="Where does it go?"]')
+    await wh.locator('.where-row').first().waitFor()
+    const whText = await wh.innerText()
+    check('Install an inner tube from the rear wheel page: only the rear wheel, saying what is on it and how to replace it',
+      (await wh.locator('.where-row').count()) === 1 && /Rear wheel/.test(whText) && !/Front wheel/.test(whText) && /already has/.test(whText), whText)
+    await sheetButton(page, 'Cancel')
   }
 
   // Maintenance log: edit, delete (hidden, restorable) and restore an entry

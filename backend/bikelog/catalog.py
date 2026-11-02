@@ -158,6 +158,10 @@ DISPOSITIONS: dict[str, str] = {
     "WARRANTY_RETURN": "Returned under warranty",
 }
 OUT_OF_USE = ("RETIRED", "DISCARDED", "SOLD", "WARRANTY_RETURN")
+# Dirk 2026-11-02: tires and inner tubes are just their product name ("GP5000"), several may share it; you tell
+# them apart by where they are and since when. Chains get letters: "Chain (B)", "(C)" ... (DECISIONS 129)
+SAME_NAME_TYPES = ("TIRE", "INNER_TUBE")
+LETTER_TYPES = ("CHAIN",)
 
 # Stock units for spare parts held as a quantity. One unit is one usable item, never "one package":
 # a pack of two quick links is two units (record packages separately on the purchase).

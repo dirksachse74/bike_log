@@ -539,6 +539,20 @@ you disagree. Dates are 2026-10-24 unless noted.
     FRONT_WHEEL/REAR_WHEEL): per kind current + history from installations on that wheel; km_here = counted
     usage between install and removal, km_total, punctures = FLAT incident groups on that part, ended = removal
     reason + disposition. Parts drawn from stock without a product take the stock line's name (`stock._stock_label`).
+128. **Delete a bike for good** (Dirk 2026-11-02). The history tables are append-only by database triggers
+    (maintenance, journal, change log, bike with rides), so `services/bike_purge.py` does not wipe rows: it sets
+    `bike.deleted_at` (migration 0019), status RETIRED, frees the name ("X (deleted <date>)"), clears and ignores
+    the Strava gear, excludes its rides, takes its parts off into storage (or RETIRED) with a CORRECTION of the km
+    they did on it, and every list hides it (`/api/bikes`, `list_rides`, `all_incidents`, punctures). The API
+    (POST /api/bikes/{id}/purge, confirm_name) takes a kept backup first. Retired bikes are off the overview.
+129. **Tires and inner tubes share names; chains get letters** (`catalog.SAME_NAME_TYPES`, `LETTER_TYPES`;
+    `inv.free_label`, `_next_label`). Migration 0020 rebuilds `component` (SQLite cannot drop a table constraint):
+    the unique (type, label) becomes a partial unique index without TIRE/INNER_TUBE; existing "(n)" suffixes are
+    removed for tires/tubes and become letters for chains. `migrate.upgrade_database` now runs migrations with
+    foreign keys off and `PRAGMA foreign_key_check` before the commit (SQLite's documented rebuild procedure).
+130. **Defect tube / tire and install from a wheel**: `tire_and_tube` rows carry `defect` (a FLAT entry on the
+    part with no repair or "Nothing yet"); InstallHere opened on a wheel page lists only that wheel (`under`
+    = the wheel), and an occupied position explains "already has X … Replace X".
 
 ## Repository
 27. Pushed only to the feature branch `claude/project-thread-6y3mmh` of the private repository. Demo

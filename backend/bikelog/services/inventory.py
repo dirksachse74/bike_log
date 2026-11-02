@@ -2,13 +2,15 @@
 from __future__ import annotations
 
 import json
+import re
 from datetime import date
 
 from sqlalchemy import func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from bikelog.catalog import COMPONENT_TYPES, DISPOSITIONS, OUT_OF_USE, SHIFTING_TYPES, TIRE_SETUPS, WHEEL_TYPES
+from bikelog.catalog import (COMPONENT_TYPES, DISPOSITIONS, LETTER_TYPES, OUT_OF_USE, SAME_NAME_TYPES, SHIFTING_TYPES,
+                             TIRE_SETUPS, WHEEL_TYPES)
 from bikelog.models import (
     Bike, Component, ComponentDisposition, Installation, Product, Ride, UsageAdjustment, UsageContribution,
 )
@@ -745,26 +747,39 @@ def spare_stock(session: Session) -> list[dict]:
     return sorted(groups.values(), key=lambda g: (g["type_name"], g["product"] or ""))
 
 
+def _suffixes(component_type: str):
+    """What tells a second part of the same name apart: (B), (C) ... for chains, (2), (3) ... otherwise."""
+    if component_type in LETTER_TYPES:
+        yield from (f"({chr(c)})" for c in range(ord("B"), ord("Z") + 1))
+    n = 2
+    while True:
+        yield f"({n})"
+        n += 1
+
+
+_SUFFIX = re.compile(r"\s+\((?:\d+|[A-Z])\)$")
+
+
 def free_label(session: Session, component_type: str, label: str) -> str:
-    """The label as typed if no other part of this type has it, else the first free "label (n)"."""
+    """The label as typed if no other part of this type has it, else the first free "label (2)" (a chain:
+    "label (B)"). Tires and inner tubes keep the typed name: several may share it (DECISIONS 129)."""
+    if component_type in SAME_NAME_TYPES:
+        return label
+
     def taken(x: str) -> bool:
         return session.scalar(select(Component.id).where(Component.component_type == component_type,
                                                          func.lower(Component.label) == x.lower())) is not None
     if not taken(label):
         return label
-    n = 2
-    while taken(f"{label} ({n})"):
-        n += 1
-    return f"{label} ({n})"
+    return next(f"{label} {s}" for s in _suffixes(component_type) if not taken(f"{label} {s}"))
 
 
 def _next_label(session: Session, old: Component) -> str:
-    base = old.label
-    n = 2
-    while session.scalar(select(Component).where(Component.component_type == old.component_type,
-                                                 func.lower(Component.label) == f"{base} ({n})".lower())):
-        n += 1
-    return f"{base} ({n})"
+    """The name for a new part of the same product as ``old`` (replace with the same product)."""
+    base = _SUFFIX.sub("", old.label) if old.component_type in (*SAME_NAME_TYPES, *LETTER_TYPES) else old.label
+    if old.component_type in SAME_NAME_TYPES:
+        return base
+    return free_label(session, old.component_type, base)
 
 
 def void_installation(session: Session, installation_id: int, reason: str) -> Installation:

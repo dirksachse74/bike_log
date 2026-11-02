@@ -92,6 +92,11 @@ def tire_and_tube(session: Session, wheel: Component) -> dict:
             flats = session.scalar(select(func.count(func.distinct(JournalEntry.incident_group))).where(
                 JournalEntry.component_id == c.id, JournalEntry.incident_type == "FLAT",
                 JournalEntry.voided_at.is_(None))) or 0
+            # a puncture logged and not fixed yet (no Replaced / Patched): the tube or tire is defect
+            open_flat = session.scalar(select(JournalEntry).where(
+                JournalEntry.component_id == c.id, JournalEntry.incident_type == "FLAT",
+                JournalEntry.voided_at.is_(None), JournalEntry.repair.is_(None) | (JournalEntry.repair == "NONE"))
+                .order_by(JournalEntry.entry_on.desc()).limit(1))
             ended = None
             if i.removed_at is not None:
                 ended = i.removal_reason or ("moved" if inv.open_installation(session, c.id) else None)
@@ -100,7 +105,9 @@ def tire_and_tube(session: Session, wheel: Component) -> dict:
             rows.append({"component_id": c.id, "label": c.label, "installed_at": i.installed_at,
                          "removed_at": i.removed_at, "km_here": round(float(here), 1),
                          "km_total": round(component_usage(session, c)["total_km"], 1),
-                         "punctures": flats, "ended": ended, "current": i.removed_at is None})
+                         "punctures": flats, "ended": ended, "current": i.removed_at is None,
+                         "defect": ({"since": open_flat.entry_on, "group": open_flat.incident_group,
+                                     "ride_id": open_flat.ride_id} if open_flat is not None else None)})
         out[ctype] = {"current": next((r for r in rows if r["current"]), None),
                       "history": rows}
     return out

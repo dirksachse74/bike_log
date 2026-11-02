@@ -144,8 +144,10 @@ scripts/release_notes.py text of a release page: docs/INSTALL.md + the version's
   `price_cents`, notes, `work_session_id` (set by a groupset import, so undo voids it), voided/reason;
   delete blocked by a trigger. **component.bundle_id** links a member part; members carry no own price.
 
-Migrations: plain `ADD COLUMN` / `CREATE TABLE` where possible; tables with protection triggers are not
-rebuilt. Every schema upgrade writes a backup first; a database newer than the app is refused. A test
+Migrations: plain `ADD COLUMN` / `CREATE TABLE` where possible. A table rebuild (0020: `component`, to turn
+its unique name constraint into a partial index) copies the stored CREATE statement and recreates its indexes
+and triggers; `migrate.upgrade_database` runs migrations with foreign keys off and runs
+`PRAGMA foreign_key_check` before the commit. Every schema upgrade writes a backup first; a database newer than the app is refused. A test
 compares `models.py` with the migrated schema, so **every model change needs a new migration**
 (never edit a released one; 0011 is the newest).
 
@@ -259,7 +261,7 @@ page already in the trail cuts it, direct opens get the page's home trail). A ne
 `useCrumb(pathname, label, parents?)` once its data has loaded, and a new tabbed page adds its tab list
 to `tabLabel`. Inventory and bike tab lists live in crumbs.ts (`INVENTORY_TABS`, `BIKE_TABS`).
 
-**Wheel tire/tube card:** wheels.tire_and_tube → TireTubeCard in Inventory.tsx (DECISIONS 127). **Punctures by model:** items per tube/tire with own km, no model sum (DECISIONS 126). **Inner tubes:** InstallHere source "stock"; "Install an inner tube" on bike/wheel/wheelset pages; repairs.replace_at_position tracks tubes on recorded wheels (DECISIONS 125). **Bulk remove rides:** rides.remove_rides/restore_rides, POST /api/rides/remove|restore, UI RemoveRides sheet in Rides.tsx (DECISIONS 124). **Lube entries:** LogMaintenance hides Amount/Cost for kind LUBRICATE (DECISIONS 122); change log shows bike names for rotation_bike_id (123). **Strava known bikes only:** setting strava_known_bikes_only, connectors/strava/sync.py skips unknown-bike activities (SKIPPED_UNKNOWN_BIKE), DECISIONS 119. **Ride notes:** `ride.notes` ≤ RIDE_NOTES_MAX 2000 (rides._apply_fields), never from imports; UI RideNotes (DECISIONS 118). **Punctures:** services/punctures.py `report` (GET /api/reports/punctures), UI components/Punctures.tsx as Rides tab `punctures` (DECISIONS 117). **Shop on work done:** `maintenance_event.shop` (0018, SHOP pick list column; DECISIONS 116). **Costs (`costs.py`).** Initial cost = bike purchase price, or, without one, the price of the bike's first frame (`first_frame`, `initial_source` FRAME; with a bike price the first frame is INCLUDED, a later frame counts as a part; `cost_detail.frame`, UI Frame line + FramePurchaseForm in Bikes.tsx; DECISIONS 113). Unpriced-parts list skips BUILT_INTO_WHEEL parts inside a priced wheelset/wheel (`_in_priced_parent`, DECISIONS 114). Running cost is derived each time: part prices
+**Delete bike for good:** services/bike_purge.py, bike.deleted_at (0019), hidden everywhere (DECISIONS 128). **Names:** SAME_NAME_TYPES tires/tubes, LETTER_TYPES chains, migration 0020 rebuilds component with FKs off (129). **Wheel tire/tube card:** wheels.tire_and_tube → TireTubeCard in Inventory.tsx (DECISIONS 127). **Punctures by model:** items per tube/tire with own km, no model sum (DECISIONS 126). **Inner tubes:** InstallHere source "stock"; "Install an inner tube" on bike/wheel/wheelset pages; repairs.replace_at_position tracks tubes on recorded wheels (DECISIONS 125). **Bulk remove rides:** rides.remove_rides/restore_rides, POST /api/rides/remove|restore, UI RemoveRides sheet in Rides.tsx (DECISIONS 124). **Lube entries:** LogMaintenance hides Amount/Cost for kind LUBRICATE (DECISIONS 122); change log shows bike names for rotation_bike_id (123). **Strava known bikes only:** setting strava_known_bikes_only, connectors/strava/sync.py skips unknown-bike activities (SKIPPED_UNKNOWN_BIKE), DECISIONS 119. **Ride notes:** `ride.notes` ≤ RIDE_NOTES_MAX 2000 (rides._apply_fields), never from imports; UI RideNotes (DECISIONS 118). **Punctures:** services/punctures.py `report` (GET /api/reports/punctures), UI components/Punctures.tsx as Rides tab `punctures` (DECISIONS 117). **Shop on work done:** `maintenance_event.shop` (0018, SHOP pick list column; DECISIONS 116). **Costs (`costs.py`).** Initial cost = bike purchase price, or, without one, the price of the bike's first frame (`first_frame`, `initial_source` FRAME; with a bike price the first frame is INCLUDED, a later frame counts as a part; `cost_detail.frame`, UI Frame line + FramePurchaseForm in Bikes.tsx; DECISIONS 113). Unpriced-parts list skips BUILT_INTO_WHEEL parts inside a priced wheelset/wheel (`_in_priced_parent`, DECISIONS 114). Running cost is derived each time: part prices
 (counted for the bike the part was *first* installed on, following parents; spares never installed count
 for no bike), stock used on the bike valued at the stock line's average purchase price (≈), and service
 costs on maintenance entries (a multi-part entry stores one fee once). Undone sessions drop out. Parts that
@@ -389,10 +391,10 @@ warns, npm 12 blocks): run `npm install-scripts approve <pkg>`.
 Checks that must pass before every push:
 
 ```bash
-.venv/bin/python -m pytest -q backend/tests             # currently 251 passed
+.venv/bin/python -m pytest -q backend/tests             # currently 255 passed
 cd frontend && npx tsc -b && npx eslint . && npx vite build
 # browser test: start the app on a fresh data dir, then
-node e2e/smoke.cjs http://127.0.0.1:8790/ <screenshot-dir>   # currently 178/178 (the ride-form step can flake once; rerun)
+node e2e/smoke.cjs http://127.0.0.1:8790/ <screenshot-dir>   # currently 179/179 (the ride-form step can flake once; rerun)
 #   (cd backend && ../.venv/bin/python -m bikelog --no-browser --no-sample --port 8790 --data-dir <fresh dir>)
 # sample database: start on ANOTHER fresh dir WITHOUT --no-sample (port 8791), then
 node e2e/sample.cjs http://127.0.0.1:8791/ <screenshot-dir>  # banner, sample bikes, crash item, Fresh start

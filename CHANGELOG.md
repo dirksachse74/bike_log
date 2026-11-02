@@ -8,6 +8,22 @@ UPDATING.md → "Making a release". New entries go under "Unreleased" as work is
 ## Unreleased
 
 ### Added
+- **Delete a bike for good** (Dirk 2026-11-02): bike → Retire or delete → "Delete … for good". It lists what
+  goes, asks you to type the bike's name and keeps a backup first (Settings → Backups → Restore brings it back).
+  The bike and its rides then appear nowhere (bike list, overview, rides, incidents, punctures, pickers); rides
+  from Strava or a CSV file are not imported again. Parts are not deleted: they go to storage (or retired) and
+  keep the km they rode on that bike.
+- **Tire and inner tube: defect flag**: a tube or tire with a logged puncture that is not fixed yet (Replaced or
+  Patched) shows "defect · puncture <date>".
+
+### Changed
+- **Retired bikes are no longer on the overview** (Bikes still lists them under Retired).
+- **Names of tires and inner tubes**: just the product name; two "GP5000 28" tires are fine, no "(2)", "(3)"
+  any more (existing ones are renamed). You tell them apart by where they are and since when.
+- **Chains** with the same name get letters: "Chain (B)", "(C)" … (existing "(2)" become "(B)").
+- **Install a tire / an inner tube from a wheel page** offers only that wheel. A position that already has one
+  says "already has X. To put a different tube there, replace that one: Replace X".
+
 - **Wheel page → Tire and inner tube** (Dirk 2026-11-02), right under the header: the tube (and tire) on the wheel now, since when, and
   its own km on this wheel (rides from the day it went in), with **Replace tube** / **Install an inner tube**.
   Folded below: every earlier tube / tire on this wheel with its dates, km there, punctures and how it came off.

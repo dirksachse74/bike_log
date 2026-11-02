@@ -743,7 +743,7 @@ function RetireBike({ bike, onRetired }: { bike: BikeDetail; onRetired: () => vo
         </>
       ) : (
         <p className="small muted">
-          {bike.name} has {c.rides} ride{c.rides === 1 ? '' : 's'} and {c.installations} part installation{c.installations === 1 ? '' : 's'} on record, so it is retired instead of deleted: hidden from the bike list, with its rides, km and history kept. You can restore it any time.
+          {bike.name} has {c.rides} ride{c.rides === 1 ? '' : 's'} and {c.installations} part installation{c.installations === 1 ? '' : 's'} on record. Retire it to hide it with its rides, km and history kept (you can restore it any time), or delete it for good below.
         </p>
       )}
       {bike.setup.length > 0 && (
@@ -762,7 +762,81 @@ function RetireBike({ bike, onRetired }: { bike: BikeDetail; onRetired: () => vo
           Retire bike
         </button>
       </div>
+      {!empty && <PurgeBike bike={bike} />}
     </div>
+  )
+}
+
+interface PurgePreview {
+  name: string
+  rides: number
+  rides_km: number
+  imported_rides: number
+  parts: { id: number; label: string; km_on_bike: number }[]
+  maintenance: number
+  notes: number
+}
+
+// Delete a bike WITH its history (Dirk 2026-11-02, DECISIONS 128): what goes is listed, the name must be typed,
+// a backup is kept first (Settings → Backups → Restore undoes it). The bike and its rides are shown nowhere
+// any more (the history stays in the file, append-only). Parts are never deleted.
+function PurgeBike({ bike }: { bike: BikeDetail }) {
+  const nav = useNavigate()
+  const { toast } = useApp()
+  const [open, setOpen] = useState(false)
+  const pv = useApi<PurgePreview>(open ? `/bikes/${bike.id}/purge-preview` : null)
+  const [name, setName] = useState('')
+  const [retireParts, setRetireParts] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState<string | null>(null)
+  async function go() {
+    setErr(null)
+    setBusy(true)
+    try {
+      const r = await api.post<{ name: string; backup: string | null }>(`/bikes/${bike.id}/purge`, { confirm_name: name, retire_parts: retireParts })
+      toast(`${r.name} deleted for good.${r.backup ? ' A backup was kept first (Settings → Backups).' : ''}`)
+      nav('/bikes')
+    } catch (e) {
+      setErr((e as Error).message)
+      setBusy(false)
+    }
+  }
+  const d = pv.data
+  return (
+    <details className="purge-bike" onToggle={(e) => setOpen((e.target as HTMLDetailsElement).open)}>
+      <summary className="small">Delete {bike.name} for good…</summary>
+      {pv.loading && !d && <Loading />}
+      {d && (
+        <div className="form">
+          <p className="small">{d.name} disappears from Bike Log for good: from the bike list, the overview, every picker and report.</p>
+          <ul className="small">
+            <li>
+              Its {d.rides} ride{d.rides === 1 ? '' : 's'} ({km(d.rides_km, 0)}) no longer count and are not listed; rides from Strava or a CSV file are not imported again.
+            </li>
+            <li>
+              Its {d.maintenance} maintenance entr{d.maintenance === 1 ? 'y' : 'ies'} and {d.notes} note{d.notes === 1 ? '' : 's'} / incident{d.notes === 1 ? '' : 's'} go with it (entries on a part stay with the part).
+            </li>
+            <li>
+              Its {d.parts.length} part{d.parts.length === 1 ? '' : 's'} are <strong>not</strong> deleted: they come off into storage and keep the km they rode on {d.name}.
+            </li>
+          </ul>
+          {d.parts.length > 0 && (
+            <label className="check">
+              <input type="checkbox" checked={retireParts} onChange={(e) => setRetireParts(e.target.checked)} /> Also retire its parts (they leave the Inventory lists; Part life still shows them)
+            </label>
+          )}
+          <Field label={`Type "${d.name}" to confirm`} hint="A backup is made first. Settings → Backups → Restore brings everything back.">
+            <input aria-label="Bike name to confirm" value={name} onChange={(e) => setName(e.target.value)} />
+          </Field>
+          <FormError error={err} />
+          <div className="form-actions">
+            <button className="btn btn-danger" disabled={busy || name.trim().toLowerCase() !== d.name.trim().toLowerCase()} onClick={go}>
+              Delete for good
+            </button>
+          </div>
+        </div>
+      )}
+    </details>
   )
 }
 
