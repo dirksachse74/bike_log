@@ -430,7 +430,8 @@ over it and checks the bike is still there, uploads the installer as a run artif
 with `gh release create` (notes from `scripts/release_notes.py`; repeat run = `--clobber` upload). Target repo
 = variable `RELEASES_REPO` (with secret `RELEASES_TOKEN`) or this repository. The repository is private, so
 its releases are not downloadable by friends; see UPDATING.md for the options. Friend-facing install note:
-`docs/INSTALL.md` (keep it correct when SmartScreen, data folder, update or Strava steps change).
+`docs/INSTALL.md` (keep it correct when SmartScreen, data folder, update or Strava steps change). The shared app must not
+carry Dirk's real name: publisher / CompanyName is "Bike Log" (DECISIONS 136).
 
 Updating an existing build after new commits (close app, pull, rebuild, reinstall; data is kept) is
 described for Dirk in `UPDATING.md`. Every change you push must keep that file correct.

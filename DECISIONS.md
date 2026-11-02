@@ -593,6 +593,9 @@ you disagree. Dates are 2026-10-24 unless noted.
     on the active row only (after a hot wax: top-up window and hot wax; after a top-up: hot wax, from
     chain_history's due km). `current` feeds the "Current:" line. chain_history stays for the API and rotation.
 
-## Repository
+136. **No personal name in the shared app** (Dirk 2026-11-02). Publisher / CompanyName = "Bike Log" in
+    bikelog.iss and bikelog.spec; the release workflow comment uses `<owner>`. Dirk may rename his GitHub
+    account to hide his real name; nothing in the code depends on the owner name except docs/clone URLs.
+
 27. Pushed only to the feature branch `claude/project-thread-6y3mmh` of the private repository. Demo
     data uses fictional Strava gear ids.
