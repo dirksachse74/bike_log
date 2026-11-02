@@ -1,5 +1,6 @@
 <p><a class="btn" href="<?= h(url('my_settings')) ?>">My settings: spares to keep, broken spokes, tire setup</a>
-  <a class="btn" href="<?= h(url('lists')) ?>">Shops</a> <a class="btn" href="<?= h(url('changes')) ?>">Change log</a></p>
+  <a class="btn" href="<?= h(url('lists')) ?>">Shops</a> <a class="btn" href="<?= h(url('changes')) ?>">Change log</a>
+  <a class="btn" href="<?= h(url('backups')) ?>">Backups and restore</a> <a class="btn" href="<?= h(url('diagnostics')) ?>">Diagnostics</a></p>
 <section class="card">
   <h2>Profile</h2>
   <form method="post" action="<?= h(url('account')) ?>"><?= Csrf::field() ?><input type="hidden" name="do" value="profile">
@@ -31,7 +32,7 @@
 <section class="card">
   <h2>Devices and data</h2>
   <p><?= post_button('account', [], 'Sign out on all devices', 'btn', null, ['do' => 'logout_all']) ?></p>
-  <p><?= post_button('export', [], 'Download all my data (JSON)', 'btn') ?></p>
+  <p><?= post_button('export', [], 'Download all my data (JSON)', 'btn') ?> <a class="btn" href="<?= h(url('backups')) ?>">Restore…</a> <a class="btn" href="<?= h(url('fresh_start')) ?>">Fresh start…</a></p>
   <details><summary class="danger-text">Delete my account</summary>
     <form method="post" action="<?= h(url('account')) ?>" data-confirm="Delete your account and ALL your data for good? This cannot be undone."><?= Csrf::field() ?>
       <input type="hidden" name="do" value="delete">

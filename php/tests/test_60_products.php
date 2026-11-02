@@ -123,7 +123,7 @@ check((int)Db::value('SELECT product_id FROM components WHERE user_id = ? AND la
 // upload: check, then import
 $good = '{"component_type":"CASSETTE","maker":"Shimano","model":"CS-R8100-12 11-34","specs":{"speeds":12,"range":"11-34"}}';
 $bad = '{"component_type":"CASSETTE","maker":"Shimano","model":"X","specs":{"speeds":"lots"}}';
-$w->upload('r=product_import', ['do' => 'check'], ['files' => [['good.json', $good], ['bad.json', $bad]]]);
+$w->upload('r=product_import', ['do' => 'check'], ['files[]' => [['good.json', $good], ['bad.json', $bad]]]);
 check($w->status === 200 && str_contains($w->body, 'products[0]') === false && str_contains($w->body, 'file.specs.speeds'), 'check lists the error with its place');
 check(!Inventory::findProduct($uid, 'CASSETTE', 'Shimano', 'CS-R8100-12 11-34'), 'check alone imports nothing');
 preg_match_all('/name="token\[\]" value="([a-f0-9]{32})"/', $w->body, $m);

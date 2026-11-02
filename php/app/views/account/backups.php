@@ -1,0 +1,29 @@
+<p class="muted">Copies of your data stored on the server. A copy is made before every fresh start and every restore, so nothing is lost; the newest <?= UserBackups::KEEP ?> are kept. For a copy of your own, use Account → Download all my data.</p>
+<p><?= post_button('backups', [], 'Store a copy now', 'btn', null, ['do' => 'save']) ?> <a class="btn" href="<?= h(url('fresh_start')) ?>">Fresh start…</a></p>
+<?php if (!$rows): ?><p class="muted">No stored copies yet.</p><?php endif; ?>
+<table class="list">
+  <?php foreach ($rows as $r): ?>
+  <tr><td class="nowrap"><?= h(local_time($r['created_at'])) ?></td>
+    <td><?= h(['BEFORE_RESET' => 'Before a fresh start', 'BEFORE_RESTORE' => 'Before a restore', 'MANUAL' => 'Stored by you'][$r['reason']] ?? $r['reason']) ?>
+      <span class="muted"><?= h((string)$r['summary']) ?> · <?= h(number_format($r['size_bytes'] / 1024, 0)) ?> KB</span></td>
+    <td><?= post_button('backups', ['id' => $r['id']], 'Download', 'btn small', null, ['do' => 'download']) ?>
+      <details><summary class="btn small">Restore…</summary>
+        <form method="post" action="<?= h(url('backups', ['id' => $r['id']])) ?>" class="card" data-confirm="Replace ALL your current data with this copy? (Your current data is stored as a copy first.)"><?= Csrf::field() ?>
+          <input type="hidden" name="do" value="restore">
+          <p>This replaces all your bikes, parts, rides and maintenance with this copy. Your current data is stored as a copy first.</p>
+          <?= field('confirm', 'Type ' . UserBackups::CONFIRM_RESTORE, '', 'text', ['required' => true, 'autocomplete' => 'off']) ?>
+          <button class="btn danger">Restore this copy</button>
+        </form>
+      </details></td></tr>
+  <?php endforeach; ?>
+</table>
+
+<section><h2>Restore from a file</h2>
+  <form method="post" action="<?= h(url('backups')) ?>" enctype="multipart/form-data" class="card" data-confirm="Replace ALL your current data with the file? (Your current data is stored as a copy first.)"><?= Csrf::field() ?>
+    <input type="hidden" name="do" value="upload">
+    <p class="muted">A file from Account → Download all my data (this server or another one). Everything in it gets new numbers, so it also moves data between accounts.</p>
+    <label>File<input type="file" name="file" accept=".json,application/json" required></label>
+    <?= field('confirm', 'Type ' . UserBackups::CONFIRM_RESTORE, '', 'text', ['required' => true, 'autocomplete' => 'off']) ?>
+    <button class="btn danger">Restore from file</button>
+  </form>
+</section>

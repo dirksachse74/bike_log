@@ -80,17 +80,10 @@ function page_account(): void
     View::render('account/show', ['u' => $u], 'My account', 'account');
 }
 
-/** Everything the user owns as one JSON file (stable ids). */
+/** Everything the user owns as one JSON file. */
 function export_user_data(int $uid): array
 {
-    $u = Db::one('SELECT id, email, display_name, timezone, created_at FROM users WHERE id = ?', [$uid]);
-    $out = ['format' => 'bikelog-php-export', 'version' => 1, 'exported_at' => gmdate('c'), 'user' => $u];
-    foreach (['bikes', 'components', 'installations', 'usage_adjustments', 'rides', 'consumables', 'consumable_txns',
-                 'maintenance_events', 'service_rules', 'reminder_snoozes', 'products', 'work_sessions', 'component_dispositions', 'journal_entries'] as $t) {
-        $out[$t] = Db::all("SELECT * FROM $t WHERE user_id = ? ORDER BY id", [$uid]);
-    }
-    $out['user_settings'] = Db::all('SELECT name, value FROM user_settings WHERE user_id = ? ORDER BY name', [$uid]);
-    return $out;
+    return UserBackups::export($uid);
 }
 
 function page_export(): void
@@ -102,6 +95,6 @@ function page_export(): void
     Audit::log('data_exported', (int)$u['id']);
     header('Content-Type: application/json; charset=utf-8');
     header('Content-Disposition: attachment; filename="bikelog-export-' . today() . '.json"');
-    echo json_encode(export_user_data((int)$u['id']), JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    echo UserBackups::encode(export_user_data((int)$u['id']));
     exit;
 }

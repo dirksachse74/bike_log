@@ -87,7 +87,7 @@ final class Browser
         return $this->req('POST', $query, $data);
     }
 
-    /** Multipart POST with files: $files = [field name => [[file name, content], ...]]. */
+    /** Multipart POST with files: $files = [field name => [[file name, content], ...]] ("files[]" for a list). */
     public function upload(string $query, array $data, array $files): string
     {
         $data['_csrf'] = $this->csrf();
@@ -96,7 +96,9 @@ final class Browser
             foreach (array_values($list) as $i => [$name, $content]) {
                 $f = tempnam($tmpDir, 'up');
                 file_put_contents($f, $content);
-                $data[$field . "[$i]"] = new CURLFile($f, 'application/json', $name);
+                // "files[]" sends a list (files[0], files[1] ...), "file" one file
+                $key = str_ends_with($field, '[]') ? substr($field, 0, -2) . "[$i]" : $field;
+                $data[$key] = new CURLFile($f, 'application/json', $name);
             }
         }
         return $this->req('POST', $query, $data, true);

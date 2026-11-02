@@ -8,7 +8,7 @@
     <?= field('duration', 'Time (h:mm)', old('duration', $d), 'text', ['placeholder' => '2:15', 'inputmode' => 'numeric']) ?>
   </div>
   <div class="row">
-    <label>Where<select name="kind"><?= options(['OUTDOOR' => 'Outdoor', 'INDOOR' => 'Indoor (trainer, Zwift)'], old('kind', $ride['kind'])) ?></select></label>
+    <label>Where<select name="kind"><?= options(['OUTDOOR' => 'Outdoor', 'INDOOR' => 'Indoor, direct-drive trainer (wheels and cassette off)'], old('kind', $ride['kind'])) ?></select></label>
     <label>Conditions<select name="conditions"><?= options(['DRY' => 'Dry', 'WET' => 'Wet'], old('conditions', (string)$ride['conditions']), true, 'Not set') ?></select></label>
   </div>
   <details><summary>More</summary>
