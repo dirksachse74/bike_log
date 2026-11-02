@@ -872,7 +872,7 @@ interface ComponentDetail extends ComponentSummary {
   suggested_outcome: string
   parts: PartNode[]
   groupset_bike_id: number | null
-  chain: (ChainRow & { cycles: { cycle: number; waxed_on: string; km: number; current: boolean }[] }) | null
+  chain: (ChainRow & { cycles: WaxCycle[] }) | null
   frame_history: FrameHistory | null
   spokes: SpokeInfo | null
   tire_tube: Record<'TIRE' | 'INNER_TUBE', { current: MountedRow | null; history: MountedRow[] }> | null
@@ -1055,13 +1055,13 @@ function FrameHistoryCard({ h, kind }: { h: FrameHistory; kind: string }) {
 }
 
 function RuleEditor({ rule, componentId, onDone }: { rule: Rule; componentId: number; onDone: () => void }) {
-  const [f, setF] = useState({ interval_km: rule.interval_km?.toString() ?? '', interval_months: rule.interval_months?.toString() ?? '', interval_hours: rule.interval_hours?.toString() ?? '', interval_count: rule.interval_count?.toString() ?? '', window_min_km: rule.window_min_km?.toString() ?? '', window_max_km: rule.window_max_km?.toString() ?? '', origin: rule.origin === 'DEFAULT' ? 'PERSONAL' : rule.origin, scope: 'part' })
+  const [f, setF] = useState({ interval_km: rule.interval_km?.toString() ?? '', interval_months: rule.interval_months?.toString() ?? '', interval_hours: rule.interval_hours?.toString() ?? '', interval_count: rule.interval_count?.toString() ?? '', window_min_km: rule.window_min_km?.toString() ?? '', window_max_km: rule.window_max_km?.toString() ?? '', after_top_up_km: rule.after_top_up_km?.toString() ?? '', origin: rule.origin === 'DEFAULT' ? 'PERSONAL' : rule.origin, scope: 'part' })
   const [err, setErr] = useState<string | null>(null)
   const num = (s: string) => (s.trim() === '' ? null : Number(s))
   async function save(active = true) {
     setErr(null)
     const body: Record<string, unknown> = { origin: f.origin, active }
-    if (rule.trigger === 'INTERVAL') Object.assign(body, { interval_km: num(f.interval_km), interval_months: num(f.interval_months), interval_hours: num(f.interval_hours) })
+    if (rule.trigger === 'INTERVAL') Object.assign(body, { interval_km: num(f.interval_km), interval_months: num(f.interval_months), interval_hours: num(f.interval_hours), ...(rule.action_code === 'WAX_HOT' ? { after_top_up_km: num(f.after_top_up_km) } : {}) })
     else if (rule.trigger === 'PARENT_COUNT') Object.assign(body, { interval_count: num(f.interval_count) })
     else Object.assign(body, { window_min_km: num(f.window_min_km), window_max_km: num(f.window_max_km) })
     try {
@@ -1086,6 +1086,11 @@ function RuleEditor({ rule, componentId, onDone }: { rule: Rule; componentId: nu
           <Field label="or every … months">
             <input inputMode="numeric" value={f.interval_months} onChange={(e) => setF({ ...f, interval_months: e.target.value })} />
           </Field>
+          {rule.action_code === 'WAX_HOT' && (
+            <Field label="After a liquid wax top-up: hot wax … km later" hint="e.g. 200: a top-up at 70 km moves the hot wax to 270 km. Empty: top-ups do not move it.">
+              <input inputMode="decimal" aria-label="Hot wax km after a top-up" value={f.after_top_up_km} onChange={(e) => setF({ ...f, after_top_up_km: e.target.value })} />
+            </Field>
+          )}
         </div>
       ) : rule.trigger === 'PARENT_COUNT' ? (
         <div className="row">
@@ -1413,7 +1418,7 @@ export function ComponentDetailPage() {
                   {!r.active && <Tag>off</Tag>}
                 </span>
                 <span className="muted small">
-                  {r.trigger === 'CYCLE_WINDOW' ? `once at ${r.window_min_km}–${r.window_max_km} km after ${actionName(r.cycle_action_code)}` : [r.interval_km && `every ${r.interval_km} km`, r.interval_months && `every ${r.interval_months} months`].filter(Boolean).join(' or ')}
+                  {r.trigger === 'CYCLE_WINDOW' ? `once at ${r.window_min_km}–${r.window_max_km} km after ${actionName(r.cycle_action_code)}` : [r.interval_km && `every ${r.interval_km} km`, r.interval_months && `every ${r.interval_months} months`].filter(Boolean).join(' or ') + (r.after_top_up_km ? `, or ${r.after_top_up_km} km after a liquid wax top-up` : '')}
                   {' · '}
                   {r.component_id ? 'this part' : 'type default'} · {r.origin.toLowerCase()}
                   {r.requires_setup && ` · only ${setupLabel(meta.tire_setups, r.requires_setup).toLowerCase()}`}
@@ -1695,7 +1700,30 @@ export function ComponentDetailPage() {
   )
 }
 
-// A chain's place in a rotation and its wax cycles (km ridden on each hot wax).
+interface WaxCycle {
+  cycle: number
+  waxed_on: string
+  km: number
+  current: boolean
+  top_ups: { date: string; at_km: number }[]
+  km_since_top_up?: number | null
+  hot_wax_due_at_km?: number
+  hot_wax_left_km?: number
+}
+
+// "70 km since hot wax · liquid wax top-up at 70 km, 0 km since · next hot wax at 270 km (200 km left)"
+function cycleNow(c: WaxCycle): string {
+  let t = `${km(c.km, 0)} since hot wax on ${when(c.waxed_on)}`
+  const last = c.top_ups[c.top_ups.length - 1]
+  if (last) t += ` · liquid wax top-up on ${when(last.date)} at ${km(last.at_km, 0)}, ${km(c.km_since_top_up ?? 0, 0)} since`
+  if (c.hot_wax_due_at_km != null) {
+    const left = c.hot_wax_left_km ?? 0
+    t += ` · next hot wax at ${km(c.hot_wax_due_at_km, 0)} (${left >= 0 ? `${km(left, 0)} left` : `${km(-left, 0)} over`})`
+  }
+  return t
+}
+
+// A chain's place in a rotation and its wax cycles: each hot wax, the liquid-wax top-ups in it and the km.
 function ChainCard({ comp, chain, onChanged }: { comp: ComponentSummary; chain: NonNullable<ComponentDetail['chain']>; onChanged: () => void }) {
   const { toast } = useApp()
   const bikes = useApi<Bike[]>('/bikes')
@@ -1733,11 +1761,18 @@ function ChainCard({ comp, chain, onChanged }: { comp: ComponentSummary; chain: 
       {chain.cycles.length === 0 ? (
         <p className="small muted">No hot wax recorded yet.</p>
       ) : (
+        <>
+        {chain.cycles[chain.cycles.length - 1].current && (
+          <p className="small wax-now">
+            <strong>This cycle:</strong> {cycleNow(chain.cycles[chain.cycles.length - 1])}
+          </p>
+        )}
         <table className="table">
           <thead>
             <tr>
               <th>Wax cycle</th>
               <th>Hot waxed</th>
+              <th>Liquid wax top-ups</th>
               <th className="num">Km on that wax</th>
             </tr>
           </thead>
@@ -1746,6 +1781,7 @@ function ChainCard({ comp, chain, onChanged }: { comp: ComponentSummary; chain: 
               <tr key={c.cycle}>
                 <td>{c.cycle}</td>
                 <td>{when(c.waxed_on)}</td>
+                <td>{c.top_ups.length ? c.top_ups.map((t) => `${when(t.date)} at ${km(t.at_km, 0)}`).join(', ') : '—'}</td>
                 <td className="num">
                   {km(c.km, 0)}
                   {c.current ? ' (current)' : ''}
@@ -1754,7 +1790,11 @@ function ChainCard({ comp, chain, onChanged }: { comp: ComponentSummary; chain: 
             ))}
           </tbody>
         </table>
+        </>
       )}
+      <p className="small muted">
+        After a liquid wax top-up the next hot wax is due a set distance after it (200 km unless you change it under Rules → Hot wax chain → Edit).
+      </p>
     </Card>
   )
 }

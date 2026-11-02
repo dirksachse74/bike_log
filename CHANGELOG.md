@@ -17,6 +17,12 @@ UPDATING.md → "Making a release". New entries go under "Unreleased" as work is
   Patched) shows "defect · puncture <date>".
 
 ### Changed
+- **Wax cycles with liquid-wax top-ups** (Dirk 2026-11-02): after a liquid wax top-up the next hot wax is due
+  200 km after it (top-up at 300 km → hot wax at 500 km; an early top-up at 70 km after a wet ride → hot wax at
+  270 km). Without a top-up it stays at 500 km. The 200 km are a personal setting: Rules → Hot wax chain → Edit
+  ("After a liquid wax top-up: hot wax … km later"; empty = top-ups do not move it). The chain page's
+  "Chain rotation and wax cycles" shows this cycle (km since hot wax, the top-up and km since, next hot wax at)
+  and lists the top-ups per cycle with the km at each; the bike's rotation history lists top-ups too.
 - **Retired bikes are no longer on the overview** (Bikes still lists them under Retired).
 - **Names of tires and inner tubes**: just the product name; two "GP5000 28" tires are fine, no "(2)", "(3)"
   any more (existing ones are renamed). You tell them apart by where they are and since when.

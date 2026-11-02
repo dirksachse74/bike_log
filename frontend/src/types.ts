@@ -453,6 +453,7 @@ export interface Rule {
   interval_months: number | null
   window_min_km: number | null
   window_max_km: number | null
+  after_top_up_km?: number | null
   cycle_action_code: string | null
   reset_actions: string[]
   warn_km: number | null
@@ -663,5 +664,5 @@ export interface ChainRotationData {
   prompt: { kind: 'SWAP' | 'WAX' | 'INSTALL'; text: string; to?: number; to_label?: string } | null
   candidates: { component_id: number | null; consumable_id: number | null; label: string; mark: string | null; note: string | null }[]
   elsewhere: { component_id: number; label: string; text: string }[]
-  timeline: { kind: 'ON' | 'WAX'; date: string; until: string | null; component_id: number; label: string; km: number | null }[]
+  timeline: { kind: 'ON' | 'WAX' | 'TOP_UP'; date: string; until: string | null; component_id: number; label: string; km: number | null }[]
 }

@@ -548,6 +548,7 @@ class RulePatch(Body):
     interval_hours: float | None = None
     warn_hours: float | None = None
     interval_count: int | None = None
+    after_top_up_km: float | None = None
 
 
 class ComponentRuleIn(RulePatch):

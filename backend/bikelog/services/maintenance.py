@@ -1,8 +1,8 @@
 """Maintenance events, service rules, reminder status with explanations, snoozing, chains and brakes.
 
 Rules never reset themselves: each rule lists the actions that reset it (default: its own action).
-A liquid-wax top-up therefore never postpones hot waxing, and a brake bleed never resets the
-fluid-replacement interval. Statuses are computed on read from events and contributions, so they
+A liquid-wax top-up never resets hot waxing (it moves the hot wax to after_top_up_km after it,
+DECISIONS 133), and a brake bleed never resets the fluid-replacement interval. Statuses are computed on read from events and contributions, so they
 are always consistent with the history.
 """
 from __future__ import annotations
@@ -260,7 +260,7 @@ def effective_bike_rules(session: Session, bike: Bike, include_disabled: bool = 
 
 
 RULE_FIELDS = ("name", "interval_km", "interval_months", "window_min_km", "window_max_km", "warn_km", "warn_days",
-               "active", "origin", "notes", "interval_hours", "warn_hours", "interval_count")
+               "active", "origin", "notes", "interval_hours", "warn_hours", "interval_count", "after_top_up_km")
 
 
 def _validate_rule(r: ServiceRule) -> None:
@@ -275,7 +275,7 @@ def _validate_rule(r: ServiceRule) -> None:
     if r.trigger == "CYCLE_WINDOW":
         if r.window_min_km is None or r.window_max_km is None or r.window_max_km < r.window_min_km:
             raise DomainError("The window needs a start and an end (end ≥ start)")
-    for v in (r.interval_km, r.window_min_km, r.window_max_km):
+    for v in (r.interval_km, r.window_min_km, r.window_max_km, r.after_top_up_km):
         if v is not None and v <= 0:
             raise DomainError("Intervals must be positive")
     if r.interval_months is not None and r.interval_months <= 0:
@@ -326,6 +326,7 @@ def set_component_rule(session: Session, component_id: int, *, rule_code: str | 
         window_min_km=template.window_min_km if template else None,
         window_max_km=template.window_max_km if template else None,
         cycle_action_code=template.cycle_action_code if template else None,
+        after_top_up_km=template.after_top_up_km if template else None,
         reset_actions_json=template.reset_actions_json if template else json.dumps([action_code]),
         warn_km=template.warn_km if template else None, warn_days=template.warn_days if template else None,
         requires_setup=template.requires_setup if template else None,
@@ -375,7 +376,7 @@ def rule_row(r: ServiceRule) -> dict:
             "cycle_action_code": r.cycle_action_code, "reset_actions": _reset_actions(r), "warn_km": r.warn_km,
             "warn_days": r.warn_days, "origin": r.origin, "active": r.active, "notes": r.notes,
             "requires_setup": r.requires_setup, "interval_hours": r.interval_hours, "warn_hours": r.warn_hours,
-            "interval_count": r.interval_count}
+            "interval_count": r.interval_count, "after_top_up_km": r.after_top_up_km}
 
 
 # ---------------------------------------------------------------- status
@@ -559,6 +560,18 @@ def _setup_mismatch(session: Session, rule: ServiceRule, *, comp: Component | No
     return f"Only for a {need} setup; {wheel.label} is set to {have}."
 
 
+def _top_up_in_cycle(session: Session, comp: Component | None, rule: ServiceRule, last) -> MaintenanceEvent | None:
+    """The last liquid-wax top-up after the last hot wax, when the hot-wax rule follows top-ups."""
+    if comp is None or last is None or not rule.after_top_up_km or rule.action_code != "WAX_HOT":
+        return None
+    return session.scalar(select(MaintenanceEvent).where(
+        MaintenanceEvent.component_id == comp.id, MaintenanceEvent.action_code == "WAX_LIQUID",
+        MaintenanceEvent.voided_at.is_(None),
+        (MaintenanceEvent.sort_utc > last.sort_utc)
+        | ((MaintenanceEvent.sort_utc == last.sort_utc) & (MaintenanceEvent.id > last.id)))
+        .order_by(MaintenanceEvent.sort_utc.desc(), MaintenanceEvent.id.desc()))
+
+
 def _interval_status(subj: _Subject, rule: ServiceRule, act_name: str, today: date) -> dict:
     session, comp = subj.session, subj.comp
     last = subj.last_event(_reset_actions(rule))
@@ -596,27 +609,39 @@ def _interval_status(subj: _Subject, rule: ServiceRule, act_name: str, today: da
     if rule.interval_km is not None:
         used = subj.km_since(since_utc)
         unc = subj.uncertain_since(since_utc)
-        st = _km_status(used, rule.interval_km, rule.warn_km)
+        interval = rule.interval_km
+        top_up = _top_up_in_cycle(session, comp, rule, last)
+        if top_up is not None:
+            # Dirk: after a liquid-wax top-up (at ~300 km, or early after a wet ride) the hot wax follows
+            # after_top_up_km later: top-up at 70 km → hot wax due at 270 km (DECISIONS 133)
+            top_at = used - subj.km_since(top_up.sort_utc)
+            interval = top_at + rule.after_top_up_km
+            basis = (f"{basis}; liquid wax top-up on {top_up.performed_on} at {top_at:,.0f} km, hot wax "
+                     f"{rule.after_top_up_km:,.0f} km after it")
+            out.update(top_up_on=top_up.performed_on, top_up_at_km=round(top_at, 1),
+                       km_since_top_up=round(used - top_at, 1))
+        st = _km_status(used, interval, rule.warn_km)
         statuses.append(st)
-        remaining = rule.interval_km - used
+        remaining = interval - used
         # done before the "km from before" date: the km between then and that date are inside the
         # starting value and not known, so the count is a lower bound
         start = _starting(session, comp.id) if comp is not None and last else None
         at_least = bool(start and since_utc < start.effective_utc)
-        txt = f"{'at least ' if at_least else ''}{used:,.0f} km since {basis} (interval {rule.interval_km:,.0f} km): "
+        due_txt = f"due at {interval:,.0f} km" if top_up is not None else f"interval {interval:,.0f} km"
+        txt = f"{'at least ' if at_least else ''}{used:,.0f} km since {basis} ({due_txt}): "
         if remaining > 0:
             txt += f"{remaining:,.0f} km left"
         elif remaining < 0:
-            txt += f"due at {rule.interval_km:,.0f} km, {-remaining:,.0f} km over"
+            txt += f"due at {interval:,.0f} km, {-remaining:,.0f} km over"
         else:
-            txt += f"due now at {rule.interval_km:,.0f} km"
+            txt += f"due now at {interval:,.0f} km"
         if unc:
             txt += f" (includes {unc:,.0f} km with uncertain assignment)"
         if at_least:
             txt += (f"; the km between {last.performed_on} and {start.effective_at[:10]} are inside the "
                     f"{'≈' if start.is_estimate else ''}{start.km:,.0f} km from before")
         parts.append(txt)
-        out.update(used_km=used, interval_km=rule.interval_km, remaining_km=round(remaining, 3), uncertain_km=unc,
+        out.update(used_km=used, interval_km=interval, remaining_km=round(remaining, 3), uncertain_km=unc,
                    km_at_least=at_least)
     if rule.interval_hours is not None:
         hours, no_time = subj.hours_since(since_utc)
@@ -856,7 +881,7 @@ def _cycle_status(session: Session, comp: Component, rule: ServiceRule, act_name
         out["status"], tail = "DUE_SOON", f": window opens in {lo - used:,.0f} km"
     else:
         out["status"], tail = "OK", f": window opens in {lo - used:,.0f} km"
-    out["explanation"] = head + tail + f". It does not postpone the next {cycle_act}."
+    out["explanation"] = head + tail + "."
     return out
 
 

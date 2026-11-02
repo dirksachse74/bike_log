@@ -343,6 +343,8 @@ async function bikeTab(page, name) {
   }
   await page.screenshot({ path: path.join(OUT, '03-component-detail.png'), fullPage: true })
 
+  const waxNow = await page.locator('.wax-now').innerText()
+  check('chain page: this wax cycle with km since hot wax and when the next hot wax is due', /since hot wax/.test(waxNow) && /next hot wax at 500 km/.test(waxNow), waxNow)
   // chain rotation: a mark tells identical chains apart; the bike shows which is on, ready or dirty
   await page.getByRole('button', { name: 'Edit details' }).click()
   await page.locator('.sheet').getByLabel('Mark').fill('dot')

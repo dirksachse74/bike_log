@@ -152,9 +152,10 @@ def timeline(session: Session, bike_id: int, chain_ids: list[int]) -> list[dict]
     for cid in chain_ids:
         c = session.get(Component, cid)
         for e in m.events_for(session, component_id=cid):
-            if e["action_code"] == "WAX_HOT" and not e["voided"]:
-                rows.append({"kind": "WAX", "date": e["performed_on"], "until": None, "sort": e["performed_at"],
-                             "component_id": cid, "label": c.label, "km": None})
+            if e["action_code"] in ("WAX_HOT", "WAX_LIQUID") and not e["voided"]:
+                rows.append({"kind": "WAX" if e["action_code"] == "WAX_HOT" else "TOP_UP", "date": e["performed_on"],
+                             "until": None, "sort": e["performed_at"], "component_id": cid, "label": c.label,
+                             "km": None})
     rows.sort(key=lambda r: (r["date"], r["kind"] == "ON", r["sort"]), reverse=True)
     for r in rows:
         r.pop("sort")
@@ -162,16 +163,36 @@ def timeline(session: Session, bike_id: int, chain_ids: list[int]) -> list[dict]
 
 
 def chain_history(session: Session, comp: Component) -> list[dict]:
-    """One chain's wax cycles, oldest first: each hot wax and the km ridden until the next one."""
-    waxes = sorted((e for e in m.events_for(session, component_id=comp.id)
-                    if e["action_code"] == "WAX_HOT" and not e["voided"]), key=lambda e: e["performed_at"])
+    """One chain's wax cycles, oldest first: each hot wax, the liquid-wax top-ups in it (with the km into the
+    cycle at each) and the km ridden until the next hot wax. The current cycle also says when the next hot
+    wax is due (Dirk 2026-11-02, DECISIONS 133)."""
     from bikelog.models import MaintenanceEvent
+    events = [e for e in m.events_for(session, component_id=comp.id)
+              if e["action_code"] in ("WAX_HOT", "WAX_LIQUID") and not e["voided"]]
+    sort = {e["id"]: session.get(MaintenanceEvent, e["id"]).sort_utc for e in events}
+    events.sort(key=lambda e: (sort[e["id"]], e["id"]))
+    waxes = [e for e in events if e["action_code"] == "WAX_HOT"]
     out = []
     for n, e in enumerate(waxes):
-        start = session.get(MaintenanceEvent, e["id"]).sort_utc
-        end = session.get(MaintenanceEvent, waxes[n + 1]["id"]).sort_utc if n + 1 < len(waxes) else None
-        km = usage_since(session, comp.id, start) - (usage_since(session, comp.id, end) if end else 0)
-        out.append({"cycle": n + 1, "waxed_on": e["performed_on"], "km": round(km, 1), "current": end is None})
+        start = sort[e["id"]]
+        end = sort[waxes[n + 1]["id"]] if n + 1 < len(waxes) else None
+        total_since = usage_since(session, comp.id, start)
+        km = total_since - (usage_since(session, comp.id, end) if end else 0)
+        tops = [t for t in events if t["action_code"] == "WAX_LIQUID" and (sort[t["id"]], t["id"]) > (start, e["id"])
+                and (end is None or sort[t["id"]] < end)]
+        top_ups = [{"date": t["performed_on"],
+                    "at_km": round(total_since - usage_since(session, comp.id, sort[t["id"]]), 1)} for t in tops]
+        row = {"cycle": n + 1, "waxed_on": e["performed_on"], "km": round(km, 1), "current": end is None,
+               "top_ups": top_ups}
+        if end is None:
+            row["km_since_top_up"] = round(km - top_ups[-1]["at_km"], 1) if top_ups else None
+            rule = next((r for r in m.effective_rules(session, comp) if r.action_code == "WAX_HOT"), None)
+            if rule and rule.interval_km:
+                due = (top_ups[-1]["at_km"] + rule.after_top_up_km if top_ups and rule.after_top_up_km
+                       else rule.interval_km)
+                row["hot_wax_due_at_km"] = round(due, 1)
+                row["hot_wax_left_km"] = round(due - km, 1)
+        out.append(row)
     return out
 
 

@@ -176,7 +176,7 @@ export default function ChainRotation({ bikeId, refresh, onChanged }: { bikeId: 
                 </span>
               ) : (
                 <span>
-                  <Link to={`/inventory/${t.component_id}`}>{t.label}</Link> hot waxed
+                  <Link to={`/inventory/${t.component_id}`}>{t.label}</Link> {t.kind === 'TOP_UP' ? 'liquid wax top-up' : 'hot waxed'}
                 </span>
               )}
             </li>
