@@ -156,7 +156,8 @@ there) and puts it on a release page: one download link. Nothing to install or t
    `https://github.com/<repository>/releases/latest` always points at the newest one.
 
 Pushing a tag `vX.Y.Z` (`scripts\release.py --push`) starts the same build by itself. Running it twice
-for the same version replaces the installer of that release. Untick **Publish** for a test build: the
+for the same version replaces the installer of that release. Publishing refuses a version that was already released from
+another commit ("Tag vX.Y.Z already exists on another commit"): make a new release first (step 1). Untick **Publish** for a test build: the
 installer is then only on the run page (under Artifacts, 7 days), nothing is published.
 
 **Who can download:** a release of a *private* repository is only visible to people with access to the

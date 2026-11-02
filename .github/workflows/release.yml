@@ -40,7 +40,7 @@ jobs:
       PUBLISH: ${{ github.event_name == 'push' || inputs.publish }}
       RELEASES_REPO: ${{ vars.RELEASES_REPO || github.repository }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0   # the build needs the tags to know whether this commit is a release
 
@@ -55,7 +55,7 @@ jobs:
             throw "Tag $env:GITHUB_REF_NAME does not match the version $ver in backend/bikelog/__init__.py"
           }
           $existing = git rev-list -n 1 $tag 2>$null
-          if ($existing -and $existing.Trim() -ne $sha) {
+          if ($env:PUBLISH -eq 'true' -and $existing -and $existing.Trim() -ne $sha) {
             throw "Tag $tag already exists on another commit. Raise the version first (ask Claude for 'a patch release')."
           }
           if ($env:PUBLISH -eq 'true' -and -not $existing) {
@@ -178,4 +178,10 @@ jobs:
             gh release create @ghArgs
           }
           if ($LASTEXITCODE -ne 0) { throw "publishing failed" }
+          if ($env:RELEASES_REPO -ne '${{ github.repository }}') {
+            # mark the release in the code repository too (builds of this commit then show the plain version)
+            git push origin $tag 2>&1 | Write-Host
+            if ($LASTEXITCODE -ne 0) { Write-Host "::warning::Could not push tag $tag to ${{ github.repository }}" }
+          }
           Write-Host "Download page: https://github.com/$env:RELEASES_REPO/releases/latest"
+          exit 0
