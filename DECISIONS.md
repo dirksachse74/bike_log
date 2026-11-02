@@ -531,6 +531,10 @@ you disagree. Dates are 2026-10-24 unless noted.
     for tires, installed at `<day>T23:59` for a date alone (after that day's rides). Without a recorded wheel it
     stays a stock use (punctures still infer the model from the last fix). InstallHere has a "From stock"
     source (POST /api/consumables/{id}/install). `punctures._collect` ignores parts put in by the flat's own fix.
+126. **Puncture stats per tube / tire, not per model sum** (Dirk 2026-11-02). `punctures._by_model` returns per
+    model `punctures` and `items` (component_id, label, km, punctures, km_per_puncture, in_use); stock tubes without
+    a record are one item "From stock (no record of its own)" with the inferred km. Replaces DECISIONS 117's
+    summed "km per puncture per model".
 
 ## Repository
 27. Pushed only to the feature branch `claude/project-thread-6y3mmh` of the private repository. Demo

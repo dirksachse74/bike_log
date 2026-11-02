@@ -22,6 +22,7 @@ from sqlalchemy.orm import Session
 
 from bikelog.catalog import WHEEL_TYPES
 from bikelog.models import Bike, Component, Consumable, ConsumableTxn, Installation, JournalEntry, Ride
+from bikelog.services import inventory as inv
 from bikelog.services import journal, settings
 from bikelog.services.incidents import parts_on_ride
 from bikelog.services.usage import component_usage
@@ -182,30 +183,47 @@ def punctures(session: Session) -> tuple[list[dict], dict[str, float]]:
     return rows, stock_km
 
 
-def _by_model(session: Session, rows: list[dict], ctype: str, field: str,
+def _by_model(session: Session, rows: list[dict], ctype: str, field: str, id_field: str,
               extra_km: dict[str, float] | None = None) -> list[dict]:
-    count: dict[str, int] = defaultdict(int)
+    """Per model, every tube (tire) on its own line with its own km, punctures and km per puncture
+    (Dirk 2026-11-02: adding the km of different tires makes no sense). Stock tubes without a record of
+    their own are one line "from stock" with the km inferred from the fixes."""
+    by_part: dict[int, int] = defaultdict(int)
+    loose: dict[str, int] = defaultdict(int)          # punctures on a tube / tire with no record of its own
     for r in rows:
-        if r[field] is not None:
-            count[r[field]] += 1
-    km: dict[str, float] = defaultdict(float, extra_km or {})
-    parts: dict[str, int] = defaultdict(int)
+        if r[field] is None:
+            continue
+        if r[id_field]:
+            by_part[r[id_field]] += 1
+        else:
+            loose[r[field]] += 1
+    models: dict[str, list[dict]] = defaultdict(list)
     for c in session.scalars(select(Component).where(Component.component_type == ctype,
                                                      Component.disposition != "VOIDED")):
         used = session.scalar(select(Installation.id).where(Installation.component_id == c.id,
                                                             Installation.voided_at.is_(None)).limit(1))
-        if used is None:
+        if used is None and c.id not in by_part:
             continue
-        m = model_of(c)
-        km[m] += component_usage(session, c)["total_km"]
-        parts[m] += 1
+        u = component_usage(session, c)
+        k, n = round(u["total_km"]), by_part.get(c.id, 0)
+        models[model_of(c)].append({
+            "component_id": c.id, "label": c.label, "km": k, "punctures": n,
+            "km_per_puncture": round(k / n) if n and k else None,
+            "in_use": inv.open_installation(session, c.id) is not None})
+    for m, n in loose.items():
+        k = round((extra_km or {}).get(m, 0)) or None
+        models[m].append({"component_id": None, "label": "From stock (no record of its own)" if m != NOT_RECORDED
+                          else "Not recorded", "km": k, "punctures": n,
+                          "km_per_puncture": round(k / n) if n and k else None, "in_use": False})
+    for m, k in (extra_km or {}).items():             # a stock tube that is still in and has not flatted
+        if m not in loose and round(k):
+            models[m].append({"component_id": None, "label": "From stock (no record of its own)", "km": round(k),
+                              "punctures": 0, "km_per_puncture": None, "in_use": True})
     out = []
-    for m in set(count) | set(km):
-        n = count.get(m, 0)
-        k = round(km[m]) if m in km else None
-        out.append({"model": m, "punctures": n, "parts": parts.get(m, 0), "km": k,
-                    "km_per_puncture": round(k / n) if n and k else None})
-    out.sort(key=lambda x: (x["model"] == NOT_RECORDED, -x["punctures"], -(x["km"] or 0), x["model"]))
+    for m, items in models.items():
+        items.sort(key=lambda x: (-x["punctures"], -(x["km"] or 0), x["label"]))
+        out.append({"model": m, "punctures": sum(x["punctures"] for x in items), "items": items})
+    out.sort(key=lambda x: (x["model"] == NOT_RECORDED, -x["punctures"], x["model"]))
     return out
 
 
@@ -220,8 +238,8 @@ def _count(rows: list[dict], field: str, names: dict | None = None) -> list[dict
 def report(session: Session) -> dict:
     rows, stock_km = punctures(session)
     return {"total": len(rows), "rows": rows,
-            "by_tube": _by_model(session, rows, "INNER_TUBE", "tube_model", stock_km),
-            "by_tire": _by_model(session, rows, "TIRE", "tire_model"),
+            "by_tube": _by_model(session, rows, "INNER_TUBE", "tube_model", "tube_id", stock_km),
+            "by_tire": _by_model(session, rows, "TIRE", "tire_model", "tire_id"),
             "by_bike": _count(rows, "bike"), "by_wheel": _count(rows, "wheel"),
             "by_conditions": _count(rows, "conditions", {"WET": "Wet", "DRY": "Dry"}),
             "by_damage": _count(rows, "damage")}
