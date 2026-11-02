@@ -35,3 +35,25 @@
     </form>
   </details>
 </section>
+
+<section><h2>Fits these bikes</h2>
+  <?php if (!$fits): ?><p class="muted">Nothing noted yet. Note which bikes it fits, so the Replace form can tell you.</p><?php else: ?>
+  <table class="list"><?php foreach ($fits as $f): ?>
+    <tr><td><?= h($f['bike']) ?></td><td><?= (int)$f['verified'] ? status_badge('OK') . ' checked' : '<span class="muted">should fit, not checked</span>' ?></td>
+      <td class="muted"><?= h($f['note'] ?? '') ?></td>
+      <td><?= post_button('product', ['id' => $p['id']], 'Remove', 'btn small', null, ['do' => 'unfit', 'bike_id' => $f['bike_id']]) ?></td></tr>
+  <?php endforeach; ?></table>
+  <?php endif; ?>
+  <?php if ($bikes): ?>
+  <details><summary class="btn small">+ Note a bike it fits</summary>
+    <form method="post" class="card"><?= Csrf::field() ?><input type="hidden" name="do" value="fit">
+      <div class="row">
+        <label>Bike<select name="bike_id" required><?= options(array_column($bikes, 'name', 'id'), '') ?></select></label>
+        <label>How sure<select name="verified"><?= options(['1' => 'Checked: it fits', '0' => 'Should fit, not checked yet'], '1') ?></select></label>
+        <?= field('note', 'Note', '', 'text', ['maxlength' => 255, 'placeholder' => 'e.g. needs the 12 mm thru-axle adapter']) ?>
+      </div>
+      <button class="btn primary">Save</button>
+    </form>
+  </details>
+  <?php endif; ?>
+</section>

@@ -31,6 +31,8 @@ function page_log(): void
             'measurement_value' => $mv, 'consumable_id' => (int)post('consumable_id') ?: null,
             'consumable_qty' => parse_number(post('consumable_qty'), 'Amount used'), 'cost_cents' => parse_money_cents(post('cost'), 'Cost'),
             'shop' => nullable(post('shop')), 'notes' => nullable(post('notes')),
+            'symptom' => $action && in_array('symptom', $action['fields'], true) ? nullable(post('symptom')) : null,
+            'work_done' => $action && in_array('work_done', $action['fields'], true) ? nullable(post('work_done')) : null,
         ]);
         Session::flash('ok', ($action['name'] ?? 'Work') . ' logged. Reminders that this resets start counting again.');
         redirect($cid ? 'part' : 'bike', ['id' => $cid ?: $bid]);
@@ -63,7 +65,8 @@ function page_log(): void
     $actionsByType = [];
     foreach (array_merge(['BIKE'], array_unique(array_values($types))) as $t) {
         $actionsByType[$t] = array_map(fn($a) => ['name' => $a['name'], 'outcomes' => $a['outcomes'], 'unit' => $a['unit'],
-            'measure' => in_array('measurement', $a['fields'], true), 'consumable' => in_array('consumable', $a['fields'], true)],
+            'measure' => in_array('measurement', $a['fields'], true), 'consumable' => in_array('consumable', $a['fields'], true),
+            'symptom' => in_array('symptom', $a['fields'], true), 'work_done' => in_array('work_done', $a['fields'], true)],
             Catalog::actionsFor($t));
     }
     $consumables = Db::all('SELECT id, name, unit FROM consumables WHERE user_id = ? AND archived_at IS NULL ORDER BY name', [$uid]);

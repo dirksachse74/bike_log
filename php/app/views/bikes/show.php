@@ -12,6 +12,7 @@
   <a class="btn" href="<?= h(url('part_edit', ['bike' => $bike['id']])) ?>">Add part to this bike</a>
   <a class="btn" href="<?= h(url('groupset', ['bike' => $bike['id']])) ?>">Add a groupset</a>
   <a class="btn" href="<?= h(url('chains', ['bike' => $bike['id']])) ?>">Chains</a>
+  <a class="btn" href="<?= h(url('brakes', ['bike' => $bike['id']])) ?>">Brakes</a>
   <a class="btn" href="<?= h(url('costs', ['bike' => $bike['id']])) ?>">Costs</a>
   <a class="btn" href="<?= h(url('bike_edit', ['id' => $bike['id']])) ?>">Edit</a>
   <a class="btn link" href="<?= h(url('changes', ['bike' => $bike['id']])) ?>">Change log</a>
@@ -42,6 +43,9 @@
     </tr>
     <?php endforeach; ?>
   </table>
+  <?php if ($date === today() && $bike['status'] === 'ACTIVE' && array_filter($parts, fn($p) => (int)$p['depth'] === 0 && in_array($p['slot'], ['FRONT_WHEEL', 'REAR_WHEEL'], true))): ?>
+  <p class="muted">The wheels sit directly on the bike. <a href="<?= h(url('group_wheels', ['bike' => $bike['id']])) ?>">Put them into a wheelset</a> if you swap wheel pairs.</p>
+  <?php endif; ?>
 </section>
 
 <?php if ($away): ?>

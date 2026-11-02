@@ -32,6 +32,8 @@
     var outcome = logForm.querySelector('[data-outcome]');
     var outWrap = logForm.querySelector('[data-outcome-wrap]');
     var measWrap = logForm.querySelector('[data-measure-wrap]');
+    var symWrap = logForm.querySelector('[data-symptom-wrap]');
+    var workWrap = logForm.querySelector('[data-work-wrap]');
     var unit = logForm.querySelector('[data-unit]');
     var label = function (code) { return code.charAt(0) + code.slice(1).toLowerCase().replace(/_/g, ' '); };
     var typeOf = function () { var v = target.value; return v.indexOf('b:') === 0 ? 'BIKE' : (data.types[v] || ''); };
@@ -55,6 +57,8 @@
       outcome.innerHTML = '';
       outWrap.hidden = !(a && a.outcomes.length);
       measWrap.hidden = !(a && a.measure);
+      symWrap.hidden = !(a && a.symptom);
+      workWrap.hidden = !(a && a.work_done);
       unit.textContent = a && a.unit ? '(' + a.unit + ')' : '';
       if (a && a.outcomes.length) {
         var blank = document.createElement('option');

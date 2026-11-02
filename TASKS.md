@@ -17,8 +17,9 @@ Status key: ✅ done and tested · 🟡 done, not verified where it matters · �
       trainer profile, ride start times (already in the base release).
 - [x] Parity check against the desktop app (2026-11-02): gaps listed for round 5.
 - [x] Round 5a: ride left out of the km, wheels picked per ride, bulk ride actions, CSV ride import, shoes in use.
-- [ ] Round 5b: replace a part carrying what is mounted on it, group wheels into a wheelset, product fits
-      which bike, brake overview, restore a voided maintenance entry, charge history.
+- [x] Round 5b: replace a part carrying what is mounted on it, group wheels into a wheelset, product fits
+      which bike, brake overview, restore a voided maintenance entry, charge history. Feature match done
+      (Strava left out on purpose).
 - [ ] Try it on real shared hosting (Dirk): install page, SMTP, HTTPS.
 
 ## P1 Launch and persistence

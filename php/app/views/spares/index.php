@@ -46,7 +46,7 @@
 <?php endif; ?>
 
 <?php if ($sessions): ?>
-<details><summary>Recent steps (groupset imports, fixes) you can undo</summary>
+<details><summary>Recent steps (groupset imports, replacements, fixes) you can undo</summary>
   <table class="list"><?php foreach ($sessions as $w): ?>
     <tr class="<?= $w['undone_at'] ? 'voided' : '' ?>"><td><?= h($w['happened_on']) ?></td><td><a href="<?= h(url('ws', ['id' => $w['id']])) ?>"><?= h($w['title']) ?></a></td><td class="muted"><?= $w['undone_at'] ? 'undone' : '' ?></td></tr>
   <?php endforeach; ?></table>
