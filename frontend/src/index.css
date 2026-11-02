@@ -1446,6 +1446,10 @@ dl.props dd { margin: 0; }
 .punct-models .punct-model-head th {
   text-align: left;
   font-weight: 600;
+  text-transform: none;
+  letter-spacing: normal;
+  font-size: inherit;
+  color: var(--ink);
   background: #f7f7f9;
   padding-top: 0.5rem;
 }
