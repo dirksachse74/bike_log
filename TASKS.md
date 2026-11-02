@@ -10,7 +10,7 @@ Status key: ✅ done and tested · 🟡 done, not verified where it matters · �
       stock, spare minimums and shopping list, frame and fork as one part, notes and issues (journal).
 - [x] Round 3a: chain rotation and wax cycle (liquid top-up window, after_top_up_km, wet rides), PARENT_COUNT
       (quick link).
-- [ ] Round 3b: purchase bundles and costs, repairs (send away), service orders, part life report and
+- [x] Round 3b: purchase bundles and costs, repairs (send away), service orders, part life report and
       forecast.
 - [ ] Round 4: product records and JSON product import, pick lists (shops), fresh start, per-user backup and
       restore (JSON import), diagnostics and change log, ride times (not only dates), usage profiles.

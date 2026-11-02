@@ -2,6 +2,9 @@
   <a class="btn primary" href="<?= h(url('groupset')) ?>">+ Add a groupset</a>
   <a class="btn" href="<?= h(url('supply_edit', ['mode' => 'COUNTED'])) ?>">+ Counted stock (tubes, pads ...)</a>
   <a class="btn" href="<?= h(url('my_settings')) ?>">Spares to keep</a>
+  <a class="btn" href="<?= h(url('bundles')) ?>">Bought together</a>
+  <a class="btn" href="<?= h(url('repairs')) ?>">Away for repair</a>
+  <a class="btn" href="<?= h(url('part_life')) ?>">Part life</a>
 </div>
 
 <section><h2>Shopping list</h2>

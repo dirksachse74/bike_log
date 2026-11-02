@@ -22,6 +22,8 @@
       <?= field('prefix', 'Name prefix', $form['prefix'], 'text', ['maxlength' => 60, 'data-help' => 'Parts are named like "' . ($form['prefix'] ?: 'Ultegra') . ' chain".']) ?>
       <label>Condition<select name="prior"><?= options(['NEW' => 'New', 'UNKNOWN' => 'Used, km unknown'], $form['prior']) ?></select></label>
       <?= field('purchase_date', 'Bought on', $form['purchase_date'], 'date') ?>
+      <?= field('bundle_price', 'Bought as one, for (total)', $form['bundle_price'], 'text', ['inputmode' => 'decimal', 'data-help' => 'Then the parts get no own price; the total counts once. Leave empty to price parts one by one.']) ?>
+      <?= field('merchant', 'Shop', $form['merchant']) ?>
     </div>
   </details>
   <button class="btn" name="do" value="preview">Update preview</button>

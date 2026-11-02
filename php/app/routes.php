@@ -23,6 +23,8 @@ final class Routes
             'groupset' => 'page_groupset', 'ws' => 'page_ws', 'ws_undo' => 'page_ws_undo', 'spares' => 'page_spares', 'stock_take' => 'page_stock_take',
             'my_settings' => 'page_my_settings', 'ride' => 'page_ride', 'incident_log' => 'page_incident_log', 'incidents' => 'page_incidents',
             'incident' => 'page_incident', 'incident_fix' => 'page_incident_fix', 'punctures' => 'page_punctures', 'spoke' => 'page_spoke', 'journal' => 'page_journal', 'chains' => 'page_chains', 'chain_do' => 'page_chain_do',
+            'costs' => 'page_costs', 'bundles' => 'page_bundles', 'bundle_do' => 'page_bundle_do', 'repair_send' => 'page_repair_send',
+            'repair_back' => 'page_repair_back', 'repairs' => 'page_repairs', 'part_life' => 'page_part_life',
             'account' => 'page_account', 'export' => 'page_export',
             // admin
             'admin' => 'page_admin', 'admin_users' => 'page_admin_users', 'admin_user' => 'page_admin_user', 'admin_invite' => 'page_admin_invite',

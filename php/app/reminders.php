@@ -182,6 +182,7 @@ final class Reminders
         $r['due_km'] = $rule['interval_km'] !== null ? (float)$rule['interval_km'] : null;
         if ($known) {
             self::wetRide($uid, $rule, $c, $last, $r);
+            $r['forecast'] = self::forecast($uid, $c, $rule, $usedKm, $usage['seconds'] / 3600, $since);
         }
         $sn = self::snooze($uid, 'component_id', (int)$c['id'], $rule['rule_code']);
         return self::applySnooze($base + $r, $sn, $usedKm);
@@ -296,6 +297,48 @@ final class Reminders
             $r['text'] .= ' Snoozed' . ($byDate ? ' until ' . $sn['until_date'] : '') . ($byKm ? ' until ' . number_format((float)$sn['until_km'], 0) . ' km' : '') . '.';
         }
         return $r + ['snooze' => $sn];
+    }
+
+    public const PACE_DAYS = 28;
+    public const PACE_MIN_RIDES = 3;
+    public const PACE_MIN_DAYS = 7;
+
+    /** When a km / ride-hours interval will probably be reached at the recent pace. Planning help only. */
+    public static function forecast(int $uid, array $c, array $rule, float $usedKm, float $usedHours, ?string $since): ?string
+    {
+        $kmLeft = $rule['interval_km'] !== null ? (float)$rule['interval_km'] - $usedKm : null;
+        $hLeft = $rule['interval_hours'] !== null ? (float)$rule['interval_hours'] - $usedHours : null;
+        if (($kmLeft === null && $hLeft === null) || ($kmLeft !== null && $kmLeft <= 0) || ($hLeft !== null && $hLeft <= 0)) {
+            return null;
+        }
+        $today = new DateTimeImmutable(today());
+        $start = $today->modify('-' . (self::PACE_DAYS - 1) . ' days')->format('Y-m-d');
+        if ($since !== null && $since > $start) {
+            $start = $since;
+        }
+        $days = min(self::PACE_DAYS, max(1, (int)(new DateTimeImmutable($start))->diff($today)->format('%a') + 1));
+        $u = Domain::rideUsage($uid, $c, $start);
+        $basis = $days < self::PACE_DAYS ? "the last $days day" . ($days !== 1 ? 's' : '') : 'the last 4 weeks';
+        if ($u['rides'] < self::PACE_MIN_RIDES || $days < self::PACE_MIN_DAYS) {
+            $why = $u['rides'] < self::PACE_MIN_RIDES ? 'only ' . $u['rides'] . ' ride' . ($u['rides'] !== 1 ? 's' : '') . " in $basis" : "only $days days of riding to go by";
+            return "No forecast yet: $why (needs at least " . self::PACE_MIN_RIDES . ' rides over ' . self::PACE_MIN_DAYS . ' days).';
+        }
+        $cands = [];
+        if ($kmLeft !== null && $u['km'] > 0) {
+            $perDay = $u['km'] / $days;
+            $cands[] = [$kmLeft / $perDay, km($u['km']) . " in {$u['rides']} rides over $basis ≈ " . km($perDay * 7) . '/week; ' . km($kmLeft) . ' left'];
+        }
+        $hours = $u['seconds'] / 3600;
+        if ($hLeft !== null && $hours > 0) {
+            $perDay = $hours / $days;
+            $cands[] = [$hLeft / $perDay, number_format($hours, 1) . " h in {$u['rides']} rides over $basis ≈ " . number_format($perDay * 7, 1) . ' h/week; ' . number_format($hLeft, 1) . ' h left'];
+        }
+        if (!$cands) {
+            return "No forecast yet: the rides in $basis have no distance or time.";
+        }
+        usort($cands, fn($a, $b) => $a[0] <=> $b[0]);
+        $on = $today->modify('+' . (int)round($cands[0][0]) . ' days')->format('Y-m-d');
+        return "Due around $on at your pace of $basis ({$cands[0][1]}). A planning estimate, not a safety check.";
     }
 
     /** Dates of wet rides that counted for the part after a day (a wax logged on a day covers that day's rides). */

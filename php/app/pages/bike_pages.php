@@ -54,7 +54,8 @@ function page_bike(): void
     $incidents = Incidents::list($uid, ['bike_id' => $bike['id'], 'open' => 1]);
     $fixData = fix_data($uid, $incidents);
     $journal = Journal::entries($uid, (int)$bike['id'], null, true);
-    View::render('bikes/show', compact('bike', 'parts', 'stats', 'reminders', 'rides', 'events', 'history', 'date', 'changeDays', 'incidents', 'fixData', 'journal'),
+    $away = ServiceOrders::rows($uid, ['out' => 1, 'bike_id' => $bike['id']]);
+    View::render('bikes/show', compact('bike', 'parts', 'stats', 'reminders', 'rides', 'events', 'history', 'date', 'changeDays', 'incidents', 'fixData', 'journal', 'away'),
         $bike['name'], 'bikes');
 }
 
@@ -177,9 +178,13 @@ function page_part(): void
     $waxRows = $c['component_type'] === 'CHAIN' ? Chains::waxApplications($uid, $c) : [];
     $parentsServed = Db::one("SELECT id FROM service_rules WHERE user_id = ? AND trigger_kind = 'PARENT_COUNT' AND (component_type = ? OR component_id = ?) LIMIT 1",
         [$uid, $c['component_type'], $c['id']]) ? Reminders::parentsServed($uid, (int)$c['id']) : null;
+    $order = ServiceOrders::openFor($uid, (int)$c['id']);
+    $orders = ServiceOrders::rows($uid, ['component_id' => $c['id']]);
+    $incidentChoices = $order ? [] : ServiceOrders::incidentChoices($uid, $c);
+    $bundle = $c['bundle_id'] ? Db::one('SELECT * FROM purchase_bundles WHERE id = ? AND voided_at IS NULL', [$c['bundle_id']]) : null;
     $product = $c['product_id'] ? Db::one('SELECT * FROM products WHERE id = ? AND user_id = ?', [$c['product_id'], $uid]) : null;
     View::render('parts/show', compact('c', 'totals', 'installs', 'open', 'bike', 'children', 'events', 'adjustments', 'reminders', 'rules',
-        'journal', 'spokes', 'spokeStock', 'incidents', 'dispositions', 'product', 'waxRows', 'parentsServed'),
+        'journal', 'spokes', 'spokeStock', 'incidents', 'dispositions', 'product', 'waxRows', 'parentsServed', 'order', 'orders', 'incidentChoices', 'bundle'),
         Domain::componentName($c), 'parts');
 }
 
