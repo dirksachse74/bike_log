@@ -7,6 +7,15 @@ UPDATING.md → "Making a release". New entries go under "Unreleased" as work is
 
 ## Unreleased
 
+### Added
+- **Bike Log on your own server with Google sign-in** (Dirk 2026-11-02). `--server` mode: only the Google
+  accounts you list can sign in, HTTPS through Caddy, a backup every day while it runs, Strava connects
+  through your own domain. Docker setup with a one-time install script and optional nightly updates:
+  step by step in deploy/README.md. The desktop app is unchanged.
+- Settings → Backups: **Download** next to each backup, and **Bring data from another computer** (upload a
+  backup file, then Restore it). This is how your data moves from the PC to the server.
+- Settings → **Account** (server only): who is signed in, and Sign out.
+
 ## 0.3.0 (2026-11-02)
 
 ### Changed

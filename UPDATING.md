@@ -95,6 +95,11 @@ Then close Bike Log, run the newest installer in `dist\installer\` (named after 
 8. **Start Bike Log** from the Start menu. If the new version changes the database, it first writes a
    backup (`%LOCALAPPDATA%\BikeLog\backups\...pre-upgrade...`) and then upgrades. Nothing is deleted.
 
+## Bike Log on your own server
+
+If Bike Log runs on your server (deploy/README.md), it updates itself every night from `main` when you
+chose that during setup; otherwise connect with `ssh root@<server ip>` and type `bikelog-update`.
+
 ## Check which version you are running
 
 ```powershell

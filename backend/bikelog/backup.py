@@ -63,6 +63,37 @@ def prune_backups(paths: DataPaths, keep: int = KEEP_AUTO_BACKUPS) -> None:
         old.unlink(missing_ok=True)
 
 
+MAX_UPLOAD_BYTES = 1024 * 1024 * 1024
+
+
+def store_uploaded_backup(paths: DataPaths, data: bytes, file_name: str | None = None) -> dict:
+    """Save an uploaded database backup into backups/ after checking it is a sound SQLite database with a
+    Bike Log schema. Restoring it is a separate step (reset.restore_backup), which writes a safety backup first."""
+    from bikelog.services.errors import DomainError
+    if not data:
+        raise DomainError("The file is empty")
+    if len(data) > MAX_UPLOAD_BYTES:
+        raise DomainError("The file is larger than 1 GB; that is not a Bike Log backup")
+    if not data.startswith(b"SQLite format 3\x00"):
+        raise DomainError("This is not a Bike Log backup file (pick a bikelog-....db file)")
+    dest = paths.backups / f"bikelog-{_stamp()}-uploaded.db"
+    paths.backups.mkdir(parents=True, exist_ok=True)
+    tmp = dest.with_suffix(".part")
+    tmp.write_bytes(data)
+    try:
+        with closing(sqlite3.connect(f"file:{tmp.as_posix()}?mode=ro", uri=True)) as c:
+            ok = c.execute("PRAGMA integrity_check").fetchone()[0] == "ok"
+            has_schema = c.execute("SELECT 1 FROM sqlite_master WHERE name = 'alembic_version'").fetchone()
+    except sqlite3.DatabaseError:
+        ok, has_schema = False, None
+    if not ok or not has_schema:
+        tmp.unlink(missing_ok=True)
+        raise DomainError("This file is damaged or not a Bike Log database")
+    tmp.replace(dest)
+    log.info("Backup uploaded%s: %s", f" from {file_name}" if file_name else "", dest.name)
+    return {"name": dest.name, "size": len(data)}
+
+
 def export_archive(paths: DataPaths, schema_revision: str | None, dest: Path | None = None) -> Path:
     dest = dest or paths.exports / f"bikelog-export-{_stamp()}.zip"
     dest.parent.mkdir(parents=True, exist_ok=True)

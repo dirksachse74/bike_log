@@ -34,7 +34,8 @@ commands below (or with `BIKELOG_ENABLE_STRAVA=1` for developers). The app works
 ## How to connect (in the app, no command line)
 
 1. On https://www.strava.com/settings/api: reset the Client Secret (the old one was shared in chat), and
-   set **Authorization Callback Domain** to `localhost`.
+   set **Authorization Callback Domain** to `localhost` (on your own server: your Bike Log domain, e.g.
+   `bikelog.example.com`; Strava always allows localhost as well, see deploy/README.md).
 2. Bike Log → **Settings → Strava**: enter Client ID and Client Secret → **Save app details**. They are
    stored only in `strava.env` in your data folder (`%LOCALAPPDATA%\BikeLog`); the secret is never shown
    again, logged or sent anywhere except to Strava.

@@ -50,6 +50,13 @@ Runtime shape:
 - `backend/bikelog/api/app.py`: all HTTP endpoints under `/api`, serves the built frontend.
 - Security (`api/security.py`): only Host `127.0.0.1`/`localhost` (DNS-rebinding guard), every mutation
   needs the per-launch `X-BikeLog-Token` (injected into `index.html`), no CORS.
+- **Server mode** (`--server` / `BIKELOG_SERVER=1`, DECISIONS 138, deploy/README.md): the same app on a
+  rented server behind Caddy (HTTPS). `server_auth.py` replaces the local middleware: Google sign-in
+  (`/auth/login|google|callback|logout`), allowlist `BIKELOG_ALLOWED_EMAILS`, signed session cookie, CSRF token
+  derived from the session and injected into `index.html` per request, Host = public domain. Strava's
+  redirect URI and the post-callback page use `BIKELOG_PUBLIC_URL`. A backup thread runs daily. Single user:
+  one database for everyone on the allowlist. `/api/meta` has `server: {user}` (null on the desktop).
+  Docker files in `deploy/` (Dockerfile, compose.yml, Caddyfile, install.sh, update.sh).
 - Mutating endpoints take `X-Client-Op-Id` so a double click/retry is applied once (`operations.run_once`),
   and many accept `?dry_run=true` to preview the change (`with_change`).
 - Data folder: `%LOCALAPPDATA%\BikeLog` on Windows, `~/.local/share/bikelog` elsewhere, or
@@ -392,7 +399,7 @@ warns, npm 12 blocks): run `npm install-scripts approve <pkg>`.
 Checks that must pass before every push:
 
 ```bash
-.venv/bin/python -m pytest -q backend/tests             # currently 264 passed
+.venv/bin/python -m pytest -q backend/tests             # currently 272 passed
 cd frontend && npx tsc -b && npx eslint . && npx vite build
 # browser test: start the app on a fresh data dir, then
 node e2e/smoke.cjs http://127.0.0.1:8790/ <screenshot-dir>   # currently 186/186 (the ride-form step can flake once; rerun)
@@ -442,7 +449,8 @@ described for Dirk in `UPDATING.md`. Every change you push must keep that file c
 
 `--data-dir PATH`, `--port N`, `--no-browser`, `--no-sample` (a new database starts empty), `--demo`, `--backup`, `--export [FILE]`, `--restore FILE`,
 `--strava-connect`, `--strava-sync`, `--strava-rescan`, `--strava-disconnect`,
-`--import-products FILE... [--dry-run]`, `--write-product-templates DIR`, `--version`.
+`--import-products FILE... [--dry-run]`, `--write-product-templates DIR`, `--version`,
+`--server` (server mode; settings from `BIKELOG_*` environment variables, see deploy/env.example).
 Dirk prefers doing everything in the app UI; keep UI paths for every feature.
 
 ---
@@ -468,7 +476,8 @@ Work sessions: `work-sessions`, `/{id}`, `/{id}/undo`. Journal: `journal` (GET/P
 `imports`, `imports/template`, `imports/products`, `product-templates`, `product-templates/{type}/schema|example`,
 `product-templates/instructions.md`. Strava: `strava/status`, `credentials` (PUT/DELETE), `connect`,
 `callback`, `sync`, `disconnect`. History/diagnostics: `changes?bike_id=|component_id=`, `logs?lines=&level=`,
-`logs/download`. Data: `backups` (GET/POST; rows carry `kept`), `backups/{name}/restore` (POST), `exports` (POST, GET file),
+`logs/download`. Data: `backups` (GET/POST; rows carry `kept`), `backups/{name}/restore` (POST), `backups/{name}/download` (GET),
+`backups/upload` (POST raw .db body, `?file_name=`; checked, stored as `…-uploaded.db`, not restored), `exports` (POST, GET file),
 `admin/rebuild`, `admin/reset` (POST `{confirm: "RESET", clear_strava}`).
 (*DELETE of a component is refused once it has installations, usage or maintenance; such parts are retired instead.)
 
@@ -521,7 +530,9 @@ Open work (TASKS.md): editing stock line details and product compatibility/refer
 (APIs exist), possible-duplicate ride merge helper, more groupset templates, a cost report across bikes
 per year, app icon and code signing.
 
-Out of scope until asked: barcode scanning, automatic ordering, any cloud hosting or multi-user use.
+Out of scope until asked: barcode scanning, automatic ordering, multi-user use (separate data per account).
+Server mode (DECISIONS 138) is single-user self-hosting; it was never run on a real server or against the real
+Google from the cloud environment (Docker Hub and Google are not reachable there), only with a fake Google.
 
 ---
 
