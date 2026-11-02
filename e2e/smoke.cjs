@@ -353,7 +353,7 @@ async function bikeTab(page, name) {
   check('Edit details shows the name without the mark', (await page.locator('.sheet').getByLabel('Name / label').inputValue()) === 'Chain A')
   await page.locator('.sheet').getByLabel('Mark').fill('')
   await sheetButton(page, 'Save')
-  await page.getByText('Chain A [dot]').first().waitFor({ state: 'detached' })
+  await page.waitForFunction(() => document.querySelector('.breadcrumbs [aria-current]')?.textContent === 'Chain A')
   const chainCard = page.locator('.card').filter({ has: page.getByRole('heading', { name: 'Chain rotation and wax cycles' }) })
   check('chain page: in the rotation of the bike it went on, with its wax cycles',
     (await chainCard.getByLabel('Chain rotation').locator('option:checked').innerText()) === 'TIME NXR' && (await chainCard.locator('tbody tr').count()) === 1)
