@@ -11,6 +11,7 @@
   <a class="btn" href="<?= h(url('log', ['bike' => $bike['id']])) ?>">Log maintenance</a>
   <a class="btn" href="<?= h(url('part_edit', ['bike' => $bike['id']])) ?>">Add part to this bike</a>
   <a class="btn" href="<?= h(url('groupset', ['bike' => $bike['id']])) ?>">Add a groupset</a>
+  <a class="btn" href="<?= h(url('chains', ['bike' => $bike['id']])) ?>">Chains</a>
   <a class="btn" href="<?= h(url('bike_edit', ['id' => $bike['id']])) ?>">Edit</a>
 </div>
 

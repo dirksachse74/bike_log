@@ -44,6 +44,21 @@
 </section>
 <?php endif; ?>
 
+<?php if ($waxRows): ?>
+<section><h2>Wax applications</h2>
+  <table class="list"><thead><tr><th>#</th><th>Date</th><th>Type</th><th class="num">At km</th><th class="num">Ridden</th><th class="num">Days</th><th></th></tr></thead>
+  <?php foreach ($waxRows as $w): ?>
+    <tr><td><?= (int)$w['n'] ?></td><td><?= h($w['date']) ?></td><td><?= h($w['type']) ?><?= $w['product'] ? ' <span class="muted">' . h($w['product']) . '</span>' : '' ?></td>
+      <td class="num"><?= $w['at_km'] === null ? '–' : h(km($w['at_km'])) ?></td><td class="num"><?= h(km($w['ridden_km'])) ?></td><td class="num"><?= (int)$w['days_on'] ?></td>
+      <td class="muted"><?= $w['active'] ? 'current' . ($w['next_due'] ? ' · next: ' . h($w['next_due']) : '') : 'ended by ' . h(mb_strtolower((string)$w['ended_by'])) ?></td></tr>
+  <?php endforeach; ?></table>
+  <?php if ($c['rotation_bike_id']): ?><p><a href="<?= h(url('chains', ['bike' => $c['rotation_bike_id']])) ?>">Chain rotation</a></p><?php endif; ?>
+</section>
+<?php endif; ?>
+<?php if ($parentsServed !== null): ?>
+<p class="muted">Has been on <?= count($parentsServed) ?> <?= h(mb_strtolower(Catalog::typeName(Catalog::parentTypes($c['component_type'])[0] ?? 'part'))) ?>(s)<?= $parentsServed ? ': ' . h(implode(', ', array_map([Domain::class, 'componentName'], $parentsServed))) : '' ?>.</p>
+<?php endif; ?>
+
 <?php if ($spokes): ?>
 <section><h2>Spokes</h2>
   <p><?= (int)$spokes['count'] ?> broken since <?= $spokes['since'] ? 'the last re-lace (' . h($spokes['since']) . ')' : 'tracking began' ?>

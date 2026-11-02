@@ -8,9 +8,10 @@ Status key: ✅ done and tested · 🟡 done, not verified where it matters · �
       history and per-part km, rides form, maintenance, reminders, supplies, tests on MySQL (php/tests).
 - [x] Round 2: groupset import, wheels/tire setup, spokes, punctures and incidents, spares and counted
       stock, spare minimums and shopping list, frame and fork as one part, notes and issues (journal).
-- [ ] Round 3: chain rotation and wax cycle (liquid top-up window, after_top_up_km, wet rides), PARENT_COUNT
-      (quick link), purchase bundles and costs, journal, repairs (send away), service orders, part life
-      report and forecast.
+- [x] Round 3a: chain rotation and wax cycle (liquid top-up window, after_top_up_km, wet rides), PARENT_COUNT
+      (quick link).
+- [ ] Round 3b: purchase bundles and costs, repairs (send away), service orders, part life report and
+      forecast.
 - [ ] Round 4: product records and JSON product import, pick lists (shops), fresh start, per-user backup and
       restore (JSON import), diagnostics and change log, ride times (not only dates), usage profiles.
 - [ ] Try it on real shared hosting (Dirk): install page, SMTP, HTTPS.

@@ -174,9 +174,12 @@ function page_part(): void
     $spokeStock = $spokes ? Db::all("SELECT id, name FROM consumables WHERE user_id = ? AND tracking_mode = 'COUNTED' AND component_type = 'SPOKES' AND archived_at IS NULL", [$uid]) : [];
     $incidents = Incidents::list($uid, ['component_id' => $c['id']]);
     $dispositions = Db::all('SELECT * FROM component_dispositions WHERE user_id = ? AND component_id = ? ORDER BY effective_on DESC, id DESC', [$uid, $c['id']]);
+    $waxRows = $c['component_type'] === 'CHAIN' ? Chains::waxApplications($uid, $c) : [];
+    $parentsServed = Db::one("SELECT id FROM service_rules WHERE user_id = ? AND trigger_kind = 'PARENT_COUNT' AND (component_type = ? OR component_id = ?) LIMIT 1",
+        [$uid, $c['component_type'], $c['id']]) ? Reminders::parentsServed($uid, (int)$c['id']) : null;
     $product = $c['product_id'] ? Db::one('SELECT * FROM products WHERE id = ? AND user_id = ?', [$c['product_id'], $uid]) : null;
     View::render('parts/show', compact('c', 'totals', 'installs', 'open', 'bike', 'children', 'events', 'adjustments', 'reminders', 'rules',
-        'journal', 'spokes', 'spokeStock', 'incidents', 'dispositions', 'product'),
+        'journal', 'spokes', 'spokeStock', 'incidents', 'dispositions', 'product', 'waxRows', 'parentsServed'),
         Domain::componentName($c), 'parts');
 }
 

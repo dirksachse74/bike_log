@@ -160,7 +160,23 @@ function page_rule_edit(): void
             'origin' => in_array(post('origin'), ['DEFAULT', 'MANUFACTURER', 'PERSONAL'], true) ? post('origin') : 'PERSONAL',
             'active' => post('active') === '1' ? 1 : 0, 'notes' => nullable(post('notes')), 'updated_at' => now_utc(),
         ];
-        if ($rule['trigger_kind'] === 'INTERVAL' && $row['interval_km'] === null && $row['interval_months'] === null && $row['interval_hours'] === null) {
+        if ($rule['trigger_kind'] === 'CYCLE_WINDOW') {
+            $row['window_min_km'] = parse_number(post('window_min_km'), 'Window from');
+            $row['window_max_km'] = parse_number(post('window_max_km'), 'Window to');
+            if ($row['window_min_km'] === null || $row['window_max_km'] === null || $row['window_min_km'] > $row['window_max_km']) {
+                throw new UserError('Give the window as "from" and "to" km (from ≤ to).');
+            }
+            $row['interval_km'] = null;
+        } elseif ($rule['trigger_kind'] === 'PARENT_COUNT') {
+            $n = post('interval_count');
+            if (!ctype_digit($n) || (int)$n < 1 || (int)$n > 50) {
+                throw new UserError('Give a number from 1 to 50.');
+            }
+            $row['interval_count'] = (int)$n;
+        } elseif ($rule['action_code'] === 'WAX_HOT') {
+            $row['after_top_up_km'] = parse_number(post('after_top_up_km'), 'Km after a top-up');
+        }
+        if (in_array($rule['trigger_kind'], ['INTERVAL'], true) && $row['interval_km'] === null && $row['interval_months'] === null && $row['interval_hours'] === null) {
             throw new UserError('Give at least one interval (km, months or hours), or switch the rule off.');
         }
         if ($rule['id']) {
@@ -168,6 +184,10 @@ function page_rule_edit(): void
         } else {
             Db::insert('service_rules', $row + ['user_id' => $uid, 'rule_code' => $rule['rule_code'], 'component_id' => $rule['component_id'],
                 'action_code' => $rule['action_code'], 'reset_actions' => $rule['reset_actions'], 'trigger_kind' => $rule['trigger_kind'],
+                'cycle_action_code' => $rule['cycle_action_code'],
+                'window_min_km' => $row['window_min_km'] ?? $rule['window_min_km'], 'window_max_km' => $row['window_max_km'] ?? $rule['window_max_km'],
+                'after_top_up_km' => array_key_exists('after_top_up_km', $row) ? $row['after_top_up_km'] : $rule['after_top_up_km'],
+                'interval_count' => $row['interval_count'] ?? $rule['interval_count'],
                 'requires_setup' => $rule['requires_setup'], 'created_at' => now_utc()]);
         }
         Session::flash('ok', 'Interval saved.');

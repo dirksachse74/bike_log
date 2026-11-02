@@ -19,25 +19,13 @@ final class Domain
     {
         $now = now_utc();
         foreach (Catalog::defaultRules() as $r) {
-            $trigger = $r['trigger'];
-            $intervalKm = $r['interval_km'];
-            $warnKm = $r['warn_km'];
-            if ($trigger === 'CYCLE_WINDOW') {
-                // liquid-wax window: due at the end of the window, "soon" from its start
-                $trigger = 'INTERVAL';
-                $intervalKm = $r['window_max_km'];
-                $warnKm = $r['window_max_km'] - $r['window_min_km'];
-            } elseif ($trigger === 'PARENT_COUNT') {
-                continue;   // not in the first PHP release
-            }
-            if ($trigger === 'INTERVAL' && $intervalKm === null && $r['interval_months'] === null && $r['interval_hours'] === null) {
-                continue;
-            }
             Db::run('INSERT IGNORE INTO service_rules (user_id, rule_code, name, component_type, action_code, reset_actions, trigger_kind,
-                interval_km, interval_months, interval_hours, warn_km, warn_days, warn_hours, requires_setup, origin, active, notes, created_at, updated_at)
-                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)', [
+                interval_km, interval_months, interval_hours, warn_km, warn_days, warn_hours, window_min_km, window_max_km, after_top_up_km,
+                cycle_action_code, interval_count, requires_setup, origin, active, notes, created_at, updated_at)
+                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)', [
                 $userId, $r['rule_code'], $r['name'], $r['component_type'], $r['action_code'], implode(',', $r['reset_actions']),
-                $trigger, $intervalKm, $r['interval_months'], $r['interval_hours'], $warnKm, $r['warn_days'], $r['warn_hours'],
+                $r['trigger'], $r['interval_km'], $r['interval_months'], $r['interval_hours'], $r['warn_km'], $r['warn_days'], $r['warn_hours'],
+                $r['window_min_km'], $r['window_max_km'], $r['after_top_up_km'], $r['cycle_action_code'], $r['interval_count'],
                 $r['requires_setup'], $r['origin'], $r['active'] ? 1 : 0, $r['notes'], $now, $now,
             ]);
         }

@@ -642,6 +642,10 @@ you disagree. Dates are 2026-10-24 unless noted.
     setup are per-user settings (`user_settings`); incidents are journal entries sharing `incident_group`,
     one per affected part or position; punctures list each tire or tube with its own km, never summed per
     model. The auto frame part does not stop a bike without other history from being deleted.
+    Round 3a (migration 003) adds the rule kinds CYCLE_WINDOW and PARENT_COUNT and the hot-wax
+    after_top_up_km, and converts the base release's stand-in (liquid wax as "interval 300, warn 50") into
+    the 250–300 km window. With dates only, a wet ride counts against a wax from the next day on (a wax
+    logged on a day was done after that day's ride), as in the desktop app.
 
 ## Repository
 27. Pushed only to the feature branch `claude/project-thread-6y3mmh` of the private repository. Demo
