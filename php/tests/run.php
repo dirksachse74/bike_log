@@ -87,6 +87,21 @@ final class Browser
         return $this->req('POST', $query, $data);
     }
 
+    /** Multipart POST with files: $files = [field name => [[file name, content], ...]]. */
+    public function upload(string $query, array $data, array $files): string
+    {
+        $data['_csrf'] = $this->csrf();
+        $tmpDir = sys_get_temp_dir();
+        foreach ($files as $field => $list) {
+            foreach (array_values($list) as $i => [$name, $content]) {
+                $f = tempnam($tmpDir, 'up');
+                file_put_contents($f, $content);
+                $data[$field . "[$i]"] = new CURLFile($f, 'application/json', $name);
+            }
+        }
+        return $this->req('POST', $query, $data, true);
+    }
+
     public function csrf(): string
     {
         $page = $this->req('GET', 'r=login');
@@ -97,7 +112,7 @@ final class Browser
         return $m[1] ?? '';
     }
 
-    private function req(string $method, string $query, array $data = []): string
+    private function req(string $method, string $query, array $data = [], bool $multipart = false): string
     {
         $url = $this->base . '/index.php' . ($query !== '' ? '?' . $query : '');
         for ($i = 0; $i < 5; $i++) {
@@ -107,7 +122,7 @@ final class Browser
                 CURLOPT_HTTPHEADER => ['Referer: ' . $url]]);
             if ($method === 'POST') {
                 curl_setopt($ch, CURLOPT_POST, true);
-                curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data));
+                curl_setopt($ch, CURLOPT_POSTFIELDS, $multipart ? $data : http_build_query($data));
             }
             $raw = (string)curl_exec($ch);
             $this->status = (int)curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
@@ -126,6 +141,7 @@ final class Browser
                 $url = str_starts_with($loc, 'http') ? $loc : $this->base . '/' . ltrim($loc, '/');
                 $method = 'GET';
                 $data = [];
+                $multipart = false;
                 continue;
             }
             break;

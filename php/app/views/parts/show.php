@@ -19,6 +19,7 @@
   <a class="btn" href="<?= h(url('part_install', ['id' => $c['id']])) ?>"><?= $open ? 'Move' : 'Install' ?></a>
   <?php endif; ?>
   <a class="btn" href="<?= h(url('part_edit', ['id' => $c['id']])) ?>">Edit</a>
+  <a class="btn link" href="<?= h(url('changes', ['part' => $c['id']])) ?>">Change log</a>
 </div>
 
 <?php if ($c['disposition'] !== 'STORED' || $c['storage_location'] || $c['tire_setup'] || $c['pressure_note'] || $c['warranty_until'] || $product): ?>
@@ -27,7 +28,7 @@
   <?= $c['tire_setup'] ? h(Catalog::raw('tire_setups')[$c['tire_setup']] ?? $c['tire_setup']) . ' · ' : '' ?>
   <?= $c['pressure_note'] ? 'Pressure ' . h($c['pressure_note']) . ' · ' : '' ?>
   <?= $c['warranty_until'] ? 'Warranty until ' . h($c['warranty_until']) . ' · ' : '' ?>
-  <?= $product ? 'Product: ' . h(trim($product['maker'] . ' ' . $product['model'])) : '' ?>
+  <?= $product ? 'Product: <a href="' . h(url('product', ['id' => $product['id']])) . '">' . h(trim($product['maker'] . ' ' . $product['model'])) . '</a>' : '' ?>
 </p>
 <?php endif; ?>
 
@@ -210,7 +211,7 @@
 <details><summary>Send away for repair</summary>
   <form method="post" action="<?= h(url('repair_send', ['id' => $c['id']])) ?>" class="row"><?= Csrf::field() ?>
     <?= field('on', 'Sent on', today(), 'date', ['required' => true]) ?>
-    <?= field('shop', 'To (shop, maker)', '') ?>
+    <?= field('shop', 'To (shop, maker)', '', 'text', ['list' => 'shops']) ?>
     <?= field('reason', 'Why', '') ?>
     <?php if ($incidentChoices): ?><label>For incident<select name="incident"><?= options($incidentChoices, '', true, 'None') ?></select></label><?php endif; ?>
     <button class="btn small">Send away</button>

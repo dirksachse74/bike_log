@@ -28,6 +28,12 @@ UPDATING.md → "Making a release". New entries go under "Unreleased" as work is
   for repair and record what came back (repaired, warranty repair or replacement, not repaired; it can go
   straight back on, and a linked incident is solved), the Part life report, and a "due around" forecast at
   your recent pace on km and hour reminders.
+  Round 4a: Products (maker, model, specs, list price; Parts → Products), the JSON product import with the
+  desktop app's file format (check first, every error with its place, nothing imported from a file with an
+  error, same file twice changes nothing, items become spares), schema/example downloads per part type and
+  the instructions for a scraper script, a Shops list (pick instead of typing; rename, merge, hide; names
+  in other upper/lower case are stored in the list spelling), and a Change log (Account → Change log, and
+  on each bike and part).
 - **Bike Log on your own server with Google sign-in** (Dirk 2026-11-02). `--server` mode: only the Google
   accounts you list can sign in, HTTPS through Caddy, a backup every day while it runs, Strava connects
   through your own domain. Docker setup with a one-time install script and optional nightly updates:

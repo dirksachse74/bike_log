@@ -17,6 +17,8 @@ require __DIR__ . '/groupsets.php';
 require __DIR__ . '/incidents.php';
 require __DIR__ . '/chains.php';
 require __DIR__ . '/money.php';
+require __DIR__ . '/records.php';
+require __DIR__ . '/products.php';
 require __DIR__ . '/web.php';
 require __DIR__ . '/installer.php';
 require __DIR__ . '/pages/auth_pages.php';
@@ -28,6 +30,7 @@ require __DIR__ . '/pages/stock_pages.php';
 require __DIR__ . '/pages/incident_pages.php';
 require __DIR__ . '/pages/chain_pages.php';
 require __DIR__ . '/pages/money_pages.php';
+require __DIR__ . '/pages/product_pages.php';
 require __DIR__ . '/pages/admin_pages.php';
 require __DIR__ . '/routes.php';
 
@@ -36,3 +39,4 @@ if (is_dir($storage) && is_writable($storage)) {
     ini_set('error_log', $storage . '/php-error.log');
 }
 date_default_timezone_set('UTC');
+ChangeLog::register();

@@ -651,6 +651,13 @@ you disagree. Dates are 2026-10-24 unless noted.
     services from maintenance cost; a part drawn from stock is linked by `from_stock_txn_id` and has no own
     price). Sending away and the return are work sessions, so Undo voids the order or reopens it. The pace
     forecast uses the last 28 days (at least 3 rides over 7 days) and is planning help only.
+    Round 4a (migration 005): the product import is a port of product_import.py with the same format and
+    rules; spec fields come from product_specs.py through catalog.json (scripts/export_php_catalog.py).
+    Checked files wait up to an hour in `storage_dir/imports` under a random token, so "Import" needs no
+    second upload. Shop names and the change log hang on two hooks in `Db::insert` / `Db::updateOwned`
+    (`Db::$beforeWrite`, `Db::$afterWrite`, set by `ChangeLog::register()`); raw `Db::run` statements
+    bypass them, so removals, voids and undo write an explicit `ChangeLog::note`. The change log is
+    information only, never used for totals.
 
 ## Repository
 27. Pushed only to the feature branch `claude/project-thread-6y3mmh` of the private repository. Demo

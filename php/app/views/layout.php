@@ -42,6 +42,7 @@ $site = Settings::get('site_name');
   <?php if (View::$title): ?><h1><?= h(View::$title) ?></h1><?php endif; ?>
   <?= $content ?>
 </main>
+<?php if ($u): ?><datalist id="shops"><?php foreach (PickLists::names((int)$u['id']) as $n): ?><option value="<?= h($n) ?>"><?php endforeach; ?></datalist><?php endif; ?>
 <?php if ($u): ?>
 <nav class="tabs">
   <a href="<?= h(url('home')) ?>" class="<?= View::$active === 'home' ? 'on' : '' ?>">Overview</a>

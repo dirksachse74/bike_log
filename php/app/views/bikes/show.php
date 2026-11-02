@@ -14,6 +14,7 @@
   <a class="btn" href="<?= h(url('chains', ['bike' => $bike['id']])) ?>">Chains</a>
   <a class="btn" href="<?= h(url('costs', ['bike' => $bike['id']])) ?>">Costs</a>
   <a class="btn" href="<?= h(url('bike_edit', ['id' => $bike['id']])) ?>">Edit</a>
+  <a class="btn link" href="<?= h(url('changes', ['bike' => $bike['id']])) ?>">Change log</a>
 </div>
 
 <?php if ($bike['status'] === 'ACTIVE'): ?>

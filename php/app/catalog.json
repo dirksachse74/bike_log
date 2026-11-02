@@ -9470,5 +9470,3032 @@
   "TUBE": "Inner tube",
   "TUBELESS": "Tubeless (sealant)",
   "TUBULAR": "Tubular"
+ },
+ "product_spec_fields": {
+  "CHAIN": [
+   {
+    "key": "speeds",
+    "kind": "integer",
+    "description": "Number of rear sprockets the part is made for",
+    "unit": null,
+    "values": [],
+    "example": 12
+   },
+   {
+    "key": "links",
+    "kind": "integer",
+    "description": "Links as sold",
+    "unit": null,
+    "values": [],
+    "example": 116
+   },
+   {
+    "key": "joining",
+    "kind": "string",
+    "description": "Joining method",
+    "unit": null,
+    "values": [],
+    "example": "quick link SM-CN910-12"
+   },
+   {
+    "key": "compatibility",
+    "kind": "string",
+    "description": "Drivetrain standard",
+    "unit": null,
+    "values": [],
+    "example": "Shimano Hyperglide+"
+   },
+   {
+    "key": "weight_g",
+    "kind": "number",
+    "description": "Weight",
+    "unit": "g",
+    "values": [],
+    "example": 250
+   },
+   {
+    "key": "color",
+    "kind": "string",
+    "description": "Colour / finish",
+    "unit": null,
+    "values": [],
+    "example": null
+   },
+   {
+    "key": "material",
+    "kind": "string",
+    "description": "Main material",
+    "unit": null,
+    "values": [],
+    "example": null
+   }
+  ],
+  "DERAILLEUR_HANGER": [
+   {
+    "key": "frame",
+    "kind": "string",
+    "description": "Frames it fits",
+    "unit": null,
+    "values": [],
+    "example": "TIME NXR"
+   },
+   {
+    "key": "hanger_code",
+    "kind": "string",
+    "description": "Maker's hanger code",
+    "unit": null,
+    "values": [],
+    "example": "UDH"
+   },
+   {
+    "key": "torque_nm",
+    "kind": "string",
+    "description": "Tightening torque (bolts, clamps, axle) as printed by the maker",
+    "unit": "Nm",
+    "values": [],
+    "example": "5"
+   },
+   {
+    "key": "weight_g",
+    "kind": "number",
+    "description": "Weight",
+    "unit": "g",
+    "values": [],
+    "example": 250
+   },
+   {
+    "key": "color",
+    "kind": "string",
+    "description": "Colour / finish",
+    "unit": null,
+    "values": [],
+    "example": null
+   },
+   {
+    "key": "material",
+    "kind": "string",
+    "description": "Main material",
+    "unit": null,
+    "values": [],
+    "example": null
+   }
+  ],
+  "QUICK_LINK": [
+   {
+    "key": "speeds",
+    "kind": "integer",
+    "description": "Number of rear sprockets the part is made for",
+    "unit": null,
+    "values": [],
+    "example": 12
+   },
+   {
+    "key": "reusable",
+    "kind": "boolean",
+    "description": "Maker allows reuse after opening",
+    "unit": null,
+    "values": [],
+    "example": false
+   },
+   {
+    "key": "pieces_per_pack",
+    "kind": "integer",
+    "description": "Connectors per package",
+    "unit": null,
+    "values": [],
+    "example": 2
+   },
+   {
+    "key": "weight_g",
+    "kind": "number",
+    "description": "Weight",
+    "unit": "g",
+    "values": [],
+    "example": 250
+   },
+   {
+    "key": "color",
+    "kind": "string",
+    "description": "Colour / finish",
+    "unit": null,
+    "values": [],
+    "example": null
+   },
+   {
+    "key": "material",
+    "kind": "string",
+    "description": "Main material",
+    "unit": null,
+    "values": [],
+    "example": null
+   }
+  ],
+  "CASSETTE": [
+   {
+    "key": "speeds",
+    "kind": "integer",
+    "description": "Number of rear sprockets the part is made for",
+    "unit": null,
+    "values": [],
+    "example": 12
+   },
+   {
+    "key": "range",
+    "kind": "string",
+    "description": "Smallest-largest sprocket",
+    "unit": null,
+    "values": [],
+    "example": "11-34"
+   },
+   {
+    "key": "sprockets",
+    "kind": "string",
+    "description": "All sprockets",
+    "unit": null,
+    "values": [],
+    "example": "11-12-13-14-15-17-19-21-24-27-30-34"
+   },
+   {
+    "key": "freehub",
+    "kind": "string",
+    "description": "Freehub standard",
+    "unit": null,
+    "values": [],
+    "example": "Shimano HG 11-speed road"
+   },
+   {
+    "key": "torque_nm",
+    "kind": "string",
+    "description": "Tightening torque (bolts, clamps, axle) as printed by the maker",
+    "unit": "Nm",
+    "values": [],
+    "example": "5"
+   },
+   {
+    "key": "weight_g",
+    "kind": "number",
+    "description": "Weight",
+    "unit": "g",
+    "values": [],
+    "example": 250
+   },
+   {
+    "key": "color",
+    "kind": "string",
+    "description": "Colour / finish",
+    "unit": null,
+    "values": [],
+    "example": null
+   },
+   {
+    "key": "material",
+    "kind": "string",
+    "description": "Main material",
+    "unit": null,
+    "values": [],
+    "example": null
+   }
+  ],
+  "CRANKSET": [
+   {
+    "key": "speeds",
+    "kind": "integer",
+    "description": "Number of rear sprockets the part is made for",
+    "unit": null,
+    "values": [],
+    "example": 12
+   },
+   {
+    "key": "crank_length_mm",
+    "kind": "number",
+    "description": "Crank arm length",
+    "unit": "mm",
+    "values": [],
+    "example": 172.5
+   },
+   {
+    "key": "chainrings",
+    "kind": "string",
+    "description": "Chainring teeth",
+    "unit": null,
+    "values": [],
+    "example": "52-36"
+   },
+   {
+    "key": "bcd_mm",
+    "kind": "number",
+    "description": "Bolt circle diameter",
+    "unit": "mm",
+    "values": [],
+    "example": 110
+   },
+   {
+    "key": "spindle",
+    "kind": "string",
+    "description": "Spindle standard",
+    "unit": null,
+    "values": [],
+    "example": "Hollowtech II 24 mm"
+   },
+   {
+    "key": "power_meter",
+    "kind": "boolean",
+    "description": "Has a built-in power meter",
+    "unit": null,
+    "values": [],
+    "example": false
+   },
+   {
+    "key": "torque_nm",
+    "kind": "string",
+    "description": "Tightening torque (bolts, clamps, axle) as printed by the maker",
+    "unit": "Nm",
+    "values": [],
+    "example": "5"
+   },
+   {
+    "key": "weight_g",
+    "kind": "number",
+    "description": "Weight",
+    "unit": "g",
+    "values": [],
+    "example": 250
+   },
+   {
+    "key": "color",
+    "kind": "string",
+    "description": "Colour / finish",
+    "unit": null,
+    "values": [],
+    "example": null
+   },
+   {
+    "key": "material",
+    "kind": "string",
+    "description": "Main material",
+    "unit": null,
+    "values": [],
+    "example": null
+   }
+  ],
+  "CHAINRING": [
+   {
+    "key": "speeds",
+    "kind": "integer",
+    "description": "Number of rear sprockets the part is made for",
+    "unit": null,
+    "values": [],
+    "example": 12
+   },
+   {
+    "key": "teeth",
+    "kind": "integer",
+    "description": "Number of teeth",
+    "unit": null,
+    "values": [],
+    "example": 52
+   },
+   {
+    "key": "position",
+    "kind": "enum",
+    "description": "Position on the crank",
+    "unit": null,
+    "values": [
+     "outer",
+     "inner",
+     "single"
+    ],
+    "example": "outer"
+   },
+   {
+    "key": "bcd_mm",
+    "kind": "number",
+    "description": "Bolt circle diameter",
+    "unit": "mm",
+    "values": [],
+    "example": 110
+   },
+   {
+    "key": "weight_g",
+    "kind": "number",
+    "description": "Weight",
+    "unit": "g",
+    "values": [],
+    "example": 250
+   },
+   {
+    "key": "color",
+    "kind": "string",
+    "description": "Colour / finish",
+    "unit": null,
+    "values": [],
+    "example": null
+   },
+   {
+    "key": "material",
+    "kind": "string",
+    "description": "Main material",
+    "unit": null,
+    "values": [],
+    "example": null
+   }
+  ],
+  "BOTTOM_BRACKET": [
+   {
+    "key": "standard",
+    "kind": "string",
+    "description": "Shell standard",
+    "unit": null,
+    "values": [],
+    "example": "BSA 68 mm threaded"
+   },
+   {
+    "key": "spindle_mm",
+    "kind": "number",
+    "description": "Spindle diameter",
+    "unit": "mm",
+    "values": [],
+    "example": 24
+   },
+   {
+    "key": "torque_nm",
+    "kind": "string",
+    "description": "Tightening torque (bolts, clamps, axle) as printed by the maker",
+    "unit": "Nm",
+    "values": [],
+    "example": "5"
+   },
+   {
+    "key": "weight_g",
+    "kind": "number",
+    "description": "Weight",
+    "unit": "g",
+    "values": [],
+    "example": 250
+   },
+   {
+    "key": "color",
+    "kind": "string",
+    "description": "Colour / finish",
+    "unit": null,
+    "values": [],
+    "example": null
+   },
+   {
+    "key": "material",
+    "kind": "string",
+    "description": "Main material",
+    "unit": null,
+    "values": [],
+    "example": null
+   }
+  ],
+  "REAR_DERAILLEUR": [
+   {
+    "key": "speeds",
+    "kind": "integer",
+    "description": "Number of rear sprockets the part is made for",
+    "unit": null,
+    "values": [],
+    "example": 12
+   },
+   {
+    "key": "max_cog",
+    "kind": "integer",
+    "description": "Largest sprocket",
+    "unit": "T",
+    "values": [],
+    "example": 34
+   },
+   {
+    "key": "capacity",
+    "kind": "integer",
+    "description": "Total capacity",
+    "unit": "T",
+    "values": [],
+    "example": 39
+   },
+   {
+    "key": "electronic",
+    "kind": "boolean",
+    "description": "Electronic shifting",
+    "unit": null,
+    "values": [],
+    "example": true
+   },
+   {
+    "key": "mount",
+    "kind": "string",
+    "description": "Mount",
+    "unit": null,
+    "values": [],
+    "example": "standard hanger"
+   },
+   {
+    "key": "torque_nm",
+    "kind": "string",
+    "description": "Tightening torque (bolts, clamps, axle) as printed by the maker",
+    "unit": "Nm",
+    "values": [],
+    "example": "5"
+   },
+   {
+    "key": "weight_g",
+    "kind": "number",
+    "description": "Weight",
+    "unit": "g",
+    "values": [],
+    "example": 250
+   },
+   {
+    "key": "color",
+    "kind": "string",
+    "description": "Colour / finish",
+    "unit": null,
+    "values": [],
+    "example": null
+   },
+   {
+    "key": "material",
+    "kind": "string",
+    "description": "Main material",
+    "unit": null,
+    "values": [],
+    "example": null
+   }
+  ],
+  "PULLEY_WHEEL": [
+   {
+    "key": "speeds",
+    "kind": "integer",
+    "description": "Number of rear sprockets the part is made for",
+    "unit": null,
+    "values": [],
+    "example": 12
+   },
+   {
+    "key": "teeth",
+    "kind": "number",
+    "description": "Teeth",
+    "unit": null,
+    "values": [],
+    "example": 13
+   },
+   {
+    "key": "bearing",
+    "kind": "string",
+    "description": "Bearing",
+    "unit": null,
+    "values": [],
+    "example": "cartridge"
+   },
+   {
+    "key": "weight_g",
+    "kind": "number",
+    "description": "Weight",
+    "unit": "g",
+    "values": [],
+    "example": 250
+   },
+   {
+    "key": "color",
+    "kind": "string",
+    "description": "Colour / finish",
+    "unit": null,
+    "values": [],
+    "example": null
+   },
+   {
+    "key": "material",
+    "kind": "string",
+    "description": "Main material",
+    "unit": null,
+    "values": [],
+    "example": null
+   }
+  ],
+  "FRONT_DERAILLEUR": [
+   {
+    "key": "speeds",
+    "kind": "integer",
+    "description": "Number of rear sprockets the part is made for",
+    "unit": null,
+    "values": [],
+    "example": 12
+   },
+   {
+    "key": "max_chainring",
+    "kind": "integer",
+    "description": "Largest chainring",
+    "unit": "T",
+    "values": [],
+    "example": 52
+   },
+   {
+    "key": "capacity",
+    "kind": "integer",
+    "description": "Front capacity",
+    "unit": "T",
+    "values": [],
+    "example": 16
+   },
+   {
+    "key": "electronic",
+    "kind": "boolean",
+    "description": "Electronic shifting",
+    "unit": null,
+    "values": [],
+    "example": true
+   },
+   {
+    "key": "mount",
+    "kind": "enum",
+    "description": "Mount",
+    "unit": null,
+    "values": [
+     "braze-on",
+     "clamp"
+    ],
+    "example": "braze-on"
+   },
+   {
+    "key": "torque_nm",
+    "kind": "string",
+    "description": "Tightening torque (bolts, clamps, axle) as printed by the maker",
+    "unit": "Nm",
+    "values": [],
+    "example": "5"
+   },
+   {
+    "key": "weight_g",
+    "kind": "number",
+    "description": "Weight",
+    "unit": "g",
+    "values": [],
+    "example": 250
+   },
+   {
+    "key": "color",
+    "kind": "string",
+    "description": "Colour / finish",
+    "unit": null,
+    "values": [],
+    "example": null
+   },
+   {
+    "key": "material",
+    "kind": "string",
+    "description": "Main material",
+    "unit": null,
+    "values": [],
+    "example": null
+   }
+  ],
+  "SHIFT_CABLE": [
+   {
+    "key": "diameter_mm",
+    "kind": "number",
+    "description": "Inner cable diameter",
+    "unit": "mm",
+    "values": [],
+    "example": 1.2
+   },
+   {
+    "key": "coating",
+    "kind": "string",
+    "description": "Coating",
+    "unit": null,
+    "values": [],
+    "example": "polymer"
+   },
+   {
+    "key": "weight_g",
+    "kind": "number",
+    "description": "Weight",
+    "unit": "g",
+    "values": [],
+    "example": 250
+   },
+   {
+    "key": "color",
+    "kind": "string",
+    "description": "Colour / finish",
+    "unit": null,
+    "values": [],
+    "example": null
+   },
+   {
+    "key": "material",
+    "kind": "string",
+    "description": "Main material",
+    "unit": null,
+    "values": [],
+    "example": null
+   }
+  ],
+  "SHIFT_HOUSING": [
+   {
+    "key": "diameter_mm",
+    "kind": "number",
+    "description": "Outer diameter",
+    "unit": "mm",
+    "values": [],
+    "example": 4
+   },
+   {
+    "key": "length_mm",
+    "kind": "number",
+    "description": "Length as sold",
+    "unit": "mm",
+    "values": [],
+    "example": 2000
+   },
+   {
+    "key": "weight_g",
+    "kind": "number",
+    "description": "Weight",
+    "unit": "g",
+    "values": [],
+    "example": 250
+   },
+   {
+    "key": "color",
+    "kind": "string",
+    "description": "Colour / finish",
+    "unit": null,
+    "values": [],
+    "example": null
+   },
+   {
+    "key": "material",
+    "kind": "string",
+    "description": "Main material",
+    "unit": null,
+    "values": [],
+    "example": null
+   }
+  ],
+  "WHEELSET": [
+   {
+    "key": "rim_outer_width_mm",
+    "kind": "number",
+    "description": "Rim outer width",
+    "unit": "mm",
+    "values": [],
+    "example": 30
+   },
+   {
+    "key": "internal_width_mm",
+    "kind": "number",
+    "description": "Rim inner width",
+    "unit": "mm",
+    "values": [],
+    "example": 23.6
+   },
+   {
+    "key": "rim_depth_front_mm",
+    "kind": "number",
+    "description": "Rim depth front",
+    "unit": "mm",
+    "values": [],
+    "example": 52
+   },
+   {
+    "key": "rim_depth_rear_mm",
+    "kind": "number",
+    "description": "Rim depth rear",
+    "unit": "mm",
+    "values": [],
+    "example": 52
+   },
+   {
+    "key": "tire_size_range",
+    "kind": "string",
+    "description": "Tire size range",
+    "unit": null,
+    "values": [],
+    "example": "700x28c - 700x47c"
+   },
+   {
+    "key": "brake",
+    "kind": "enum",
+    "description": "Brake type",
+    "unit": null,
+    "values": [
+     "disc",
+     "rim"
+    ],
+    "example": "disc"
+   },
+   {
+    "key": "axles",
+    "kind": "string",
+    "description": "Axle standard front / rear",
+    "unit": null,
+    "values": [],
+    "example": "12x100 / 12x142 thru-axle"
+   },
+   {
+    "key": "weight_g",
+    "kind": "number",
+    "description": "Weight of the pair",
+    "unit": "g",
+    "values": [],
+    "example": 1450
+   },
+   {
+    "key": "color",
+    "kind": "string",
+    "description": "Colour / finish",
+    "unit": null,
+    "values": [],
+    "example": null
+   },
+   {
+    "key": "material",
+    "kind": "string",
+    "description": "Main material",
+    "unit": null,
+    "values": [],
+    "example": null
+   }
+  ],
+  "FRONT_WHEEL": [
+   {
+    "key": "rim_depth_mm",
+    "kind": "number",
+    "description": "Rim depth",
+    "unit": "mm",
+    "values": [],
+    "example": 45
+   },
+   {
+    "key": "internal_width_mm",
+    "kind": "number",
+    "description": "Rim inner width",
+    "unit": "mm",
+    "values": [],
+    "example": 21
+   },
+   {
+    "key": "rim_outer_width_mm",
+    "kind": "number",
+    "description": "Rim outer width",
+    "unit": "mm",
+    "values": [],
+    "example": 28
+   },
+   {
+    "key": "tire_size_range",
+    "kind": "string",
+    "description": "Tire size range",
+    "unit": null,
+    "values": [],
+    "example": "700x28c - 700x47c"
+   },
+   {
+    "key": "tubeless",
+    "kind": "boolean",
+    "description": "Tubeless ready",
+    "unit": null,
+    "values": [],
+    "example": true
+   },
+   {
+    "key": "axle",
+    "kind": "string",
+    "description": "Axle standard",
+    "unit": null,
+    "values": [],
+    "example": "12x100 thru axle"
+   },
+   {
+    "key": "brake",
+    "kind": "enum",
+    "description": "Brake type",
+    "unit": null,
+    "values": [
+     "disc",
+     "rim"
+    ],
+    "example": "disc"
+   },
+   {
+    "key": "rotor_mount",
+    "kind": "enum",
+    "description": "Rotor mount",
+    "unit": null,
+    "values": [
+     "centerlock",
+     "6-bolt",
+     "none"
+    ],
+    "example": "centerlock"
+   },
+   {
+    "key": "spokes",
+    "kind": "integer",
+    "description": "Spoke count",
+    "unit": null,
+    "values": [],
+    "example": 24
+   },
+   {
+    "key": "torque_nm",
+    "kind": "string",
+    "description": "Tightening torque (bolts, clamps, axle) as printed by the maker",
+    "unit": "Nm",
+    "values": [],
+    "example": "5"
+   },
+   {
+    "key": "weight_g",
+    "kind": "number",
+    "description": "Weight",
+    "unit": "g",
+    "values": [],
+    "example": 250
+   },
+   {
+    "key": "color",
+    "kind": "string",
+    "description": "Colour / finish",
+    "unit": null,
+    "values": [],
+    "example": null
+   },
+   {
+    "key": "material",
+    "kind": "string",
+    "description": "Main material",
+    "unit": null,
+    "values": [],
+    "example": null
+   }
+  ],
+  "REAR_WHEEL": [
+   {
+    "key": "rim_depth_mm",
+    "kind": "number",
+    "description": "Rim depth",
+    "unit": "mm",
+    "values": [],
+    "example": 45
+   },
+   {
+    "key": "internal_width_mm",
+    "kind": "number",
+    "description": "Rim inner width",
+    "unit": "mm",
+    "values": [],
+    "example": 21
+   },
+   {
+    "key": "rim_outer_width_mm",
+    "kind": "number",
+    "description": "Rim outer width",
+    "unit": "mm",
+    "values": [],
+    "example": 28
+   },
+   {
+    "key": "tire_size_range",
+    "kind": "string",
+    "description": "Tire size range",
+    "unit": null,
+    "values": [],
+    "example": "700x28c - 700x47c"
+   },
+   {
+    "key": "tubeless",
+    "kind": "boolean",
+    "description": "Tubeless ready",
+    "unit": null,
+    "values": [],
+    "example": true
+   },
+   {
+    "key": "axle",
+    "kind": "string",
+    "description": "Axle standard",
+    "unit": null,
+    "values": [],
+    "example": "12x142 thru axle"
+   },
+   {
+    "key": "brake",
+    "kind": "enum",
+    "description": "Brake type",
+    "unit": null,
+    "values": [
+     "disc",
+     "rim"
+    ],
+    "example": "disc"
+   },
+   {
+    "key": "rotor_mount",
+    "kind": "enum",
+    "description": "Rotor mount",
+    "unit": null,
+    "values": [
+     "centerlock",
+     "6-bolt",
+     "none"
+    ],
+    "example": "centerlock"
+   },
+   {
+    "key": "freehub",
+    "kind": "string",
+    "description": "Freehub body",
+    "unit": null,
+    "values": [],
+    "example": "Shimano HG 11/12-speed road"
+   },
+   {
+    "key": "spokes",
+    "kind": "integer",
+    "description": "Spoke count",
+    "unit": null,
+    "values": [],
+    "example": 24
+   },
+   {
+    "key": "torque_nm",
+    "kind": "string",
+    "description": "Tightening torque (bolts, clamps, axle) as printed by the maker",
+    "unit": "Nm",
+    "values": [],
+    "example": "5"
+   },
+   {
+    "key": "weight_g",
+    "kind": "number",
+    "description": "Weight",
+    "unit": "g",
+    "values": [],
+    "example": 250
+   },
+   {
+    "key": "color",
+    "kind": "string",
+    "description": "Colour / finish",
+    "unit": null,
+    "values": [],
+    "example": null
+   },
+   {
+    "key": "material",
+    "kind": "string",
+    "description": "Main material",
+    "unit": null,
+    "values": [],
+    "example": null
+   }
+  ],
+  "HUB": [
+   {
+    "key": "axle",
+    "kind": "string",
+    "description": "Axle standard",
+    "unit": null,
+    "values": [],
+    "example": "12x142 thru-axle"
+   },
+   {
+    "key": "freehub",
+    "kind": "string",
+    "description": "Freehub body (rear)",
+    "unit": null,
+    "values": [],
+    "example": "Shimano HG / Microspline"
+   },
+   {
+    "key": "rotor_mount",
+    "kind": "enum",
+    "description": "Rotor mount",
+    "unit": null,
+    "values": [
+     "center lock",
+     "6-bolt"
+    ],
+    "example": "center lock"
+   },
+   {
+    "key": "spoke_holes",
+    "kind": "number",
+    "description": "Spoke holes",
+    "unit": null,
+    "values": [],
+    "example": 24
+   },
+   {
+    "key": "weight_g",
+    "kind": "number",
+    "description": "Weight",
+    "unit": "g",
+    "values": [],
+    "example": 250
+   },
+   {
+    "key": "color",
+    "kind": "string",
+    "description": "Colour / finish",
+    "unit": null,
+    "values": [],
+    "example": null
+   },
+   {
+    "key": "material",
+    "kind": "string",
+    "description": "Main material",
+    "unit": null,
+    "values": [],
+    "example": null
+   }
+  ],
+  "HUB_BEARINGS": [
+   {
+    "key": "size",
+    "kind": "string",
+    "description": "Bearing size(s)",
+    "unit": null,
+    "values": [],
+    "example": "6902 2RS x2"
+   },
+   {
+    "key": "type",
+    "kind": "enum",
+    "description": "Bearing type",
+    "unit": null,
+    "values": [
+     "cartridge",
+     "cup and cone",
+     "ceramic"
+    ],
+    "example": "cartridge"
+   },
+   {
+    "key": "weight_g",
+    "kind": "number",
+    "description": "Weight",
+    "unit": "g",
+    "values": [],
+    "example": 250
+   },
+   {
+    "key": "color",
+    "kind": "string",
+    "description": "Colour / finish",
+    "unit": null,
+    "values": [],
+    "example": null
+   },
+   {
+    "key": "material",
+    "kind": "string",
+    "description": "Main material",
+    "unit": null,
+    "values": [],
+    "example": null
+   }
+  ],
+  "SPOKES": [
+   {
+    "key": "count",
+    "kind": "number",
+    "description": "Number of spokes",
+    "unit": null,
+    "values": [],
+    "example": 24
+   },
+   {
+    "key": "model",
+    "kind": "string",
+    "description": "Spoke model",
+    "unit": null,
+    "values": [],
+    "example": "DT Aerolite"
+   },
+   {
+    "key": "length_mm",
+    "kind": "number",
+    "description": "Length (front, or both sides)",
+    "unit": "mm",
+    "values": [],
+    "example": 286
+   },
+   {
+    "key": "length_drive_mm",
+    "kind": "number",
+    "description": "Length, rear drive side",
+    "unit": "mm",
+    "values": [],
+    "example": 288
+   },
+   {
+    "key": "length_non_drive_mm",
+    "kind": "number",
+    "description": "Length, rear non-drive side",
+    "unit": "mm",
+    "values": [],
+    "example": 290
+   },
+   {
+    "key": "nipples",
+    "kind": "string",
+    "description": "Nipples",
+    "unit": null,
+    "values": [],
+    "example": "alloy, 14 mm"
+   },
+   {
+    "key": "weight_g",
+    "kind": "number",
+    "description": "Weight",
+    "unit": "g",
+    "values": [],
+    "example": 250
+   },
+   {
+    "key": "color",
+    "kind": "string",
+    "description": "Colour / finish",
+    "unit": null,
+    "values": [],
+    "example": null
+   },
+   {
+    "key": "material",
+    "kind": "string",
+    "description": "Main material",
+    "unit": null,
+    "values": [],
+    "example": null
+   }
+  ],
+  "RIM": [
+   {
+    "key": "inner_width_mm",
+    "kind": "number",
+    "description": "Inner width",
+    "unit": "mm",
+    "values": [],
+    "example": 23
+   },
+   {
+    "key": "depth_mm",
+    "kind": "number",
+    "description": "Rim depth",
+    "unit": "mm",
+    "values": [],
+    "example": 45
+   },
+   {
+    "key": "spoke_holes",
+    "kind": "number",
+    "description": "Spoke holes",
+    "unit": null,
+    "values": [],
+    "example": 24
+   },
+   {
+    "key": "brake",
+    "kind": "enum",
+    "description": "Brake type",
+    "unit": null,
+    "values": [
+     "disc",
+     "rim"
+    ],
+    "example": "disc"
+   },
+   {
+    "key": "weight_g",
+    "kind": "number",
+    "description": "Weight",
+    "unit": "g",
+    "values": [],
+    "example": 250
+   },
+   {
+    "key": "color",
+    "kind": "string",
+    "description": "Colour / finish",
+    "unit": null,
+    "values": [],
+    "example": null
+   },
+   {
+    "key": "material",
+    "kind": "string",
+    "description": "Main material",
+    "unit": null,
+    "values": [],
+    "example": null
+   }
+  ],
+  "RIM_TAPE": [
+   {
+    "key": "width_mm",
+    "kind": "number",
+    "description": "Width",
+    "unit": "mm",
+    "values": [],
+    "example": 25
+   },
+   {
+    "key": "weight_g",
+    "kind": "number",
+    "description": "Weight",
+    "unit": "g",
+    "values": [],
+    "example": 250
+   },
+   {
+    "key": "color",
+    "kind": "string",
+    "description": "Colour / finish",
+    "unit": null,
+    "values": [],
+    "example": null
+   },
+   {
+    "key": "material",
+    "kind": "string",
+    "description": "Main material",
+    "unit": null,
+    "values": [],
+    "example": null
+   }
+  ],
+  "TUBELESS_VALVE": [
+   {
+    "key": "length_mm",
+    "kind": "number",
+    "description": "Valve length",
+    "unit": "mm",
+    "values": [],
+    "example": 44
+   },
+   {
+    "key": "type",
+    "kind": "enum",
+    "description": "Valve type",
+    "unit": null,
+    "values": [
+     "presta",
+     "schrader"
+    ],
+    "example": "presta"
+   },
+   {
+    "key": "weight_g",
+    "kind": "number",
+    "description": "Weight",
+    "unit": "g",
+    "values": [],
+    "example": 250
+   },
+   {
+    "key": "color",
+    "kind": "string",
+    "description": "Colour / finish",
+    "unit": null,
+    "values": [],
+    "example": null
+   },
+   {
+    "key": "material",
+    "kind": "string",
+    "description": "Main material",
+    "unit": null,
+    "values": [],
+    "example": null
+   }
+  ],
+  "TIRE": [
+   {
+    "key": "size",
+    "kind": "string",
+    "description": "Size as printed",
+    "unit": null,
+    "values": [],
+    "example": "700x28c"
+   },
+   {
+    "key": "etrto",
+    "kind": "string",
+    "description": "ETRTO size",
+    "unit": null,
+    "values": [],
+    "example": "28-622"
+   },
+   {
+    "key": "tubeless",
+    "kind": "boolean",
+    "description": "Tubeless ready",
+    "unit": null,
+    "values": [],
+    "example": true
+   },
+   {
+    "key": "tpi",
+    "kind": "integer",
+    "description": "Casing threads per inch",
+    "unit": null,
+    "values": [],
+    "example": 120
+   },
+   {
+    "key": "compound",
+    "kind": "string",
+    "description": "Rubber compound",
+    "unit": null,
+    "values": [],
+    "example": "BlackChili"
+   },
+   {
+    "key": "weight_g",
+    "kind": "number",
+    "description": "Weight",
+    "unit": "g",
+    "values": [],
+    "example": 250
+   },
+   {
+    "key": "color",
+    "kind": "string",
+    "description": "Colour / finish",
+    "unit": null,
+    "values": [],
+    "example": null
+   },
+   {
+    "key": "material",
+    "kind": "string",
+    "description": "Main material",
+    "unit": null,
+    "values": [],
+    "example": null
+   }
+  ],
+  "INNER_TUBE": [
+   {
+    "key": "size",
+    "kind": "string",
+    "description": "Size range",
+    "unit": null,
+    "values": [],
+    "example": "700x23-32c"
+   },
+   {
+    "key": "valve",
+    "kind": "enum",
+    "description": "Valve type",
+    "unit": null,
+    "values": [
+     "presta",
+     "schrader",
+     "dunlop"
+    ],
+    "example": "presta"
+   },
+   {
+    "key": "valve_length_mm",
+    "kind": "number",
+    "description": "Valve length",
+    "unit": "mm",
+    "values": [],
+    "example": 60
+   },
+   {
+    "key": "tube_material",
+    "kind": "enum",
+    "description": "Tube material",
+    "unit": null,
+    "values": [
+     "butyl",
+     "latex",
+     "TPU"
+    ],
+    "example": "TPU"
+   },
+   {
+    "key": "weight_g",
+    "kind": "number",
+    "description": "Weight",
+    "unit": "g",
+    "values": [],
+    "example": 250
+   },
+   {
+    "key": "color",
+    "kind": "string",
+    "description": "Colour / finish",
+    "unit": null,
+    "values": [],
+    "example": null
+   },
+   {
+    "key": "material",
+    "kind": "string",
+    "description": "Main material",
+    "unit": null,
+    "values": [],
+    "example": null
+   }
+  ],
+  "BRAKE_ROTOR": [
+   {
+    "key": "diameter_mm",
+    "kind": "number",
+    "description": "Diameter",
+    "unit": "mm",
+    "values": [],
+    "example": 160
+   },
+   {
+    "key": "mount",
+    "kind": "enum",
+    "description": "Mount",
+    "unit": null,
+    "values": [
+     "centerlock",
+     "6-bolt"
+    ],
+    "example": "centerlock"
+   },
+   {
+    "key": "thickness_mm",
+    "kind": "number",
+    "description": "Thickness when new",
+    "unit": "mm",
+    "values": [],
+    "example": 1.8
+   },
+   {
+    "key": "min_thickness_mm",
+    "kind": "number",
+    "description": "Minimum thickness (replace below)",
+    "unit": "mm",
+    "values": [],
+    "example": 1.5
+   },
+   {
+    "key": "torque_nm",
+    "kind": "string",
+    "description": "Tightening torque (bolts, clamps, axle) as printed by the maker",
+    "unit": "Nm",
+    "values": [],
+    "example": "5"
+   },
+   {
+    "key": "weight_g",
+    "kind": "number",
+    "description": "Weight",
+    "unit": "g",
+    "values": [],
+    "example": 250
+   },
+   {
+    "key": "color",
+    "kind": "string",
+    "description": "Colour / finish",
+    "unit": null,
+    "values": [],
+    "example": null
+   },
+   {
+    "key": "material",
+    "kind": "string",
+    "description": "Main material",
+    "unit": null,
+    "values": [],
+    "example": null
+   }
+  ],
+  "BRAKE_CIRCUIT": [
+   {
+    "key": "caliper",
+    "kind": "string",
+    "description": "Caliper model",
+    "unit": null,
+    "values": [],
+    "example": "BR-R8170"
+   },
+   {
+    "key": "lever",
+    "kind": "string",
+    "description": "Lever model",
+    "unit": null,
+    "values": [],
+    "example": "ST-R8170"
+   },
+   {
+    "key": "hose",
+    "kind": "string",
+    "description": "Hose model",
+    "unit": null,
+    "values": [],
+    "example": "SM-BH90-JK-SSR"
+   },
+   {
+    "key": "fluid",
+    "kind": "enum",
+    "description": "Brake fluid",
+    "unit": null,
+    "values": [
+     "mineral oil",
+     "DOT 4",
+     "DOT 5.1"
+    ],
+    "example": "mineral oil"
+   },
+   {
+    "key": "mount",
+    "kind": "enum",
+    "description": "Caliper mount",
+    "unit": null,
+    "values": [
+     "flat mount",
+     "post mount",
+     "rim"
+    ],
+    "example": "flat mount"
+   },
+   {
+    "key": "torque_nm",
+    "kind": "string",
+    "description": "Tightening torque (bolts, clamps, axle) as printed by the maker",
+    "unit": "Nm",
+    "values": [],
+    "example": "5"
+   },
+   {
+    "key": "weight_g",
+    "kind": "number",
+    "description": "Weight",
+    "unit": "g",
+    "values": [],
+    "example": 250
+   },
+   {
+    "key": "color",
+    "kind": "string",
+    "description": "Colour / finish",
+    "unit": null,
+    "values": [],
+    "example": null
+   },
+   {
+    "key": "material",
+    "kind": "string",
+    "description": "Main material",
+    "unit": null,
+    "values": [],
+    "example": null
+   }
+  ],
+  "BRAKE_PADS": [
+   {
+    "key": "compound",
+    "kind": "enum",
+    "description": "Pad compound",
+    "unit": null,
+    "values": [
+     "resin",
+     "metal",
+     "semi-metal",
+     "rim"
+    ],
+    "example": "resin"
+   },
+   {
+    "key": "cooling_fins",
+    "kind": "boolean",
+    "description": "Has cooling fins",
+    "unit": null,
+    "values": [],
+    "example": true
+   },
+   {
+    "key": "fits",
+    "kind": "string",
+    "description": "Calipers it fits",
+    "unit": null,
+    "values": [],
+    "example": "BR-R8170, BR-R9270"
+   },
+   {
+    "key": "min_thickness_mm",
+    "kind": "number",
+    "description": "Replace below this pad thickness",
+    "unit": "mm",
+    "values": [],
+    "example": 0.5
+   },
+   {
+    "key": "weight_g",
+    "kind": "number",
+    "description": "Weight",
+    "unit": "g",
+    "values": [],
+    "example": 250
+   },
+   {
+    "key": "color",
+    "kind": "string",
+    "description": "Colour / finish",
+    "unit": null,
+    "values": [],
+    "example": null
+   },
+   {
+    "key": "material",
+    "kind": "string",
+    "description": "Main material",
+    "unit": null,
+    "values": [],
+    "example": null
+   }
+  ],
+  "POWER_METER": [
+   {
+    "key": "placement",
+    "kind": "enum",
+    "description": "Where it measures",
+    "unit": null,
+    "values": [
+     "left crank",
+     "dual crank",
+     "spider",
+     "pedals",
+     "hub",
+     "chainring"
+    ],
+    "example": "spider"
+   },
+   {
+    "key": "sides",
+    "kind": "enum",
+    "description": "Measures one or both legs",
+    "unit": null,
+    "values": [
+     "single",
+     "dual"
+    ],
+    "example": "dual"
+   },
+   {
+    "key": "accuracy_pct",
+    "kind": "number",
+    "description": "Claimed accuracy",
+    "unit": "±%",
+    "values": [],
+    "example": 1.5
+   },
+   {
+    "key": "battery",
+    "kind": "string",
+    "description": "Battery",
+    "unit": null,
+    "values": [],
+    "example": "rechargeable, USB-C"
+   },
+   {
+    "key": "battery_life_h",
+    "kind": "number",
+    "description": "Claimed battery life",
+    "unit": "h",
+    "values": [],
+    "example": 300
+   },
+   {
+    "key": "protocols",
+    "kind": "string",
+    "description": "Wireless protocols",
+    "unit": null,
+    "values": [],
+    "example": "ANT+, Bluetooth"
+   },
+   {
+    "key": "crank_length_mm",
+    "kind": "number",
+    "description": "Crank length (crank-based meters)",
+    "unit": "mm",
+    "values": [],
+    "example": 172.5
+   },
+   {
+    "key": "spindle",
+    "kind": "string",
+    "description": "Spindle / interface it fits",
+    "unit": null,
+    "values": [],
+    "example": "Shimano Hollowtech II"
+   },
+   {
+    "key": "weight_g",
+    "kind": "number",
+    "description": "Weight",
+    "unit": "g",
+    "values": [],
+    "example": 250
+   },
+   {
+    "key": "color",
+    "kind": "string",
+    "description": "Colour / finish",
+    "unit": null,
+    "values": [],
+    "example": null
+   },
+   {
+    "key": "material",
+    "kind": "string",
+    "description": "Main material",
+    "unit": null,
+    "values": [],
+    "example": null
+   }
+  ],
+  "HEADSET": [
+   {
+    "key": "standard",
+    "kind": "string",
+    "description": "Headset standard (SHIS), top / bottom",
+    "unit": null,
+    "values": [],
+    "example": "ZS44/28.6 | ZS56/40"
+   },
+   {
+    "key": "steerer",
+    "kind": "string",
+    "description": "Steerer tube",
+    "unit": null,
+    "values": [],
+    "example": "1-1/8\" to 1.5\" tapered"
+   },
+   {
+    "key": "bearings",
+    "kind": "string",
+    "description": "Bearing type and size",
+    "unit": null,
+    "values": [],
+    "example": "cartridge 41.8 mm 45x45"
+   },
+   {
+    "key": "integrated_cables",
+    "kind": "boolean",
+    "description": "Routes hoses/cables through the headset",
+    "unit": null,
+    "values": [],
+    "example": false
+   },
+   {
+    "key": "torque_nm",
+    "kind": "string",
+    "description": "Tightening torque (bolts, clamps, axle) as printed by the maker",
+    "unit": "Nm",
+    "values": [],
+    "example": "5"
+   },
+   {
+    "key": "weight_g",
+    "kind": "number",
+    "description": "Weight",
+    "unit": "g",
+    "values": [],
+    "example": 250
+   },
+   {
+    "key": "color",
+    "kind": "string",
+    "description": "Colour / finish",
+    "unit": null,
+    "values": [],
+    "example": null
+   },
+   {
+    "key": "material",
+    "kind": "string",
+    "description": "Main material",
+    "unit": null,
+    "values": [],
+    "example": null
+   }
+  ],
+  "FRAME": [
+   {
+    "key": "material",
+    "kind": "enum",
+    "description": "Material",
+    "unit": null,
+    "values": [
+     "carbon",
+     "aluminium",
+     "steel",
+     "titanium"
+    ],
+    "example": "carbon"
+   },
+   {
+    "key": "size",
+    "kind": "string",
+    "description": "Frame size",
+    "unit": null,
+    "values": [],
+    "example": "56"
+   },
+   {
+    "key": "bottom_bracket",
+    "kind": "string",
+    "description": "Bottom bracket standard",
+    "unit": null,
+    "values": [],
+    "example": "BSA 68 mm"
+   },
+   {
+    "key": "rear_axle",
+    "kind": "string",
+    "description": "Rear axle",
+    "unit": null,
+    "values": [],
+    "example": "12x142 thru-axle"
+   },
+   {
+    "key": "brake_mount",
+    "kind": "enum",
+    "description": "Brake mount",
+    "unit": null,
+    "values": [
+     "flat mount",
+     "post mount",
+     "rim"
+    ],
+    "example": "flat mount"
+   },
+   {
+    "key": "max_tire_mm",
+    "kind": "number",
+    "description": "Largest tire that fits",
+    "unit": "mm",
+    "values": [],
+    "example": 32
+   },
+   {
+    "key": "headset",
+    "kind": "string",
+    "description": "Headset standard (SHIS)",
+    "unit": null,
+    "values": [],
+    "example": "ZS44/28.6 | ZS56/40"
+   },
+   {
+    "key": "seatpost",
+    "kind": "string",
+    "description": "Seatpost (diameter or shape)",
+    "unit": null,
+    "values": [],
+    "example": "D-shaped, model specific"
+   },
+   {
+    "key": "weight_g",
+    "kind": "number",
+    "description": "Weight",
+    "unit": "g",
+    "values": [],
+    "example": 950
+   },
+   {
+    "key": "color",
+    "kind": "string",
+    "description": "Colour / finish",
+    "unit": null,
+    "values": [],
+    "example": null
+   }
+  ],
+  "FORK": [
+   {
+    "key": "material",
+    "kind": "enum",
+    "description": "Material",
+    "unit": null,
+    "values": [
+     "carbon",
+     "aluminium",
+     "steel",
+     "titanium"
+    ],
+    "example": "carbon"
+   },
+   {
+    "key": "steerer",
+    "kind": "string",
+    "description": "Steerer tube",
+    "unit": null,
+    "values": [],
+    "example": "1-1/8\" to 1.5\" tapered"
+   },
+   {
+    "key": "front_axle",
+    "kind": "string",
+    "description": "Front axle",
+    "unit": null,
+    "values": [],
+    "example": "12x100 thru-axle"
+   },
+   {
+    "key": "brake_mount",
+    "kind": "enum",
+    "description": "Brake mount",
+    "unit": null,
+    "values": [
+     "flat mount",
+     "post mount",
+     "rim"
+    ],
+    "example": "flat mount"
+   },
+   {
+    "key": "rake_mm",
+    "kind": "number",
+    "description": "Rake / offset",
+    "unit": "mm",
+    "values": [],
+    "example": 45
+   },
+   {
+    "key": "max_tire_mm",
+    "kind": "number",
+    "description": "Largest tire that fits",
+    "unit": "mm",
+    "values": [],
+    "example": 32
+   },
+   {
+    "key": "weight_g",
+    "kind": "number",
+    "description": "Weight",
+    "unit": "g",
+    "values": [],
+    "example": 380
+   },
+   {
+    "key": "color",
+    "kind": "string",
+    "description": "Colour / finish",
+    "unit": null,
+    "values": [],
+    "example": null
+   }
+  ],
+  "PEDALS": [
+   {
+    "key": "system",
+    "kind": "string",
+    "description": "Cleat system",
+    "unit": null,
+    "values": [],
+    "example": "SPD-SL"
+   },
+   {
+    "key": "q_factor_mm",
+    "kind": "number",
+    "description": "Q-factor",
+    "unit": "mm",
+    "values": [],
+    "example": 53
+   },
+   {
+    "key": "power_meter",
+    "kind": "boolean",
+    "description": "Has a built-in power meter",
+    "unit": null,
+    "values": [],
+    "example": false
+   },
+   {
+    "key": "torque_nm",
+    "kind": "string",
+    "description": "Tightening torque (bolts, clamps, axle) as printed by the maker",
+    "unit": "Nm",
+    "values": [],
+    "example": "5"
+   },
+   {
+    "key": "weight_g",
+    "kind": "number",
+    "description": "Weight",
+    "unit": "g",
+    "values": [],
+    "example": 250
+   },
+   {
+    "key": "color",
+    "kind": "string",
+    "description": "Colour / finish",
+    "unit": null,
+    "values": [],
+    "example": null
+   },
+   {
+    "key": "material",
+    "kind": "string",
+    "description": "Main material",
+    "unit": null,
+    "values": [],
+    "example": null
+   }
+  ],
+  "POWER_METER_PEDALS": [
+   {
+    "key": "system",
+    "kind": "string",
+    "description": "Cleat system",
+    "unit": null,
+    "values": [],
+    "example": "Shimano SPD-SL"
+   },
+   {
+    "key": "sides",
+    "kind": "enum",
+    "description": "Measures one or both legs",
+    "unit": null,
+    "values": [
+     "single",
+     "dual"
+    ],
+    "example": "dual"
+   },
+   {
+    "key": "battery",
+    "kind": "string",
+    "description": "Battery",
+    "unit": null,
+    "values": [],
+    "example": "rechargeable, magnetic charger"
+   },
+   {
+    "key": "battery_life_h",
+    "kind": "number",
+    "description": "Claimed battery life",
+    "unit": "h",
+    "values": [],
+    "example": 60
+   },
+   {
+    "key": "protocols",
+    "kind": "string",
+    "description": "Wireless protocols",
+    "unit": null,
+    "values": [],
+    "example": "ANT+, Bluetooth"
+   },
+   {
+    "key": "torque_nm",
+    "kind": "string",
+    "description": "Tightening torque (bolts, clamps, axle) as printed by the maker",
+    "unit": "Nm",
+    "values": [],
+    "example": "5"
+   },
+   {
+    "key": "weight_g",
+    "kind": "number",
+    "description": "Weight",
+    "unit": "g",
+    "values": [],
+    "example": 250
+   },
+   {
+    "key": "color",
+    "kind": "string",
+    "description": "Colour / finish",
+    "unit": null,
+    "values": [],
+    "example": null
+   },
+   {
+    "key": "material",
+    "kind": "string",
+    "description": "Main material",
+    "unit": null,
+    "values": [],
+    "example": null
+   }
+  ],
+  "SHOES": [
+   {
+    "key": "size_eu",
+    "kind": "number",
+    "description": "Size (EU)",
+    "unit": null,
+    "values": [],
+    "example": 43
+   },
+   {
+    "key": "cleat_system",
+    "kind": "string",
+    "description": "Cleat system",
+    "unit": null,
+    "values": [],
+    "example": "Shimano SPD-SL 3-bolt"
+   },
+   {
+    "key": "weight_g",
+    "kind": "number",
+    "description": "Weight",
+    "unit": "g",
+    "values": [],
+    "example": 250
+   },
+   {
+    "key": "color",
+    "kind": "string",
+    "description": "Colour / finish",
+    "unit": null,
+    "values": [],
+    "example": null
+   },
+   {
+    "key": "material",
+    "kind": "string",
+    "description": "Main material",
+    "unit": null,
+    "values": [],
+    "example": null
+   }
+  ],
+  "CLEATS": [
+   {
+    "key": "system",
+    "kind": "string",
+    "description": "Cleat system",
+    "unit": null,
+    "values": [],
+    "example": "Shimano SPD-SL"
+   },
+   {
+    "key": "float_deg",
+    "kind": "number",
+    "description": "Float",
+    "unit": "°",
+    "values": [],
+    "example": 6
+   },
+   {
+    "key": "weight_g",
+    "kind": "number",
+    "description": "Weight",
+    "unit": "g",
+    "values": [],
+    "example": 250
+   },
+   {
+    "key": "color",
+    "kind": "string",
+    "description": "Colour / finish",
+    "unit": null,
+    "values": [],
+    "example": null
+   },
+   {
+    "key": "material",
+    "kind": "string",
+    "description": "Main material",
+    "unit": null,
+    "values": [],
+    "example": null
+   }
+  ],
+  "SADDLE": [
+   {
+    "key": "width_mm",
+    "kind": "number",
+    "description": "Width",
+    "unit": "mm",
+    "values": [],
+    "example": 143
+   },
+   {
+    "key": "length_mm",
+    "kind": "number",
+    "description": "Length",
+    "unit": "mm",
+    "values": [],
+    "example": 245
+   },
+   {
+    "key": "rails",
+    "kind": "string",
+    "description": "Rail material / shape",
+    "unit": null,
+    "values": [],
+    "example": "carbon 7x9 mm"
+   },
+   {
+    "key": "torque_nm",
+    "kind": "string",
+    "description": "Tightening torque (bolts, clamps, axle) as printed by the maker",
+    "unit": "Nm",
+    "values": [],
+    "example": "5"
+   },
+   {
+    "key": "weight_g",
+    "kind": "number",
+    "description": "Weight",
+    "unit": "g",
+    "values": [],
+    "example": 250
+   },
+   {
+    "key": "color",
+    "kind": "string",
+    "description": "Colour / finish",
+    "unit": null,
+    "values": [],
+    "example": null
+   },
+   {
+    "key": "material",
+    "kind": "string",
+    "description": "Main material",
+    "unit": null,
+    "values": [],
+    "example": null
+   }
+  ],
+  "SEATPOST": [
+   {
+    "key": "diameter_mm",
+    "kind": "number",
+    "description": "Diameter",
+    "unit": "mm",
+    "values": [],
+    "example": 27.2
+   },
+   {
+    "key": "length_mm",
+    "kind": "number",
+    "description": "Length",
+    "unit": "mm",
+    "values": [],
+    "example": 350
+   },
+   {
+    "key": "offset_mm",
+    "kind": "number",
+    "description": "Setback",
+    "unit": "mm",
+    "values": [],
+    "example": 15
+   },
+   {
+    "key": "torque_nm",
+    "kind": "string",
+    "description": "Tightening torque (bolts, clamps, axle) as printed by the maker",
+    "unit": "Nm",
+    "values": [],
+    "example": "5"
+   },
+   {
+    "key": "weight_g",
+    "kind": "number",
+    "description": "Weight",
+    "unit": "g",
+    "values": [],
+    "example": 250
+   },
+   {
+    "key": "color",
+    "kind": "string",
+    "description": "Colour / finish",
+    "unit": null,
+    "values": [],
+    "example": null
+   },
+   {
+    "key": "material",
+    "kind": "string",
+    "description": "Main material",
+    "unit": null,
+    "values": [],
+    "example": null
+   }
+  ],
+  "STEM": [
+   {
+    "key": "length_mm",
+    "kind": "number",
+    "description": "Length",
+    "unit": "mm",
+    "values": [],
+    "example": 100
+   },
+   {
+    "key": "angle_deg",
+    "kind": "number",
+    "description": "Angle",
+    "unit": "°",
+    "values": [],
+    "example": -6
+   },
+   {
+    "key": "clamp_mm",
+    "kind": "number",
+    "description": "Handlebar clamp",
+    "unit": "mm",
+    "values": [],
+    "example": 31.8
+   },
+   {
+    "key": "steerer_mm",
+    "kind": "number",
+    "description": "Steerer clamp",
+    "unit": "mm",
+    "values": [],
+    "example": 28.6
+   },
+   {
+    "key": "torque_nm",
+    "kind": "string",
+    "description": "Tightening torque (bolts, clamps, axle) as printed by the maker",
+    "unit": "Nm",
+    "values": [],
+    "example": "5"
+   },
+   {
+    "key": "weight_g",
+    "kind": "number",
+    "description": "Weight",
+    "unit": "g",
+    "values": [],
+    "example": 250
+   },
+   {
+    "key": "color",
+    "kind": "string",
+    "description": "Colour / finish",
+    "unit": null,
+    "values": [],
+    "example": null
+   },
+   {
+    "key": "material",
+    "kind": "string",
+    "description": "Main material",
+    "unit": null,
+    "values": [],
+    "example": null
+   }
+  ],
+  "HANDLEBAR": [
+   {
+    "key": "width_mm",
+    "kind": "number",
+    "description": "Width",
+    "unit": "mm",
+    "values": [],
+    "example": 420
+   },
+   {
+    "key": "reach_mm",
+    "kind": "number",
+    "description": "Reach",
+    "unit": "mm",
+    "values": [],
+    "example": 80
+   },
+   {
+    "key": "drop_mm",
+    "kind": "number",
+    "description": "Drop",
+    "unit": "mm",
+    "values": [],
+    "example": 125
+   },
+   {
+    "key": "clamp_mm",
+    "kind": "number",
+    "description": "Stem clamp diameter",
+    "unit": "mm",
+    "values": [],
+    "example": 31.8
+   },
+   {
+    "key": "integrated",
+    "kind": "boolean",
+    "description": "One-piece bar and stem",
+    "unit": null,
+    "values": [],
+    "example": false
+   },
+   {
+    "key": "torque_nm",
+    "kind": "string",
+    "description": "Tightening torque (bolts, clamps, axle) as printed by the maker",
+    "unit": "Nm",
+    "values": [],
+    "example": "5"
+   },
+   {
+    "key": "weight_g",
+    "kind": "number",
+    "description": "Weight",
+    "unit": "g",
+    "values": [],
+    "example": 250
+   },
+   {
+    "key": "color",
+    "kind": "string",
+    "description": "Colour / finish",
+    "unit": null,
+    "values": [],
+    "example": null
+   },
+   {
+    "key": "material",
+    "kind": "string",
+    "description": "Main material",
+    "unit": null,
+    "values": [],
+    "example": null
+   }
+  ],
+  "COCKPIT": [
+   {
+    "key": "integration",
+    "kind": "enum",
+    "description": "Integration",
+    "unit": null,
+    "values": [
+     "fully integrated",
+     "semi integrated"
+    ],
+    "example": "fully integrated"
+   },
+   {
+    "key": "stem_length_mm",
+    "kind": "number",
+    "description": "Stem length",
+    "unit": "mm",
+    "values": [],
+    "example": 100
+   },
+   {
+    "key": "stem_angle_deg",
+    "kind": "number",
+    "description": "Stem angle",
+    "unit": "°",
+    "values": [],
+    "example": -10
+   },
+   {
+    "key": "reach_mm",
+    "kind": "number",
+    "description": "Reach",
+    "unit": "mm",
+    "values": [],
+    "example": 80
+   },
+   {
+    "key": "drop_mm",
+    "kind": "number",
+    "description": "Drop",
+    "unit": "mm",
+    "values": [],
+    "example": 125
+   },
+   {
+    "key": "width_mm",
+    "kind": "number",
+    "description": "Width",
+    "unit": "mm",
+    "values": [],
+    "example": 400
+   },
+   {
+    "key": "torque_nm",
+    "kind": "string",
+    "description": "Tightening torque (bolts, clamps, axle) as printed by the maker",
+    "unit": "Nm",
+    "values": [],
+    "example": "5"
+   },
+   {
+    "key": "weight_g",
+    "kind": "number",
+    "description": "Weight",
+    "unit": "g",
+    "values": [],
+    "example": 250
+   },
+   {
+    "key": "color",
+    "kind": "string",
+    "description": "Colour / finish",
+    "unit": null,
+    "values": [],
+    "example": null
+   },
+   {
+    "key": "material",
+    "kind": "string",
+    "description": "Main material",
+    "unit": null,
+    "values": [],
+    "example": null
+   }
+  ],
+  "BAR_TAPE": [
+   {
+    "key": "thickness_mm",
+    "kind": "number",
+    "description": "Thickness",
+    "unit": "mm",
+    "values": [],
+    "example": 2.5
+   },
+   {
+    "key": "length_mm",
+    "kind": "number",
+    "description": "Length per side",
+    "unit": "mm",
+    "values": [],
+    "example": 2000
+   },
+   {
+    "key": "weight_g",
+    "kind": "number",
+    "description": "Weight",
+    "unit": "g",
+    "values": [],
+    "example": 250
+   },
+   {
+    "key": "color",
+    "kind": "string",
+    "description": "Colour / finish",
+    "unit": null,
+    "values": [],
+    "example": null
+   },
+   {
+    "key": "material",
+    "kind": "string",
+    "description": "Main material",
+    "unit": null,
+    "values": [],
+    "example": null
+   }
+  ],
+  "SHIFTERS": [
+   {
+    "key": "speeds",
+    "kind": "integer",
+    "description": "Number of rear sprockets the part is made for",
+    "unit": null,
+    "values": [],
+    "example": 12
+   },
+   {
+    "key": "electronic",
+    "kind": "boolean",
+    "description": "Electronic shifting",
+    "unit": null,
+    "values": [],
+    "example": true
+   },
+   {
+    "key": "brake_type",
+    "kind": "enum",
+    "description": "Brake type",
+    "unit": null,
+    "values": [
+     "hydraulic disc",
+     "mechanical disc",
+     "rim"
+    ],
+    "example": "hydraulic disc"
+   },
+   {
+    "key": "power",
+    "kind": "string",
+    "description": "Power source",
+    "unit": null,
+    "values": [],
+    "example": "CR1632 coin cell"
+   },
+   {
+    "key": "torque_nm",
+    "kind": "string",
+    "description": "Tightening torque (bolts, clamps, axle) as printed by the maker",
+    "unit": "Nm",
+    "values": [],
+    "example": "5"
+   },
+   {
+    "key": "weight_g",
+    "kind": "number",
+    "description": "Weight",
+    "unit": "g",
+    "values": [],
+    "example": 250
+   },
+   {
+    "key": "color",
+    "kind": "string",
+    "description": "Colour / finish",
+    "unit": null,
+    "values": [],
+    "example": null
+   },
+   {
+    "key": "material",
+    "kind": "string",
+    "description": "Main material",
+    "unit": null,
+    "values": [],
+    "example": null
+   }
+  ],
+  "BATTERY": [
+   {
+    "key": "system",
+    "kind": "string",
+    "description": "Shifting system",
+    "unit": null,
+    "values": [],
+    "example": "Shimano Di2"
+   },
+   {
+    "key": "capacity_wh",
+    "kind": "number",
+    "description": "Capacity",
+    "unit": "Wh",
+    "values": [],
+    "example": 3.7
+   },
+   {
+    "key": "mount",
+    "kind": "string",
+    "description": "Where it is mounted",
+    "unit": null,
+    "values": [],
+    "example": "internal, seatpost"
+   },
+   {
+    "key": "weight_g",
+    "kind": "number",
+    "description": "Weight",
+    "unit": "g",
+    "values": [],
+    "example": 250
+   },
+   {
+    "key": "color",
+    "kind": "string",
+    "description": "Colour / finish",
+    "unit": null,
+    "values": [],
+    "example": null
+   },
+   {
+    "key": "material",
+    "kind": "string",
+    "description": "Main material",
+    "unit": null,
+    "values": [],
+    "example": null
+   }
+  ],
+  "DI2_WIRES": [
+   {
+    "key": "system",
+    "kind": "string",
+    "description": "Wire system",
+    "unit": null,
+    "values": [],
+    "example": "EW-SD300"
+   },
+   {
+    "key": "lengths",
+    "kind": "string",
+    "description": "Wire lengths",
+    "unit": null,
+    "values": [],
+    "example": "350, 550, 1000 mm"
+   },
+   {
+    "key": "weight_g",
+    "kind": "number",
+    "description": "Weight",
+    "unit": "g",
+    "values": [],
+    "example": 250
+   },
+   {
+    "key": "color",
+    "kind": "string",
+    "description": "Colour / finish",
+    "unit": null,
+    "values": [],
+    "example": null
+   },
+   {
+    "key": "material",
+    "kind": "string",
+    "description": "Main material",
+    "unit": null,
+    "values": [],
+    "example": null
+   }
+  ],
+  "DI2_JUNCTION": [
+   {
+    "key": "ports",
+    "kind": "number",
+    "description": "Ports",
+    "unit": null,
+    "values": [],
+    "example": 3
+   },
+   {
+    "key": "charging",
+    "kind": "string",
+    "description": "Charging (11-speed Di2: at the junction box)",
+    "unit": null,
+    "values": [],
+    "example": "Charging port for SM-BCR2"
+   },
+   {
+    "key": "weight_g",
+    "kind": "number",
+    "description": "Weight",
+    "unit": "g",
+    "values": [],
+    "example": 250
+   },
+   {
+    "key": "color",
+    "kind": "string",
+    "description": "Colour / finish",
+    "unit": null,
+    "values": [],
+    "example": null
+   },
+   {
+    "key": "material",
+    "kind": "string",
+    "description": "Main material",
+    "unit": null,
+    "values": [],
+    "example": null
+   }
+  ],
+  "SENSOR": [
+   {
+    "key": "kind",
+    "kind": "enum",
+    "description": "Sensor kind",
+    "unit": null,
+    "values": [
+     "speed",
+     "cadence",
+     "speed/cadence"
+    ],
+    "example": "speed"
+   },
+   {
+    "key": "battery",
+    "kind": "string",
+    "description": "Battery",
+    "unit": null,
+    "values": [],
+    "example": "CR2032"
+   },
+   {
+    "key": "battery_life_h",
+    "kind": "number",
+    "description": "Claimed battery life",
+    "unit": "h",
+    "values": [],
+    "example": 500
+   },
+   {
+    "key": "protocols",
+    "kind": "string",
+    "description": "Wireless protocols",
+    "unit": null,
+    "values": [],
+    "example": "ANT+, Bluetooth"
+   },
+   {
+    "key": "weight_g",
+    "kind": "number",
+    "description": "Weight",
+    "unit": "g",
+    "values": [],
+    "example": 250
+   },
+   {
+    "key": "color",
+    "kind": "string",
+    "description": "Colour / finish",
+    "unit": null,
+    "values": [],
+    "example": null
+   },
+   {
+    "key": "material",
+    "kind": "string",
+    "description": "Main material",
+    "unit": null,
+    "values": [],
+    "example": null
+   }
+  ],
+  "BIKE_COMPUTER": [
+   {
+    "key": "battery_life_h",
+    "kind": "number",
+    "description": "Claimed battery life",
+    "unit": "h",
+    "values": [],
+    "example": 26
+   },
+   {
+    "key": "weight_g",
+    "kind": "number",
+    "description": "Weight",
+    "unit": "g",
+    "values": [],
+    "example": 250
+   },
+   {
+    "key": "color",
+    "kind": "string",
+    "description": "Colour / finish",
+    "unit": null,
+    "values": [],
+    "example": null
+   },
+   {
+    "key": "material",
+    "kind": "string",
+    "description": "Main material",
+    "unit": null,
+    "values": [],
+    "example": null
+   }
+  ],
+  "LIGHT": [
+   {
+    "key": "lumen",
+    "kind": "number",
+    "description": "Light output",
+    "unit": "lm",
+    "values": [],
+    "example": 800
+   },
+   {
+    "key": "battery_life_h",
+    "kind": "number",
+    "description": "Claimed run time in your mode",
+    "unit": "h",
+    "values": [],
+    "example": 4
+   },
+   {
+    "key": "weight_g",
+    "kind": "number",
+    "description": "Weight",
+    "unit": "g",
+    "values": [],
+    "example": 250
+   },
+   {
+    "key": "color",
+    "kind": "string",
+    "description": "Colour / finish",
+    "unit": null,
+    "values": [],
+    "example": null
+   },
+   {
+    "key": "material",
+    "kind": "string",
+    "description": "Main material",
+    "unit": null,
+    "values": [],
+    "example": null
+   }
+  ],
+  "RADAR": [
+   {
+    "key": "battery_life_h",
+    "kind": "number",
+    "description": "Claimed run time",
+    "unit": "h",
+    "values": [],
+    "example": 8
+   },
+   {
+    "key": "weight_g",
+    "kind": "number",
+    "description": "Weight",
+    "unit": "g",
+    "values": [],
+    "example": 250
+   },
+   {
+    "key": "color",
+    "kind": "string",
+    "description": "Colour / finish",
+    "unit": null,
+    "values": [],
+    "example": null
+   },
+   {
+    "key": "material",
+    "kind": "string",
+    "description": "Main material",
+    "unit": null,
+    "values": [],
+    "example": null
+   }
+  ],
+  "OTHER": [
+   {
+    "key": "weight_g",
+    "kind": "number",
+    "description": "Weight",
+    "unit": "g",
+    "values": [],
+    "example": 250
+   },
+   {
+    "key": "color",
+    "kind": "string",
+    "description": "Colour / finish",
+    "unit": null,
+    "values": [],
+    "example": null
+   },
+   {
+    "key": "material",
+    "kind": "string",
+    "description": "Main material",
+    "unit": null,
+    "values": [],
+    "example": null
+   }
+  ]
  }
 }

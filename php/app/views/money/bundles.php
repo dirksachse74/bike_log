@@ -25,7 +25,7 @@
     <div class="row">
       <?= field('name', 'Name', '', 'text', ['required' => true, 'placeholder' => 'Ultegra Di2 groupset', 'maxlength' => 160]) ?>
       <?= field('price', 'Price paid', '', 'text', ['inputmode' => 'decimal']) ?>
-      <?= field('merchant', 'Shop', '') ?>
+      <?= field('merchant', 'Shop', '', 'text', ['list' => 'shops']) ?>
       <?= field('purchased_on', 'Bought on', '', 'date') ?>
     </div>
     <fieldset><legend>Parts (only parts without their own price)</legend>
