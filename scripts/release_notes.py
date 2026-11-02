@@ -26,12 +26,18 @@ def changelog_section(changelog: str, version: str) -> str:
     return ""
 
 
+def public(text: str) -> str:
+    """Release pages are public: drop who asked for a change ("(Dirk 2026-11-01)", "Dirk's")."""
+    text = re.sub(r"\s*\((?:asked by )?Dirk\b[^()]*\)", "", text)
+    return re.sub(r"\bDirk's\b", "your", text)
+
+
 def install_note(text: str) -> str:
     return re.sub(r"\A# [^\n]*\n+", "", text).strip()
 
 
 def build(version: str, sha256: str | None = None, file: str | None = None, root: Path = ROOT) -> str:
-    changes = changelog_section((root / "CHANGELOG.md").read_text(encoding="utf-8"), version)
+    changes = public(changelog_section((root / "CHANGELOG.md").read_text(encoding="utf-8"), version))
     if len(changes) > MAX_CHANGES:
         changes = changes[:MAX_CHANGES].rsplit("\n", 1)[0] + "\n\n… (shortened; the full list is in CHANGELOG.md)"
     parts = [
