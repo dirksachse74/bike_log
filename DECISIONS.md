@@ -586,6 +586,12 @@ you disagree. Dates are 2026-10-24 unless noted.
     intervals edits the type defaults (PATCH /api/rules/{id}; GET /api/rules adds `own_values`, the number of
     part/bike overrides), and `maintenance.charge_history` (component detail `charging`) lists charges with
     km / ride hours / rides / days between them.
+135. **One row per wax application** (Dirk 2026-11-02, table agreed in chat before building).
+    `chains.wax_applications(comp)` (component detail `chain.wax`): applications newest first with n (oldest =
+    1), type, product (the event's supply), at_km (km since the last hot wax; hot wax = 0; top-up before any
+    hot wax = none), ridden_km and days_on while it was the latest, active, ended_by {n, type}, and next_due
+    on the active row only (after a hot wax: top-up window and hot wax; after a top-up: hot wax, from
+    chain_history's due km). `current` feeds the "Current:" line. chain_history stays for the API and rotation.
 
 ## Repository
 27. Pushed only to the feature branch `claude/project-thread-6y3mmh` of the private repository. Demo

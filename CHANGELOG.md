@@ -26,6 +26,10 @@ UPDATING.md → "Making a release". New entries go under "Unreleased" as work is
   Patched) shows "defect · puncture <date>".
 
 ### Changed
+- **Wax table on the chain page** (Dirk 2026-11-02): one row per wax application, newest first: # · Date ·
+  Type (hot wax / liquid wax top-up) · Product · At chain km (km since the last hot wax when applied) ·
+  Ridden on it · Days on · Active · Ended by · Next due ("Hot wax at 279 km (159 km left)"). A "Current:" line
+  above it; on a phone each row is a small card. Replaces the per-cycle table.
 - **Wax cycles with liquid-wax top-ups** (Dirk 2026-11-02): after a liquid wax top-up the next hot wax is due
   200 km after it (top-up at 300 km → hot wax at 500 km; an early top-up at 70 km after a wet ride → hot wax at
   270 km). Without a top-up it stays at 500 km. The 200 km are a personal setting: Rules → Hot wax chain → Edit

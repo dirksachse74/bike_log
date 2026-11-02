@@ -196,6 +196,61 @@ def chain_history(session: Session, comp: Component) -> list[dict]:
     return out
 
 
+def wax_applications(session: Session, comp: Component) -> dict:
+    """One row per wax application on a chain, newest first (Dirk 2026-11-02, DECISIONS 135): type, product,
+    km since the last hot wax when applied, km and days it was the latest application, which one ended it,
+    and on the active row what is due next."""
+    from bikelog.models import MaintenanceEvent
+    from bikelog.services import settings
+    from bikelog.timeutil import today_local
+    from datetime import date as _date
+    events = [e for e in m.events_for(session, component_id=comp.id)
+              if e["action_code"] in ("WAX_HOT", "WAX_LIQUID") and not e["voided"]]
+    sort = {e["id"]: session.get(MaintenanceEvent, e["id"]).sort_utc for e in events}
+    events.sort(key=lambda e: (sort[e["id"]], e["id"]))
+    today = today_local(settings.tz(session)).isoformat()
+    kind = {"WAX_HOT": "Hot wax", "WAX_LIQUID": "Liquid wax top-up"}
+    rows, last_hot = [], None
+    for n, e in enumerate(events, start=1):
+        if e["action_code"] == "WAX_HOT":
+            last_hot = sort[e["id"]]
+        nxt = events[n] if n < len(events) else None
+        since = usage_since(session, comp.id, sort[e["id"]])
+        ridden = since - (usage_since(session, comp.id, sort[nxt["id"]]) if nxt else 0)
+        at_km = None if last_hot is None else (
+            0.0 if e["action_code"] == "WAX_HOT" else usage_since(session, comp.id, last_hot) - since)
+        end_day = nxt["performed_on"] if nxt else today
+        rows.append({"n": n, "event_id": e["id"], "date": e["performed_on"], "action_code": e["action_code"],
+                     "type": kind[e["action_code"]], "product": e.get("consumable"),
+                     "at_km": round(at_km, 1) if at_km is not None else None, "ridden_km": round(ridden, 1),
+                     "days_on": (_date.fromisoformat(end_day[:10]) - _date.fromisoformat(e["performed_on"][:10])).days,
+                     "active": nxt is None,
+                     "ended_by": {"n": n + 1, "type": kind[nxt["action_code"]]} if nxt else None,
+                     "next_due": None})
+    current = None
+    if rows:
+        act = rows[-1]
+        cycles = chain_history(session, comp)
+        cyc = cycles[-1] if cycles else None
+        parts = []
+        if cyc and cyc.get("hot_wax_due_at_km") is not None:
+            left = cyc["hot_wax_left_km"]
+            hot = (f"Hot wax at {cyc['hot_wax_due_at_km']:,.0f} km "
+                   + (f"({left:,.0f} km left)" if left >= 0 else f"({-left:,.0f} km over)"))
+            if act["action_code"] == "WAX_HOT":
+                rule = next((r for r in m.effective_rules(session, comp) if r.action_code == "WAX_LIQUID"), None)
+                if rule and rule.window_min_km is not None:
+                    parts.append(f"Top-up at {rule.window_min_km:,.0f}–{rule.window_max_km:,.0f} km")
+            parts.append(hot)
+        act["next_due"] = " · ".join(parts) or None
+        km_now = cyc["km"] if cyc else None
+        current = {"type": act["type"], "date": act["date"], "at_km": act["at_km"], "km_since": act["ridden_km"],
+                   "chain_km_since_hot_wax": km_now,
+                   "hot_wax_due_at_km": cyc.get("hot_wax_due_at_km") if cyc else None,
+                   "hot_wax_left_km": cyc.get("hot_wax_left_km") if cyc else None}
+    return {"applications": list(reversed(rows)), "current": current}
+
+
 def swap(session: Session, bike_id: int, *, to_component_id: int, at: str, work_session_id: int | None = None) -> dict:
     """One click: the chain on the bike comes off (stored, keeps its km) and the chosen one goes on."""
     rot = rotation(session, bike_id)

@@ -1471,3 +1471,11 @@ dl.props dd { margin: 0; }
 .interval-group>summary{cursor:pointer;font-weight:600;padding:6px 0}
 .interval-group .list li{align-items:flex-start}
 .interval-note{display:inline-block;max-width:60ch}
+.wax-apps tr.wax-active td{font-weight:600}
+@media (max-width: 640px){
+  .wax-apps thead{display:none}
+  .wax-apps,.wax-apps tbody,.wax-apps tr,.wax-apps td{display:block;width:100%}
+  .wax-apps tr{border:1px solid var(--line);border-radius:var(--radius);padding:8px 10px;margin:0 0 8px}
+  .wax-apps td{display:flex;justify-content:space-between;gap:12px;border:0;padding:2px 0;text-align:right}
+  .wax-apps td::before{content:attr(data-label);color:var(--muted);font-weight:400;text-align:left}
+}
