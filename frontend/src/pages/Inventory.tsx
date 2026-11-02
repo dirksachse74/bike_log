@@ -872,7 +872,7 @@ interface ComponentDetail extends ComponentSummary {
   suggested_outcome: string
   parts: PartNode[]
   groupset_bike_id: number | null
-  chain: (ChainRow & { cycles: WaxCycle[] }) | null
+  chain: (ChainRow & { cycles: WaxCycle[]; wax: { applications: WaxApplication[]; current: WaxCurrent | null } }) | null
   frame_history: FrameHistory | null
   spokes: SpokeInfo | null
   tire_tube: Record<'TIRE' | 'INNER_TUBE', { current: MountedRow | null; history: MountedRow[] }> | null
@@ -1771,20 +1771,39 @@ interface WaxCycle {
   waxed_on: string
   km: number
   current: boolean
-  top_ups: { date: string; at_km: number }[]
-  km_since_top_up?: number | null
-  hot_wax_due_at_km?: number
-  hot_wax_left_km?: number
 }
 
-// "70 km since hot wax · liquid wax top-up at 70 km, 0 km since · next hot wax at 270 km (200 km left)"
-function cycleNow(c: WaxCycle): string {
-  let t = `${km(c.km, 0)} since hot wax on ${when(c.waxed_on)}`
-  const last = c.top_ups[c.top_ups.length - 1]
-  if (last) t += ` · liquid wax top-up on ${when(last.date)} at ${km(last.at_km, 0)}, ${km(c.km_since_top_up ?? 0, 0)} since`
+interface WaxApplication {
+  n: number
+  event_id: number
+  date: string
+  action_code: string
+  type: string
+  product: string | null
+  at_km: number | null
+  ridden_km: number
+  days_on: number
+  active: boolean
+  ended_by: { n: number; type: string } | null
+  next_due: string | null
+}
+
+interface WaxCurrent {
+  type: string
+  date: string
+  at_km: number | null
+  km_since: number
+  chain_km_since_hot_wax: number | null
+  hot_wax_due_at_km: number | null
+  hot_wax_left_km: number | null
+}
+
+// "Current: liquid wax top-up 12 Oct at 79 km · 41 km since · hot wax due at 279 km (159 km left)"
+function waxNow(c: WaxCurrent): string {
+  let t = `${c.type.toLowerCase()} ${when(c.date)}${c.at_km != null ? ` at ${km(c.at_km, 0)}` : ''} · ${km(c.km_since, 0)} since`
   if (c.hot_wax_due_at_km != null) {
     const left = c.hot_wax_left_km ?? 0
-    t += ` · next hot wax at ${km(c.hot_wax_due_at_km, 0)} (${left >= 0 ? `${km(left, 0)} left` : `${km(-left, 0)} over`})`
+    t += ` · hot wax due at ${km(c.hot_wax_due_at_km, 0)} (${left >= 0 ? `${km(left, 0)} left` : `${km(-left, 0)} over`})`
   }
   return t
 }
@@ -1824,38 +1843,50 @@ function ChainCard({ comp, chain, onChanged }: { comp: ComponentSummary; chain: 
           · <Link to={`/bikes/${chain.rotation_bike_id}`}>open the bike for swaps and waxing</Link>
         </span>
       )}
-      {chain.cycles.length === 0 ? (
-        <p className="small muted">No hot wax recorded yet.</p>
+      {chain.wax.applications.length === 0 ? (
+        <p className="small muted">No hot wax or liquid wax top-up recorded yet.</p>
       ) : (
         <>
-        {chain.cycles[chain.cycles.length - 1].current && (
-          <p className="small wax-now">
-            <strong>This cycle:</strong> {cycleNow(chain.cycles[chain.cycles.length - 1])}
-          </p>
-        )}
-        <table className="table">
-          <thead>
-            <tr>
-              <th>Wax cycle</th>
-              <th>Hot waxed</th>
-              <th>Liquid wax top-ups</th>
-              <th className="num">Km on that wax</th>
-            </tr>
-          </thead>
-          <tbody>
-            {[...chain.cycles].reverse().map((c) => (
-              <tr key={c.cycle}>
-                <td>{c.cycle}</td>
-                <td>{when(c.waxed_on)}</td>
-                <td>{c.top_ups.length ? c.top_ups.map((t) => `${when(t.date)} at ${km(t.at_km, 0)}`).join(', ') : '—'}</td>
-                <td className="num">
-                  {km(c.km, 0)}
-                  {c.current ? ' (current)' : ''}
-                </td>
+          {chain.wax.current && (
+            <p className="small wax-now">
+              <strong>Current:</strong> {waxNow(chain.wax.current)}
+            </p>
+          )}
+          <table className="table wax-apps">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Date</th>
+                <th>Type</th>
+                <th>Product</th>
+                <th className="num">At chain km</th>
+                <th className="num">Ridden on it</th>
+                <th className="num">Days on</th>
+                <th>Active</th>
+                <th>Ended by</th>
+                <th>Next due</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {chain.wax.applications.map((w) => (
+                <tr key={w.event_id} className={w.active ? 'wax-active' : ''}>
+                  <td data-label="#">{w.n}</td>
+                  <td data-label="Date">{when(w.date)}</td>
+                  <td data-label="Type">{w.type}</td>
+                  <td data-label="Product">{w.product ?? '—'}</td>
+                  <td data-label="At chain km" className="num">{w.at_km != null ? km(w.at_km, 0) : '—'}</td>
+                  <td data-label="Ridden on it" className="num">{km(w.ridden_km, 0)}</td>
+                  <td data-label="Days on" className="num">{w.days_on} d</td>
+                  <td data-label="Active">{w.active ? 'Yes' : 'No'}</td>
+                  <td data-label="Ended by">{w.ended_by ? `${w.ended_by.type === 'Hot wax' ? 'Hot wax' : 'Top-up'} (#${w.ended_by.n})` : '—'}</td>
+                  <td data-label="Next due">{w.next_due ?? '—'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <p className="small muted">
+            At chain km: km since the last hot wax when it was applied. Ridden on it and Days on: while it was the latest application (the active one: until today).
+          </p>
         </>
       )}
       <p className="small muted">

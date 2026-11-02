@@ -167,3 +167,26 @@ def test_no_hot_wax_recorded_is_insufficient_information(session):
     inv.install(session, chain.id, bike_id=b.id, at="2026-10-01")
     s = status(session, chain, "CHAIN_HOT_WAX")
     assert s["status"] == "INSUFFICIENT_INFO" and "Insufficient information" in s["explanation"]
+
+
+def test_one_row_per_wax_application(session, chain_bike):
+    """Dirk 2026-11-02: hot wax, then a liquid top-up after 79 km; one row per application (DECISIONS 135)."""
+    from bikelog.services import chains, stock
+    b, chain = chain_bike
+    drip = stock.add_consumable(session, kind="WAX", name="Silca Super Secret Drip")
+    ride(session, b, "2026-10-05", 79)
+    m.log_event(session, action_code="WAX_LIQUID", component_id=chain.id, at="2026-10-12", consumable_id=drip.id)
+    ride(session, b, "2026-10-20", 41)
+    wax = chains.wax_applications(session, chain)
+    top, hot = wax["applications"]
+    assert (top["n"], top["type"], top["product"], top["at_km"], top["ridden_km"], top["active"], top["ended_by"]) == \
+        (2, "Liquid wax top-up", "Silca Super Secret Drip", 79, 41, True, None)
+    assert top["next_due"] == "Hot wax at 279 km (159 km left)"
+    assert (hot["n"], hot["type"], hot["at_km"], hot["ridden_km"], hot["days_on"], hot["active"]) == \
+        (1, "Hot wax", 0, 79, 11, False)
+    assert hot["ended_by"] == {"n": 2, "type": "Liquid wax top-up"} and hot["next_due"] is None
+    assert wax["current"] == {"type": "Liquid wax top-up", "date": "2026-10-12", "at_km": 79, "km_since": 41,
+                              "chain_km_since_hot_wax": 120, "hot_wax_due_at_km": 279, "hot_wax_left_km": 159}
+    m.log_event(session, action_code="WAX_HOT", component_id=chain.id, at="2026-10-21")
+    new = chains.wax_applications(session, chain)["applications"][0]
+    assert new["at_km"] == 0 and new["next_due"] == "Top-up at 250–300 km · Hot wax at 500 km (500 km left)"

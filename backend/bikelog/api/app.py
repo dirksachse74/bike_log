@@ -893,7 +893,8 @@ def create_app(factory: sessionmaker[Session], paths: DataPaths, *, token: str |
                 "product_detail": _product(c.product) if c.product else None, "specs": json.loads(c.specs_json or "{}"),
                 "dispositions": inv.disposition_history(s, c), "inventory": spares.item_row(s, c),
                 "parts": assemblies.tree(s, c), "groupset_bike_id": assemblies.groupset_bike(s, c),
-                "chain": ({**m.chain_row(s, c), "cycles": chains_svc.chain_history(s, c)}
+                "chain": ({**m.chain_row(s, c), "cycles": chains_svc.chain_history(s, c),
+                           "wax": chains_svc.wax_applications(s, c)}
                           if c.component_type == "CHAIN" else None),
                 "frame_history": frames_svc.frame_history(s, c) if c.component_type in ("FRAME", "FORK") else None,
                 "spokes": m.spoke_info(s, c) if c.component_type in ("FRONT_WHEEL", "REAR_WHEEL") else None,
