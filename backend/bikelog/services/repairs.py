@@ -108,7 +108,7 @@ def position_options(session: Session, bike_id: int | None, wheel: str, damage: 
     spares = [{"id": c.id, "label": c.label} for c in stock.individual_spares(session, ctype, None)] if w else []
     return {"wheel_label": w.label if w else None, "stock": _stock_lines(session, ctype), "spares": spares,
             "installed_component_id": (p.id if (p := _part_on_wheel(session, w, damage)) else None),
-            "tracks_new": w is not None and damage == "TIRE"}
+            "tracks_new": w is not None}
 
 
 def fix_options(session: Session, group: str) -> dict:
@@ -159,15 +159,19 @@ def replace_at_position(session: Session, *, bike_id: int | None, wheel: str, da
     what = COMPONENT_TYPES[ctype].name.lower()
     w = wheel_on_bike(session, bike_id, wheel)
     kind = source.get("kind")
+    # a day alone: the new tube/tire goes in after that day's rides (the flat ride stays on the old one)
+    put_in = f"{at}T23:59" if len(at) == 10 else at
     if kind == "stock":
         line = stock.get(session, int(source["id"]))
         if line.component_type != ctype:
             raise DomainError(f"{line.name} is not stock of {what}s")
-        if damage == "TIRE" and w is not None:
-            comp = stock.draw_component(session, line.id, on=at, work_session_id=work_session_id)
-            inv.install(session, comp.id, at=at, parent_component_id=w.id, slot=SLOT_OF[damage],
+        if w is not None:      # a recorded wheel: the tube or tire gets its own record and counts km from here
+            comp = stock.draw_component(session, line.id, on=at, work_session_id=work_session_id,
+                                        label=None if line.product_id else line.name)
+            inv.install(session, comp.id, at=put_in, parent_component_id=w.id, slot=SLOT_OF[damage],
                         work_session_id=work_session_id)
-            return f"replaced with {comp.label} from stock"
+            left = stock.level(session, line)["qty"]
+            return f"replaced with {comp.label} from stock ({line.name}, {left:g} left)"
         stock.use(session, line.id, qty=1, on=at, note=f"{reason}: {WHEEL_NAMES[wheel]} {what}",
                   work_session_id=work_session_id)
         left = stock.level(session, line)["qty"]
@@ -179,14 +183,15 @@ def replace_at_position(session: Session, *, bike_id: int | None, wheel: str, da
         comp = inv.get_component(session, int(source["id"]))
         if comp.component_type != ctype:
             raise DomainError(f"{comp.label} is not a {what}")
-        inv.install(session, comp.id, at=at, parent_component_id=w.id, slot=SLOT_OF[damage],
+        inv.install(session, comp.id, at=put_in, parent_component_id=w.id, slot=SLOT_OF[damage],
                     work_session_id=work_session_id)
         return f"replaced with {comp.label}"
-    if kind == "new" and damage == "TIRE" and w is not None:
+    if kind == "new" and w is not None:
         comp = inv.create_component(session, component_type=ctype,
-                                    label=(source.get("label") or "").strip() or f"Tire {WHEEL_NAMES[wheel]} (new)",
+                                    label=(source.get("label") or "").strip()
+                                    or f"{COMPONENT_TYPES[ctype].name} {WHEEL_NAMES[wheel]} (new)",
                                     prior_usage="NEW", purchase_date=at[:10], work_session_id=work_session_id)
-        inv.install(session, comp.id, at=at, parent_component_id=w.id, slot=SLOT_OF[damage],
+        inv.install(session, comp.id, at=put_in, parent_component_id=w.id, slot=SLOT_OF[damage],
                     work_session_id=work_session_id)
         return f"replaced with {comp.label}"
     if kind in ("new", "untracked"):

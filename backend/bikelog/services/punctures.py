@@ -98,8 +98,14 @@ def _collect(session: Session) -> list[dict]:
         ride = session.get(Ride, first.ride_id) if first.ride_id else None
         day = ride.ride_date if ride else first.entry_on
         mounted: dict[str, dict[str, Component]] = defaultdict(dict)   # wheel → TIRE / INNER_TUBE that day
+        # what this flat's fix put in (the same day) was not the punctured tube or tire
+        fix_sessions = {e.repair_session_id for e in entries if e.repair_session_id}
+        put_in_by_fix = set(session.scalars(select(Installation.component_id).where(
+            Installation.install_session_id.in_(fix_sessions)))) if fix_sessions else set()
         if ride is not None:
             for p in parts_on_ride(session, ride):
+                if p["component_id"] in put_in_by_fix:
+                    continue
                 if p["component_type"] in ("TIRE", "INNER_TUBE"):
                     w = _wheel_of(session, p["component_id"], day)
                     if w:

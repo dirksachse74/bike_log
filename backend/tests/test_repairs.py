@@ -43,6 +43,14 @@ def test_tube_from_stock_on_the_road_solves_the_flat_and_undo_brings_it_back(ses
         {"entry_id": p["entry_id"], "action": "REPLACED", "source": {"kind": "stock", "id": tubes.id}}])
     assert res["solved"] and "2 left" in res["texts"][0]
     assert stock.level(session, tubes)["qty"] == 2
+    # the wheel is recorded: the tube from stock gets its own record and counts km from here (Dirk 2026-11-02)
+    row = next(x for x in inv.bike_setup(session, b) if x["component_type"] == "INNER_TUBE")
+    tube = inv.get_component(session, row["component_id"])
+    assert row["parent_component_id"] == rw.id
+    assert tube.label == "Conti Race 28"
+    before = km(session, tube)
+    ride(session, b, "2026-10-06", 35)
+    assert km(session, tube) == before + 35
     row = inc.ride_incidents(session, r.id)[0]
     assert row["resolved_on"] == "2026-10-05" and row["affected"][0]["repair"] == "REPLACED" and row["has_fix"]
     assert not row["fixable"]

@@ -22,7 +22,15 @@ const pretty = (t: MountTarget) => {
 // a date alone would be the start of the day and move that day's rides; today means now
 const afterRides = (date: string) => (date === today() ? new Date().toISOString() : `${date}T23:59`)
 
-type Source = 'spare' | 'new' | 'used'
+type Source = 'spare' | 'stock' | 'new' | 'used'
+
+interface StockLine {
+  id: number
+  name: string
+  component_type: string | null
+  tracking_mode: string
+  stock: { qty: number } | null
+}
 
 export default function InstallHere({ componentType, bikeId, under, prefer, part, onDone, onCancel, onChange }: {
   componentType: string
@@ -45,9 +53,12 @@ export default function InstallHere({ componentType, bikeId, under, prefer, part
   const preferred = prefer ? free.find((t) => t.parent_component_id === prefer) : undefined
   const chosen = pick ?? (preferred ? targets.indexOf(preferred) : free.length === 1 ? targets.indexOf(free[0]) : null)
   const spareList = (spares.data ?? []).filter((c) => c.status === 'ACTIVE')
+  // counted stock of this type ("Conti Race 28, 3 at home"): one comes out and gets its own record and km
+  const stockQ = useApi<StockLine[]>(part ? null : '/consumables')
+  const stockList = (stockQ.data ?? []).filter((l) => l.component_type === componentType && l.tracking_mode === 'COUNTED' && (l.stock?.qty ?? 0) >= 1)
   const [src, setSrc] = useState<Source | null>(null)
-  const source: Source = part ? 'spare' : src ?? (spareList.length ? 'spare' : 'new')
-  const [f, setF] = useState({ spare: '', label: '', price: '', purchase_date: '', shop: '', at: today(), km: '' })
+  const source: Source = part ? 'spare' : src ?? (spareList.length ? 'spare' : stockList.length ? 'stock' : 'new')
+  const [f, setF] = useState({ stock: '', spare: '', label: '', price: '', purchase_date: '', shop: '', at: today(), km: '' })
   const [err, setErr] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [opId] = useState(newOpId)
@@ -77,7 +88,13 @@ export default function InstallHere({ componentType, bikeId, under, prefer, part
     try {
       setBusy(true)
       const before = kmValue()
-      if (source === 'spare') {
+      if (source === 'stock') {
+        const line = stockList.find((l) => String(l.id) === f.stock) ?? (stockList.length === 1 ? stockList[0] : undefined)
+        if (!line) return setErr(`Pick the ${noun} from stock.`)
+        const body: Record<string, unknown> = { ...where, label: f.label.trim() || line.name }
+        const r = await api.post<{ result: { label: string } }>(`/consumables/${line.id}/install`, body, opId)
+        onDone(`${r.result.label} installed from stock: ${pretty(t)}. Its km count from now on.`)
+      } else if (source === 'spare') {
         if (!spare) return setErr(`Pick the ${noun} from storage.`)
         if (before !== null && spareKmUnknown) await api.post(`/components/${spare.id}/starting-usage`, { km: before, effective: f.at, is_estimate: true, note: 'km from before, entered when installing' })
         await api.post(`/components/${spare.id}/install`, where, opId)
@@ -176,6 +193,11 @@ export default function InstallHere({ componentType, bikeId, under, prefer, part
           <button type="button" className={`chip ${source === 'spare' ? 'chip-on' : ''}`} disabled={!spareList.length} onClick={() => setSrc('spare')}>
             A spare from storage{spareList.length ? ` (${spareList.length})` : ' (none)'}
           </button>
+          {stockList.length > 0 && (
+            <button type="button" className={`chip ${source === 'stock' ? 'chip-on' : ''}`} onClick={() => setSrc('stock')}>
+              From stock ({stockList.map((l) => `${l.name}: ${l.stock?.qty ?? 0}`).join(', ')})
+            </button>
+          )}
           <button type="button" className={`chip ${source === 'new' ? 'chip-on' : ''}`} onClick={() => setSrc('new')}>
             A new {noun}
           </button>
@@ -196,7 +218,24 @@ export default function InstallHere({ componentType, bikeId, under, prefer, part
           </select>
         </Field>
       )}
-      {source !== 'spare' && (
+      {source === 'stock' && (
+        <>
+          <Field label={`${ctype?.name ?? 'Part'} from stock`} hint="One comes off the stock count. It gets its own record, so its km count from the install date.">
+            <select value={f.stock || (stockList.length === 1 ? String(stockList[0].id) : '')} onChange={(e) => setF({ ...f, stock: e.target.value })}>
+              {stockList.length > 1 && <option value="">Pick…</option>}
+              {stockList.map((l) => (
+                <option key={l.id} value={l.id}>
+                  {l.name} ({l.stock?.qty ?? 0} in stock)
+                </option>
+              ))}
+            </select>
+          </Field>
+          <Field label="Name / label (optional)" hint="Leave empty to use the stock name; a second one gets “(2)”.">
+            <input value={f.label} onChange={(e) => setF({ ...f, label: e.target.value })} />
+          </Field>
+        </>
+      )}
+      {source !== 'spare' && source !== 'stock' && (
         <>
           <Field label="Name / label" hint={source === 'new' ? 'e.g. GP5000 front. It is new, so it starts at 0 km.' : 'e.g. GP5000 old rear.'}>
             <input value={f.label} onChange={(e) => setF({ ...f, label: e.target.value })} />
