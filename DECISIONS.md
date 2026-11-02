@@ -535,6 +535,10 @@ you disagree. Dates are 2026-10-24 unless noted.
     model `punctures` and `items` (component_id, label, km, punctures, km_per_puncture, in_use); stock tubes without
     a record are one item "From stock (no record of its own)" with the inferred km. Replaces DECISIONS 117's
     summed "km per puncture per model".
+127. **Wheel page: Tire and inner tube** (`wheels.tire_and_tube`, `tire_tube` in GET /api/components/{id} for
+    FRONT_WHEEL/REAR_WHEEL): per kind current + history from installations on that wheel; km_here = counted
+    usage between install and removal, km_total, punctures = FLAT incident groups on that part, ended = removal
+    reason + disposition. Parts drawn from stock without a product take the stock line's name (`stock._stock_label`).
 
 ## Repository
 27. Pushed only to the feature branch `claude/project-thread-6y3mmh` of the private repository. Demo

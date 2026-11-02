@@ -7,6 +7,13 @@ UPDATING.md → "Making a release". New entries go under "Unreleased" as work is
 
 ## Unreleased
 
+### Added
+- **Wheel page → Tire and inner tube** (Dirk 2026-11-02), right under the header: the tube (and tire) on the wheel now, since when, and
+  its own km on this wheel (rides from the day it went in), with **Replace tube** / **Install an inner tube**.
+  Folded below: every earlier tube / tire on this wheel with its dates, km there, punctures and how it came off.
+- A tube or tire taken from stock is named after the stock line ("Conti Race 28", a second one "(2)") instead
+  of "Inner tube #1".
+
 ### Changed
 - **Rides → Punctures, By inner tube / By tire** (Dirk 2026-11-02: "makes no sense to add the km"): the km of
   tires (tubes) of one model are no longer added up. The model is a group line with its punctures; below it
