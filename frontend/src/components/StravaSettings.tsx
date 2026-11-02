@@ -11,6 +11,8 @@ interface StravaStatus {
   last_error: string | null
   last_success_at: string | null
   alternative: string
+  callback_domain: string
+  server: boolean
   credentials: { client_id: string | null; secret_saved: boolean; tokens_saved: boolean; athlete_id: string | null; scope: string | null; env_file: string }
   job: { running: boolean; rescan?: boolean; page?: number; counts?: Record<string, number>; error?: string | null; finished_at?: string | null }
 }
@@ -101,13 +103,13 @@ export default function StravaSettings() {
             <a href="https://www.strava.com/settings/api" target="_blank" rel="noreferrer">
               strava.com/settings/api
             </a>{' '}
-            create (or open) your API application and set <strong>Authorization Callback Domain</strong> to <code>localhost</code>. Copy the Client ID and Client Secret here.
+            create (or open) your API application and set <strong>Authorization Callback Domain</strong> to <code>{d.callback_domain}</code>. Copy the Client ID and Client Secret here.
           </p>
           <div className="row">
             <Field label="Client ID">
               <input inputMode="numeric" autoComplete="off" value={f.client_id} onChange={(e) => setF({ ...f, client_id: e.target.value })} />
             </Field>
-            <Field label="Client Secret" hint={c.secret_saved ? 'Saved. Leave empty to keep it.' : 'Stored only on this computer; never shown again.'}>
+            <Field label="Client Secret" hint={c.secret_saved ? 'Saved. Leave empty to keep it.' : d.server ? 'Stored only on your Bike Log server; never shown again.' : 'Stored only on this computer; never shown again.'}>
               <input type="password" autoComplete="new-password" value={f.client_secret} placeholder={c.secret_saved ? '•••••••• saved' : ''} onChange={(e) => setF({ ...f, client_secret: e.target.value })} />
             </Field>
           </div>

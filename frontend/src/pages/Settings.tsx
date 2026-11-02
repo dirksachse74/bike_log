@@ -41,6 +41,8 @@ export default function SettingsPage() {
   const batches = useApi<Batch[]>('/imports')
   const backups = useApi<{ directory: string; backup_dir: string; backups: { name: string; size: number; kept: boolean }[]; exports: { name: string; size: number }[] }>('/backups')
   const fileRef = useRef<HTMLInputElement>(null)
+  const backupFileRef = useRef<HTMLInputElement>(null)
+  const [uploading, setUploading] = useState(false)
   const [importing, setImporting] = useState(false)
   const [result, setResult] = useState<ImportResult | null>(null)
   const [importErr, setImportErr] = useState<string | null>(null)
@@ -83,6 +85,23 @@ export default function SettingsPage() {
       backups.reload()
     } catch (e) {
       toast((e as Error).message)
+    }
+  }
+  // Bring a backup file from another computer (e.g. the desktop app to the server). It only joins the
+  // list; "Restore" next to it replaces the data, after a safety backup.
+  async function uploadBackup() {
+    const file = backupFileRef.current?.files?.[0]
+    if (!file) return
+    setUploading(true)
+    try {
+      const r = await api.upload<{ name: string }>(`/backups/upload?file_name=${encodeURIComponent(file.name)}`, file, 'application/octet-stream')
+      toast(`Uploaded as ${r.name}. Click Restore next to it to use it.`)
+      if (backupFileRef.current) backupFileRef.current.value = ''
+      backups.reload()
+    } catch (e) {
+      toast((e as Error).message)
+    } finally {
+      setUploading(false)
     }
   }
   async function backupNow(kind: 'backups' | 'exports') {
@@ -200,11 +219,23 @@ export default function SettingsPage() {
         )}
       </Card>
       <StravaSettings />
+      {meta.server && (
+        <Card title="Account">
+          <p>
+            Signed in with Google as <strong>{meta.server.user}</strong>.{' '}
+            <a href="/auth/logout">Sign out</a>
+          </p>
+        </Card>
+      )}
       <Card title="Backups and export">
         {backups.data && (
           <>
             <p className="small">
-              Your data is stored in <code>{backups.data.directory}</code>, outside the program folder. A backup is made automatically before every upgrade and once a day.
+              {meta.server ? (
+                <>Your data is stored on your Bike Log server in <code>{backups.data.directory}</code>. A backup is made automatically before every upgrade and once a day; download one now and then to keep a copy at home.</>
+              ) : (
+                <>Your data is stored in <code>{backups.data.directory}</code>, outside the program folder. A backup is made automatically before every upgrade and once a day.</>
+              )}
             </p>
             <div className="form-actions">
               <button className="btn" onClick={() => backupNow('backups')}>
@@ -224,13 +255,29 @@ export default function SettingsPage() {
                 .filter((b, i) => i < 5 || b.kept)
                 .map((b) => (
                   <li key={b.name}>
-                    {b.name} <span className="muted">({Math.round(b.size / 1024)} KB{b.kept ? ', kept' : ''})</span>
+                    {b.name} <span className="muted">({Math.round(b.size / 1024)} KB{b.kept ? ', kept' : ''})</span>{' '}
+                    <a className="small" href={`./api/backups/${encodeURIComponent(b.name)}/download`} download>
+                      Download
+                    </a>{' '}
                     <button className="btn btn-small" aria-label={`Restore ${b.name}`} onClick={() => restore(b.name)}>
                       Restore
                     </button>
                   </li>
                 ))}
             </ul>
+            <details>
+              <summary>Bring data from another computer</summary>
+              <p className="small">
+                On the other Bike Log, click <em>Back up now</em> and then <em>Download</em> next to the new backup. Upload that file here; it appears in the list above. Then click <em>Restore</em> next to it. The data here
+                is backed up first, so this can be undone.
+              </p>
+              <div className="form-actions">
+                <input ref={backupFileRef} type="file" accept=".db" aria-label="Backup file" />
+                <button className="btn" disabled={uploading} onClick={uploadBackup}>
+                  {uploading ? 'Uploading…' : 'Upload backup'}
+                </button>
+              </div>
+            </details>
           </>
         )}
         <VersionInfo />

@@ -605,6 +605,20 @@ you disagree. Dates are 2026-10-24 unless noted.
     only sorts at 23:59:59 that day (`_event_sort`), so the wet ride's km stay before it and the hot wax falls
     due after_top_up_km after the top-up, not after the start of the day.
 
+138. **Self-hosted server mode, single user, Google sign-in** (Dirk 2026-11-02: "i want to host it online, as
+    cheap as possible. but with a google account login"; reverses "desktop-only for now"). Same app and
+    SQLite database started with `--server`: Google OpenID Connect (scope `openid email`, no Google API
+    access), allowlist `BIKELOG_ALLOWED_EMAILS` checked again on every request, HMAC-signed session cookie
+    (30 days), CSRF token derived from the session, Host check against the public domain. Everyone on the
+    allowlist shares one database; the multi-user design of the 2026-10-26 assessment is NOT built.
+    Deployment: Docker Compose (bikelog + Caddy for Let's Encrypt), cloned from the private repo with a
+    read-only fine-grained token, nightly `bikelog-update` from main (opt-in). Off-server backups = Hetzner
+    server backups + Download in Settings. Location: Germany (Hetzner). Dirk asked about hosting outside the
+    EU "so i dont get into trouble with strava": server location changes neither the Strava API terms (they
+    bind the developer) nor GDPR (household exemption for own data; and it follows the EU resident anyway),
+    so the choice is cost and latency. New databases on a server start empty (no sample); data moves by
+    uploading a desktop backup (Settings → Backups → Bring data from another computer → Restore).
+
 ## Repository
 27. Pushed only to the feature branch `claude/project-thread-6y3mmh` of the private repository. Demo
     data uses fictional Strava gear ids.

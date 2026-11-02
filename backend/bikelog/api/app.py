@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 import logging
 import secrets
+import urllib.parse
 from collections.abc import Callable, Iterator
 from pathlib import Path
 from typing import Any
@@ -614,13 +615,26 @@ class ProfileIn(Body):
 # ---------------------------------------------------------------- app
 
 def create_app(factory: sessionmaker[Session], paths: DataPaths, *, token: str | None = None,
-               static_dir: Path | None = None, testing: bool = False, strava_transport=None) -> FastAPI:
+               static_dir: Path | None = None, testing: bool = False, strava_transport=None,
+               server=None, google_transport=None) -> FastAPI:
+    """``server``: a server_auth.ServerConfig for server mode (Google sign-in, HTTPS, public address).
+    Without it this is the desktop app: 127.0.0.1 only, per-launch token."""
     token = token or secrets.token_urlsafe(32)
     app = FastAPI(title="Bike Log", version=__version__, docs_url="/api/docs" if testing else None,
                   redoc_url=None, openapi_url="/api/openapi.json" if testing else None)
     app.state.token = token
     static = static_dir if static_dir is not None else _find_static()
-    app.add_middleware(LocalSecurityMiddleware, token=token, allow_test_host=testing)
+    app.state.server = server
+    if server is None:
+        app.add_middleware(LocalSecurityMiddleware, token=token, allow_test_host=testing)
+    else:
+        from bikelog import server_auth
+        app.add_middleware(server_auth.ServerSecurityMiddleware, cfg=server, allow_test_host=testing)
+        server_auth.add_auth_routes(app, server, transport=google_transport)
+
+    def base_url(request: Request) -> str:
+        """Where the browser reaches this app: the public address on a server, localhost on the desktop."""
+        return server.public_url if server is not None else f"http://localhost:{request.url.port or 80}"
     from bikelog.connectors.strava.client import urllib_transport
     from bikelog.connectors.strava.web import StravaWeb
     strava_web = StravaWeb(paths, factory, transport=strava_transport or urllib_transport)
@@ -678,14 +692,17 @@ def create_app(factory: sessionmaker[Session], paths: DataPaths, *, token: str |
     # ------------------------------------------------------------ meta
 
     @app.get("/api/health")
-    def health(s: Session = Depends(db)):
+    def health(request: Request, s: Session = Depends(db)):
+        if server is not None and getattr(request.state, "user", None) is None:
+            return {"ok": True}   # public on a server (Docker health check): tell strangers nothing more
         return {"ok": True, "version": __version__, "full_version": buildinfo.full_version(),
                 "release": buildinfo.is_release(), "schema": head_revision(), "demo": demo.is_demo(s),
                 "commit": buildinfo.commit(), "ui_commit": buildinfo.ui_commit(static)}
 
     @app.get("/api/meta")
-    def meta(s: Session = Depends(db)):
+    def meta(request: Request, s: Session = Depends(db)):
         return {
+            "server": {"user": request.state.user} if server is not None else None,
             "version": __version__, "demo": demo.is_demo(s), "sample": demo.is_sample(s),
             "safety_note": m.SAFETY_NOTE,
             "schema": head_revision(), "commit": buildinfo.commit(), "ui_commit": buildinfo.ui_commit(static),
@@ -1512,8 +1529,9 @@ def create_app(factory: sessionmaker[Session], paths: DataPaths, *, token: str |
                                  headers={"Content-Disposition": 'attachment; filename="bikelog-rides-template.csv"'})
 
     @app.get("/api/strava/status")
-    def strava_status(s: Session = Depends(db)):
-        return strava_web.status(s)
+    def strava_status(request: Request, s: Session = Depends(db)):
+        return {**strava_web.status(s), "callback_domain": urllib.parse.urlsplit(base_url(request)).hostname,
+                "server": server is not None}
 
     @app.put("/api/strava/credentials")
     def strava_credentials(body: StravaCredentialsIn):
@@ -1525,8 +1543,8 @@ def create_app(factory: sessionmaker[Session], paths: DataPaths, *, token: str |
 
     @app.post("/api/strava/connect")
     def strava_connect(request: Request):
-        port = request.url.port or 80
-        return {"authorize_url": strava_web.start_connect(port), "redirect_uri": strava_web.redirect_uri(port)}
+        base = base_url(request)
+        return {"authorize_url": strava_web.start_connect(base), "redirect_uri": strava_web.redirect_uri(base)}
 
     @app.get("/api/strava/callback")
     def strava_callback(request: Request, state: str | None = None, code: str | None = None,
@@ -1536,7 +1554,7 @@ def create_app(factory: sessionmaker[Session], paths: DataPaths, *, token: str |
         from fastapi.responses import RedirectResponse
 
         from bikelog.connectors.strava.client import StravaError
-        back = f"http://127.0.0.1:{request.url.port or 80}/#/settings"
+        back = (server.public_url if server is not None else f"http://127.0.0.1:{request.url.port or 80}") + "/#/settings"
         try:
             res = strava_web.finish_connect(state=state, code=code, scope=scope, error=error)
             q = {"strava": "connected", "private": "1" if res["private_rides"] else "0"}
@@ -1598,6 +1616,20 @@ def create_app(factory: sessionmaker[Session], paths: DataPaths, *, token: str |
         dest = backup.backup_database(paths, "manual")
         return {"name": dest.name if dest else None}
 
+    @app.get("/api/backups/{name}/download")
+    def backup_download(name: str):
+        f = (paths.backups / name).resolve()
+        if f.parent != paths.backups.resolve() or not f.name.endswith(".db") or not f.exists():
+            raise DomainError("No such backup")
+        return FileResponse(f, filename=name, media_type="application/octet-stream")
+
+    @app.post("/api/backups/upload", status_code=201)
+    async def backup_upload(request: Request, file_name: str | None = None):
+        """Bring a backup file from another computer (e.g. the desktop app) into the backup list.
+        It is only stored; 'Restore' next to it in the list replaces the data (with a safety backup first)."""
+        data = await request.body()
+        return backup.store_uploaded_backup(paths, data, file_name)
+
     @app.post("/api/admin/reset")
     def admin_reset(body: ResetIn):
         from bikelog import reset
@@ -1624,11 +1656,15 @@ def create_app(factory: sessionmaker[Session], paths: DataPaths, *, token: str |
     # ------------------------------------------------------------ frontend
 
     if static and (static / "index.html").exists():
-        index_html = (static / "index.html").read_text(encoding="utf-8").replace("%BIKELOG_TOKEN%", token)
+        page_template = (static / "index.html").read_text(encoding="utf-8")
+        index_html = page_template.replace("%BIKELOG_TOKEN%", token)
 
         @app.get("/", response_class=HTMLResponse, include_in_schema=False)
-        def index():
-            return HTMLResponse(index_html, headers={"Cache-Control": "no-store"})
+        def index(request: Request):
+            page = index_html
+            if server is not None:   # CSRF token belongs to the signed-in session (set by the middleware)
+                page = page_template.replace("%BIKELOG_TOKEN%", request.state.csrf)
+            return HTMLResponse(page, headers={"Cache-Control": "no-store"})
 
         app.mount("/", StaticFiles(directory=static), name="static")
     else:
