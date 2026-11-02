@@ -115,6 +115,12 @@ async function bikeTab(page, name) {
   await page.locator('.sheet input[type=checkbox]:checked').first().waitFor({ timeout: 5000 }).catch(() => {})
   const preselected = await page.locator('.sheet input[type=checkbox]:checked').count()
   check('installed chain preselected for hot wax', preselected === 1, `${preselected} checked`)
+  {
+    const waxForm = page.locator('.sheet')
+    const fieldsShown = await waxForm.locator('.field-label').allInnerTexts()
+    const supplyLink = await waxForm.getByRole('link', { name: 'Inventory → Supplies' }).count()
+    check('Hot wax form: product used, no Amount and no Cost; link to the supplies', fieldsShown.includes('Product used (optional)') && !fieldsShown.includes('Amount') && !fieldsShown.some((t) => t.startsWith('Cost')) && supplyLink === 1, fieldsShown.join(' | '))
+  }
   await page.locator('.sheet').getByLabel('Date').fill('2026-10-01')
   await sheetButton(page, 'Save')
   await page.locator('.toast').filter({ hasText: 'Hot wax logged' }).waitFor()

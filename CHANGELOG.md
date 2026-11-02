@@ -17,6 +17,13 @@ UPDATING.md → "Making a release". New entries go under "Unreleased" as work is
   is under **More…**; Service status comes right after the header, then maintenance log and installation
   history; "Where the kilometres come from" is folded with a summary line. Reminder explanations show two
   lines with "more" to unfold. Nothing was removed. Details: docs/ui-style.md → "Screen order".
+- **Record work done → Hot wax / liquid wax / lube** (Dirk 2026-11-02): no Amount and no Cost field any
+  more; the product list shows wax and lube, with a link to **Inventory → Supplies** where they are kept.
+  The shop field links to **Settings → Lists**, where shops are renamed, merged or hidden.
+
+### Fixed
+- The change log of a chain said "changed chain rotation of bike: 3": 3 was the bike's internal number. It
+  now shows the bike's name (also for entries already written).
 
 ### Added
 - **GitHub Releases** (Dirk 2026-11-01): GitHub → Actions → "Release (Windows installer)" → Run workflow

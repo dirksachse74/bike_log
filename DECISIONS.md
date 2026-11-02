@@ -515,6 +515,12 @@ you disagree. Dates are 2026-10-24 unless noted.
     so friends can read it without repo access. Optional other target repo (`RELEASES_REPO` + `RELEASES_TOKEN`)
     because releases of a private repo are not downloadable by others. Replaces packaging/ci/windows-build.yml.example.
 
+122. **Lubrication entries are product only** (Dirk 2026-11-02). LogMaintenance hides Amount and Cost for actions
+    of kind LUBRICATE (hot wax, liquid wax, lube) and lists only WAX/LUBE/OTHER supplies; hints link to
+    Inventory → Supplies and Settings → Lists (ShopPicker `hint`). The API still accepts amount and cost.
+123. **Change log shows names, not ids** for bike references (`changelog._BIKE_FIELDS`: rotation_bike_id);
+    `entries` turns a bare id stored earlier into the bike's name when shown.
+
 ## Repository
 27. Pushed only to the feature branch `claude/project-thread-6y3mmh` of the private repository. Demo
     data uses fictional Strava gear ids.

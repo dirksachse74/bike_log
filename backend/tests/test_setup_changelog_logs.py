@@ -216,3 +216,19 @@ def test_version_info_shows_app_and_screens_commit(engine, paths, tmp_path):
     assert meta["ui_commit"] == "abc1234" and meta["commit"] == buildinfo.commit() and meta["schema"]
     assert c.get("/api/health").json()["ui_commit"] == "abc1234"
     assert buildinfo.ui_commit(tmp_path / "nowhere") == "unknown"
+
+
+def test_chain_rotation_change_shows_the_bike_name_not_its_id(session):
+    """Dirk 2026-11-02: "changed chain rotation of bike: 3" — the 3 was the bike's id."""
+    b = bike(session, name="Synapse")
+    ch = part(session, "CHAIN", "Chain A")
+    inv.install(session, ch.id, bike_id=b.id, at="2026-10-01")      # first time on a bike: joins its rotation
+    session.flush()
+    row = next(e for e in entries(session, component_id=ch.id) if e["field"] == "chain rotation of bike")
+    assert row["new_value"] == "Synapse" and row["old_value"] is None
+    # an entry written before this fix holds the bare id: shown as the name too
+    session.add(ChangeLog(component_id=ch.id, action="CHANGED", field="chain rotation of bike",
+                          old_value=None, new_value=str(b.id), source="APP", changed_at="2026-11-02T06:30:00Z"))
+    session.flush()
+    assert all(e["new_value"] == "Synapse" for e in entries(session, component_id=ch.id)
+               if e["field"] == "chain rotation of bike")
