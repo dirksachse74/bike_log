@@ -435,6 +435,29 @@ async function bikeTab(page, name) {
   await page.getByText('No removed rides').waitFor()
   check('removed ride can be restored', true)
 
+  // several rides at once: tick them → Remove rides (sheet shows count, km and part change) → Removed rides → Restore rides
+  await page.getByRole('tab', { name: 'Rides', exact: true }).click()
+  await page.locator('table.rides tbody tr').first().waitFor()
+  const nRides = await page.locator('table.rides tbody tr').count()
+  await page.getByLabel('Select all rides').click()
+  await page.locator('.bulk-bar').getByRole('button', { name: 'Remove rides' }).click()
+  const rmSheet = page.locator('.sheet')
+  await rmSheet.locator('.remove-preview').waitFor()
+  const rmText = await rmSheet.innerText()
+  check('Remove rides sheet shows the count, the km and the part km change before removing',
+    rmText.includes(`${nRides} ride`) && /km/.test(rmText) && /−\d/.test(rmText), rmText.replace(/\n/g, ' | '))
+  await rmSheet.getByRole('button', { name: nRides === 1 ? 'Remove ride' : `Remove ${nRides} rides` }).click()
+  await page.locator('.toast').filter({ hasText: `${nRides} ride${nRides === 1 ? '' : 's'} removed` }).waitFor()
+  await page.getByText('No rides yet').waitFor()
+  await page.getByRole('tab', { name: 'Removed rides' }).click()
+  await page.locator('table.rides tbody tr').first().waitFor()
+  check('removed rides are all under "Removed rides"', (await page.locator('table.rides tbody tr').count()) === nRides)
+  await page.getByLabel('Select all rides').click()
+  await page.locator('.bulk-bar').getByRole('button', { name: 'Restore rides' }).click()
+  await page.locator('.toast').filter({ hasText: 'restored' }).waitFor()
+  await page.getByText('No removed rides').waitFor()
+  check('ticked removed rides come back with Restore rides', true)
+
   // spare stock: rear pads from stock 3 -> 2, old pads discarded, then undo restores
   await page.goto(BASE + '#/inventory')
   await page.getByRole('button', { name: 'Add spare stock' }).click()

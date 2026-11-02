@@ -712,6 +712,78 @@ function BikeSelect({
   );
 }
 
+// Rides → tick rides → Remove rides (Dirk 2026-11-02, DECISIONS 124): the same soft removal as one ride.
+// The sheet shows the count, the km and (from a dry run) what that does to each part before you confirm.
+function RemoveRides({
+  ids,
+  rows,
+  onClose,
+  onDone,
+}: {
+  ids: number[];
+  rows: RideRow[];
+  onClose: () => void;
+  onDone: (msg: string) => void;
+}) {
+  const [preview, setPreview] = useState<string | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [opId] = useState(newOpId);
+  const total = rows.reduce((a, r) => a + (r.distance_km ?? 0), 0);
+  const idKey = ids.join(",");
+  useEffect(() => {
+    api
+      .post<OpResult<unknown>>("/rides/remove?dry_run=true", {
+        ride_ids: idKey.split(",").map(Number),
+      })
+      .then((r) => setPreview(r.change?.notice ?? ""))
+      .catch((e) => setErr((e as Error).message));
+  }, [idKey]);
+  async function go() {
+    setBusy(true);
+    try {
+      const r = await api.post<OpResult<{ removed: number; km: number }>>(
+        "/rides/remove",
+        { ride_ids: ids, reason: "removed by user" },
+        opId,
+      );
+      onDone(
+        `${r.result.removed} ride${r.result.removed === 1 ? "" : "s"} removed (${km(r.result.km)}). ${r.change?.notice ?? ""}`,
+      );
+    } catch (e) {
+      setErr((e as Error).message);
+      setBusy(false);
+    }
+  }
+  const n = ids.length;
+  return (
+    <Sheet title={n === 1 ? "Remove 1 ride" : `Remove ${n} rides`} onClose={onClose}>
+      <div className="remove-rides">
+        <p>
+          <strong>
+            {n} ride{n === 1 ? "" : "s"} · {km(total)}
+          </strong>
+        </p>
+        <p className="small muted">
+          They move to Removed rides: they count no km for the bike and its parts and are never
+          imported again from Strava or a CSV file. You can restore them there at any time.
+        </p>
+        {preview === null && !err && <Loading what="Working out the km change" />}
+        {preview && <p className="small remove-preview">{preview.replace(/^Preview: /, "")}</p>}
+        <FormError error={err} />
+        <div className="form-actions">
+          <button className="btn btn-danger" disabled={busy} onClick={go}>
+            {n === 1 ? "Remove ride" : `Remove ${n} rides`}
+          </button>
+          <button className="btn" onClick={onClose}>
+            Cancel
+          </button>
+        </div>
+      </div>
+    </Sheet>
+  );
+}
+
 export default function RidesPage() {
   const { toast } = useApp();
   const [params, setParams] = useSearchParams();
@@ -720,6 +792,7 @@ export default function RidesPage() {
   const [flagged, setFlagged] = useState(false);
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [bulkBike, setBulkBike] = useState<number | null>(null);
+  const [removing, setRemoving] = useState<number[] | null>(null);
   const bikes = useApi<Bike[]>("/bikes");
   const query = `/rides?limit=300&view=${tab === "removed" ? "removed" : "active"}${tab === "unassigned" ? "&unassigned=true" : ""}${bike && tab !== "unassigned" ? `&bike_id=${bike}` : ""}${flagged ? "&flagged=true" : ""}`;
   const { data, error, loading, reload } = useApi<RideRow[]>(query);
@@ -753,6 +826,22 @@ export default function RidesPage() {
       toast((e as Error).message);
     }
   }
+  async function restoreMany(ids: number[]) {
+    try {
+      const r = await api.post<OpResult<{ restored: number; km: number }>>(
+        "/rides/restore",
+        { ride_ids: ids },
+        newOpId(),
+      );
+      toast(
+        `${r.result.restored} ride${r.result.restored === 1 ? "" : "s"} restored (${km(r.result.km)}). ${r.change?.notice ?? ""}`,
+      );
+      setSelected(new Set());
+      reload();
+    } catch (e) {
+      toast((e as Error).message);
+    }
+  }
   async function restore(id: number) {
     try {
       const r = await api.post<OpResult<unknown>>(`/rides/${id}/restore`, {});
@@ -769,6 +858,10 @@ export default function RidesPage() {
     setSelected(next);
   };
   const allBikes = bikes.data ?? [];
+  // in Removed rides only rides you removed can be ticked (a ride deleted at the source stays out)
+  const selectable = (data ?? []).filter(
+    (r) => tab !== "removed" || r.inclusion === "EXCLUDED",
+  );
   return (
     <Card
       title="Rides"
@@ -831,6 +924,23 @@ export default function RidesPage() {
               Only rides to review
             </label>
           </div>
+          {tab === "removed" && selected.size > 0 && (
+            <div className="bulk-bar">
+              <span>{selected.size} selected</span>
+              <button
+                className="btn btn-primary btn-small"
+                onClick={() => restoreMany([...selected])}
+              >
+                Restore rides
+              </button>
+              <button
+                className="btn btn-small"
+                onClick={() => setSelected(new Set())}
+              >
+                Clear
+              </button>
+            </div>
+          )}
           {tab !== "removed" && selected.size > 0 && (
             <div className="bulk-bar">
               <span>{selected.size} selected</span>
@@ -845,6 +955,12 @@ export default function RidesPage() {
                 onClick={() => assign([...selected], bulkBike)}
               >
                 {bulkBike ? "Assign bike" : "Remove bike"}
+              </button>
+              <button
+                className="btn btn-danger btn-small"
+                onClick={() => setRemoving([...selected])}
+              >
+                Remove rides
               </button>
               <button
                 className="btn btn-small"
@@ -877,16 +993,16 @@ export default function RidesPage() {
             <table className="table rides">
               <thead>
                 <tr>
-                  {tab !== "removed" && (
+                  {(
                     <th>
                       <input
                         type="checkbox"
                         aria-label="Select all rides"
-                        checked={selected.size === data.length}
+                        checked={selected.size > 0 && selected.size === selectable.length}
                         onChange={(e) =>
                           setSelected(
                             e.target.checked
-                              ? new Set(data.map((r) => r.id))
+                              ? new Set(selectable.map((r) => r.id))
                               : new Set(),
                           )
                         }
@@ -907,10 +1023,11 @@ export default function RidesPage() {
                     className={r.removed ? "excluded" : ""}
                     onClick={() => go({ open: String(r.id) })}
                   >
-                    {tab !== "removed" && (
+                    {(
                       <td onClick={(e) => e.stopPropagation()}>
                         <input
                           type="checkbox"
+                          disabled={tab === "removed" && r.inclusion !== "EXCLUDED"}
                           aria-label={`Select ${r.name || "ride"} ${r.ride_date}`}
                           checked={selected.has(r.id)}
                           onChange={() => toggle(r.id)}
@@ -998,6 +1115,19 @@ export default function RidesPage() {
             </table>
           )}
         </>
+      )}
+      {removing && (
+        <RemoveRides
+          ids={removing}
+          rows={(data ?? []).filter((r) => removing.includes(r.id))}
+          onClose={() => setRemoving(null)}
+          onDone={(msg) => {
+            setRemoving(null);
+            setSelected(new Set());
+            toast(msg);
+            reload();
+          }}
+        />
       )}
       {adding && (
         <Sheet title="Add ride" onClose={() => setAdding(false)}>
