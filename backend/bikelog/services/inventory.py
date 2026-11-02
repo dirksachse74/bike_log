@@ -191,7 +191,7 @@ def create_component(session: Session, *, component_type: str, label: str, produ
                      specs: dict | None = None, starting_km: float | None = None, starting_date: str | None = None,
                      starting_is_estimate: bool = False, work_session_id: int | None = None,
                      from_stock_txn_id: int | None = None, storage_location: str | None = None,
-                     tire_setup: str | None = None, shop: str | None = None) -> Component:
+                     tire_setup: str | None = None, shop: str | None = None, mark: str | None = None) -> Component:
     """Only type and label are required; everything else (serial number, specs) can be added later.
     With a work session, price_cents is that session's purchase of this item."""
     _check_type(component_type)
@@ -208,9 +208,15 @@ def create_component(session: Session, *, component_type: str, label: str, produ
             raise NotFound(f"Product {product_id} not found")
         if prod.component_type != component_type:
             raise DomainError(f"Product {prod.model!r} is a {prod.component_type}, not a {component_type}")
-    # A second identical part (a spare bottom bracket) keeps the typed name with a number: "BB (2)" (DECISIONS 105)
-    label = free_label(session, component_type, label)
-    comp = Component(component_type=component_type, label=label, product_id=product_id, prior_usage=prior_usage,
+    # A mark is part of the name: "Shimano XT CN-M8100 [A]" (DECISIONS 132). A second chain of the same name
+    # gets the next free letter as its mark; another identical part keeps the name with a number: "BB (2)"
+    # (DECISIONS 105); tires and tubes may share a name.
+    mark = _check_mark(mark)
+    label = strip_mark(label, mark)
+    if component_type in LETTER_TYPES and not mark:
+        mark = _free_letter(session, component_type, label)
+    label = free_label(session, component_type, with_mark(label, mark))
+    comp = Component(component_type=component_type, label=label, mark=mark, product_id=product_id, prior_usage=prior_usage,
                      serial_number=serial_number, purchase_date=purchase_date, price_cents=price_cents, notes=notes,
                      specs_json=json.dumps(specs or {}), disposition="STORED",
                      purchase_session_id=work_session_id,
@@ -288,8 +294,16 @@ def update_component(session: Session, component_id: int, **fields) -> Component
             raise DomainError("Keep the tire pressure note short (80 characters at most)")
     if "mark" in fields:
         fields["mark"] = (fields["mark"] or "").strip() or None
-        if fields["mark"] and len(fields["mark"]) > 80:
-            raise DomainError("Keep the mark short (80 characters at most)")
+        if fields["mark"] != comp.mark:
+            fields["mark"] = _check_mark(fields["mark"])
+    if "label" in fields or "mark" in fields:
+        # the name shown everywhere is "name [mark]"; the form edits the name and the mark apart
+        mark = fields["mark"] if "mark" in fields else comp.mark
+        name = (fields["label"] or "").strip() if "label" in fields else name_of(comp)
+        name = strip_mark(strip_mark(name, comp.mark), mark)
+        if not name:
+            raise DomainError("A part needs a name")
+        fields["label"] = with_mark(name, mark)
     if "warranty_until" in fields:
         fields["warranty_until"] = (fields["warranty_until"] or "").strip()[:10] or None
         if fields["warranty_until"]:
@@ -310,7 +324,10 @@ def update_component(session: Session, component_id: int, **fields) -> Component
     try:
         session.flush()
     except IntegrityError as e:
-        raise Conflict("Another part of this type already has that name. Add something to tell them apart, e.g. \"(2)\" or where it is kept.") from e
+        hint = ("Give it a different mark, e.g. B." if comp.component_type in LETTER_TYPES
+                else "Add something to tell them apart, e.g. a mark or where it is kept.")
+        raise Conflict(f"Another {COMPONENT_TYPES[comp.component_type].name.lower()} is already called "
+                       f"\"{comp.label}\". {hint}") from e
     return comp
 
 
@@ -748,9 +765,7 @@ def spare_stock(session: Session) -> list[dict]:
 
 
 def _suffixes(component_type: str):
-    """What tells a second part of the same name apart: (B), (C) ... for chains, (2), (3) ... otherwise."""
-    if component_type in LETTER_TYPES:
-        yield from (f"({chr(c)})" for c in range(ord("B"), ord("Z") + 1))
+    """What tells a second part of the same name apart: (2), (3) ... (a chain gets a mark letter instead)."""
     n = 2
     while True:
         yield f"({n})"
@@ -758,27 +773,64 @@ def _suffixes(component_type: str):
 
 
 _SUFFIX = re.compile(r"\s+\((?:\d+|[A-Z])\)$")
+MARK_MAX = 20
+
+
+def with_mark(name: str, mark: str | None) -> str:
+    """The name shown everywhere: "Shimano XT CN-M8100 [A]" (Dirk 2026-11-02, DECISIONS 132)."""
+    return f"{name} [{mark}]" if mark else name
+
+
+def strip_mark(label: str, mark: str | None) -> str:
+    label = (label or "").strip()
+    if mark and label.endswith(f"[{mark}]"):
+        return label[: -len(mark) - 2].rstrip()
+    return label
+
+
+def name_of(comp: Component) -> str:
+    """The name without the mark (what Edit details shows as Name)."""
+    return strip_mark(comp.label, comp.mark)
+
+
+def _check_mark(mark: str | None) -> str | None:
+    mark = (mark or "").strip() or None
+    if mark and len(mark) > MARK_MAX:
+        raise DomainError(f"Keep the mark short ({MARK_MAX} characters at most), e.g. A or 2 dots")
+    if mark and ("[" in mark or "]" in mark):
+        raise DomainError("A mark cannot contain [ or ]")
+    return mark
+
+
+def _taken(session: Session, component_type: str, label: str) -> bool:
+    return session.scalar(select(Component.id).where(Component.component_type == component_type,
+                                                     func.lower(Component.label) == label.lower())) is not None
+
+
+def _free_letter(session: Session, component_type: str, name: str) -> str | None:
+    """None when no other chain has this name; else the first free letter (a chain without a mark counts as A)."""
+    if not _taken(session, component_type, name) and not _taken(session, component_type, with_mark(name, "A")):
+        return None
+    for code in range(ord("A") + 1, ord("Z") + 1):
+        if not _taken(session, component_type, with_mark(name, chr(code))):
+            return chr(code)
+    return None
 
 
 def free_label(session: Session, component_type: str, label: str) -> str:
-    """The label as typed if no other part of this type has it, else the first free "label (2)" (a chain:
-    "label (B)"). Tires and inner tubes keep the typed name: several may share it (DECISIONS 129)."""
-    if component_type in SAME_NAME_TYPES:
+    """The label as typed if no other part of this type has it, else the first free "label (2)".
+    Tires and inner tubes keep the typed name: several may share it (DECISIONS 129)."""
+    if component_type in SAME_NAME_TYPES or not _taken(session, component_type, label):
         return label
-
-    def taken(x: str) -> bool:
-        return session.scalar(select(Component.id).where(Component.component_type == component_type,
-                                                         func.lower(Component.label) == x.lower())) is not None
-    if not taken(label):
-        return label
-    return next(f"{label} {s}" for s in _suffixes(component_type) if not taken(f"{label} {s}"))
+    return next(f"{label} {s}" for s in _suffixes(component_type) if not _taken(session, component_type, f"{label} {s}"))
 
 
 def _next_label(session: Session, old: Component) -> str:
-    """The name for a new part of the same product as ``old`` (replace with the same product)."""
-    base = _SUFFIX.sub("", old.label) if old.component_type in (*SAME_NAME_TYPES, *LETTER_TYPES) else old.label
-    if old.component_type in SAME_NAME_TYPES:
-        return base
+    """The name for a new part of the same product as ``old`` (replace with the same product). Without the
+    mark: a chain gets its own letter when it is created, tires and tubes share the name."""
+    base = name_of(old)
+    if old.component_type in (*SAME_NAME_TYPES, *LETTER_TYPES):
+        return _SUFFIX.sub("", base)
     return free_label(session, old.component_type, base)
 
 

@@ -144,6 +144,7 @@ class ComponentIn(Body):
     storage_location: str | None = None
     tire_setup: str | None = None
     shop: str | None = None
+    mark: str | None = None
     install: InstallIn | None = None
 
 
@@ -1669,7 +1670,7 @@ def _bundle_ref(s: Session, c: Component) -> dict | None:
 def _component_summary(s: Session, c: Component) -> dict:
     t = COMPONENT_TYPES.get(c.component_type)
     setup, wheel = inv.tire_setup_of(s, c)
-    return {"id": c.id, "uuid": c.uuid, "label": c.label, "component_type": c.component_type,
+    return {"id": c.id, "uuid": c.uuid, "label": c.label, "name": inv.name_of(c), "component_type": c.component_type,
             "type_name": t.name if t else c.component_type, "category": t.category if t else None,
             "product_id": c.product_id,
             "product": f"{c.product.maker or ''} {c.product.model}".strip() if c.product else None,

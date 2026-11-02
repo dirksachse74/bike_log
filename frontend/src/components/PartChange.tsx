@@ -165,7 +165,7 @@ export function ReplaceForm({ componentId, onDone }: { componentId: number; onDo
             <label key={`c${s.id}`} className={`pick ${is('spare', s.id) ? 'pick-on' : ''}`}>
               <input type="radio" name="src" checked={is('spare', s.id)} onChange={() => setSource({ kind: 'spare', id: s.id })} />
               <span>
-                <strong>{s.label}</strong> {s.mark && <span className="mark">{s.mark}</span>} <span className="small muted">{s.product ?? ''}</span>
+                <strong>{s.label}</strong> <span className="small muted">{s.product ?? ''}</span>
                 <br />
                 <span className="small">
                   {s.state_text} · {s.readiness_text} · {usageText(s.usage)} lifetime

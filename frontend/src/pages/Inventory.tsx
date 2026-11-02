@@ -51,7 +51,7 @@ const GROUPSET = 'GROUPSET'
 // bike in one step: "Where does it go?" lists only that bike and is required.
 export function ComponentForm({ onSaved, presetType, onGroupset, onCancel, bikeId }: { onSaved: (c: ComponentSummary, typedLabel?: string) => void; presetType?: string; onGroupset?: (msg: string) => void; onCancel?: () => void; bikeId?: number }) {
   const { meta } = useApp()
-  const [f, setF] = useState({ component_type: presetType ?? 'CHAIN', label: '', history: 'NEW', start_km: '', start_date: today(), start_estimate: true, install_slot: '', install_at: today(), notes: '', price: '', purchase_date: '', shop: '' })
+  const [f, setF] = useState({ component_type: presetType ?? 'CHAIN', label: '', mark: '', history: 'NEW', start_km: '', start_date: today(), start_estimate: true, install_slot: '', install_at: today(), notes: '', price: '', purchase_date: '', shop: '' })
   const [props, setProps] = useState<Record<string, string>>({})
   const [propsOpen, setPropsOpen] = useState(presetType === 'COCKPIT' || presetType === 'WHEELSET')
   const [mount, setMount] = useState<MountTarget | null>(null)
@@ -62,7 +62,7 @@ export function ComponentForm({ onSaved, presetType, onGroupset, onCancel, bikeI
     setBusy(true)
     setError(null)
     try {
-      const body: Record<string, unknown> = { component_type: f.component_type, label: f.label, prior_usage: f.history === 'KNOWN' ? 'UNKNOWN' : f.history }
+      const body: Record<string, unknown> = { component_type: f.component_type, label: f.label, mark: f.mark.trim() || null, prior_usage: f.history === 'KNOWN' ? 'UNKNOWN' : f.history }
       if (f.notes) body.notes = f.notes
       const price = toCents(f.price)
       if (Number.isNaN(price)) throw new Error('Price: enter an amount such as 49,90')
@@ -117,9 +117,14 @@ export function ComponentForm({ onSaved, presetType, onGroupset, onCancel, bikeI
     <div className="form">
       <div className="row">
         {typeField}
-        <Field label="Name / label" hint="e.g. Chain A. Properties can be added later.">
-          <input value={f.label} onChange={(e) => setF({ ...f, label: e.target.value })} autoFocus />
-        </Field>
+        <div className="row">
+          <Field label="Name / label" hint="e.g. the product name. Properties can be added later.">
+            <input value={f.label} onChange={(e) => setF({ ...f, label: e.target.value })} autoFocus />
+          </Field>
+          <Field label="Mark (optional)" hint={f.mark.trim() ? `Shown as "${f.label.trim() || 'Name'} [${f.mark.trim()}]"` : f.component_type === 'CHAIN' ? 'A, B …; a second chain of the same name gets the next letter by itself' : 'A short tag to tell identical parts apart'}>
+            <input value={f.mark} maxLength={20} onChange={(e) => setF({ ...f, mark: e.target.value })} />
+          </Field>
+        </div>
       </div>
       <div className="row">
         <Field label="Price paid (optional)" hint="Counts as running cost of the bike it is first installed on.">
@@ -774,7 +779,6 @@ export default function InventoryPage() {
               <Link to={`/inventory/${c.component_id}`} key={c.component_id} className="tile">
                 <strong>
                   {c.label}
-                  {c.mark && <span className="mark">{c.mark}</span>}
                 </strong>
                 <ChainStateTag state={c.state} />
                 <span className="small">{c.text}</span>
@@ -1192,7 +1196,7 @@ export function ComponentDetailPage() {
         className="span-2"
         title={
           <>
-            {data.label} {data.mark && <span className="mark">{data.mark}</span>} <span className="muted small">{data.type_name}</span>
+            {data.label} <span className="muted small">{data.type_name}</span>
           </>
         }
         actions={
@@ -1756,7 +1760,7 @@ function ChainCard({ comp, chain, onChanged }: { comp: ComponentSummary; chain: 
 }
 
 function DetailsForm({ comp, onDone }: { comp: ComponentSummary; onDone: () => void }) {
-  const [f, setF] = useState({ label: comp.label, mark: comp.mark ?? '', price: centsInput(comp.price_cents), purchase_date: comp.purchase_date ?? '', serial_number: comp.serial_number ?? '', warranty_until: comp.warranty_until ?? '', notes: comp.notes ?? '', shop: comp.shop ?? '' })
+  const [f, setF] = useState({ label: comp.name ?? comp.label, mark: comp.mark ?? '', price: centsInput(comp.price_cents), purchase_date: comp.purchase_date ?? '', serial_number: comp.serial_number ?? '', warranty_until: comp.warranty_until ?? '', notes: comp.notes ?? '', shop: comp.shop ?? '' })
   const [err, setErr] = useState<string | null>(null)
   async function save() {
     setErr(null)
@@ -1771,7 +1775,7 @@ function DetailsForm({ comp, onDone }: { comp: ComponentSummary; onDone: () => v
   }
   return (
     <div className="form">
-      <Field label="Name / label">
+      <Field label="Name / label" hint={f.mark.trim() ? `Shown as "${f.label.trim()} [${f.mark.trim()}]"` : undefined}>
         <input value={f.label} onChange={(e) => setF({ ...f, label: e.target.value })} />
       </Field>
       <div className="row">
@@ -1791,8 +1795,8 @@ function DetailsForm({ comp, onDone }: { comp: ComponentSummary; onDone: () => v
       <div className="row">
         <ShopPicker value={f.shop} onChange={(v) => setF({ ...f, shop: v })} label="Bought from" />
       </div>
-      <Field label="Mark" hint={comp.component_type === 'CHAIN' ? 'How you tell it apart from identical chains, e.g. "1 punch dot next to the quick link". Paint and nail polish come off in hot wax; a punch or engraver mark on an outer plate stays.' : 'How you tell it apart from identical parts (e.g. a dot, a sticker, a colour).'}>
-        <input value={f.mark} maxLength={80} onChange={(e) => setF({ ...f, mark: e.target.value })} />
+      <Field label="Mark" hint={comp.component_type === 'CHAIN' ? 'A short tag such as A, B or 2 dots, shown after the name: "Chain [A]". Mark the chain itself with a punch or engraver on an outer plate; paint and nail polish come off in hot wax.' : 'A short tag shown after the name, e.g. A or red sticker: "Name [A]". Two parts of one type cannot have the same name and mark (tires and tubes can).'}>
+        <input value={f.mark} maxLength={20} onChange={(e) => setF({ ...f, mark: e.target.value })} />
       </Field>
       <div className="row">
         <Field label="Serial number">

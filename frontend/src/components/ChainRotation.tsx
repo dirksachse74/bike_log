@@ -25,7 +25,6 @@ export function ChainName({ c }: { c: Pick<ChainRow, 'component_id' | 'label' | 
   return (
     <>
       <Link to={`/inventory/${c.component_id}`}>{c.label}</Link>
-      {c.mark && <span className="mark" title="How this chain is marked">{c.mark}</span>}
     </>
   )
 }
@@ -87,7 +86,6 @@ export default function ChainRotation({ bikeId, refresh, onChanged }: { bikeId: 
           {data.candidates.map((c) => (
             <option key={c.component_id ? `c${c.component_id}` : `s${c.consumable_id}`} value={c.component_id ? `c:${c.component_id}` : `s:${c.consumable_id}`}>
               {c.label}
-              {c.mark ? ` (${c.mark})` : ''}
               {c.note ? ` · ${c.note}` : ''}
             </option>
           ))}
@@ -186,7 +184,7 @@ export default function ChainRotation({ bikeId, refresh, onChanged }: { bikeId: 
         </ul>
       </details>
       {data.candidates.length > 0 && <p>{addPicker}</p>}
-      <p className="small muted">A chain joins this rotation when it first goes on this bike, or here. Give each chain a mark under Edit details so you can tell them apart.</p>
+      <p className="small muted">A chain joins this rotation when it first goes on this bike, or here. Give each chain a mark under Edit details (A, B …): it is shown after the name, e.g. "Chain [A]".</p>
       {waxing && (
         <Sheet title="Wax chains" onClose={() => setWaxing(false)}>
           <WaxForm data={data} onDone={(t) => (setWaxing(false), done(t))} />
@@ -230,8 +228,7 @@ function WaxForm({ data, onDone }: { data: ChainRotationData; onDone: (text: str
           .filter((c) => !['RETIRED', 'WORN'].includes(c.state))
           .map((c) => (
             <label key={c.component_id} className="check">
-              <input type="checkbox" checked={ids.includes(c.component_id)} onChange={() => toggle(c.component_id)} /> {c.label}
-              {c.mark ? ` (${c.mark})` : ''} <span className="muted small">· {STATE[c.state]?.[0] ?? c.state}</span>
+              <input type="checkbox" checked={ids.includes(c.component_id)} onChange={() => toggle(c.component_id)} /> {c.label} <span className="muted small">· {STATE[c.state]?.[0] ?? c.state}</span>
             </label>
           ))}
       </fieldset>
@@ -246,7 +243,6 @@ function WaxForm({ data, onDone }: { data: ChainRotationData; onDone: (text: str
             .map((c) => (
               <option key={c.component_id} value={c.component_id}>
                 {c.label}
-                {c.mark ? ` (${c.mark})` : ''}
               </option>
             ))}
         </select>

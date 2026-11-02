@@ -559,6 +559,15 @@ you disagree. Dates are 2026-10-24 unless noted.
     active chain on no bike (one from another bike's rotation says "moves here"), and chain stock lines
     ("from stock, N left": one unit is taken out of stock and gets its own record). Chains not offered are
     listed folded under "Other chains" with where they are (on another bike, retired).
+132. **The mark is part of the name** (Dirk 2026-11-02: renaming a chain to the same name with mark "A" was
+    refused; "list it in the system as Shimano XT CN-M8100 12-fach Kette [A] … same logic to tires").
+    `component.label` stays the one name shown everywhere and is now "name [mark]"
+    (`inventory.with_mark`, `strip_mark`, `name_of`); no new column, so every list, picker and report shows
+    the mark without changes. Uniqueness per type (not tires/tubes) therefore means name + mark. A second chain
+    of the same name gets the next free letter as its mark (a chain without a mark counts as A); this replaces
+    the "(B)" suffixes of 129 (migration 0021 turns "Name (B)" into "Name [B]" with mark B and appends existing
+    marks). Marks are at most 20 characters (checked when changed) and contain no brackets. Other part types
+    still get "(2)" for a repeated name without a mark.
 
 ## Repository
 27. Pushed only to the feature branch `claude/project-thread-6y3mmh` of the private repository. Demo
