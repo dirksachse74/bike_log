@@ -1,0 +1,181 @@
+# Build the Windows installer on a clean GitHub Windows machine and publish it as a GitHub Release.
+#
+# Two ways to start it (see UPDATING.md "Publishing a release for friends"):
+#  * push a version tag vX.Y.Z (scripts/release.py --push does that), or
+#  * GitHub → Actions → "Release (Windows installer)" → Run workflow (no command line). It builds the
+#    version written in backend/bikelog/__init__.py from the chosen branch, creates the tag vX.Y.Z on that
+#    commit and publishes the release. Untick "publish" for a test build (installer only kept as a
+#    download on the run page for 7 days, nothing published).
+#
+# Where the release goes: this repository, unless the repository variable RELEASES_REPO names another
+# repository (e.g. a public "dirksachse74/bike_log-releases"); that needs the secret RELEASES_TOKEN, a
+# fine-grained token with "Contents: Read and write" on that repository.
+name: Release (Windows installer)
+
+on:
+  push:
+    tags: ["v*.*.*"]
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: "Publish the release (untick for a test build only)"
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 45
+    defaults:
+      run:
+        shell: pwsh
+    env:
+      PUBLISH: ${{ github.event_name == 'push' || inputs.publish }}
+      RELEASES_REPO: ${{ vars.RELEASES_REPO || github.repository }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # the build needs the tags to know whether this commit is a release
+
+      - name: Which version is this?
+        id: v
+        run: |
+          $ver = [regex]::Match((Get-Content backend\bikelog\__init__.py -Raw), '__version__ = "([^"]+)"').Groups[1].Value
+          if (-not $ver) { throw "No __version__ in backend/bikelog/__init__.py" }
+          $tag = "v$ver"
+          $sha = (git rev-parse HEAD).Trim()
+          if ($env:GITHUB_REF_TYPE -eq 'tag' -and $env:GITHUB_REF_NAME -ne $tag) {
+            throw "Tag $env:GITHUB_REF_NAME does not match the version $ver in backend/bikelog/__init__.py"
+          }
+          $existing = git rev-list -n 1 $tag 2>$null
+          if ($existing -and $existing.Trim() -ne $sha) {
+            throw "Tag $tag already exists on another commit. Raise the version first (ask Claude for 'a patch release')."
+          }
+          if ($env:PUBLISH -eq 'true' -and -not $existing) {
+            git tag $tag   # local only: makes the build a release ("0.3.0", not "0.3.0+abc1234")
+          }
+          "version=$ver" >> $env:GITHUB_OUTPUT
+          "tag=$tag" >> $env:GITHUB_OUTPUT
+          "sha=$sha" >> $env:GITHUB_OUTPUT
+          Write-Host "Building Bike Log $ver from $sha (publish: $env:PUBLISH, to: $env:RELEASES_REPO)"
+          exit 0   # a missing tag above is fine; do not fail on git's exit code
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: requirements*.txt
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Python packages
+        run: python -m pip install --disable-pip-version-check -q -r requirements-dev.txt
+      - name: Backend tests
+        run: python -m pytest -q backend/tests
+      - name: Screens (frontend)
+        working-directory: frontend
+        run: |
+          npm ci --no-audit --no-fund
+          npm run build
+      - name: BikeLog.exe (PyInstaller)
+        run: |
+          pyinstaller --noconfirm --clean packaging\bikelog.spec
+          if ($LASTEXITCODE -ne 0) { throw "PyInstaller failed" }
+          & dist\BikeLog\BikeLog.exe --version
+
+      - name: Installer (Inno Setup)
+        id: setup
+        run: |
+          $iscc = @("${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe", "$env:ProgramFiles\Inno Setup 6\ISCC.exe",
+                    "$env:LOCALAPPDATA\Programs\Inno Setup 6\ISCC.exe") | Where-Object { Test-Path $_ } | Select-Object -First 1
+          if (-not $iscc) {
+            choco install innosetup -y --no-progress
+            $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          }
+          & $iscc /Q packaging\bikelog.iss
+          if ($LASTEXITCODE -ne 0) { throw "ISCC failed" }
+          $appVersion = (Get-Content dist\BikeLog\_internal\bikelog\build_version.txt -Raw).Trim()
+          if ($env:PUBLISH -eq 'true' -and $appVersion -ne '${{ steps.v.outputs.version }}') {
+            throw "The build says $appVersion, expected the release version ${{ steps.v.outputs.version }}"
+          }
+          $setup = Get-Item "dist\installer\BikeLog-$appVersion-setup.exe"
+          "path=$($setup.FullName)" >> $env:GITHUB_OUTPUT
+          "name=$($setup.Name)" >> $env:GITHUB_OUTPUT
+          "sha256=$((Get-FileHash $setup.FullName -Algorithm SHA256).Hash.ToLower())" >> $env:GITHUB_OUTPUT
+
+      # The same steps a friend does: install, start, add data, close, install again (= update), start,
+      # data still there. Uses the real per-user folders of this throw-away Windows machine.
+      - name: Test the installer (install, start, update, data kept)
+        run: |
+          $setup = '${{ steps.setup.outputs.path }}'
+          $exe = "$env:LOCALAPPDATA\Programs\BikeLog\BikeLog.exe"
+          $url = 'http://127.0.0.1:8765'
+          function Install-App {
+            $p = Start-Process $setup -ArgumentList '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART' -Wait -PassThru
+            if ($p.ExitCode -ne 0) { throw "installer exit code $($p.ExitCode)" }
+            if (-not (Test-Path $exe)) { throw "BikeLog.exe not found at $exe after installing" }
+          }
+          function Start-App {
+            $p = Start-Process $exe -ArgumentList '--no-browser', '--port', '8765' -PassThru
+            for ($i = 0; $i -lt 60; $i++) {
+              try { $h = Invoke-RestMethod "$url/api/health" -TimeoutSec 2; if ($h.ok) { return @($p, $h) } } catch {}
+              Start-Sleep 1
+            }
+            throw "Bike Log did not answer on $url within 60 s"
+          }
+          function Stop-App($p) { Stop-Process -Id $p.Id -Force; $p.WaitForExit(15000) | Out-Null; Start-Sleep 2 }
+
+          Install-App
+          $p, $h = Start-App
+          Write-Host "Started: $($h.full_version), schema $($h.schema)"
+          if ($h.full_version -ne (Get-Content dist\BikeLog\_internal\bikelog\build_version.txt -Raw).Trim()) { throw "wrong version running" }
+          if ($env:LOCALAPPDATA -and -not (Test-Path "$env:LOCALAPPDATA\BikeLog")) { throw "no data folder in %LOCALAPPDATA%\BikeLog" }
+          $html = (Invoke-WebRequest "$url/" -UseBasicParsing).Content
+          $tok = [regex]::Match($html, 'bikelog-token" content="([^"]+)').Groups[1].Value
+          Invoke-RestMethod -Method Post -Uri "$url/api/bikes" -Headers @{ 'X-BikeLog-Token' = $tok } `
+            -ContentType 'application/json' -Body '{"name":"Release test bike"}' | Out-Null
+          Stop-App $p
+
+          Install-App   # update over the installed copy
+          $p, $h = Start-App
+          $names = (Invoke-RestMethod "$url/api/bikes") | ForEach-Object { $_.name }
+          Stop-App $p
+          if ($names -notcontains 'Release test bike') { throw "data lost after updating: bikes are $($names -join ', ')" }
+          Write-Host "OK: installed, started, updated, data kept ($($names.Count) bikes)."
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.setup.outputs.name }}
+          path: ${{ steps.setup.outputs.path }}
+          retention-days: 7
+
+      - name: Publish the GitHub Release
+        if: env.PUBLISH == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.RELEASES_TOKEN || github.token }}
+        run: |
+          $ver = '${{ steps.v.outputs.version }}'
+          $tag = '${{ steps.v.outputs.tag }}'
+          python scripts/release_notes.py $ver --sha256 '${{ steps.setup.outputs.sha256 }}' --file '${{ steps.setup.outputs.name }}' > notes.md
+          if ($LASTEXITCODE -ne 0) { throw "release notes failed" }
+          $ghArgs = @($tag, '${{ steps.setup.outputs.path }}', '--repo', $env:RELEASES_REPO, '--title', "Bike Log $ver", '--notes-file', 'notes.md')
+          if ($env:RELEASES_REPO -eq '${{ github.repository }}') { $ghArgs += @('--target', '${{ steps.v.outputs.sha }}') }
+          gh release view $tag --repo $env:RELEASES_REPO 2>$null | Out-Null
+          if ($LASTEXITCODE -eq 0) {
+            Write-Host "Release $tag exists already: replacing its installer"
+            gh release upload $tag '${{ steps.setup.outputs.path }}' --repo $env:RELEASES_REPO --clobber
+          } else {
+            gh release create @ghArgs
+          }
+          if ($LASTEXITCODE -ne 0) { throw "publishing failed" }
+          Write-Host "Download page: https://github.com/$env:RELEASES_REPO/releases/latest"

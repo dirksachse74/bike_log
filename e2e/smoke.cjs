@@ -151,6 +151,12 @@ async function bikeTab(page, name) {
   check('Overview: Upcoming tasks and a Shopping list with too few spare tubes and tires', (await page.getByRole('heading', { name: 'Upcoming tasks' }).count()) === 1 && /Spare tubes/.test(shop) && /Spare tires/.test(shop), shop.replace(/\s+/g, ' ').slice(0, 160))
   check('260 km triggers liquid-wax task with explanation', /260 km since hot wax/.test(why) && /250–300 km/.test(why), why)
   await page.screenshot({ path: path.join(OUT, '02-overview-desktop.png'), fullPage: true })
+  {
+    // layout: bike tiles first, then Upcoming tasks; a long reason shows two lines with "more"
+    const order = await page.evaluate(() => [...document.querySelectorAll('.grid > *')].map((e) => (e.classList.contains('bike-strip') ? 'bikes' : e.querySelector('h2')?.textContent)).slice(0, 2).join(','))
+    const tile = await page.locator('.bike-strip .tile').first().innerText()
+    check('Overview starts with one tile per bike (km, due), then Upcoming tasks', order === 'bikes,Upcoming tasks' && /km/.test(tile), `${order} | ${tile.replace(/\s+/g, ' ')}`)
+  }
 
   // snooze does not log maintenance
   await liquid.getByRole('button', { name: 'Snooze 7 days' }).click()
@@ -237,6 +243,7 @@ async function bikeTab(page, name) {
     const rpd = await (await page.request.get(BASE + `api/bikes/${rp.id}`)).json()
     const rframe = rpd.setup.find((p) => p.component_type === 'FRAME')
     await page.goto(BASE + `#/inventory/${rframe.component_id}`)
+    await page.locator('.more-menu > summary').click() // less frequent part actions sit under More…
     await page.getByRole('button', { name: 'Send away for repair' }).click()
     await page.locator('.sheet').getByLabel('Sent on').fill(yesterday)
     await pickShop(page, 'Shop or maker', 'Carbon repair shop')
@@ -311,6 +318,15 @@ async function bikeTab(page, name) {
   await page.getByText('Where the kilometres come from').waitFor()
   const ledgerRows = await page.locator('.card').filter({ hasText: 'Where the kilometres come from' }).locator('tbody tr').count()
   check('ledger lists contributions', ledgerRows === 1, `${ledgerRows} rows`)
+  {
+    // part page layout: Service status right under the header; rare actions under More…; the km table folded
+    const heads = await page.locator('.grid > .card h2').allInnerTexts()
+    const ledgerOpen = await page.locator('details[data-group="ledger"]').evaluate((d) => d.open)
+    await page.locator('.more-menu > summary').click()
+    const more = await page.locator('.more-items').innerText()
+    await page.locator('.more-menu > summary').click()
+    check('part page: Service status second, More… holds Starting km/Retire, km table folded', heads[1] === 'Service status' && /Starting km/.test(more) && /Retire/.test(more) && !ledgerOpen, heads.slice(0, 4).join(' › ') + ' | ' + more.replace(/\s+/g, ' '))
+  }
   await page.screenshot({ path: path.join(OUT, '03-component-detail.png'), fullPage: true })
 
   // chain rotation: a mark tells identical chains apart; the bike shows which is on, ready or dirty

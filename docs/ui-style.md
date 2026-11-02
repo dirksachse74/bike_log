@@ -30,6 +30,22 @@ fields and scrollbars light too.
 
 Folded sections (`<details>` with the triangle) stay as they were: little on screen, unfold for more.
 
+## Screen order (Dirk 2026-11-01: "arrange the more important sections better")
+
+Every main screen starts with what needs doing now, then the current state, then the history that explains
+the totals. History and rarely used tools fold away or sit lower; no function was removed.
+
+| Screen | Order from the top |
+|---|---|
+| Overview | One small tile per bike (km, how many due) · Upcoming tasks (due now open; coming up soon, snoozed, need a first entry folded) with open incidents · Rides to review · Recent rides · Shopping list · Chains · Brakes |
+| Maintenance | Reminders grouped like the overview (due now and due soon open; snoozed, need a first entry, up to date folded) · Recently logged · Default intervals |
+| Bike page, Parts and service tab | Header (km, rides, ride time, Record work done) · Service status · Installed now · Manage parts · Chain rotation |
+| Part page | Header with the main actions (Install/Replace, Record work done, Edit details) and a **More…** menu for the rest (Remove, Move, Change status, Send away for repair, Starting km, Retire) · Service status · chain/spoke cards · Parts on it · Maintenance log · Installation history + Rules · Where the kilometres come from (folded, summary shows entries and total) · Properties · Journal · Change log |
+
+**Reminder text.** Each reminder shows its title and two lines of the explanation; a "more" link unfolds the
+rest (only shown when the text is really cut off). On phones the status badge sits above the title so the
+text gets the full width. The grouping lives in one place: `GroupedTasks` in `components/TaskList.tsx`.
+
 ## Changing the colours
 
 Change the tokens at the top of `index.css` (`--accent`, `--accent-hover`, `--accent-soft`, `--link`,

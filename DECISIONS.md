@@ -498,11 +498,27 @@ you disagree. Dates are 2026-10-24 unless noted.
     creates one; an activity with no resolved bike and no RideSource yet is skipped (count
     SKIPPED_UNKNOWN_BIKE, cursor still advances). Already imported rides keep being updated. Re-read
     (rescan) picks skipped rides up once the bike exists. UI: switch in StravaSettings (shown connected or not).
+121. **Screen order** (Dirk 2026-11-01). Main screens go: needs doing → current state → history. Reminder grouping
+    is one component, `GroupedTasks` (components/TaskList.tsx): OVERDUE/DUE/ATTENTION open (plus DUE_SOON,
+    except on the overview where `foldSoon` folds it), SNOOZED / INSUFFICIENT_INFO / the rest in
+    `details.task-group` (data-group soon/snoozed/first/ok). Used by Overview, Maintenance and the bike page.
+    Explanations clamp to two lines (`Why`, ResizeObserver decides whether "more" shows); the full text stays in
+    the DOM. Part page: rare actions in `details.more-menu`; ledger in `details[data-group=ledger]`. Overview
+    bike tiles `.bike-strip`. No endpoint or function was removed.
 
-120. **Lubrication entries are product only** (Dirk 2026-11-02). LogMaintenance hides Amount and Cost for actions
+120. **GitHub Releases for friends** (Dirk 2026-11-01). `.github/workflows/release.yml` on `windows-latest`,
+    started by a pushed tag `vX.Y.Z` or by Run workflow (the cloud cannot push tags, Dirk prefers buttons). The
+    version comes only from `__init__.py`; the workflow tags locally before PyInstaller so the build is the plain
+    release version, and `gh release create --target <sha>` creates the remote tag. Before publishing it installs
+    the setup silently, starts the app, adds a bike, installs again over it and checks the bike is kept (this is
+    the CI proof of "updating keeps data"). Release text = docs/INSTALL.md + the version's CHANGELOG part (folded),
+    so friends can read it without repo access. Optional other target repo (`RELEASES_REPO` + `RELEASES_TOKEN`)
+    because releases of a private repo are not downloadable by others. Replaces packaging/ci/windows-build.yml.example.
+
+122. **Lubrication entries are product only** (Dirk 2026-11-02). LogMaintenance hides Amount and Cost for actions
     of kind LUBRICATE (hot wax, liquid wax, lube) and lists only WAX/LUBE/OTHER supplies; hints link to
     Inventory → Supplies and Settings → Lists (ShopPicker `hint`). The API still accepts amount and cost.
-121. **Change log shows names, not ids** for bike references (`changelog._BIKE_FIELDS`: rotation_bike_id);
+123. **Change log shows names, not ids** for bike references (`changelog._BIKE_FIELDS`: rotation_bike_id);
     `entries` turns a bare id stored earlier into the bike's name when shown.
 
 ## Repository
