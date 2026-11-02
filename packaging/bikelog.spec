@@ -61,7 +61,7 @@ try:
         ffi=FixedFileInfo(filevers=NUMS, prodvers=NUMS),
         kids=[
             StringFileInfo([StringTable("040904B0", [
-                StringStruct("CompanyName", "Dirk Sachse"),
+                StringStruct("CompanyName", "Bike Log"),
                 StringStruct("FileDescription", "Bike Log"),
                 StringStruct("FileVersion", FULL_VERSION),
                 StringStruct("InternalName", "BikeLog"),
