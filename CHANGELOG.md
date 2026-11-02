@@ -34,6 +34,12 @@ UPDATING.md → "Making a release". New entries go under "Unreleased" as work is
   the instructions for a scraper script, a Shops list (pick instead of typing; rename, merge, hide; names
   in other upper/lower case are stored in the list spelling), and a Change log (Account → Change log, and
   on each bike and part).
+  Round 4b: Backups (Account → Backups and restore): a copy of your data is stored before every fresh start
+  and restore, you can store one yourself, download it, or restore it; restoring from a downloaded file
+  works across accounts and servers (every record gets a new number, references follow). Fresh start
+  (password and the word RESET; a copy is stored first). Diagnostics (version, database updates, simple
+  data checks). Indoor rides now follow the desktop app's direct-drive trainer: the cassette does not wear
+  either.
 - **Bike Log on your own server with Google sign-in** (Dirk 2026-11-02). `--server` mode: only the Google
   accounts you list can sign in, HTTPS through Caddy, a backup every day while it runs, Strava connects
   through your own domain. Docker setup with a one-time install script and optional nightly updates:

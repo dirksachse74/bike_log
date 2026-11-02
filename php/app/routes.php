@@ -27,6 +27,7 @@ final class Routes
             'repair_back' => 'page_repair_back', 'repairs' => 'page_repairs', 'part_life' => 'page_part_life',
             'products' => 'page_products', 'product' => 'page_product', 'product_edit' => 'page_product_edit', 'product_import' => 'page_product_import',
             'product_template' => 'page_product_template', 'lists' => 'page_lists', 'changes' => 'page_changes',
+            'backups' => 'page_backups', 'fresh_start' => 'page_fresh_start', 'diagnostics' => 'page_diagnostics',
             'account' => 'page_account', 'export' => 'page_export',
             // admin
             'admin' => 'page_admin', 'admin_users' => 'page_admin_users', 'admin_user' => 'page_admin_user', 'admin_invite' => 'page_admin_invite',

@@ -658,6 +658,13 @@ you disagree. Dates are 2026-10-24 unless noted.
     (`Db::$beforeWrite`, `Db::$afterWrite`, set by `ChangeLog::register()`); raw `Db::run` statements
     bypass them, so removals, voids and undo write an explicit `ChangeLog::note`. The change log is
     information only, never used for totals.
+    Round 4b: per-user backups are gzipped exports in `user_backups` (newest 20 kept). A restore checks the
+    whole file first (every reference must point to a row in the file, required fields present), then in
+    one transaction stores a copy, deletes the user's rows and inserts the file's rows with new ids above
+    each table's current maximum (`UserBackups::TABLES` lists every reference column; change_log.entity_id
+    follows its entity). It never re-adds default rules, so a rule the user deleted stays deleted. Fresh
+    start = copy, delete, default rules. "Indoor" is the desktop app's DIRECT_DRIVE_TRAINER usage profile
+    (wheels, cassette, tires, rotors, pads excluded); ride start times were already there.
 
 ## Repository
 27. Pushed only to the feature branch `claude/project-thread-6y3mmh` of the private repository. Demo

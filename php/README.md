@@ -104,6 +104,7 @@ php/
                    inventory.php (spares, stock, work sessions), groupsets.php, incidents.php (journal,
                    incidents, fixes, punctures, spokes), chains.php (rotation, wax table), money.php (costs, bundles, repairs, part life),
                    products.php (products, JSON import), records.php (shop list, change log),
+                   backups.php (per-user backup, restore, fresh start),
                    pages/*.php (one function per route), routes.php, views/ (templates)
   sql/migrations/  NNN_name.sql, applied in order (install page / Admin → System)
   config/          config.sample.php (copy to config.php, never commit it)
@@ -137,5 +138,7 @@ Done in round 3b: purchase bundles and costs, repairs (send a part away), part l
 Done in round 4a: products and the JSON product import (same files as the desktop app), the Shops list,
 the change log.
 
-Still to port: fresh start and per-user backup/restore, diagnostics, indoor setups (usage profiles).
+Done in round 4b: backups and restore per user, fresh start, diagnostics, indoor = direct-drive trainer.
+
+Everything of the desktop app except Strava is ported; a final side-by-side check follows.
 Strava stays out for now.

@@ -10,8 +10,9 @@ final class Catalog
     private static array $types = [];
     private static array $actions = [];
 
-    // Parts that do not wear on an indoor (trainer) ride: the wheels and everything on them, and the brakes.
-    public const INDOOR_EXCLUDED = ['WHEELSET', 'FRONT_WHEEL', 'REAR_WHEEL', 'HUB', 'HUB_BEARINGS', 'SPOKES', 'RIM',
+    // Parts that do not wear on an indoor ride on a direct-drive trainer (the desktop app's usage profile
+    // DIRECT_DRIVE_TRAINER): the wheels and everything on them, the cassette (the trainer has its own), the brakes.
+    public const INDOOR_EXCLUDED = ['WHEELSET', 'FRONT_WHEEL', 'REAR_WHEEL', 'CASSETTE', 'HUB', 'HUB_BEARINGS', 'SPOKES', 'RIM',
         'RIM_TAPE', 'TUBELESS_VALVE', 'TIRE', 'INNER_TUBE', 'BRAKE_ROTOR', 'BRAKE_PADS', 'BRAKE_CIRCUIT'];
 
     public const CONSUMABLE_KINDS = ['WAX' => 'Wax', 'LUBE' => 'Chain lube', 'SEALANT' => 'Tire sealant',
