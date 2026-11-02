@@ -898,6 +898,7 @@ def create_app(factory: sessionmaker[Session], paths: DataPaths, *, token: str |
                 "frame_history": frames_svc.frame_history(s, c) if c.component_type in ("FRAME", "FORK") else None,
                 "spokes": m.spoke_info(s, c) if c.component_type in ("FRONT_WHEEL", "REAR_WHEEL") else None,
                 "tire_tube": wheels_svc.tire_and_tube(s, c) if c.component_type in ("FRONT_WHEEL", "REAR_WHEEL") else None,
+                "charging": m.charge_history(s, c),
                 "service_orders": orders_svc.for_component(s, c),
                 "incident_choices": orders_svc.incident_choices(s, c) if c.status == "ACTIVE" else [],
                 "suggested_outcome": COMPONENT_TYPES[c.component_type].removed_default}
@@ -1168,8 +1169,13 @@ def create_app(factory: sessionmaker[Session], paths: DataPaths, *, token: str |
 
     @app.get("/api/rules")
     def rules(s: Session = Depends(db)):
-        return [m.rule_row(r) for r in s.scalars(select(ServiceRule).where(ServiceRule.component_type.is_not(None))
-                                                 .order_by(ServiceRule.component_type, ServiceRule.rule_code))]
+        # type defaults (Settings → Service intervals) with how many parts / bikes have their own value
+        own: dict[str, int] = {}
+        for code in s.scalars(select(ServiceRule.rule_code).where(ServiceRule.component_type.is_(None))):
+            own[code] = own.get(code, 0) + 1
+        return [{**m.rule_row(r), "own_values": own.get(r.rule_code, 0)}
+                for r in s.scalars(select(ServiceRule).where(ServiceRule.component_type.is_not(None))
+                                   .order_by(ServiceRule.component_type, ServiceRule.rule_code))]
 
     @app.get("/api/bikes/{bike_id}/rules")
     def bike_rules(bike_id: int, s: Session = Depends(db)):

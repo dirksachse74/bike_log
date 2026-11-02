@@ -1467,3 +1467,7 @@ dl.props dd { margin: 0; }
 .tire-tube .tt-current {
   margin: 0 0 0.25rem;
 }
+.interval-group{border-top:1px solid var(--line, #e5e5e5);padding:6px 0}
+.interval-group>summary{cursor:pointer;font-weight:600;padding:6px 0}
+.interval-group .list li{align-items:flex-start}
+.interval-note{display:inline-block;max-width:60ch}

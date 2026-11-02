@@ -1,11 +1,12 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import EventLog from '../components/EventLog'
 import LogMaintenance from '../components/LogMaintenance'
 import { GroupedTasks } from '../components/TaskList'
 import { Card, Empty, ErrorBox, Loading, Sheet } from '../components/ui'
 import { useApp } from '../context'
 import { useApi } from '../hooks'
-import type { Bike, EventRow, Rule, Task } from '../types'
+import type { Bike, EventRow, Task } from '../types'
 
 export default function MaintenancePage() {
   const { toast, meta } = useApp()
@@ -14,13 +15,11 @@ export default function MaintenancePage() {
   const bikes = useApi<Bike[]>('/bikes')
   const q = useApi<Task[]>(`/maintenance/queue?include_ok=${all}${bike ? `&bike_id=${bike}` : ''}`)
   const events = useApi<EventRow[]>(`/maintenance/events?limit=50${bike ? `&bike_id=${bike}` : ''}`)
-  const rules = useApi<Rule[]>('/rules')
   const [logging, setLogging] = useState(false)
   const refresh = () => {
     q.reload()
     events.reload()
   }
-  const typeName = (c: string | null) => (c === 'BIKE' ? 'Whole bike' : meta.component_types.find((t) => t.code === c)?.name ?? c)
   return (
     <div className="grid">
       <Card
@@ -56,31 +55,10 @@ export default function MaintenancePage() {
         {events.data?.length === 0 && <Empty title="Nothing logged yet">Use “Record work done”: pick the bike, tap what you did, and the installed parts are preselected.</Empty>}
         {events.data && events.data.length > 0 && <EventLog events={events.data} onChanged={refresh} show="both" />}
       </Card>
-      <Card title="Default intervals">
-        {rules.loading && !rules.data && <Loading />}
-        <ul className="list">
-          {rules.data?.map((r) => (
-            <li key={r.id}>
-              <span>
-                {typeName(r.component_type)}: {r.name}
-              </span>
-              <span className="muted small">
-                {r.trigger === 'CYCLE_WINDOW'
-                  ? `once at ${r.window_min_km}–${r.window_max_km} km per hot-wax cycle`
-                  : r.trigger === 'PARENT_COUNT'
-                    ? `after ${r.interval_count} parents (e.g. chains)`
-                    : r.trigger === 'ONCE_AFTER_INSTALL'
-                      ? 'once after fitting'
-                      : [r.interval_km && `${r.interval_km} km`, r.interval_hours && `${r.interval_hours} h of riding`, r.interval_months && `${r.interval_months} months`].filter(Boolean).join(' or ')}
-                {' · '}
-                {r.origin.toLowerCase()}
-                {r.requires_setup ? ` · only ${r.requires_setup.toLowerCase()}` : ''}
-                {!r.active ? ' · off' : ''}
-              </span>
-            </li>
-          ))}
-        </ul>
-        <p className="small muted">Change an interval from any part's page (for that part or for all parts of its type).</p>
+      <Card title="Service intervals">
+        <p className="small">
+          How long hot wax, liquid wax, a charge, brake fluid and every other check last: <Link to="/settings?section=intervals">Settings → Service intervals</Link>.
+        </p>
       </Card>
       {logging && (
         <Sheet title="Record work done" onClose={() => setLogging(false)}>

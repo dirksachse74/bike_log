@@ -120,3 +120,4 @@ Status key: ✅ done and tested · 🟡 done, not verified where it matters · �
 - ✅ GitHub Releases: .github/workflows/release.yml builds, tests and publishes the installer (2026-11-01).
 - ⏳ Decide where friends download from (repo is private): public repo, public releases repo, or send the file.
 - 💡 App icon (.ico from the logo), code signing.
+- ✅ Settings → Service intervals (all type defaults in one place) and a Charging card with time and km between charges (DECISIONS 134).
