@@ -19,6 +19,10 @@ UPDATING.md → "Making a release". New entries go under "Unreleased" as work is
   (stored spares, counted stock such as tubes or pad sets, "take one out", spares to keep, shopping list),
   incidents on a ride (flat, dropped chain ...) with a fix per affected part, punctures report, broken
   spokes per wheel with a re-lace reminder, notes and issues on bikes and parts, My settings.
+  Round 3a: chain rotation per bike (which chain is on, which are waxed and ready, swap in one click, hot wax
+  several chains at once, chains from stock), the liquid-wax window (250–300 km after the hot wax) as its own
+  reminder, hot wax 200 km after a top-up, wet rides ask for a top-up, a wax table on each chain, and the
+  quick link reminder (replace after 2 chains).
 - **Bike Log on your own server with Google sign-in** (Dirk 2026-11-02). `--server` mode: only the Google
   accounts you list can sign in, HTTPS through Caddy, a backup every day while it runs, Strava connects
   through your own domain. Docker setup with a one-time install script and optional nightly updates:

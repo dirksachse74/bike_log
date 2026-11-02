@@ -101,7 +101,15 @@ function post_button(string $route, array $params, string $label, string $class 
 function rule_summary(array $r): string
 {
     if ($r['trigger_kind'] === 'ONCE_AFTER_INSTALL') {
-        return 'once after fitting';
+        return 'once after fitting' . ((int)$r['active'] ? '' : ' (off)');
+    }
+    if ($r['trigger_kind'] === 'CYCLE_WINDOW') {
+        return 'once ' . number_format((float)$r['window_min_km'], 0, '.', ' ') . '–' . number_format((float)$r['window_max_km'], 0, '.', ' ')
+            . ' km after ' . mb_strtolower(Catalog::actionName((string)$r['cycle_action_code'])) . ((int)$r['active'] ? '' : ' (off)');
+    }
+    if ($r['trigger_kind'] === 'PARENT_COUNT') {
+        $p = mb_strtolower(Catalog::typeName(Catalog::parentTypes((string)$r['component_type'])[0] ?? 'CHAIN'));
+        return 'replace after ' . (int)$r['interval_count'] . ' ' . $p . 's' . ((int)$r['active'] ? '' : ' (off)');
     }
     $p = [];
     if ($r['interval_km'] !== null) {
@@ -112,6 +120,9 @@ function rule_summary(array $r): string
     }
     if ($r['interval_hours'] !== null) {
         $p[] = 'every ' . number_format((float)$r['interval_hours'], 0) . ' h';
+    }
+    if ($r['after_top_up_km'] !== null && $r['interval_km'] !== null) {
+        $p[] = 'or ' . number_format((float)$r['after_top_up_km'], 0, '.', ' ') . ' km after a top-up';
     }
     return implode(' or ', $p) . ((int)$r['active'] ? '' : ' (off)');
 }

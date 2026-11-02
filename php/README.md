@@ -102,7 +102,7 @@ php/
   app/             core.php (config, db, session, csrf, audit, rate limit, migrations), auth.php, mailer.php,
                    catalog.php + catalog.json, domain.php (installations, mileage), reminders.php,
                    inventory.php (spares, stock, work sessions), groupsets.php, incidents.php (journal,
-                   incidents, fixes, punctures, spokes),
+                   incidents, fixes, punctures, spokes), chains.php (rotation, wax table),
                    pages/*.php (one function per route), routes.php, views/ (templates)
   sql/migrations/  NNN_name.sql, applied in order (install page / Admin → System)
   config/          config.sample.php (copy to config.php, never commit it)
@@ -129,7 +129,8 @@ deleted for real when its owner or an admin asks (GDPR).
 Done in round 2: groupset import (with undo), punctures and incidents per wheel tube/tire, spares and
 counted stock with the shopping list, spokes per wheel, frame + fork as one part, notes and issues.
 
-Still to port: chain rotation and the wax cycle (liquid top-up window, wet rides), purchase bundles and
-costs, repairs (send a part away), service orders, part life report and forecast, product records and JSON
+Done in round 3a: chain rotation and the wax cycle (liquid top-up window, wet rides), quick link per chain.
+
+Still to port: purchase bundles and costs, repairs (send a part away), service orders, part life report and forecast, product records and JSON
 product import, pick lists (shops), fresh start and per-user backup/restore, diagnostics and change log.
 Strava stays out for now.

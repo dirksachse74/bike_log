@@ -207,11 +207,14 @@ final class Groupsets
         if (!$base) {
             return;
         }
-        $allowed = ['interval_km', 'interval_months', 'interval_hours', 'warn_km', 'warn_days', 'warn_hours', 'active', 'notes', 'origin', 'name'];
+        $allowed = ['interval_km', 'interval_months', 'interval_hours', 'warn_km', 'warn_days', 'warn_hours', 'active', 'notes', 'origin', 'name',
+            'window_min_km', 'window_max_km', 'after_top_up_km', 'interval_count'];
         $row = ['user_id' => $uid, 'rule_code' => $code, 'name' => $base['name'], 'component_id' => $cid, 'action_code' => $base['action_code'],
             'reset_actions' => $base['reset_actions'], 'trigger_kind' => $base['trigger_kind'], 'interval_km' => $base['interval_km'],
             'interval_months' => $base['interval_months'], 'interval_hours' => $base['interval_hours'], 'warn_km' => $base['warn_km'],
             'warn_days' => $base['warn_days'], 'warn_hours' => $base['warn_hours'], 'requires_setup' => $base['requires_setup'],
+            'window_min_km' => $base['window_min_km'], 'window_max_km' => $base['window_max_km'], 'after_top_up_km' => $base['after_top_up_km'],
+            'cycle_action_code' => $base['cycle_action_code'], 'interval_count' => $base['interval_count'],
             'origin' => 'MANUFACTURER', 'active' => $base['active'], 'notes' => $base['notes'], 'created_at' => now_utc(), 'updated_at' => now_utc()];
         foreach ($fields as $k => $v) {
             if (in_array($k, $allowed, true)) {
