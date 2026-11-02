@@ -194,6 +194,12 @@ class ChainSwapIn(Body):
     at: str
 
 
+class ChainAddIn(Body):
+    component_id: int | None = None
+    consumable_id: int | None = None
+    at: str
+
+
 class ChainWaxIn(Body):
     component_ids: list[int]
     at: str
@@ -760,6 +766,11 @@ def create_app(factory: sessionmaker[Session], paths: DataPaths, *, token: str |
             return {**chains_svc.swap(s, bike_id, to_component_id=body.to_component_id, at=body.at,
                                       work_session_id=ws.id), "work_session_id": ws.id}
         return op(s, op_id, "bike.chain_swap", fn, dry_run)
+
+    @app.post("/api/bikes/{bike_id}/chains/add")
+    def bike_chain_add(bike_id: int, body: ChainAddIn, dry_run: bool = False, s: Session = Depends(db),
+                       op_id: str | None = OpId):
+        return op(s, op_id, "bike.chain_add", lambda: chains_svc.add(s, bike_id, **body.model_dump()), dry_run)
 
     @app.post("/api/bikes/{bike_id}/chains/wax")
     def bike_chain_wax(bike_id: int, body: ChainWaxIn, dry_run: bool = False, s: Session = Depends(db),

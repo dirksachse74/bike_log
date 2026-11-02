@@ -93,3 +93,41 @@ def test_chain_rotation_over_http(engine, paths):
     detail = client.get(f"/api/components/{aid}").json()
     assert detail["mark"].startswith("1 punch dot") and len(detail["chain"]["cycles"]) == 2
     assert client.patch(f"/api/components/{aid}", json={"mark": "x" * 81}).status_code in (400, 422)
+
+
+def test_chain_from_another_bike_or_from_stock_can_join(session, engine, paths):
+    """Dirk 2026-11-02: "no stored chain" although his second chain was in the system. A chain that once went
+    on another bike stays in that bike's rotation; stock chains were not offered at all."""
+    from bikelog.services import stock
+    b1 = bike(session, "BMC Roadmachine")
+    b2 = bike(session, "TIME NXR")
+    old = part(session, "CHAIN", "Chain A")
+    inv.install(session, old.id, at="2026-09-01", bike_id=b1.id, slot="CHAIN")
+    inv.remove(session, old.id, at="2026-09-20")             # stored, still in the BMC's rotation
+    on2 = part(session, "CHAIN", "Chain B")
+    inv.install(session, on2.id, at="2026-09-01", bike_id=b2.id, slot="CHAIN")
+    busy = part(session, "CHAIN", "Chain C")
+    inv.install(session, busy.id, at="2026-09-21", bike_id=b1.id, slot="CHAIN")
+    line = stock.add_consumable(session, component_type="CHAIN", name="Ultegra CN-M8100")
+    stock.consumable_txn(session, line.id, kind="PURCHASE", qty=2, on="2026-10-01")
+    rot = chains.rotation(session, b2.id)
+    offered = {x["label"]: x for x in rot["candidates"]}
+    assert set(offered) == {"Chain A", "Ultegra CN-M8100"}
+    assert offered["Chain A"]["note"] == "in the rotation of BMC Roadmachine, moves here"
+    assert offered["Ultegra CN-M8100"]["note"] == "from stock, 2 left"
+    assert rot["elsewhere"] == [{"component_id": busy.id, "label": "Chain C", "text": "on BMC Roadmachine"}]
+    r = chains.add(session, b2.id, component_id=old.id, at="2026-11-02")
+    assert old.rotation_bike_id == b2.id and "joined the chain rotation of TIME NXR" in r["text"]
+    assert [c["label"] for c in chains.rotation(session, b2.id)["chains"]] == ["Chain A", "Chain B"]
+    session.commit()
+
+    client = TestClient(create_app(make_session_factory(engine), paths, token="t", testing=True, static_dir=None),
+                        raise_server_exceptions=False)
+    client.headers.update({"X-BikeLog-Token": "t"})
+    res = client.post(f"/api/bikes/{b2.id}/chains/add", json={"consumable_id": line.id, "at": "2026-11-02"})
+    assert res.status_code == 200, res.text
+    res = client.post(f"/api/bikes/{b2.id}/chains/add", json={"component_id": busy.id, "at": "2026-11-02"})
+    assert res.status_code in (400, 409, 422) and "on another bike" in res.text
+    rot = client.get(f"/api/bikes/{b2.id}/chains").json()
+    assert len(rot["chains"]) == 3
+    assert [x["note"] for x in rot["candidates"]] == ["from stock, 1 left"]

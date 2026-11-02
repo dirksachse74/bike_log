@@ -65,6 +65,9 @@ UPDATING.md → "Making a release". New entries go under "Unreleased" as work is
   The shop field links to **Settings → Lists**, where shops are renamed, merged or hidden.
 
 ### Fixed
+- **Chain rotation "no stored chain"** (Dirk 2026-11-02): Add a chain to rotate with now also offers a chain
+  that is off the bike but still counted in another bike's rotation (it moves here) and chains in stock.
+  Chains it cannot offer are listed under "Other chains" with where they are.
 - The change log of a chain said "changed chain rotation of bike: 3": 3 was the bike's internal number. It
   now shows the bike's name (also for entries already written).
 
