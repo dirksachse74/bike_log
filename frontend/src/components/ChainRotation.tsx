@@ -63,29 +63,49 @@ export default function ChainRotation({ bikeId, refresh, onChanged }: { bikeId: 
       setErr((e as Error).message)
     }
   }
-  async function add(id: string) {
-    if (!id) return
+  async function add(key: string) {
+    if (!key) return
     setErr(null)
+    const [kind, id] = key.split(':')
     try {
-      await api.patch(`/components/${id}`, { rotation_bike_id: bikeId })
-      done(`${data!.candidates.find((c) => c.component_id === Number(id))?.label} joined the chain rotation.`)
+      const r = await api.post<{ result: { text: string } }>(
+        `/bikes/${bikeId}/chains/add`,
+        { [kind === 's' ? 'consumable_id' : 'component_id']: Number(id), at: today() },
+        newOpId(),
+      )
+      done(r.result.text)
     } catch (e) {
       setErr((e as Error).message)
     }
   }
   const addPicker = (
-    <label className="inline-field small">
-      {data.chains.length < 2 ? 'Add a chain to rotate with: ' : 'Add a chain: '}
-      <select aria-label="Add a chain to the rotation" value="" onChange={(e) => add(e.target.value)}>
-        <option value="">{data.candidates.length ? 'pick a stored chain' : 'no stored chain (Inventory → Add part)'}</option>
-        {data.candidates.map((c) => (
-          <option key={c.component_id} value={c.component_id}>
-            {c.label}
-            {c.mark ? ` (${c.mark})` : ''}
-          </option>
-        ))}
-      </select>
-    </label>
+    <>
+      <label className="inline-field small">
+        {data.chains.length < 2 ? 'Add a chain to rotate with: ' : 'Add a chain: '}
+        <select aria-label="Add a chain to the rotation" value="" onChange={(e) => add(e.target.value)}>
+          <option value="">{data.candidates.length ? 'pick a chain' : 'no chain off a bike (Inventory → Add part)'}</option>
+          {data.candidates.map((c) => (
+            <option key={c.component_id ? `c${c.component_id}` : `s${c.consumable_id}`} value={c.component_id ? `c:${c.component_id}` : `s:${c.consumable_id}`}>
+              {c.label}
+              {c.mark ? ` (${c.mark})` : ''}
+              {c.note ? ` · ${c.note}` : ''}
+            </option>
+          ))}
+        </select>
+      </label>
+      {data.elsewhere.length > 0 && (
+        <details className="small muted">
+          <summary>Other chains ({data.elsewhere.length})</summary>
+          <ul>
+            {data.elsewhere.map((c) => (
+              <li key={c.component_id}>
+                <Link to={`/inventory/${c.component_id}`}>{c.label}</Link>: {c.text}
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
+    </>
   )
   if (data.chains.length < 2)
     return (

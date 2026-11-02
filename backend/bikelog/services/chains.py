@@ -7,7 +7,7 @@ states come from the hot-wax and wear events (maintenance.chain_row), the timeli
 """
 from __future__ import annotations
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from bikelog.models import Component, Installation
@@ -72,17 +72,72 @@ def rotation(session: Session, bike_id: int) -> dict:
             # the chain on the bike counts as dirty once ridden since its last hot wax (or never hot waxed)
             "dirty": [r["component_id"] for r in dirty] + ([on["component_id"]] if on and on["km_since_hot_wax"] != 0 else []),
             "prompt": prompt, "timeline": timeline(session, bike.id, [c.id for c in comps]),
-            "candidates": candidates(session, bike.id)}
+            "candidates": candidates(session, bike.id), "elsewhere": elsewhere(session, bike.id)}
 
 
 def candidates(session: Session, bike_id: int) -> list[dict]:
-    """Chains that could join this bike's rotation: active, in no rotation and not on another bike."""
+    """Chains that could join this bike's rotation (Dirk 2026-11-02: "there should be 2 chains in the system"):
+    every active chain that is on no bike, also one still in another bike's rotation (it moves here), and
+    counted stock lines of chains (one is taken out of stock and gets its own record)."""
+    from bikelog.models import Bike, Consumable
+    from bikelog.services import stock
     out = []
     for c in session.scalars(select(Component).where(Component.component_type == "CHAIN", Component.status == "ACTIVE",
-                                                     Component.rotation_bike_id.is_(None)).order_by(Component.label)):
-        if inv.open_installation(session, c.id) is None:
-            out.append({"component_id": c.id, "label": c.label, "mark": c.mark})
+                                                     or_(Component.rotation_bike_id.is_(None),
+                                                         Component.rotation_bike_id != bike_id))
+                             .order_by(Component.label)):
+        if inv.open_installation(session, c.id) is not None:
+            continue
+        other = session.get(Bike, c.rotation_bike_id) if c.rotation_bike_id else None
+        out.append({"component_id": c.id, "consumable_id": None, "label": c.label, "mark": c.mark,
+                    "note": f"in the rotation of {other.name}, moves here" if other and not other.deleted_at else None})
+    for line in session.scalars(select(Consumable).where(Consumable.component_type == "CHAIN",
+                                                         Consumable.tracking_mode == "COUNTED").order_by(Consumable.name)):
+        left = stock.level(session, line)["qty"]
+        if left >= 1:
+            out.append({"component_id": None, "consumable_id": line.id, "label": line.name, "mark": None,
+                        "note": f"from stock, {left:g} left"})
     return out
+
+
+def elsewhere(session: Session, bike_id: int) -> list[dict]:
+    """Chains that are not offered, and where they are: on another bike, or retired."""
+    out = []
+    for c in session.scalars(select(Component).where(Component.component_type == "CHAIN").order_by(Component.label)):
+        if c.status == "RETIRED":
+            out.append({"component_id": c.id, "label": c.label, "text": "retired"})
+            continue
+        i = inv.open_installation(session, c.id)
+        if i is not None and i.bike_id != bike_id:
+            where = inv.get_bike(session, i.bike_id).name if i.bike_id else "a part that is not on a bike"
+            out.append({"component_id": c.id, "label": c.label, "text": f"on {where}"})
+    return out
+
+
+def add(session: Session, bike_id: int, *, component_id: int | None = None, consumable_id: int | None = None,
+        at: str) -> dict:
+    """A chain joins this bike's rotation; a chain from stock gets its own record first."""
+    bike = inv.get_bike(session, bike_id)
+    if (component_id is None) == (consumable_id is None):
+        raise DomainError("Pick one chain")
+    if consumable_id is not None:
+        from bikelog.services import stock
+        line = stock.get(session, consumable_id)
+        if line.component_type != "CHAIN":
+            raise DomainError(f"{line.name} is not a chain")
+        comp = stock.draw_component(session, consumable_id, on=at[:10])
+    else:
+        comp = inv.get_component(session, component_id)
+        if comp.component_type != "CHAIN":
+            raise DomainError(f"{comp.label} is not a chain")
+        if comp.status != "ACTIVE":
+            raise DomainError(f"{comp.label} is retired")
+        i = inv.open_installation(session, comp.id)
+        if i is not None and i.bike_id != bike.id:
+            raise DomainError(f"{comp.label} is on another bike. Take it off first.")
+    comp.rotation_bike_id = bike.id
+    session.flush()
+    return {"component_id": comp.id, "label": comp.label, "text": f"{comp.label} joined the chain rotation of {bike.name}."}
 
 
 def timeline(session: Session, bike_id: int, chain_ids: list[int]) -> list[dict]:

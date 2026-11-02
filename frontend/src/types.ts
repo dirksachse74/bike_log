@@ -660,6 +660,7 @@ export interface ChainRotationData {
   next_ready: number | null
   dirty: number[]
   prompt: { kind: 'SWAP' | 'WAX' | 'INSTALL'; text: string; to?: number; to_label?: string } | null
-  candidates: { component_id: number; label: string; mark: string | null }[]
+  candidates: { component_id: number | null; consumable_id: number | null; label: string; mark: string | null; note: string | null }[]
+  elsewhere: { component_id: number; label: string; text: string }[]
   timeline: { kind: 'ON' | 'WAX'; date: string; until: string | null; component_id: number; label: string; km: number | null }[]
 }

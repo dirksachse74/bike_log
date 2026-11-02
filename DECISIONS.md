@@ -553,6 +553,12 @@ you disagree. Dates are 2026-10-24 unless noted.
 130. **Defect tube / tire and install from a wheel**: `tire_and_tube` rows carry `defect` (a FLAT entry on the
     part with no repair or "Nothing yet"); InstallHere opened on a wheel page lists only that wheel (`under`
     = the wheel), and an occupied position explains "already has X … Replace X".
+131. **Chains offered for a rotation** (Dirk 2026-11-02: "no stored chain … but there should be 2 chains"): a
+    chain joins the rotation of the first bike it goes on and stayed there after coming off, so it was never
+    offered on another bike; chains in counted stock were not offered at all. The picker now offers every
+    active chain on no bike (one from another bike's rotation says "moves here"), and chain stock lines
+    ("from stock, N left": one unit is taken out of stock and gets its own record). Chains not offered are
+    listed folded under "Other chains" with where they are (on another bike, retired).
 
 ## Repository
 27. Pushed only to the feature branch `claude/project-thread-6y3mmh` of the private repository. Demo
