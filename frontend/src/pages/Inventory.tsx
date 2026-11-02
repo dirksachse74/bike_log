@@ -1340,6 +1340,8 @@ export function ComponentDetailPage() {
           )}
         </p>
       </Card>
+      {/* a wheel: the tire and tube on it come first (Dirk 2026-11-02) */}
+      {data.tire_tube && <TireTubeCard data={data.tire_tube} onInstall={(k) => setSheet(k)} onReplace={(id) => setSheet({ change: id })} />}
       <RepairsCard orders={data.service_orders} componentId={data.id} onBack={(o) => setSheet({ back: o })} />
       <Card title="Service status" className="span-2">
         <TaskList tasks={data.service_status} onChange={reload} emptyText="No service rules for this part." />
@@ -1349,7 +1351,6 @@ export function ComponentDetailPage() {
           </button>
         </div>
       </Card>
-      {data.tire_tube && <TireTubeCard data={data.tire_tube} onInstall={(k) => setSheet(k)} onReplace={(id) => setSheet({ change: id })} />}
       {data.spokes && <SpokesCard wheelId={data.id} label={data.label} info={data.spokes} onChanged={reload} />}
       {data.chain && <ChainCard comp={data} chain={data.chain} onChanged={reload} />}
       {data.parts.length > 0 && (
