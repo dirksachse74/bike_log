@@ -26,6 +26,8 @@ function page_groupset(): void
         'occupied' => post('occupied', 'KEEP') === 'REPLACE' ? 'REPLACE' : 'KEEP',
         'prior' => post('prior', 'NEW') === 'UNKNOWN' ? 'UNKNOWN' : 'NEW',
         'purchase_date' => post('purchase_date'),
+        'bundle_price' => post('bundle_price'),
+        'merchant' => post('merchant'),
     ];
     $include = Request::isPost() && post('picked') === '1' ? post_list('include') : null;
     $spares = post_list('spare');
@@ -36,8 +38,19 @@ function page_groupset(): void
         }
     }
     if (Request::isPost() && post('do') === 'import') {
-        $res = Groupsets::import($uid, $code, parse_date($form['on'], true), $bikeId ?: null, $opts, $include, $form['prefix'],
-            $form['occupied'], $form['prior'], parse_date($form['purchase_date']), $prices, $spares);
+        $bundlePrice = parse_money_cents($form['bundle_price'], 'Total price');
+        if ($bundlePrice !== null && $prices) {
+            throw new UserError('Give either a total price or prices per part, not both.');
+        }
+        $res = Db::tx(function () use ($uid, $code, $form, $bikeId, $opts, $include, $prices, $spares, $bundlePrice, $t) {
+            $res = Groupsets::import($uid, $code, parse_date($form['on'], true), $bikeId ?: null, $opts, $include, $form['prefix'],
+                $form['occupied'], $form['prior'], parse_date($form['purchase_date']), $prices, $spares);
+            if ($bundlePrice !== null) {
+                Bundles::create($uid, $t['name'], array_values($res['created']), nullable($form['merchant']),
+                    parse_date($form['purchase_date']) ?? parse_date($form['on'], true), $bundlePrice, null, $res['work_session_id']);
+            }
+            return $res;
+        });
         $c = $res['plan']['counts'];
         Session::flash('ok', 'Groupset added: ' . $c['INSTALL'] . ' installed, ' . $c['REPLACE'] . ' replaced, ' . $c['SPARE'] . ' as spares. You can undo it here.');
         redirect('ws', ['id' => $res['work_session_id']]);

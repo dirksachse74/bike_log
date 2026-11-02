@@ -31,6 +31,28 @@
 </p>
 <?php endif; ?>
 
+<?php if ($bundle): ?><p class="muted">Bought together: <a href="<?= h(url('bundles')) ?>"><?= h($bundle['name']) ?></a><?= $bundle['price_cents'] !== null ? ' (' . h(money((int)$bundle['price_cents'])) . ' for all)' : '' ?></p><?php endif; ?>
+<?php if ($order): ?>
+<div class="card"><p><?= status_badge('SOON') ?> Away for repair since <?= h($order['sent_on']) ?><?= $order['shop'] ? ' at ' . h($order['shop']) : '' ?><?= $order['reason'] ? ': ' . h($order['reason']) : '' ?></p>
+  <details><summary class="btn small primary">It is back</summary>
+    <form method="post" action="<?= h(url('repair_back', ['id' => $order['id']])) ?>" class="card"><?= Csrf::field() ?>
+      <div class="row">
+        <?= field('on', 'Back on', today(), 'date', ['required' => true]) ?>
+        <label>What came back<select name="outcome"><?= options(ServiceOrders::OUTCOMES, 'REPAIRED_PAID') ?></select></label>
+        <?= field('cost', 'Cost', '', 'text', ['inputmode' => 'decimal']) ?>
+        <?= field('receipt', 'Receipt / RMA no.', '') ?>
+      </div>
+      <?php if ($order['from_slot']): ?><label class="check"><input type="checkbox" name="put_back" value="1" checked> Put it back where it was (a part fitted meanwhile is stored)</label><?php endif; ?>
+      <label>If not repaired<select name="keep_as"><?= options(['STORED' => 'Keep it (stored)', 'DISCARDED' => 'Discard it'], 'STORED') ?></select></label>
+      <details><summary>Replaced under warranty: the new part</summary><div class="row">
+        <?= field('new_label', 'Name', '') ?><?= field('new_serial', 'Serial number', '') ?><?= field('new_warranty', 'Warranty until', '', 'date') ?></div></details>
+      <?= field('notes', 'Notes', '') ?>
+      <button class="btn primary">Save</button>
+    </form>
+  </details>
+</div>
+<?php endif; ?>
+
 <?php if ($reminders): ?>
 <section><h2>Reminders</h2><?= View::partial('partials/reminders', ['reminders' => $reminders, 'back' => 'part']) ?></section>
 <?php endif; ?>
@@ -182,6 +204,25 @@
     <tr><td><?= h($d['effective_on']) ?></td><td><?= h(Inventory::dispositions()[$d['disposition']] ?? $d['disposition']) ?></td><td class="muted"><?= h($d['note'] ?? '') ?></td></tr>
   <?php endforeach; ?></table><?php endif; ?>
 </details>
+<?php endif; ?>
+
+<?php if (!$order && $c['status'] === 'ACTIVE'): ?>
+<details><summary>Send away for repair</summary>
+  <form method="post" action="<?= h(url('repair_send', ['id' => $c['id']])) ?>" class="row"><?= Csrf::field() ?>
+    <?= field('on', 'Sent on', today(), 'date', ['required' => true]) ?>
+    <?= field('shop', 'To (shop, maker)', '') ?>
+    <?= field('reason', 'Why', '') ?>
+    <?php if ($incidentChoices): ?><label>For incident<select name="incident"><?= options($incidentChoices, '', true, 'None') ?></select></label><?php endif; ?>
+    <button class="btn small">Send away</button>
+  </form>
+  <p class="muted">It comes off the bike (with what is mounted on it) and counts no km while away.</p>
+</details>
+<?php endif; ?>
+<?php if ($orders): ?>
+<details><summary>Repairs (<?= count($orders) ?>)</summary><table class="list"><?php foreach ($orders as $o): ?>
+  <tr><td><?= h($o['sent_on']) ?> → <?= h($o['returned_on'] ?? 'away') ?></td><td><?= h($o['shop'] ?? '') ?></td>
+    <td><?= $o['outcome'] ? h(ServiceOrders::OUTCOMES[$o['outcome']]) : '' ?><?= $o['cost_cents'] ? ' · ' . h(money((int)$o['cost_cents'])) : '' ?><?= (int)$o['replacement_id'] === (int)$c['id'] ? ' (this part is the replacement)' : '' ?></td></tr>
+<?php endforeach; ?></table></details>
 <?php endif; ?>
 
 <details><summary>Retire</summary>

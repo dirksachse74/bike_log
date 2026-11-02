@@ -18,6 +18,7 @@
         on <a href="<?= h(url('bike', ['id' => $b['id']])) ?>"><?= h($b['name']) ?></a></span>
     </div>
     <p class="why"><?= h($r['text']) ?></p>
+    <?php if (!empty($r['forecast']) && $r['status'] !== 'SNOOZED'): ?><p class="muted small"><?= h($r['forecast']) ?></p><?php endif; ?>
     <div class="rem-actions">
       <a class="btn small primary" href="<?= h(url('log', $logParams)) ?>">Log it</a>
       <?php if ($rule && $r['status'] !== 'OK'): ?>

@@ -176,6 +176,10 @@ final class Inventory
                 Db::run("DELETE FROM installations WHERE user_id = ? AND component_id IN ($in)", [$uid]);
                 Db::run("DELETE FROM components WHERE user_id = ? AND id IN ($in)", [$uid]);
             }
+            Db::run("UPDATE service_orders SET status = 'VOIDED' WHERE user_id = ? AND send_session_id = ?", [$uid, $wsId]);
+            Db::run("UPDATE service_orders SET status = 'OUT', returned_on = NULL, outcome = NULL, cost_cents = NULL, receipt_ref = NULL, return_notes = NULL,
+                return_session_id = NULL, event_id = NULL, replacement_id = NULL WHERE user_id = ? AND return_session_id = ?", [$uid, $wsId]);
+            Db::run('UPDATE purchase_bundles SET voided_at = ?, void_reason = ? WHERE user_id = ? AND work_session_id = ? AND voided_at IS NULL', [$now, 'undone', $uid, $wsId]);
             Db::run('UPDATE work_sessions SET undone_at = ? WHERE id = ?', [$now, $wsId]);
         });
     }
@@ -272,8 +276,9 @@ final class Inventory
             $cid = self::createComponent($uid, ['component_type' => $c['component_type'], 'product_id' => $c['product_id'],
                 'label' => $label ?: $c['name'], 'maker' => $p['maker'] ?? $c['maker'], 'model' => $p['model'] ?? null,
                 'prior_usage' => 'NEW', 'purchase_date' => $on, 'notes' => 'Taken from stock: ' . $c['name'], 'work_session_id' => $ws]);
-            Db::insert('consumable_txns', ['user_id' => $uid, 'consumable_id' => $consumableId, 'kind' => 'USE', 'qty' => 1, 'happened_on' => $on,
+            $txn = Db::insert('consumable_txns', ['user_id' => $uid, 'consumable_id' => $consumableId, 'kind' => 'USE', 'qty' => 1, 'happened_on' => $on,
                 'note' => 'became part #' . $cid, 'work_session_id' => $ws, 'created_at' => now_utc()]);
+            Db::run('UPDATE components SET from_stock_txn_id = ? WHERE id = ?', [$txn, $cid]);
             return $cid;
         });
     }

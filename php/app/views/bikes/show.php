@@ -12,6 +12,7 @@
   <a class="btn" href="<?= h(url('part_edit', ['bike' => $bike['id']])) ?>">Add part to this bike</a>
   <a class="btn" href="<?= h(url('groupset', ['bike' => $bike['id']])) ?>">Add a groupset</a>
   <a class="btn" href="<?= h(url('chains', ['bike' => $bike['id']])) ?>">Chains</a>
+  <a class="btn" href="<?= h(url('costs', ['bike' => $bike['id']])) ?>">Costs</a>
   <a class="btn" href="<?= h(url('bike_edit', ['id' => $bike['id']])) ?>">Edit</a>
 </div>
 
@@ -42,6 +43,9 @@
   </table>
 </section>
 
+<?php if ($away): ?>
+<p><?= status_badge('SOON') ?> Away for repair: <?php foreach ($away as $i => $o): ?><?= $i ? ', ' : '' ?><a href="<?= h(url('part', ['id' => $o['component_id']])) ?>"><?= h(Domain::componentName($o)) ?></a> (since <?= h($o['sent_on']) ?><?= $o['shop'] ? ', ' . h($o['shop']) : '' ?>)<?php endforeach; ?></p>
+<?php endif; ?>
 <?php if ($incidents): ?>
 <section>
   <h2>Open incidents</h2>

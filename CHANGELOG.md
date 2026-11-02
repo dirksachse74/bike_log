@@ -23,6 +23,11 @@ UPDATING.md → "Making a release". New entries go under "Unreleased" as work is
   several chains at once, chains from stock), the liquid-wax window (250–300 km after the hot wax) as its own
   reminder, hot wax 200 km after a top-up, wet rides ask for a top-up, a wax table on each chain, and the
   quick link reminder (replace after 2 chains).
+  Round 3b: Costs per bike (purchase price, parts, parts bought together, stock used, services; per km),
+  "Bought together" bundles (also straight from the groupset import with one total price), send a part away
+  for repair and record what came back (repaired, warranty repair or replacement, not repaired; it can go
+  straight back on, and a linked incident is solved), the Part life report, and a "due around" forecast at
+  your recent pace on km and hour reminders.
 - **Bike Log on your own server with Google sign-in** (Dirk 2026-11-02). `--server` mode: only the Google
   accounts you list can sign in, HTTPS through Caddy, a backup every day while it runs, Strava connects
   through your own domain. Docker setup with a one-time install script and optional nightly updates:

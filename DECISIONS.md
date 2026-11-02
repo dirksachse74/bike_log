@@ -646,6 +646,11 @@ you disagree. Dates are 2026-10-24 unless noted.
     after_top_up_km, and converts the base release's stand-in (liquid wax as "interval 300, warn 50") into
     the 250–300 km window. With dates only, a wet ride counts against a wax from the next day on (a wax
     logged on a day was done after that day's ride), as in the desktop app.
+    Round 3b (migration 004): costs follow costs.py (a part counts for the bike it was first fitted to, a
+    bundle once for the bike most of its parts went on, stock at its average purchase price as an estimate,
+    services from maintenance cost; a part drawn from stock is linked by `from_stock_txn_id` and has no own
+    price). Sending away and the return are work sessions, so Undo voids the order or reopens it. The pace
+    forecast uses the last 28 days (at least 3 rides over 7 days) and is planning help only.
 
 ## Repository
 27. Pushed only to the feature branch `claude/project-thread-6y3mmh` of the private repository. Demo

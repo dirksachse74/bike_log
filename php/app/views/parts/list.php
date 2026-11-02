@@ -1,5 +1,7 @@
 <div class="actions">
   <a class="btn primary" href="<?= h(url('part_edit')) ?>">+ Add part</a>
+  <a class="btn" href="<?= h(url('groupset')) ?>">+ Groupset</a>
+  <a class="btn" href="<?= h(url('part_life')) ?>">Part life</a>
   <form method="get" class="row inline-form">
     <input type="hidden" name="r" value="parts">
     <select name="type"><?= options(Catalog::typesByCategory(), $type, true, 'All types') ?></select>
