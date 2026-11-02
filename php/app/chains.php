@@ -235,7 +235,7 @@ final class Chains
         $rows = [];
         foreach (Db::all("SELECT i.*, c.label, c.mark FROM installations i JOIN components c ON c.id = i.component_id WHERE i.user_id = ? AND i.bike_id = ?
             AND i.voided_at IS NULL AND c.component_type = 'CHAIN'", [$uid, $bikeId]) as $i) {
-            $sql = 'SELECT COALESCE(SUM(distance_km),0) FROM rides WHERE user_id = ? AND bike_id = ? AND removed_at IS NULL AND ride_date >= ?';
+            $sql = 'SELECT COALESCE(SUM(distance_km),0) FROM rides r WHERE r.user_id = ? AND r.bike_id = ? AND ' . Domain::COUNTED . ' AND ride_date >= ?';
             $args = [$uid, $bikeId, $i['installed_on']];
             if ($i['removed_on']) {
                 $sql .= ' AND ride_date < ?';

@@ -20,6 +20,7 @@ require __DIR__ . '/money.php';
 require __DIR__ . '/records.php';
 require __DIR__ . '/products.php';
 require __DIR__ . '/backups.php';
+require __DIR__ . '/rides.php';
 require __DIR__ . '/web.php';
 require __DIR__ . '/installer.php';
 require __DIR__ . '/pages/auth_pages.php';

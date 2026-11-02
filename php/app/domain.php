@@ -85,7 +85,7 @@ final class Domain
             WHERE i.user_id = ? AND i.component_id = ? AND i.voided_at IS NULL', [$uid, $componentId]);
         foreach ($rows as $r) {
             if ($r['bike_id'] !== null) {
-                $out[] = ['bike_id' => (int)$r['bike_id'], 'from' => $r['installed_on'], 'to' => $r['removed_on'], 'via' => []];
+                $out[] = ['bike_id' => (int)$r['bike_id'], 'slot' => $r['slot'], 'from' => $r['installed_on'], 'to' => $r['removed_on'], 'via' => []];
                 continue;
             }
             foreach (self::bikePeriods($uid, (int)$r['parent_component_id'], $depth + 1) as $p) {
@@ -139,6 +139,125 @@ final class Domain
         return true;
     }
 
+    /** Rides that count at all: not removed, not left out of the km. Use with the table alias r. */
+    public const COUNTED = 'r.removed_at IS NULL AND r.excluded_reason IS NULL';
+
+    /** Stands in for the bike of rider gear in reminders. */
+    public const RIDER = ['id' => 0, 'name' => 'you (worn)', 'shifting' => null, 'rider' => true];
+
+    /** Worn by the rider today (shoes in use, or cleats on shoes in use). */
+    public static function wornNow(int $uid, int $componentId): bool
+    {
+        $today = today();
+        foreach (self::usagePeriods($uid, $componentId) as $p) {
+            if ($p['kind'] === 'RIDER' && $p['from'] <= $today && ($p['to'] === null || $p['to'] > $today)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** Worn by the rider (shoes): counts every ride while "in use", on any bike. */
+    public static function isRiderGear(string $type): bool
+    {
+        return (bool)(Catalog::type($type)['rider_gear'] ?? false);
+    }
+
+    /** Periods in which rider gear was in use: [from, to|null]. */
+    public static function riderPeriods(int $uid, int $componentId): array
+    {
+        $rows = Db::all('SELECT disposition, effective_on FROM component_dispositions WHERE user_id = ? AND component_id = ? ORDER BY effective_on, id',
+            [$uid, $componentId]);
+        $out = [];
+        foreach ($rows as $n => $r) {
+            if ($r['disposition'] !== 'IN_USE') {
+                continue;
+            }
+            if (isset($rows[$n + 1]) && $rows[$n + 1]['effective_on'] === $r['effective_on']) {
+                continue;   // changed again the same day
+            }
+            $end = null;
+            for ($k = $n + 1; $k < count($rows); $k++) {
+                if ($rows[$k]['effective_on'] > $r['effective_on']) {
+                    $end = $rows[$k]['effective_on'];
+                    break;
+                }
+            }
+            $out[] = [$r['effective_on'], $end];
+        }
+        return $out;
+    }
+
+    /**
+     * Every way rides reach a part: fitted on a bike (minus rides that set that position to something else),
+     * worn by the rider, or picked for a ride (ride_equipment) - for the part itself and through the parts it
+     * hangs on. Each: kind BIKE|RIDER|RIDE, from, to (excl or null), via (parent types), bike_id/slot or root_id.
+     */
+    public static function usagePeriods(int $uid, int $componentId, int $depth = 0): array
+    {
+        if ($depth > 6) {
+            return [];
+        }
+        $c = Db::one('SELECT component_type FROM components WHERE id = ? AND user_id = ?', [$componentId, $uid]);
+        if (!$c) {
+            return [];
+        }
+        $out = [['kind' => 'RIDE', 'root_id' => $componentId, 'from' => '0001-01-01', 'to' => null, 'via' => []]];
+        if (self::isRiderGear($c['component_type'])) {
+            foreach (self::riderPeriods($uid, $componentId) as [$from, $to]) {
+                $out[] = ['kind' => 'RIDER', 'from' => $from, 'to' => $to, 'via' => []];
+            }
+        }
+        $rows = Db::all('SELECT i.*, p.component_type AS parent_type FROM installations i LEFT JOIN components p ON p.id = i.parent_component_id
+            WHERE i.user_id = ? AND i.component_id = ? AND i.voided_at IS NULL', [$uid, $componentId]);
+        foreach ($rows as $r) {
+            if ($r['bike_id'] !== null) {
+                $out[] = ['kind' => 'BIKE', 'bike_id' => (int)$r['bike_id'], 'slot' => $r['slot'], 'from' => $r['installed_on'], 'to' => $r['removed_on'], 'via' => []];
+                continue;
+            }
+            foreach (self::usagePeriods($uid, (int)$r['parent_component_id'], $depth + 1) as $p) {
+                $from = max($p['from'], $r['installed_on']);
+                $to = self::minEnd($p['to'], $r['removed_on']);
+                if ($to === null || $from < $to) {
+                    $p['from'] = $from;
+                    $p['to'] = $to;
+                    $p['via'][] = $r['parent_type'];
+                    $out[] = $p;
+                }
+            }
+        }
+        return $out;
+    }
+
+    /** SQL condition (on rides r) and its arguments for one usage period, from $since on. Null = no rides. */
+    public static function periodWhere(int $uid, array $component, array $p, ?string $since = null): ?array
+    {
+        $from = $since !== null ? max($since, $p['from']) : $p['from'];
+        if ($p['to'] !== null && $from >= $p['to']) {
+            return null;
+        }
+        $sql = 'r.user_id = ? AND ' . self::COUNTED . ' AND r.ride_date >= ?';
+        $args = [$uid, $from];
+        if ($p['to'] !== null) {
+            $sql .= ' AND r.ride_date < ?';
+            $args[] = $p['to'];
+        }
+        if ($p['kind'] === 'BIKE') {
+            $sql .= ' AND r.bike_id = ? AND NOT EXISTS (SELECT 1 FROM ride_equipment e WHERE e.ride_id = r.id AND e.slot = ?)';
+            $args[] = $p['bike_id'];
+            $args[] = $p['slot'];
+        } elseif ($p['kind'] === 'RIDER') {
+            $sql .= ' AND r.bike_id IS NOT NULL';
+        } else {
+            $sql .= ' AND EXISTS (SELECT 1 FROM ride_equipment e WHERE e.ride_id = r.id AND e.component_id = ?)';
+            $args[] = $p['root_id'];
+        }
+        if (!self::countsIndoor($component, $p)) {
+            $sql .= " AND r.kind = 'OUTDOOR'";
+        }
+        return [$sql, $args];
+    }
+
     /**
      * Usage of a part from rides (optionally only rides on/after $since, a date).
      * Returns km (known distances), hours, rides, missing_distance, missing_duration.
@@ -146,29 +265,25 @@ final class Domain
     public static function rideUsage(int $uid, array $component, ?string $since = null): array
     {
         $acc = ['km' => 0.0, 'seconds' => 0, 'rides' => 0, 'missing_distance' => 0, 'missing_duration' => 0];
-        foreach (self::bikePeriods($uid, (int)$component['id']) as $p) {
-            $from = $since !== null ? max($since, $p['from']) : $p['from'];
-            if ($p['to'] !== null && $from >= $p['to']) {
-                continue;
+        $parts = [];
+        $args = [];
+        foreach (self::usagePeriods($uid, (int)$component['id']) as $p) {
+            if ($w = self::periodWhere($uid, $component, $p, $since)) {
+                $parts[] = '(' . $w[0] . ')';
+                array_push($args, ...$w[1]);
             }
-            $sql = 'SELECT COALESCE(SUM(distance_km),0) km, COALESCE(SUM(duration_s),0) s, COUNT(*) n,
-                    SUM(distance_km IS NULL) md, SUM(duration_s IS NULL) mt
-                    FROM rides WHERE user_id = ? AND bike_id = ? AND removed_at IS NULL AND ride_date >= ?';
-            $args = [$uid, $p['bike_id'], $from];
-            if ($p['to'] !== null) {
-                $sql .= ' AND ride_date < ?';
-                $args[] = $p['to'];
-            }
-            if (!self::countsIndoor($component, $p)) {
-                $sql .= " AND kind = 'OUTDOOR'";
-            }
-            $r = Db::one($sql, $args);
-            $acc['km'] += (float)$r['km'];
-            $acc['seconds'] += (int)$r['s'];
-            $acc['rides'] += (int)$r['n'];
-            $acc['missing_distance'] += (int)$r['md'];
-            $acc['missing_duration'] += (int)$r['mt'];
         }
+        if (!$parts) {
+            return $acc;
+        }
+        // one ride counts once, whichever way it reaches the part
+        $r = Db::one('SELECT COALESCE(SUM(r.distance_km),0) km, COALESCE(SUM(r.duration_s),0) s, COUNT(*) n,
+            COALESCE(SUM(r.distance_km IS NULL),0) md, COALESCE(SUM(r.duration_s IS NULL),0) mt FROM rides r WHERE ' . implode(' OR ', $parts), $args);
+        $acc['km'] = (float)$r['km'];
+        $acc['seconds'] = (int)$r['s'];
+        $acc['rides'] = (int)$r['n'];
+        $acc['missing_distance'] = (int)$r['md'];
+        $acc['missing_duration'] = (int)$r['mt'];
         return $acc;
     }
 
@@ -359,7 +474,7 @@ final class Domain
     public static function bikeKm(int $uid, int $bikeId): array
     {
         return Db::one('SELECT COALESCE(SUM(distance_km),0) km, COUNT(*) rides, COALESCE(SUM(duration_s),0) s, SUM(distance_km IS NULL) missing
-            FROM rides WHERE user_id = ? AND bike_id = ? AND removed_at IS NULL', [$uid, $bikeId]);
+            FROM rides r WHERE r.user_id = ? AND r.bike_id = ? AND ' . self::COUNTED, [$uid, $bikeId]);
     }
 
     // ------------------------------------------------------------------ consumables

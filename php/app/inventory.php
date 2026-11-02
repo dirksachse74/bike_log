@@ -101,16 +101,37 @@ final class Inventory
 
     public static function setDisposition(int $uid, int $componentId, string $disposition, string $on, ?string $note = null, ?int $ws = null): void
     {
-        if (!isset(self::dispositions()[$disposition])) {
+        $c = Domain::component($uid, $componentId);
+        if (!isset(self::dispositions()[$disposition]) && !($disposition === 'IN_USE' && Domain::isRiderGear($c['component_type']))) {
             throw new UserError('Unknown choice for what happened to the part.');
         }
-        $c = Domain::component($uid, $componentId);
         Db::insert('component_dispositions', ['user_id' => $uid, 'component_id' => $componentId, 'disposition' => $disposition,
             'previous_disposition' => $c['disposition'], 'effective_on' => $on, 'note' => $note, 'work_session_id' => $ws, 'created_at' => now_utc()]);
         $retire = in_array($disposition, ['RETIRED', 'DISCARDED', 'SOLD', 'WARRANTY_RETURN'], true);
         Db::updateOwned('components', $componentId, $uid, ['disposition' => $disposition, 'disposition_on' => $on, 'updated_at' => now_utc()]
             + ($retire ? ['status' => 'RETIRED', 'retired_on' => $on, 'retire_reason' => $note ?: (self::dispositions()[$disposition] ?? $disposition)]
                 : ['status' => 'ACTIVE', 'retired_on' => null, 'retire_reason' => null]));
+    }
+
+    /** Shoes: in use from a day (every ride counts) or put away. */
+    public static function setInUse(int $uid, int $componentId, bool $inUse, string $on): void
+    {
+        $c = Domain::component($uid, $componentId);
+        if (!Domain::isRiderGear($c['component_type'])) {
+            throw new UserError('Only gear worn by the rider (shoes) is "in use".');
+        }
+        if ($c['status'] !== 'ACTIVE') {
+            throw new UserError('This part is retired. Restore it first.');
+        }
+        if (($c['disposition'] === 'IN_USE') === $inUse) {
+            throw new UserError($inUse ? 'Already in use.' : 'Not in use.');
+        }
+        $last = Db::value('SELECT MAX(effective_on) FROM component_dispositions WHERE user_id = ? AND component_id = ?', [$uid, $componentId]);
+        if ($last && $on < $last) {
+            throw new UserError("The date must be on or after $last (the last change).");
+        }
+        self::setDisposition($uid, $componentId, $inUse ? 'IN_USE' : 'STORED', $on, $inUse ? 'in use' : 'put away');
+        ChangeLog::note($uid, 'part', $componentId, ($inUse ? 'In use from ' : 'Put away on ') . $on, null, $componentId);
     }
 
     /** Take a part off (on the date) and record what happened to it (stored, awaiting service, discarded ...). */

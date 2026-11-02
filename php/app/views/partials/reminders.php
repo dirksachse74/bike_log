@@ -15,7 +15,7 @@
       <?= status_badge($r['status']) ?>
       <strong><?= h($title) ?></strong>
       <span class="muted">· <?php if ($c): ?><a href="<?= h(url('part', ['id' => $c['id']])) ?>"><?= h($what) ?></a><?php else: ?><?= h($what) ?><?php endif; ?>
-        on <a href="<?= h(url('bike', ['id' => $b['id']])) ?>"><?= h($b['name']) ?></a></span>
+        <?php if (!empty($b['rider'])): ?>worn by you<?php else: ?>on <a href="<?= h(url('bike', ['id' => $b['id']])) ?>"><?= h($b['name']) ?></a><?php endif; ?></span>
     </div>
     <p class="why"><?= h($r['text']) ?></p>
     <?php if (!empty($r['forecast']) && $r['status'] !== 'SNOOZED'): ?><p class="muted small"><?= h($r['forecast']) ?></p><?php endif; ?>

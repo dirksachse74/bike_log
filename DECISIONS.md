@@ -665,6 +665,13 @@ you disagree. Dates are 2026-10-24 unless noted.
     follows its entity). It never re-adds default rules, so a rule the user deleted stays deleted. Fresh
     start = copy, delete, default rules. "Indoor" is the desktop app's DIRECT_DRIVE_TRAINER usage profile
     (wheels, cassette, tires, rotors, pads excluded); ride start times were already there.
+    Round 5a (migration 006): a part's km come from "usage periods" (Domain::usagePeriods): fitted on a bike
+    (minus rides that set that wheel position to something else in ride_equipment), worn by the rider
+    (shoes with disposition IN_USE, as allocation.py's rider index), or picked for a ride; parts hanging on
+    another part inherit its periods. All periods are OR-ed into one query, so a ride counts once. A ride
+    left out of the km (rides.excluded_reason) counts nowhere (Domain::COUNTED). CSV import identity is
+    (source_kind, source_ref); a ride imported before is never touched again (local edits win, removed
+    stays removed), a simplification of imports.py which updates source values under local overrides.
 
 ## Repository
 27. Pushed only to the feature branch `claude/project-thread-6y3mmh` of the private repository. Demo

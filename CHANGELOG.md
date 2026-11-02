@@ -40,6 +40,11 @@ UPDATING.md → "Making a release". New entries go under "Unreleased" as work is
   (password and the word RESET; a copy is stored first). Diagnostics (version, database updates, simple
   data checks). Indoor rides now follow the desktop app's direct-drive trainer: the cassette does not wear
   either.
+  Round 5a: leave a ride out of the km (with a reason; it stays in the list) and count it again; pick
+  other wheels for one ride (race wheels: the km go to them and the tires on them); tick several rides
+  to assign a bike, leave out, count again, remove or restore; import rides from a CSV file (own columns
+  or Strava's "Download your data" activities.csv; check first, the same file again adds nothing, your
+  edits stay); shoes "in use" count every ride on any bike, and so do the cleats on them.
 - **Bike Log on your own server with Google sign-in** (Dirk 2026-11-02). `--server` mode: only the Google
   accounts you list can sign in, HTTPS through Caddy, a backup every day while it runs, Strava connects
   through your own domain. Docker setup with a one-time install script and optional nightly updates:

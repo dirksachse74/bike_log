@@ -23,7 +23,7 @@ function page_rides(): void
     foreach (array_unique(array_filter(array_column($rides, 'bike_id'))) as $b) {
         $change[$b] = Domain::changeDays($uid, (int)$b);
     }
-    $bikes = Db::all('SELECT id, name FROM bikes WHERE user_id = ? ORDER BY name', [$uid]);
+    $bikes = Db::all('SELECT id, name, status FROM bikes WHERE user_id = ? ORDER BY name', [$uid]);
     View::render('rides/list', compact('rides', 'bikes', 'bikeId', 'removed', 'page', 'count', 'per', 'sum', 'change'), 'Rides', 'rides');
 }
 
@@ -96,4 +96,61 @@ function page_ride_status(): void
         }
     }
     redirect('rides');
+}
+
+/** One ride: leave out of the km / count again, wheels used on this ride. */
+function page_ride_do(): void
+{
+    $uid = (int)require_user()['id'];
+    $ride = Rides::get($uid, get_int('id'));
+    if (Request::isPost()) {
+        match (post('do')) {
+            'exclude' => Rides::exclude($uid, (int)$ride['id'], post('reason')),
+            'include' => Rides::include($uid, (int)$ride['id']),
+            'equip' => Rides::setEquipment($uid, (int)$ride['id'], post('slot'), post('part')),
+            default => throw new UserError('Unknown action.'),
+        };
+        Session::flash('ok', match (post('do')) {
+            'exclude' => 'This ride no longer counts for any part. It stays in the list.',
+            'include' => 'This ride counts again.',
+            default => 'Saved. The km of the parts follow.',
+        });
+    }
+    redirect('ride', ['id' => $ride['id']]);
+}
+
+function page_rides_bulk(): void
+{
+    $uid = (int)require_user()['id'];
+    if (Request::isPost()) {
+        $do = post('do');
+        $n = Rides::bulk($uid, post_list('ids'), $do, (int)post('bike_id') ?: null, post('reason'));
+        Session::flash('ok', "$n ride" . ($n === 1 ? '' : 's') . ' changed.');
+    }
+    $back = [];
+    foreach (['bike', 'page', 'show'] as $k) {
+        if (post("back_$k") !== '') {
+            $back[$k] = post("back_$k");
+        }
+    }
+    redirect('rides', $back);
+}
+
+function page_ride_import(): void
+{
+    $uid = (int)require_user()['id'];
+    $result = null;
+    if (Request::isPost()) {
+        $f = $_FILES['file'] ?? null;
+        if (!$f || !is_string($f['tmp_name'] ?? null) || $f['error'] !== UPLOAD_ERR_OK) {
+            throw new UserError('Choose a CSV file.');
+        }
+        $result = Rides::importCsv($uid, (string)file_get_contents($f['tmp_name']), post('do') !== 'import');
+        $result['file'] = mb_substr(basename((string)$f['name']), 0, 120);
+        if (!$result['dry_run']) {
+            Session::flash('ok', $result['counts']['CREATED'] . ' rides added.');
+        }
+    }
+    View::render('rides/import', ['result' => $result, 'bikes' => array_column(Db::all('SELECT name FROM bikes WHERE user_id = ? ORDER BY name', [$uid]), 'name')],
+        'Import rides (CSV)', 'rides');
 }
