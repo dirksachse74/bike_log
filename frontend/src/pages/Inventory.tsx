@@ -871,8 +871,95 @@ interface ComponentDetail extends ComponentSummary {
   chain: (ChainRow & { cycles: { cycle: number; waxed_on: string; km: number; current: boolean }[] }) | null
   frame_history: FrameHistory | null
   spokes: SpokeInfo | null
+  tire_tube: Record<'TIRE' | 'INNER_TUBE', { current: MountedRow | null; history: MountedRow[] }> | null
   service_orders: ServiceOrder[]
   incident_choices: IncidentPick[]
+}
+
+interface MountedRow {
+  component_id: number
+  label: string
+  installed_at: string
+  removed_at: string | null
+  km_here: number
+  km_total: number
+  punctures: number
+  ended: string | null
+  current: boolean
+}
+
+// A wheel's tire and inner tube (Dirk 2026-11-02): the one on it now with its own km since it went in, and
+// every one that was on this wheel before, with its km here, its punctures and how it came off.
+function TireTubeCard({ data, onInstall, onReplace }: { data: NonNullable<ComponentDetail['tire_tube']>; onInstall: (kind: 'tire' | 'tube') => void; onReplace: (id: number) => void }) {
+  const kinds = [
+    ['INNER_TUBE', 'Inner tube', 'tube'],
+    ['TIRE', 'Tire', 'tire'],
+  ] as const
+  return (
+    <Card title="Tire and inner tube" className="span-2 tire-tube">
+      {kinds.map(([code, name, kind]) => {
+        const k = data[code]
+        const cur = k.current
+        const before = k.history.filter((h) => !h.current)
+        return (
+          <div key={code} className="tt-kind" data-kind={kind}>
+            <h3 className="small muted">{name}</h3>
+            {cur ? (
+              <p className="tt-current">
+                <Link to={`/inventory/${cur.component_id}`}>{cur.label}</Link> · in since {when(cur.installed_at)} · <strong>{km(cur.km_here, 0)}</strong> on this wheel
+                {cur.km_total > cur.km_here + 0.5 && <span className="muted"> ({km(cur.km_total, 0)} in total)</span>}
+                {cur.punctures > 0 && <span className="muted"> · {cur.punctures === 1 ? '1 puncture' : `${cur.punctures} punctures`}</span>}{' '}
+                <button className="btn btn-small" onClick={() => onReplace(cur.component_id)}>
+                  Replace {kind}
+                </button>
+              </p>
+            ) : (
+              <p className="tt-current">
+                <span className="muted">No {kind} recorded on this wheel.</span>{' '}
+                <button className="btn btn-small" onClick={() => onInstall(kind)}>
+                  Install {kind === 'tube' ? 'an inner tube' : 'a tire'}
+                </button>
+              </p>
+            )}
+            {before.length > 0 && (
+              <details className="tt-history">
+                <summary className="small">
+                  Earlier {kind === 'tube' ? 'tubes' : 'tires'} on this wheel ({before.length})
+                </summary>
+                <table className="table">
+                  <thead>
+                    <tr>
+                      <th>{name}</th>
+                      <th>On</th>
+                      <th>Off</th>
+                      <th className="num">Km here</th>
+                      <th className="num">Punctures</th>
+                      <th>Came off</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {before.map((h, i) => (
+                      <tr key={`${h.component_id}-${i}`}>
+                        <td>
+                          <Link to={`/inventory/${h.component_id}`}>{h.label}</Link>
+                        </td>
+                        <td>{when(h.installed_at)}</td>
+                        <td>{h.removed_at ? when(h.removed_at) : '–'}</td>
+                        <td className="num">{km(h.km_here, 0)}</td>
+                        <td className="num">{h.punctures}</td>
+                        <td className="small">{h.ended ?? '–'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </details>
+            )}
+          </div>
+        )
+      })}
+      <p className="small muted">Each tire and tube counts the rides from the day it went in until it comes off; the wheel keeps its own km.</p>
+    </Card>
+  )
 }
 
 interface FrameHistory {
@@ -1262,6 +1349,7 @@ export function ComponentDetailPage() {
           </button>
         </div>
       </Card>
+      {data.tire_tube && <TireTubeCard data={data.tire_tube} onInstall={(k) => setSheet(k)} onReplace={(id) => setSheet({ change: id })} />}
       {data.spokes && <SpokesCard wheelId={data.id} label={data.label} info={data.spokes} onChanged={reload} />}
       {data.chain && <ChainCard comp={data} chain={data.chain} onChanged={reload} />}
       {data.parts.length > 0 && (

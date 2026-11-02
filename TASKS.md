@@ -33,6 +33,7 @@ Status key: ✅ done and tested · 🟡 done, not verified where it matters · �
 
 ## P3 Rides and usage
 - ✅ Manual rides add/edit/exclude/restore, exactly-once totals, starting mileage, flags, ledger.
+- ✅ Wheel page: Tire and inner tube card (current + history with own km, DECISIONS 127).
 - ✅ Install an inner tube (spare, from stock, new, used); tubes on recorded wheels count km (DECISIONS 125).
 - ✅ Remove / restore several rides at once (tick rides → Remove rides, with km preview; DECISIONS 124).
 - 💡 Possible-duplicate merge helper (today: flagged only).

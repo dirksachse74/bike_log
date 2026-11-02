@@ -166,6 +166,8 @@ def draw_component(session: Session, consumable_id: int, *, on: str, label: str 
 
 
 def _stock_label(session: Session, c: Consumable) -> str:
+    if not c.product_id and c.name:
+        return c.name          # "Conti Race 28"; a second one gets "(2)" (create_component), DECISIONS 127
     base = COMPONENT_TYPES[c.component_type].name
     if c.product_id:
         p = session.get(Product, c.product_id)

@@ -1234,6 +1234,14 @@ async function bikeTab(page, name) {
     await page.locator('.toast').filter({ hasText: 'installed from stock: Rear wheel · TT set rear wheel' }).waitFor()
     const tube = await page.evaluate(async () => (await (await fetch('api/components')).json()).find((c) => c.component_type === 'INNER_TUBE' && /TT set rear wheel/.test(c.location.text)))
     check('Install an inner tube from stock: the tube is its own part on the wheel, starting at 0 km', !!tube && tube.usage.total_km === 0 && /^Conti Race 28/.test(tube.label), JSON.stringify(tube && { label: tube.label, km: tube.usage.total_km }))
+    // the wheel page shows the tube on it now, with its own km, and Replace tube
+    await page.goto(BASE + `#/inventory/${(await comp('TT set rear wheel')).id}`)
+    const tt = page.locator('.card.tire-tube .tt-kind[data-kind=tube] .tt-current')
+    await tt.waitFor()
+    const ttText = await tt.innerText()
+    check('wheel page: Tire and inner tube shows the current tube, its install date and its own km, with Replace tube',
+      ttText.includes(tube.label) && /in since/.test(ttText) && /on this wheel/.test(ttText) && (await tt.getByRole('button', { name: 'Replace tube' }).count()) === 1, ttText)
+    await page.screenshot({ path: path.join(OUT, '15c-wheel-tire-tube.png') })
   }
 
   // Maintenance log: edit, delete (hidden, restorable) and restore an entry

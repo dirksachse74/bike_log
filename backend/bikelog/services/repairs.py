@@ -166,8 +166,7 @@ def replace_at_position(session: Session, *, bike_id: int | None, wheel: str, da
         if line.component_type != ctype:
             raise DomainError(f"{line.name} is not stock of {what}s")
         if w is not None:      # a recorded wheel: the tube or tire gets its own record and counts km from here
-            comp = stock.draw_component(session, line.id, on=at, work_session_id=work_session_id,
-                                        label=None if line.product_id else line.name)
+            comp = stock.draw_component(session, line.id, on=at, work_session_id=work_session_id)
             inv.install(session, comp.id, at=put_in, parent_component_id=w.id, slot=SLOT_OF[damage],
                         work_session_id=work_session_id)
             left = stock.level(session, line)["qty"]

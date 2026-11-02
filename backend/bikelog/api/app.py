@@ -43,6 +43,7 @@ from bikelog.services import demo, diagnostics, groupsets, imports, journal, pro
 from bikelog.services import worksessions as ws_svc
 from bikelog.services import picklists
 from bikelog.services import spokes as spokes_svc
+from bikelog.services import wheels as wheels_svc
 from bikelog.services import incidents as incidents_svc
 from bikelog.services import repairs as repairs_svc
 from bikelog.services import inventory as inv
@@ -860,6 +861,7 @@ def create_app(factory: sessionmaker[Session], paths: DataPaths, *, token: str |
                           if c.component_type == "CHAIN" else None),
                 "frame_history": frames_svc.frame_history(s, c) if c.component_type in ("FRAME", "FORK") else None,
                 "spokes": m.spoke_info(s, c) if c.component_type in ("FRONT_WHEEL", "REAR_WHEEL") else None,
+                "tire_tube": wheels_svc.tire_and_tube(s, c) if c.component_type in ("FRONT_WHEEL", "REAR_WHEEL") else None,
                 "service_orders": orders_svc.for_component(s, c),
                 "incident_choices": orders_svc.incident_choices(s, c) if c.status == "ACTIVE" else [],
                 "suggested_outcome": COMPONENT_TYPES[c.component_type].removed_default}
