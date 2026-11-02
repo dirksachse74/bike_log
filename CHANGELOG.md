@@ -7,6 +7,8 @@ UPDATING.md → "Making a release". New entries go under "Unreleased" as work is
 
 ## Unreleased
 
+## 0.3.0 (2026-11-02)
+
 ### Changed
 - Release workflow: a test build (Publish unticked) works on an already released version; a published
   release also marks the version (tag) in the code repository (Dirk 2026-11-02, first run).
