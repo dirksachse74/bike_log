@@ -382,7 +382,9 @@ def list_rides(session: Session, *, bike_id: int | None = None, include_excluded
                flagged_only: bool = False, limit: int = 200, offset: int = 0, view: str = "all",
                unassigned: bool = False) -> list[dict]:
     """view: "active" (counted rides), "removed" (removed by you or deleted at the source) or "all"."""
-    q = select(Ride)
+    # rides of a bike deleted for good are listed nowhere (DECISIONS 128)
+    q = select(Ride).where(Ride.bike_id.is_(None) | Ride.bike_id.not_in(
+        select(Bike.id).where(Bike.deleted_at.is_not(None))))
     if bike_id is not None:
         q = q.where(Ride.bike_id == bike_id)
     if unassigned:

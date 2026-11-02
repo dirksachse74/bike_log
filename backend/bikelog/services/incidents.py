@@ -299,6 +299,9 @@ def all_incidents(session: Session, *, bike_id: int | None = None, component_id:
         q = q.where(JournalEntry.incident_type == incident_type)
     if open_only:
         q = q.where(JournalEntry.resolved_on.is_(None))
+    # not on a bike deleted for good (DECISIONS 128)
+    q = q.where(JournalEntry.bike_id.is_(None) | JournalEntry.bike_id.not_in(
+        select(Bike.id).where(Bike.deleted_at.is_not(None))))
     groups = set(session.scalars(q))
     if not groups:
         return []

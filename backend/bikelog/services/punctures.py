@@ -92,11 +92,14 @@ def _collect(session: Session) -> list[dict]:
                                                         JournalEntry.voided_at.is_(None))
                              .order_by(JournalEntry.id)):
         groups[e.incident_group or e.uuid].append(e)
-    bikes = dict(session.execute(select(Bike.id, Bike.name)).all())
+    bikes = dict(session.execute(select(Bike.id, Bike.name).where(Bike.deleted_at.is_(None))).all())
     out = []
     for group, entries in groups.items():
         first = entries[0]
         ride = session.get(Ride, first.ride_id) if first.ride_id else None
+        bike_of = ride.bike_id if ride else first.bike_id
+        if bike_of is not None and bike_of not in bikes:
+            continue                       # a bike deleted for good (DECISIONS 128)
         day = ride.ride_date if ride else first.entry_on
         mounted: dict[str, dict[str, Component]] = defaultdict(dict)   # wheel → TIRE / INNER_TUBE that day
         # what this flat's fix put in (the same day) was not the punctured tube or tire

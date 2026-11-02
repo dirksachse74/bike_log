@@ -31,9 +31,18 @@ def test_quick_add_needs_only_type_and_label(session):
 def test_three_individually_labelled_chains(session):
     for label in ("Chain A", "Chain B", "Chain C"):
         part(session, "CHAIN", label)
-    # a second identical part keeps the typed name with a number (DECISIONS 105)
-    assert part(session, "CHAIN", "Chain A").label == "Chain A (2)"
-    assert part(session, "CHAIN", "Chain A").label == "Chain A (3)"
+    # a second identical chain keeps the typed name with a letter (DECISIONS 105, 129); other parts a number
+    assert part(session, "CHAIN", "Chain A").label == "Chain A (B)"
+    assert part(session, "CHAIN", "Chain A").label == "Chain A (C)"
+    assert part(session, "SADDLE", "Arione").label == "Arione"
+    assert part(session, "SADDLE", "Arione").label == "Arione (2)"
+
+
+def test_tires_and_tubes_keep_their_product_name_without_a_number(session):
+    """Dirk 2026-11-02: no "(2)", "(3)" on tires and inner tubes; several may share the name."""
+    a, b = part(session, "TIRE", "GP5000 28"), part(session, "TIRE", "GP5000 28")
+    t1, t2 = part(session, "INNER_TUBE", "Conti Race 28"), part(session, "INNER_TUBE", "Conti Race 28")
+    assert a.id != b.id and a.label == b.label == "GP5000 28" and t1.label == t2.label == "Conti Race 28"
 
 
 def test_install_remove_reinstall_preserves_lifetime_across_bikes(session):
@@ -61,7 +70,7 @@ def test_replace_and_replace_with_same_product(session):
     ride(session, b, "2026-02-01", 80)
     res = inv.replace(session, tire.id, at="2026-03-01", same_product=True)
     new = inv.get_component(session, res["new_component_id"])
-    assert new.product_id == prod.id and new.id != tire.id and new.label == "Rear tire (2)"
+    assert new.product_id == prod.id and new.id != tire.id and new.label == "Rear tire"   # a tire: same name
     ride(session, b, "2026-03-05", 40)
     assert km(session, tire) == 80 and km(session, new) == 40 and km(session, rear) == 120
     assert inv.location(session, tire)["state"] == "STORED"

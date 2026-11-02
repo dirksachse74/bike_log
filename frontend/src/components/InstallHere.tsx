@@ -155,10 +155,10 @@ export default function InstallHere({ componentType, bikeId, under, prefer, part
                     </label>
                     {t.occupied_by && (
                       <span className="small">
-                        has <strong>{t.occupied_by}</strong>{' '}
+                        already has <strong>{t.occupied_by}</strong>. To put a different {noun} there, replace that one:{' '}
                         {onChange && t.occupied_id && (
                           <button type="button" className="btn btn-small" onClick={() => onChange(t.occupied_id!)}>
-                            Replace it
+                            Replace {t.occupied_by}
                           </button>
                         )}
                       </span>

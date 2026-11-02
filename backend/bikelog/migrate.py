@@ -46,7 +46,19 @@ def upgrade_database(engine: Engine, paths: DataPaths) -> dict:
     backup = backup_database(paths, f"pre-upgrade-{current or 'empty'}-to-{head}") if db_existed else None
     log.info("Migrating database from %s to %s", current, head)
     cfg = alembic_config()
-    with engine.begin() as conn:
-        cfg.attributes["connection"] = conn
-        command.upgrade(cfg, "head")
+    with engine.connect() as conn:
+        # Foreign keys off while migrating (SQLite's documented way to rebuild a table that others point to,
+        # e.g. 0020); every reference is checked before the commit, so a broken one stops the upgrade.
+        raw = conn.connection.dbapi_connection          # outside any transaction, or SQLite ignores it
+        raw.execute("PRAGMA foreign_keys = OFF")
+        try:
+            with conn.begin():
+                cfg.attributes["connection"] = conn
+                command.upgrade(cfg, "head")
+                bad = conn.exec_driver_sql("PRAGMA foreign_key_check").fetchall()
+                if bad:
+                    raise RuntimeError(f"Migration left broken references ({len(bad)}), first: {bad[0]}; "
+                                       "nothing was changed")
+        finally:
+            raw.execute("PRAGMA foreign_keys = ON")
     return {"from": current, "to": head, "backup": backup.name if backup else None}

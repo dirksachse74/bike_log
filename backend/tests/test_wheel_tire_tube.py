@@ -32,3 +32,20 @@ def test_wheel_shows_current_tube_and_tube_history_with_own_km(session):
     assert prev["label"] == "Conti old" and prev["km_here"] == 300 and prev["punctures"] == 1 and not prev["current"]
     assert prev["removed_at"] and "discarded" in (prev["ended"] or "")
     assert wheels.tire_and_tube(session, rw)["TIRE"] == {"current": None, "history": []}
+
+
+def test_a_tube_with_a_logged_puncture_is_flagged_defect_until_fixed(session):
+    b = bike(session, name="Synapse")
+    fw = part(session, "FRONT_WHEEL", "Zipp front")
+    inv.install(session, fw.id, at="2026-08-01", bike_id=b.id)
+    tube = part(session, "INNER_TUBE", "Conti front")
+    inv.install(session, tube.id, at="2026-09-01", parent_component_id=fw.id)
+    r = ride(session, b, "2026-09-05", 40)
+    assert wheels.tire_and_tube(session, fw)["INNER_TUBE"]["current"]["defect"] is None
+    g = inc.log(session, r.id, incident_type="FLAT",
+                affected=[o["key"] for o in inc.choices(session, r, "FLAT") if o["label"] == "Front tube: Conti front"])
+    cur = wheels.tire_and_tube(session, fw)["INNER_TUBE"]["current"]
+    assert cur["defect"] and cur["defect"]["since"] == "2026-09-05" and cur["punctures"] == 1
+    e = repairs.fix_options(session, g)["parts"][0]
+    repairs.fix(session, g, at="2026-09-05", parts=[{"entry_id": e["entry_id"], "action": "REPAIRED"}])
+    assert wheels.tire_and_tube(session, fw)["INNER_TUBE"]["current"]["defect"] is None    # patched

@@ -44,6 +44,7 @@ from bikelog.services import worksessions as ws_svc
 from bikelog.services import picklists
 from bikelog.services import spokes as spokes_svc
 from bikelog.services import wheels as wheels_svc
+from bikelog.services import bike_purge
 from bikelog.services import incidents as incidents_svc
 from bikelog.services import repairs as repairs_svc
 from bikelog.services import inventory as inv
@@ -330,6 +331,11 @@ class StravaSyncIn(Body):
 class AssignBikeIn(Body):
     ride_ids: list[int]
     bike_id: int | None = None
+
+
+class BikePurgeIn(Body):
+    confirm_name: str
+    retire_parts: bool = False
 
 
 class RideIdsIn(Body):
@@ -705,7 +711,9 @@ def create_app(factory: sessionmaker[Session], paths: DataPaths, *, token: str |
 
     @app.get("/api/overview")
     def overview(s: Session = Depends(db)):
-        bikes = [_bike_summary(s, b) for b in s.scalars(select(Bike).order_by(Bike.status, Bike.name))]
+        # retired bikes are not on the overview (Dirk 2026-11-02); Bikes → Retired lists them
+        bikes = [_bike_summary(s, b) for b in s.scalars(select(Bike).where(Bike.status != "RETIRED")
+                                                       .order_by(Bike.name))]
         recent = rides_svc.list_rides(s, limit=8)
         flagged = [r for r in rides_svc.list_rides(s, limit=500, flagged_only=True) if r["inclusion"] == "INCLUDED"]
         return {"bikes": bikes, "queue": m.queue(s), "chains": m.chain_overview(s), "brakes": m.brake_overview(s),
@@ -719,7 +727,8 @@ def create_app(factory: sessionmaker[Session], paths: DataPaths, *, token: str |
     @app.get("/api/bikes")
     def bikes(s: Session = Depends(db)):
         attribution = costs_svc.bike_attribution(s)
-        return [_bike_summary(s, b, attribution) for b in s.scalars(select(Bike).order_by(Bike.status, Bike.name))]
+        return [_bike_summary(s, b, attribution) for b in s.scalars(select(Bike).where(Bike.deleted_at.is_(None))
+                                                                    .order_by(Bike.status, Bike.name))]
 
     @app.post("/api/bikes", status_code=201)
     def create_bike(body: BikeIn, s: Session = Depends(db), op_id: str | None = OpId):
@@ -786,6 +795,20 @@ def create_app(factory: sessionmaker[Session], paths: DataPaths, *, token: str |
     @app.delete("/api/bikes/{bike_id}")
     def delete_bike(bike_id: int, s: Session = Depends(db)):
         return {"deleted": bike_id, "name": inv.delete_bike(s, bike_id)}
+
+    # delete a bike WITH its history (Dirk 2026-11-02, DECISIONS 128): a kept backup first
+    @app.get("/api/bikes/{bike_id}/purge-preview")
+    def bike_purge_preview(bike_id: int, s: Session = Depends(db)):
+        return bike_purge.preview(s, bike_id)
+
+    @app.post("/api/bikes/{bike_id}/purge")
+    def bike_purge_now(bike_id: int, body: BikePurgeIn, s: Session = Depends(db)):
+        inv.get_bike(s, bike_id)
+        if (body.confirm_name or "").strip().lower() != inv.get_bike(s, bike_id).name.strip().lower():
+            raise DomainError(f'Type the bike\'s name "{inv.get_bike(s, bike_id).name}" to delete it for good.')
+        dest = backup.backup_database(paths, f"{backup.KEPT_MARK}bike-delete")
+        res = bike_purge.purge(s, bike_id, confirm_name=body.confirm_name, retire_parts=body.retire_parts)
+        return {**res, "backup": dest.name if dest else None}
 
     @app.post("/api/bikes/{bike_id}/starting-usage")
     def bike_start(bike_id: int, body: StartingIn, s: Session = Depends(db)):
