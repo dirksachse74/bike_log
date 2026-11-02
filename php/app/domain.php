@@ -314,6 +314,8 @@ final class Domain
             throw new UserError('The removal date must be after the install date (' . $i['installed_on'] . ').');
         }
         Db::run('UPDATE installations SET removed_on = ?, removal_reason = ? WHERE id = ?', [$date, $reason, $installationId]);
+        ChangeLog::note($uid, 'installation', $installationId, 'Taken off on ' . $date . ($reason ? ": $reason" : ''),
+            $i['bike_id'] ? (int)$i['bike_id'] : null, (int)$i['component_id']);
     }
 
     /** A wrong record: kept for the history, left out of all totals. */
@@ -327,6 +329,8 @@ final class Domain
         if ($n !== 1) {
             throw new NotFound('Record not found.');
         }
+        $i = Db::one('SELECT bike_id, component_id FROM installations WHERE id = ?', [$installationId]);
+        ChangeLog::note($uid, 'installation', $installationId, "Fitting record voided: $reason", $i['bike_id'] ? (int)$i['bike_id'] : null, (int)$i['component_id']);
     }
 
     public static function retire(int $uid, int $componentId, string $date, ?string $reason): void
@@ -422,6 +426,9 @@ final class Domain
                 throw new NotFound('Entry not found.');
             }
             Db::run('UPDATE consumable_txns SET voided_at = ? WHERE maintenance_event_id = ? AND user_id = ?', [now_utc(), $eventId, $uid]);
+            $e = Db::one('SELECT bike_id, component_id, action_code FROM maintenance_events WHERE id = ?', [$eventId]);
+            ChangeLog::note($uid, 'work', $eventId, Catalog::actionName($e['action_code']) . " voided: $reason",
+                $e['bike_id'] ? (int)$e['bike_id'] : null, $e['component_id'] ? (int)$e['component_id'] : null);
         });
     }
 }

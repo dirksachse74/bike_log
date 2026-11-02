@@ -73,6 +73,7 @@ final class Inventory
             'mark' => $f['mark'] ?? null, 'prior_usage' => $f['prior_usage'] ?? 'NEW', 'starting_km' => $f['starting_km'] ?? null,
             'purchase_date' => $f['purchase_date'] ?? null, 'price_cents' => $f['price_cents'] ?? null, 'shop' => $f['shop'] ?? null,
             'notes' => $f['notes'] ?? null, 'tire_setup' => $f['tire_setup'] ?? null, 'work_session_id' => $f['work_session_id'] ?? null,
+            'serial_number' => $f['serial_number'] ?? null, 'storage_location' => $f['storage_location'] ?? null,
             'created_at' => $now, 'updated_at' => $now,
         ]);
     }
@@ -181,6 +182,7 @@ final class Inventory
                 return_session_id = NULL, event_id = NULL, replacement_id = NULL WHERE user_id = ? AND return_session_id = ?", [$uid, $wsId]);
             Db::run('UPDATE purchase_bundles SET voided_at = ?, void_reason = ? WHERE user_id = ? AND work_session_id = ? AND voided_at IS NULL', [$now, 'undone', $uid, $wsId]);
             Db::run('UPDATE work_sessions SET undone_at = ? WHERE id = ?', [$now, $wsId]);
+            ChangeLog::note($uid, 'data', $wsId, 'Undone: ' . $ws['title'] . ($created ? ' (' . count($created) . ' parts it added are gone)' : ''));
         });
     }
 

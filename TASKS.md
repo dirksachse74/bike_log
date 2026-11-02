@@ -12,8 +12,9 @@ Status key: ✅ done and tested · 🟡 done, not verified where it matters · �
       (quick link).
 - [x] Round 3b: purchase bundles and costs, repairs (send away), service orders, part life report and
       forecast.
-- [ ] Round 4: product records and JSON product import, pick lists (shops), fresh start, per-user backup and
-      restore (JSON import), diagnostics and change log, ride times (not only dates), usage profiles.
+- [x] Round 4a: product records and JSON product import (templates, instructions), pick list SHOP, change log.
+- [ ] Round 4b: fresh start, per-user backup and restore (JSON import), diagnostics, indoor setups (usage
+      profiles), ride start times.
 - [ ] Try it on real shared hosting (Dirk): install page, SMTP, HTTPS.
 
 ## P1 Launch and persistence

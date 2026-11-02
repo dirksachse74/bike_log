@@ -25,6 +25,8 @@ final class Routes
             'incident' => 'page_incident', 'incident_fix' => 'page_incident_fix', 'punctures' => 'page_punctures', 'spoke' => 'page_spoke', 'journal' => 'page_journal', 'chains' => 'page_chains', 'chain_do' => 'page_chain_do',
             'costs' => 'page_costs', 'bundles' => 'page_bundles', 'bundle_do' => 'page_bundle_do', 'repair_send' => 'page_repair_send',
             'repair_back' => 'page_repair_back', 'repairs' => 'page_repairs', 'part_life' => 'page_part_life',
+            'products' => 'page_products', 'product' => 'page_product', 'product_edit' => 'page_product_edit', 'product_import' => 'page_product_import',
+            'product_template' => 'page_product_template', 'lists' => 'page_lists', 'changes' => 'page_changes',
             'account' => 'page_account', 'export' => 'page_export',
             // admin
             'admin' => 'page_admin', 'admin_users' => 'page_admin_users', 'admin_user' => 'page_admin_user', 'admin_invite' => 'page_admin_invite',

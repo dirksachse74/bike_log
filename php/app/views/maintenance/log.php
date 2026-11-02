@@ -15,7 +15,7 @@
   <details><summary>Cost, shop, notes</summary>
     <div class="row">
       <?= field('cost', 'Cost', old('cost'), 'text', ['inputmode' => 'decimal']) ?>
-      <?= field('shop', 'Done by shop', old('shop')) ?>
+      <?= field('shop', 'Done by shop', old('shop'), 'text', ['list' => 'shops']) ?>
     </div>
     <?= field('notes', 'Notes', old('notes'), 'textarea') ?>
   </details>

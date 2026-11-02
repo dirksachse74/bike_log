@@ -41,7 +41,7 @@
     <div class="row">
       <?= field('purchase_date', 'Bought on', old('purchase_date', (string)$c['purchase_date']), 'date') ?>
       <?= field('price', 'Price', old('price', money($c['price_cents'] === null ? null : (int)$c['price_cents'])), 'text', ['inputmode' => 'decimal']) ?>
-      <?= field('shop', 'Shop', old('shop', (string)$c['shop'])) ?>
+      <?= field('shop', 'Shop', old('shop', (string)$c['shop']), 'text', ['list' => 'shops']) ?>
     </div>
     <div class="row">
       <?= field('warranty_until', 'Warranty until', old('warranty_until', (string)($c['warranty_until'] ?? '')), 'date') ?>

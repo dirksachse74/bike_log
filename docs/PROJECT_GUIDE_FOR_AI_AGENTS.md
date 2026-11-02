@@ -28,7 +28,8 @@ MariaDB (CI: `.github/workflows/php-tests.yml`, MySQL 8, PHP 8.1 and 8.3). Domai
 (installations, km), `reminders.php`, `inventory.php` (dispositions, work sessions/undo, frame and wheels,
 counted stock, spares, shopping list), `groupsets.php`, `incidents.php` (journal, incidents and fixes,
 punctures, spokes), `chains.php` (rotation, wax applications), `money.php` (costs, bundles,
-service orders, part life). A multi-step change (groupset import, fix) runs inside one work session so it can be
+service orders, part life), `products.php` (products, JSON product import, templates), `records.php`
+(shop pick list, change log; hooked into `Db::insert`/`Db::updateOwned`). A multi-step change (groupset import, fix) runs inside one work session so it can be
 undone as a whole.
 
 ### Product principles (from Dirk's brief; do not break them)

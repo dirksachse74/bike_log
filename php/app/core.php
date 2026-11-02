@@ -80,6 +80,12 @@ final class Db
         return $v === false ? null : $v;
     }
 
+    /** Set in bootstrap: fn(table, row, userId): row (shop names from the pick list) and
+     *  fn(table, id, userId, row, ?oldRow) (change log). Raw Db::run() statements bypass both. */
+    public static ?Closure $beforeWrite = null;
+    public static ?Closure $afterWrite = null;
+    public static array $trackedTables = [];
+
     public static function insert(string $table, array $row): int
     {
         $cols = array_keys($row);
@@ -88,10 +94,17 @@ final class Db
                 throw new InvalidArgumentException('bad column');
             }
         }
+        if (self::$beforeWrite && isset($row['user_id'])) {
+            $row = (self::$beforeWrite)($table, $row, (int)$row['user_id']);
+        }
         $sql = sprintf('INSERT INTO %s (%s) VALUES (%s)', $table, implode(',', $cols),
             implode(',', array_fill(0, count($cols), '?')));
         self::run($sql, array_values($row));
-        return (int)self::pdo()->lastInsertId();
+        $id = (int)self::pdo()->lastInsertId();
+        if (self::$afterWrite && isset($row['user_id'])) {
+            (self::$afterWrite)($table, $id, (int)$row['user_id'], $row, null);
+        }
+        return $id;
     }
 
     /** UPDATE ... WHERE id = ? AND user_id = ? (owner check built in). */
@@ -104,10 +117,18 @@ final class Db
             }
             $sets[] = "$c = ?";
         }
+        if (self::$beforeWrite) {
+            $row = (self::$beforeWrite)($table, $row, $userId);
+        }
+        $old = self::$afterWrite && in_array($table, self::$trackedTables, true) ? self::one("SELECT * FROM $table WHERE id = ? AND user_id = ?", [$id, $userId]) : null;
         $params = array_values($row);
         $params[] = $id;
         $params[] = $userId;
-        return self::run(sprintf('UPDATE %s SET %s WHERE id = ? AND user_id = ?', $table, implode(', ', $sets)), $params)->rowCount();
+        $n = self::run(sprintf('UPDATE %s SET %s WHERE id = ? AND user_id = ?', $table, implode(', ', $sets)), $params)->rowCount();
+        if ($old !== null) {
+            (self::$afterWrite)($table, $id, $userId, $row, $old);
+        }
+        return $n;
     }
 
     public static function tx(callable $fn): mixed

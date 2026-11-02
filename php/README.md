@@ -103,6 +103,7 @@ php/
                    catalog.php + catalog.json, domain.php (installations, mileage), reminders.php,
                    inventory.php (spares, stock, work sessions), groupsets.php, incidents.php (journal,
                    incidents, fixes, punctures, spokes), chains.php (rotation, wax table), money.php (costs, bundles, repairs, part life),
+                   products.php (products, JSON import), records.php (shop list, change log),
                    pages/*.php (one function per route), routes.php, views/ (templates)
   sql/migrations/  NNN_name.sql, applied in order (install page / Admin → System)
   config/          config.sample.php (copy to config.php, never commit it)
@@ -133,6 +134,8 @@ Done in round 3a: chain rotation and the wax cycle (liquid top-up window, wet ri
 
 Done in round 3b: purchase bundles and costs, repairs (send a part away), part life report and forecast.
 
-Still to port: product records and JSON
-product import, pick lists (shops), fresh start and per-user backup/restore, diagnostics and change log.
+Done in round 4a: products and the JSON product import (same files as the desktop app), the Shops list,
+the change log.
+
+Still to port: fresh start and per-user backup/restore, diagnostics, indoor setups (usage profiles).
 Strava stays out for now.
