@@ -166,7 +166,7 @@ to the whole path of parent slots, so everything below an excluded wheelset coun
 nothing. Starting mileage before its effective date covers earlier rides. Unknown prior use shows "≥".
 
 **Reminders (`maintenance.py`).** Rules per type with overrides per part. Defaults: hot wax every 500 km;
-liquid-wax top-up once in the 250–300 km window after hot wax (the hot wax is then due 200 km after the top-up, DECISIONS 133); chain wear check
+liquid-wax top-up once in the 250–300 km window after hot wax (the hot wax is then due 200 km after the top-up, DECISIONS 133; a wet ride makes the top-up due at once, DECISIONS 136); chain wear check
 1000 km; brake fluid every 24 months (a bleed never resets it); pad check 1000 km; wheel inspection
 3000 km/12 months; hub bearings 10000 km; freehub 5000 km/12 months; tire check 1000 km; sealant top-up every 3 months, tubeless only
 (else NOT_APPLICABLE, hidden from the queue); headset service 5000 km/12 months. Part types include HEADSET and
@@ -392,7 +392,7 @@ warns, npm 12 blocks): run `npm install-scripts approve <pkg>`.
 Checks that must pass before every push:
 
 ```bash
-.venv/bin/python -m pytest -q backend/tests             # currently 263 passed
+.venv/bin/python -m pytest -q backend/tests             # currently 264 passed
 cd frontend && npx tsc -b && npx eslint . && npx vite build
 # browser test: start the app on a fresh data dir, then
 node e2e/smoke.cjs http://127.0.0.1:8790/ <screenshot-dir>   # currently 186/186 (the ride-form step can flake once; rerun)

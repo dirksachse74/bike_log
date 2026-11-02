@@ -108,18 +108,42 @@ def test_bed_in_once_after_fitting(session):
     assert st["status"] == "DONE_THIS_CYCLE" and "taken as done" in st["explanation"]
 
 
-def test_wet_ride_makes_waxing_due(session):
+def test_wet_ride_asks_for_a_liquid_wax_top_up(session):
+    """Dirk 2026-11-02: "if it rains and i flag a ride as wet, will i get a reminder to use liquid wax top up?"
+    A wet ride on a waxed chain makes the top-up due (not the hot wax); a top-up or hot wax afterwards clears it."""
     b = bike(session)
     chain = part(session, "CHAIN", "Chain A")
     inv.install(session, chain.id, at="2026-09-01", bike_id=b.id)
     m.log_event(session, action_code="WAX_HOT", at="2026-09-01", component_id=chain.id)
     r = ride(session, b, "2026-09-03", 50)
-    assert status(session, chain, "CHAIN_HOT_WAX")["status"] == "OK"
+    assert status(session, chain, "CHAIN_LIQUID_WAX")["status"] == "OK"
     rides_svc.edit_ride(session, r.id, {"conditions": "WET"})
+    st = status(session, chain, "CHAIN_LIQUID_WAX")
+    assert st["status"] == "DUE" and st["explanation"].startswith("Top-up recommended: wet ride on 2026-09-03")
+    assert any(t["rule_code"] == "CHAIN_LIQUID_WAX" for t in m.queue(session, bike_id=b.id))
+    assert status(session, chain, "CHAIN_HOT_WAX")["status"] == "OK"          # the top-up, not a hot wax
+    m.log_event(session, action_code="WAX_LIQUID", at="2026-09-03", component_id=chain.id)   # same day, after the ride
+    assert status(session, chain, "CHAIN_LIQUID_WAX")["status"] == "DONE_THIS_CYCLE"
+    hot = status(session, chain, "CHAIN_HOT_WAX")
+    assert hot["interval_km"] == 250                                          # top-up at 50 km + 200
+    wet2 = ride(session, b, "2026-09-05", 30, conditions="WET")               # wet again: top up again
+    st = status(session, chain, "CHAIN_LIQUID_WAX")
+    assert st["status"] == "DUE" and "wet ride on 2026-09-05" in st["explanation"]
+    m.snooze(session, chain.id, "CHAIN_LIQUID_WAX", extra_km=50)
+    assert status(session, chain, "CHAIN_LIQUID_WAX")["status"] == "SNOOZED"
+    m.log_event(session, action_code="WAX_HOT", at="2026-09-06", component_id=chain.id)
+    assert status(session, chain, "CHAIN_LIQUID_WAX")["status"] == "OK" and wet2.id
+
+
+def test_wet_ride_makes_hot_wax_due_when_top_ups_are_off(session):
+    b = bike(session)
+    chain = part(session, "CHAIN", "Chain A")
+    inv.install(session, chain.id, at="2026-09-01", bike_id=b.id)
+    m.log_event(session, action_code="WAX_HOT", at="2026-09-01", component_id=chain.id)
+    m.set_component_rule(session, chain.id, rule_code="CHAIN_LIQUID_WAX", active=False)
+    ride(session, b, "2026-09-03", 50, conditions="WET")
     st = status(session, chain, "CHAIN_HOT_WAX")
     assert st["status"] == "DUE" and "1 wet ride" in st["explanation"]
-    m.log_event(session, action_code="WAX_HOT", at="2026-09-04", component_id=chain.id)
-    assert status(session, chain, "CHAIN_HOT_WAX")["status"] == "OK"
 
 
 def test_worn_chain_asks_for_a_cassette_check(session):
