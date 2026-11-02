@@ -232,3 +232,28 @@ def test_incident_fix_and_swap_tube_over_http(client):
     body = swap.json().get("result", swap.json())
     assert "Front tube: replaced with one from stock" in body["text"] and "1 left" in body["text"]
     assert client.get(f"/api/bikes/{b['id']}/position-options?wheel=REAR_WHEEL&damage=TUBE").json()["stock"][0]["qty"] == 1
+
+
+def test_remove_and_restore_several_rides_over_http(client):
+    """Rides → tick rides → Remove rides (DECISIONS 124): soft, previewable, restorable, km recalculated."""
+    bike = client.post("/api/bikes", json={"name": "BMC"}).json()
+    chain = client.post("/api/components", json={
+        "component_type": "CHAIN", "label": "Chain R", "prior_usage": "NEW",
+        "install": {"at": "2026-10-01", "bike_id": bike["id"]}}).json()
+    ids = [client.post("/api/rides", json={"bike_id": bike["id"], "when": f"2026-10-0{d}", "distance": 40}
+                       ).json()["result"]["id"] for d in (2, 3, 4)]
+    total = lambda: client.get(f"/api/components/{chain['id']}").json()["usage"]["total_km"]  # noqa: E731
+    assert total() == 120
+    prev = client.post("/api/rides/remove?dry_run=true", json={"ride_ids": ids[:2]}).json()
+    assert prev["change"]["preview"] and prev["change"]["deltas"][0]["delta_km"] == -80
+    assert prev["result"] == {"removed": 2, "km": 80.0, "rides": 2} and total() == 120   # nothing saved
+    res = client.post("/api/rides/remove", json={"ride_ids": ids[:2] + ids[:1]},
+                      headers={"X-Client-Op-Id": "rm-1"}).json()
+    assert res["result"]["removed"] == 2 and total() == 40
+    again = client.post("/api/rides/remove", json={"ride_ids": ids[:2]}, headers={"X-Client-Op-Id": "rm-1"}).json()
+    assert again["repeated"] and total() == 40
+    removed = client.get("/api/rides?view=removed").json()
+    assert {r["id"] for r in removed} == set(ids[:2])
+    assert client.post("/api/rides/remove", json={"ride_ids": []}).status_code >= 400
+    back = client.post("/api/rides/restore", json={"ride_ids": ids}).json()
+    assert back["result"]["restored"] == 2 and total() == 120

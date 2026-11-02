@@ -7,6 +7,12 @@ UPDATING.md → "Making a release". New entries go under "Unreleased" as work is
 
 ## Unreleased
 
+### Added
+- **Remove several rides at once** (Dirk 2026-11-02). Rides → tick rides (or "select all") → **Remove rides**.
+  A sheet shows how many rides, their km and what that takes off each part before you confirm. Same as removing
+  one ride: they go to Removed rides, count no km and are never imported again. Under Removed rides you can tick
+  rides and **Restore rides**.
+
 ### Changed
 - **Screens arranged by importance** (Dirk 2026-11-01). Each main screen now starts with what needs doing,
   then the current state, then history. Overview: a tile per bike at the top (km, how many due), then

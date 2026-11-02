@@ -331,6 +331,11 @@ class AssignBikeIn(Body):
     bike_id: int | None = None
 
 
+class RideIdsIn(Body):
+    ride_ids: list[int]
+    reason: str | None = None
+
+
 class JournalIn(Body):
     text: str | None = None
     on: str | None = None
@@ -1014,6 +1019,15 @@ def create_app(factory: sessionmaker[Session], paths: DataPaths, *, token: str |
     @app.post("/api/rides/assign-bike")
     def assign_bike(body: AssignBikeIn, dry_run: bool = False, s: Session = Depends(db), op_id: str | None = OpId):
         return op(s, op_id, "ride.assign_bike", lambda: rides_svc.assign_bike(s, body.ride_ids, body.bike_id), dry_run)
+
+    @app.post("/api/rides/remove")
+    def remove_rides(body: RideIdsIn, dry_run: bool = False, s: Session = Depends(db), op_id: str | None = OpId):
+        return op(s, op_id, "ride.remove_many",
+                  lambda: rides_svc.remove_rides(s, body.ride_ids, body.reason or "removed by user"), dry_run)
+
+    @app.post("/api/rides/restore")
+    def restore_rides(body: RideIdsIn, dry_run: bool = False, s: Session = Depends(db), op_id: str | None = OpId):
+        return op(s, op_id, "ride.restore_many", lambda: rides_svc.restore_rides(s, body.ride_ids), dry_run)
 
     @app.post("/api/rides", status_code=201)
     def add_ride(body: RideIn, s: Session = Depends(db), op_id: str | None = OpId):

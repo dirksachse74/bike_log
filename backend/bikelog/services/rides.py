@@ -183,6 +183,35 @@ def exclude_ride(session: Session, ride_id: int, reason: str | None = None) -> R
     return ride
 
 
+def remove_rides(session: Session, ride_ids: list[int], reason: str | None = None) -> dict:
+    """Remove several rides at once (Dirk 2026-11-02, DECISIONS 124). The same soft removal as one ride:
+    they move to Removed rides, count no km, are never imported again and can be restored."""
+    if not ride_ids:
+        raise DomainError("Pick at least one ride")
+    removed, km = 0, 0.0
+    for rid in dict.fromkeys(ride_ids):
+        ride = get_ride(session, rid)
+        if ride.inclusion != "EXCLUDED":
+            exclude_ride(session, ride.id, reason)
+            removed += 1
+            km += ride.distance_km or 0
+    return {"removed": removed, "km": round(km, 1), "rides": len(set(ride_ids))}
+
+
+def restore_rides(session: Session, ride_ids: list[int]) -> dict:
+    """Bring several removed rides back (the opposite of remove_rides)."""
+    if not ride_ids:
+        raise DomainError("Pick at least one ride")
+    restored, km = 0, 0.0
+    for rid in dict.fromkeys(ride_ids):
+        ride = get_ride(session, rid)
+        if ride.inclusion != "INCLUDED":
+            restore_ride(session, ride.id)
+            restored += 1
+            km += ride.distance_km or 0
+    return {"restored": restored, "km": round(km, 1), "rides": len(set(ride_ids))}
+
+
 def assign_bike(session: Session, ride_ids: list[int], bike_id: int | None) -> dict:
     """Set (or clear) the bike of several rides at once. For imported rides this is a local override:
     re-sync and re-read keep it; setting the bike back to the imported value removes the override."""

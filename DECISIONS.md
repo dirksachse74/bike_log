@@ -520,6 +520,11 @@ you disagree. Dates are 2026-10-24 unless noted.
     Inventory → Supplies and Settings → Lists (ShopPicker `hint`). The API still accepts amount and cost.
 123. **Change log shows names, not ids** for bike references (`changelog._BIKE_FIELDS`: rotation_bike_id);
     `entries` turns a bare id stored earlier into the bike's name when shown.
+124. **Bulk remove / restore rides** (Dirk 2026-11-02). `rides.remove_rides` / `restore_rides` (POST
+    /api/rides/remove and /api/rides/restore, `ride_ids`, dry_run, op id) loop the single-ride exclude/restore,
+    so the rules stay identical: soft, restorable, never re-imported, km recalculated. The UI sheet runs a dry
+    run first to show the part km change. In Removed rides only user-removed rides (not "deleted at source")
+    can be ticked. No hard delete.
 
 ## Repository
 27. Pushed only to the feature branch `claude/project-thread-6y3mmh` of the private repository. Demo
