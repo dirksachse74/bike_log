@@ -24,7 +24,11 @@ Python app (no shared code at runtime); only the catalog is shared, via `scripts
 match before it is released: `php/README.md` lists what is done and what is still to port (also TASKS.md).
 Rules there: every bike query filters on `user_id`; every POST checks the CSRF token; no inline JS (CSP);
 schema changes are new files `php/sql/migrations/NNN_*.sql`; tests `php php/tests/run.php` need MySQL or
-MariaDB (CI: `.github/workflows/php-tests.yml`, MySQL 8, PHP 8.1 and 8.3).
+MariaDB (CI: `.github/workflows/php-tests.yml`, MySQL 8, PHP 8.1 and 8.3). Domain modules: `domain.php`
+(installations, km), `reminders.php`, `inventory.php` (dispositions, work sessions/undo, frame and wheels,
+counted stock, spares, shopping list), `groupsets.php`, `incidents.php` (journal, incidents and fixes,
+punctures, spokes). A multi-step change (groupset import, fix) runs inside one work session so it can be
+undone as a whole.
 
 ### Product principles (from Dirk's brief; do not break them)
 

@@ -35,13 +35,18 @@
   </fieldset>
   <?php endif; ?>
   <details <?= in_array($t, ['FRONT_WHEEL', 'REAR_WHEEL'], true) ? 'open' : '' ?>><summary>More details</summary>
-    <?php if ($isNew || in_array($t, ['FRONT_WHEEL', 'REAR_WHEEL'], true)): ?>
-    <label>Tire setup (wheels only)<select name="tire_setup"><?= options(['TUBE' => 'Inner tubes', 'TUBELESS' => 'Tubeless', 'TUBULAR' => 'Tubular'], old('tire_setup', (string)$c['tire_setup']), true, 'Not set') ?></select></label>
+    <?php if ($isNew || in_array($t, ['FRONT_WHEEL', 'REAR_WHEEL', 'WHEELSET'], true)): ?>
+    <label>Tire setup (wheels and wheelsets)<select name="tire_setup"><?= options(['TUBE' => 'Inner tubes', 'TUBELESS' => 'Tubeless', 'TUBULAR' => 'Tubular'], old('tire_setup', (string)$c['tire_setup']), true, 'Not set') ?></select></label>
     <?php endif; ?>
     <div class="row">
       <?= field('purchase_date', 'Bought on', old('purchase_date', (string)$c['purchase_date']), 'date') ?>
       <?= field('price', 'Price', old('price', money($c['price_cents'] === null ? null : (int)$c['price_cents'])), 'text', ['inputmode' => 'decimal']) ?>
       <?= field('shop', 'Shop', old('shop', (string)$c['shop'])) ?>
+    </div>
+    <div class="row">
+      <?= field('warranty_until', 'Warranty until', old('warranty_until', (string)($c['warranty_until'] ?? '')), 'date') ?>
+      <?= field('storage_location', 'Stored where (when spare)', old('storage_location', (string)($c['storage_location'] ?? ''))) ?>
+      <?= field('pressure_note', 'Pressure note (tires)', old('pressure_note', (string)($c['pressure_note'] ?? '')), 'text', ['placeholder' => 'e.g. 4.5 / 4.8 bar']) ?>
     </div>
     <?= field('serial_number', 'Serial number (private)', old('serial_number', (string)$c['serial_number'])) ?>
     <?= field('notes', 'Notes', old('notes', (string)$c['notes']), 'textarea') ?>

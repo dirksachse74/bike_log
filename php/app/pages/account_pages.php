@@ -86,9 +86,10 @@ function export_user_data(int $uid): array
     $u = Db::one('SELECT id, email, display_name, timezone, created_at FROM users WHERE id = ?', [$uid]);
     $out = ['format' => 'bikelog-php-export', 'version' => 1, 'exported_at' => gmdate('c'), 'user' => $u];
     foreach (['bikes', 'components', 'installations', 'usage_adjustments', 'rides', 'consumables', 'consumable_txns',
-                 'maintenance_events', 'service_rules', 'reminder_snoozes'] as $t) {
+                 'maintenance_events', 'service_rules', 'reminder_snoozes', 'products', 'work_sessions', 'component_dispositions', 'journal_entries'] as $t) {
         $out[$t] = Db::all("SELECT * FROM $t WHERE user_id = ? ORDER BY id", [$uid]);
     }
+    $out['user_settings'] = Db::all('SELECT name, value FROM user_settings WHERE user_id = ? ORDER BY name', [$uid]);
     return $out;
 }
 

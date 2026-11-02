@@ -12,6 +12,9 @@ require __DIR__ . '/mailer.php';
 require __DIR__ . '/auth.php';
 require __DIR__ . '/domain.php';
 require __DIR__ . '/reminders.php';
+require __DIR__ . '/inventory.php';
+require __DIR__ . '/groupsets.php';
+require __DIR__ . '/incidents.php';
 require __DIR__ . '/web.php';
 require __DIR__ . '/installer.php';
 require __DIR__ . '/pages/auth_pages.php';
@@ -19,6 +22,8 @@ require __DIR__ . '/pages/bike_pages.php';
 require __DIR__ . '/pages/ride_pages.php';
 require __DIR__ . '/pages/maintenance_pages.php';
 require __DIR__ . '/pages/account_pages.php';
+require __DIR__ . '/pages/stock_pages.php';
+require __DIR__ . '/pages/incident_pages.php';
 require __DIR__ . '/pages/admin_pages.php';
 require __DIR__ . '/routes.php';
 

@@ -283,6 +283,15 @@ final class Reminders
                     'text' => $a['name'] . ' on ' . $e['performed_on'] . ': ' . Catalog::label($e['outcome']) . $m . '. Stays here until a newer check.'];
             }
         }
+        if (in_array($c['component_type'], ['FRONT_WHEEL', 'REAR_WHEEL'], true)) {
+            $s = Incidents::spokeInfo($uid, $c);
+            if ($s['due']) {
+                $out[] = ['kind' => 'attention', 'status' => 'ATTENTION', 'progress' => 1, 'rule' => null, 'component' => $c, 'bike' => $bike,
+                    'last' => null, 'snooze' => null, 'name' => 'Broken spokes',
+                    'text' => $s['count'] . ' broken spokes since ' . ($s['since'] ? 'the last re-lace (' . $s['since'] . ')' : 'tracking began')
+                        . '; from ' . $s['limit'] . ' on, a re-lace is worth considering. Stays here until you log a re-lace or new spokes.'];
+            }
+        }
         return $out;
     }
 }

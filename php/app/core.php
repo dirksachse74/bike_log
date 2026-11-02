@@ -197,6 +197,13 @@ function post(string $key, string $default = ''): string
     return is_string($v) ? trim($v) : $default;
 }
 
+/** A list of strings from a form (checkboxes named key[]). */
+function post_list(string $key): array
+{
+    $v = $_POST[$key] ?? $_GET[$key] ?? [];
+    return is_array($v) ? array_values(array_filter(array_map(fn($x) => is_string($x) ? trim($x) : '', $v), fn($x) => $x !== '')) : [];
+}
+
 function get_param(string $key, string $default = ''): string
 {
     $v = $_GET[$key] ?? $default;

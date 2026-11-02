@@ -20,6 +20,9 @@ final class Routes
             'maintenance' => 'page_maintenance', 'log' => 'page_log', 'event_void' => 'page_event_void',
             'rules' => 'page_rules', 'rule_edit' => 'page_rule_edit', 'rule_delete' => 'page_rule_delete',
             'supplies' => 'page_supplies', 'supply' => 'page_supply', 'supply_edit' => 'page_supply_edit',
+            'groupset' => 'page_groupset', 'ws' => 'page_ws', 'ws_undo' => 'page_ws_undo', 'spares' => 'page_spares', 'stock_take' => 'page_stock_take',
+            'my_settings' => 'page_my_settings', 'ride' => 'page_ride', 'incident_log' => 'page_incident_log', 'incidents' => 'page_incidents',
+            'incident' => 'page_incident', 'incident_fix' => 'page_incident_fix', 'punctures' => 'page_punctures', 'spoke' => 'page_spoke', 'journal' => 'page_journal',
             'account' => 'page_account', 'export' => 'page_export',
             // admin
             'admin' => 'page_admin', 'admin_users' => 'page_admin_users', 'admin_user' => 'page_admin_user', 'admin_invite' => 'page_admin_invite',

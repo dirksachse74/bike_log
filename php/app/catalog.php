@@ -32,6 +32,13 @@ final class Catalog
         }
     }
 
+    /** Any other top-level part of catalog.json (groupset_templates, dispositions, incident_types ...). */
+    public static function raw(string $key): array
+    {
+        self::load();
+        return self::$data[$key] ?? [];
+    }
+
     public static function types(): array
     {
         self::load();

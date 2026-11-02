@@ -35,7 +35,7 @@
   <h2>Latest rides</h2>
   <table class="list">
   <?php foreach ($rides as $r): ?>
-    <tr><td><?= h($r['ride_date']) ?></td><td><a href="<?= h(url('ride_edit', ['id' => $r['id']])) ?>"><?= h($r['name'] ?: 'Ride') ?></a></td>
+    <tr><td><?= h($r['ride_date']) ?></td><td><a href="<?= h(url('ride', ['id' => $r['id']])) ?>"><?= h($r['name'] ?: 'Ride') ?></a></td>
       <td><?= h($r['bike_name'] ?? '–') ?></td><td class="num"><?= h(km($r['distance_km'] === null ? null : (float)$r['distance_km'], 1)) ?></td></tr>
   <?php endforeach; ?>
   </table>

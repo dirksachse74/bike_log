@@ -10,6 +10,7 @@
   <a class="btn primary" href="<?= h(url('ride_edit', ['bike' => $bike['id']])) ?>">+ Ride</a>
   <a class="btn" href="<?= h(url('log', ['bike' => $bike['id']])) ?>">Log maintenance</a>
   <a class="btn" href="<?= h(url('part_edit', ['bike' => $bike['id']])) ?>">Add part to this bike</a>
+  <a class="btn" href="<?= h(url('groupset', ['bike' => $bike['id']])) ?>">Add a groupset</a>
   <a class="btn" href="<?= h(url('bike_edit', ['id' => $bike['id']])) ?>">Edit</a>
 </div>
 
@@ -40,13 +41,20 @@
   </table>
 </section>
 
+<?php if ($incidents): ?>
+<section>
+  <h2>Open incidents</h2>
+  <?= View::partial('incidents/cards', ['incidents' => $incidents, 'fixData' => $fixData, 'back' => 'r=bike&id=' . $bike['id']]) ?>
+</section>
+<?php endif; ?>
+
 <section>
   <h2>Recent rides</h2>
   <?php if (!$rides): ?><p class="muted">No rides yet.</p><?php endif; ?>
   <table class="list">
   <?php foreach ($rides as $r): ?>
     <tr><td><?= h($r['ride_date']) ?><?php if (isset($changeDays[$r['ride_date']])): ?> <span class="badge b-soon" title="A part was fitted or removed that day. The ride counts for the part fitted that day.">part change</span><?php endif; ?></td>
-      <td><a href="<?= h(url('ride_edit', ['id' => $r['id']])) ?>"><?= h($r['name'] ?: 'Ride') ?></a><?= $r['kind'] === 'INDOOR' ? ' <span class="muted">(indoor)</span>' : '' ?></td>
+      <td><a href="<?= h(url('ride', ['id' => $r['id']])) ?>"><?= h($r['name'] ?: 'Ride') ?></a><?= $r['kind'] === 'INDOOR' ? ' <span class="muted">(indoor)</span>' : '' ?></td>
       <td class="num"><?= h(km($r['distance_km'] === null ? null : (float)$r['distance_km'], 1)) ?></td></tr>
   <?php endforeach; ?>
   </table>
@@ -73,6 +81,11 @@
       <td class="muted"><?= h($i['removal_reason'] ?? '') ?><?= $i['voided_at'] ? ' (wrong record: ' . h($i['void_reason']) . ')' : '' ?></td></tr>
   <?php endforeach; ?>
   </table>
+</details>
+
+<details>
+  <summary>Notes and issues (<?= count(array_filter($journal, fn($e) => !$e['voided_at'])) ?>)</summary>
+  <?= View::partial('partials/journal', ['entries' => $journal, 'bikeId' => $bike['id'], 'componentId' => null, 'back' => 'r=bike&id=' . $bike['id']]) ?>
 </details>
 
 <details>

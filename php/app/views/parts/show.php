@@ -21,6 +21,16 @@
   <a class="btn" href="<?= h(url('part_edit', ['id' => $c['id']])) ?>">Edit</a>
 </div>
 
+<?php if ($c['disposition'] !== 'STORED' || $c['storage_location'] || $c['tire_setup'] || $c['pressure_note'] || $c['warranty_until'] || $product): ?>
+<p class="muted">
+  <?= !$open && $c['status'] === 'ACTIVE' ? h(Inventory::dispositions()[$c['disposition']] ?? $c['disposition']) . ($c['storage_location'] ? ' · ' . h($c['storage_location']) : '') . ' · ' : '' ?>
+  <?= $c['tire_setup'] ? h(Catalog::raw('tire_setups')[$c['tire_setup']] ?? $c['tire_setup']) . ' · ' : '' ?>
+  <?= $c['pressure_note'] ? 'Pressure ' . h($c['pressure_note']) . ' · ' : '' ?>
+  <?= $c['warranty_until'] ? 'Warranty until ' . h($c['warranty_until']) . ' · ' : '' ?>
+  <?= $product ? 'Product: ' . h(trim($product['maker'] . ' ' . $product['model'])) : '' ?>
+</p>
+<?php endif; ?>
+
 <?php if ($reminders): ?>
 <section><h2>Reminders</h2><?= View::partial('partials/reminders', ['reminders' => $reminders, 'back' => 'part']) ?></section>
 <?php endif; ?>
@@ -32,6 +42,35 @@
       <td><?= h(Catalog::slotName($ch['slot'])) ?></td><td>since <?= h($ch['installed_on']) ?></td></tr>
   <?php endforeach; ?></table>
 </section>
+<?php endif; ?>
+
+<?php if ($spokes): ?>
+<section><h2>Spokes</h2>
+  <p><?= (int)$spokes['count'] ?> broken since <?= $spokes['since'] ? 'the last re-lace (' . h($spokes['since']) . ')' : 'tracking began' ?>
+    <?= $spokes['limit'] ? '<span class="muted">· a re-lace is suggested from ' . (int)$spokes['limit'] . '</span>' : '' ?> <?= $spokes['due'] ? status_badge('ATTENTION') : '' ?></p>
+  <?php if ($spokes['breaks']): ?><ul><?php foreach ($spokes['breaks'] as $b): ?><li><?= h($b['entry_on']) ?> <?= h($b['text'] === 'Broken spoke' ? '' : $b['text']) ?> <span class="muted"><?= h($b['repair_text'] ?? 'not replaced yet') ?></span></li><?php endforeach; ?></ul><?php endif; ?>
+  <?php if ($c['status'] === 'ACTIVE'): ?>
+  <details><summary class="btn small">Log a broken spoke</summary>
+    <form method="post" action="<?= h(url('spoke', ['id' => $c['id']])) ?>" class="row"><?= Csrf::field() ?>
+      <?= field('broke_on', 'Broke on', today(), 'date', ['required' => true]) ?>
+      <?= field('note', 'Note', '', 'text', ['placeholder' => 'drive side, non-drive side...']) ?>
+      <label class="check"><input type="checkbox" name="replaced" value="1"> Already replaced</label>
+      <?= field('replaced_on', 'Replaced on', today(), 'date') ?>
+      <?php if ($spokeStock): ?><label>Spoke from<select name="source"><?= options(['' => 'Not tracked'] + array_combine(array_map(fn($s) => 'stock:' . $s['id'], $spokeStock), array_column($spokeStock, 'name')), '') ?></select></label><?php endif; ?>
+      <button class="btn small">Save</button>
+    </form>
+  </details>
+  <?php endif; ?>
+</section>
+<?php endif; ?>
+
+<?php if ($incidents): ?>
+<details><summary>Incidents with this part (<?= count($incidents) ?>)</summary>
+  <table class="list"><?php foreach ($incidents as $inc): ?>
+    <tr><td><?= h($inc['on']) ?></td><td><?= h($inc['label']) ?></td><td><?= $inc['ride_id'] ? '<a href="' . h(url('ride', ['id' => $inc['ride_id']])) . '">ride</a>' : '' ?></td>
+      <td class="muted"><?= $inc['resolved_on'] ? 'solved ' . h($inc['resolved_on']) : 'open' ?></td></tr>
+  <?php endforeach; ?></table>
+</details>
 <?php endif; ?>
 
 <section><h2>Where it has been</h2>
@@ -48,6 +87,7 @@
             <form method="post" action="<?= h(url('inst_remove', ['id' => $i['id']])) ?>" class="row"><?= Csrf::field() ?>
               <label>On <input type="date" name="removed_on" value="<?= h(today()) ?>" required></label>
               <label>Why <input type="text" name="reason" placeholder="worn, swapped..."></label>
+              <label>What happens to it<select name="outcome"><?= options(Inventory::dispositions(), Inventory::defaultOutcome($c['component_type'])) ?></select></label>
               <button class="btn small">Remove</button></form>
           </details>
         <?php endif; ?>
@@ -109,6 +149,25 @@
       <td><?= $a['voided_at'] ? '' : post_button('adjust', ['id' => $c['id']], 'Void', 'btn small', null, ['do' => 'void', 'adj' => $a['id']]) ?></td></tr>
   <?php endforeach; ?></table>
 </details>
+
+<details><summary>Notes and issues (<?= count(array_filter($journal, fn($e) => !$e['voided_at'])) ?>)</summary>
+  <?= View::partial('partials/journal', ['entries' => $journal, 'bikeId' => null, 'componentId' => $c['id'], 'back' => 'r=part&id=' . $c['id']]) ?>
+</details>
+
+<?php if (!$open && $c['status'] === 'ACTIVE'): ?>
+<details><summary>What happened to it (stored, sold, waiting for repair...)</summary>
+  <form method="post" action="<?= h(url('part_status', ['id' => $c['id']])) ?>" class="row"><?= Csrf::field() ?>
+    <input type="hidden" name="do" value="disposition">
+    <label>Now<select name="disposition"><?= options(Inventory::dispositions(), $c['disposition']) ?></select></label>
+    <?= field('on', 'Since', today(), 'date', ['required' => true]) ?>
+    <?= field('note', 'Note', '') ?>
+    <button class="btn small">Save</button>
+  </form>
+  <?php if ($dispositions): ?><table class="list"><?php foreach ($dispositions as $d): ?>
+    <tr><td><?= h($d['effective_on']) ?></td><td><?= h(Inventory::dispositions()[$d['disposition']] ?? $d['disposition']) ?></td><td class="muted"><?= h($d['note'] ?? '') ?></td></tr>
+  <?php endforeach; ?></table><?php endif; ?>
+</details>
+<?php endif; ?>
 
 <details><summary>Retire</summary>
   <?php if ($c['status'] === 'ACTIVE'): ?>

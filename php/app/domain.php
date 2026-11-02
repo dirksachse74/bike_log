@@ -235,9 +235,10 @@ final class Domain
     }
 
     /** Install a part on a bike or on another part. If it sits somewhere else, it is moved (removed there that day). */
-    public static function install(int $uid, int $componentId, ?int $bikeId, ?int $parentId, string $slot, string $date, ?string $note = null, bool $replaceOccupant = true): int
+    public static function install(int $uid, int $componentId, ?int $bikeId, ?int $parentId, string $slot, string $date, ?string $note = null,
+                                   bool $replaceOccupant = true, ?int $ws = null, ?string $occupantOutcome = null): int
     {
-        return Db::tx(function () use ($uid, $componentId, $bikeId, $parentId, $slot, $date, $note, $replaceOccupant) {
+        return Db::tx(function () use ($uid, $componentId, $bikeId, $parentId, $slot, $date, $note, $replaceOccupant, $ws, $occupantOutcome) {
             $c = self::component($uid, $componentId);
             if ($c['status'] !== 'ACTIVE') {
                 throw new UserError('This part is retired. Restore it before installing it.');
@@ -270,7 +271,8 @@ final class Domain
                 throw new UserError('This part already has history on or after ' . $date . '. Correct that record first (Void) or pick a later date.');
             }
             if ($open) {
-                Db::run('UPDATE installations SET removed_on = ?, removal_reason = ? WHERE id = ?', [$date, 'Moved', $open['id']]);
+                Db::run("UPDATE installations SET removed_on = ?, removal_reason = 'Moved', removal_outcome = 'MOVED', removal_session_id = ? WHERE id = ?",
+                    [$date, $ws, $open['id']]);
             }
             $col = $bikeId !== null ? 'bike_id' : 'parent_component_id';
             $target = $bikeId ?? $parentId;
@@ -280,11 +282,18 @@ final class Domain
                 if (!$replaceOccupant || $occupant['installed_on'] >= $date) {
                     throw new UserError('That position is taken since ' . $occupant['installed_on'] . '. Remove the part there first.');
                 }
-                Db::run('UPDATE installations SET removed_on = ?, removal_reason = ? WHERE id = ?', [$date, 'Replaced', $occupant['id']]);
+                $old = self::component($uid, (int)$occupant['component_id']);
+                $outcome = $occupantOutcome ?? Inventory::defaultOutcome($old['component_type']);
+                Db::run("UPDATE installations SET removed_on = ?, removal_reason = 'Replaced', removal_outcome = ?, removal_session_id = ? WHERE id = ?",
+                    [$date, $outcome, $ws, $occupant['id']]);
+                Inventory::setDisposition($uid, (int)$old['id'], $outcome, $date, 'replaced by ' . self::componentName($c), $ws);
+            }
+            if ($c['disposition'] !== 'STORED') {
+                Db::updateOwned('components', $componentId, $uid, ['disposition' => 'STORED', 'updated_at' => now_utc()]);
             }
             return Db::insert('installations', [
                 'user_id' => $uid, 'component_id' => $componentId, 'bike_id' => $bikeId, 'parent_component_id' => $parentId,
-                'slot' => $slot, 'installed_on' => $date, 'note' => $note, 'created_at' => now_utc(),
+                'slot' => $slot, 'installed_on' => $date, 'note' => $note, 'work_session_id' => $ws, 'created_at' => now_utc(),
             ]);
         });
     }
@@ -365,8 +374,7 @@ final class Domain
 
     public static function stock(int $uid, int $consumableId): float
     {
-        return (float)Db::value("SELECT COALESCE(SUM(CASE kind WHEN 'USE' THEN -qty ELSE qty END),0) FROM consumable_txns
-            WHERE user_id = ? AND consumable_id = ? AND voided_at IS NULL", [$uid, $consumableId]);
+        return Inventory::stockLevel($uid, $consumableId);
     }
 
     // ------------------------------------------------------------------ maintenance

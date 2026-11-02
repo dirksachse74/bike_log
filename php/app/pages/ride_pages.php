@@ -62,9 +62,16 @@ function page_ride_edit(): void
         if ($id) {
             Db::updateOwned('rides', $id, $uid, $row);
             Session::flash('ok', 'Ride saved. Part km are updated.');
+            if (post('again') !== '1' && $bikeId) {
+                Inventory::ensureFrame($uid, $bikeId);
+                redirect('ride', ['id' => $id]);
+            }
         } else {
             $id = Db::insert('rides', $row + ['user_id' => $uid, 'created_at' => now_utc()]);
             Session::flash('ok', 'Ride added' . ($dist === null ? ' without a distance (it shows as missing).' : '.'));
+        }
+        if ($bikeId) {
+            Inventory::ensureFrame($uid, $bikeId);
         }
         if (post('again') === '1') {
             redirect('ride_edit', ['bike' => $bikeId ?? 0]);
