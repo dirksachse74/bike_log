@@ -56,6 +56,10 @@ UPDATING.md → "Making a release". New entries go under "Unreleased" as work is
   batteries and computers (km, ride time, rides and days since the last charge, per charge and on average).
   Try it on your own Windows PC: php/LOCAL_TEST_WINDOWS.md (XAMPP, a ready settings file
   `config.local-sample.php`, double-click `php/start-local.bat`; emails go to `storage/mail.log`).
+  **English and German** (2026-11-03): every screen, message and email of the web version is in German
+  too. Switch with **DE / EN** in the top bar (saved on your account, also under My settings); admins set
+  the language for visitors under Admin → Settings. Numbers show with a decimal comma in German.
+  Needs the database update 008 (Admin → System).
 - **Bike Log on your own server with Google sign-in** (Dirk 2026-11-02). `--server` mode: only the Google
   accounts you list can sign in, HTTPS through Caddy, a backup every day while it runs, Strava connects
   through your own domain. Docker setup with a one-time install script and optional nightly updates:

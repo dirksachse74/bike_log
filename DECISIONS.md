@@ -681,6 +681,20 @@ you disagree. Dates are 2026-10-24 unless noted.
     SAME_PRODUCT and UNKNOWN are derived). Charge gaps use Domain::rideUsage with an until date (rides on
     the day of a charge count after it). A voided entry and its supply use get the same voided_at so a
     restore brings back exactly those; an entry voided by an undo cannot be restored.
+140. **English and German in the PHP web version** (Dirk 2026-11-03: "we also need to be able to switch
+    languages. we need the whole app in german aswell"). The English text in the code is the translation
+    key: `t('English {placeholder}', [...])`, German in `php/app/lang/de.php` (informal "du"); a missing
+    German text falls back to English instead of failing. Language order: users.lang (migration 008, set by
+    the DE/EN switch in the top bar or My settings) → cookie `bikelog_lang` (visitors) → Admin setting
+    `default_language` → Accept-Language → English. The command line (tests, tools) is always English, so
+    existing tests keep checking English texts. Catalog names (part types, actions, slots, labels) are
+    translated where they are shown; German noun plurals come from `plural:<English>` keys. What users type
+    is stored and shown as typed; rule names created by the app in English are translated on display. Kept
+    in English on purpose: the per-field messages of the product JSON check, the script instructions
+    (AGENT_INSTRUCTIONS.md, schemas, examples) and the CSV column names, because they are read by scripts
+    and developers. `php/tools/i18n_keys.php` lists every key; test_95 fails on a missing German text, wrong
+    placeholders, an unused German entry or English UI text left on a German page. Numbers on screen use a
+    decimal comma in German; number fields accept both. The Python desktop app stays English only for now.
 
 ## Repository
 27. Pushed only to the feature branch `claude/project-thread-6y3mmh` of the private repository. Demo

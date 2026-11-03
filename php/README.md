@@ -32,6 +32,7 @@ end of this file and in TASKS.md.
   when the history is unknown, bad check results stay until a newer check. Intervals can be changed for a
   part type or for one part.
 - **Supplies:** wax, lube, sealant, brake fluid... with bought / used / correction entries and stock.
+- **English and German:** every screen, message and email in both languages (see "Language" below).
 
 The part types, maintenance actions and default intervals are the same as in the desktop app
 (`app/catalog.json` is generated from `backend/bikelog/catalog.py` by `scripts/export_php_catalog.py`).
@@ -111,10 +112,12 @@ php/
                    products.php (products, JSON import), records.php (shop list, change log),
                    backups.php (per-user backup, restore, fresh start), rides.php (CSV import, bulk, wheels per ride),
                    workshop.php (replace with carry-over, wheels into a wheelset, product fits, brakes, charging),
+                   i18n.php + lang/de.php (English/German texts),
                    pages/*.php (one function per route), routes.php, views/ (templates)
   sql/migrations/  NNN_name.sql, applied in order (install page / Admin → System)
   config/          config.sample.php (copy to config.php, never commit it)
   tests/           run.php + test_*.php (needs MySQL/MariaDB and the PHP built-in server)
+  tools/           i18n_keys.php (lists every UI text; --missing de)
 ```
 
 Run the tests (they create and drop the database `bikelog_test`):
@@ -154,3 +157,19 @@ along, wheels into a wheelset, which bikes a product fits, the Brakes page, symp
 restoring an entry marked as wrong, charge history.
 
 Every desktop feature is now in the web version except Strava, which stays out for now.
+
+## Language
+
+The whole web version is in English and German (informal "du"). **DE / EN** at the right of the top bar
+switches; a signed-in user's choice is saved on the account (also under My settings), a visitor's choice in a
+cookie. Without a choice: Admin → Settings → "Language for visitors", else the browser's language, else
+English. Emails go out in the language of the person who triggers them. What people type (bike names,
+notes, shop names) is never translated.
+
+For developers: every UI text is written in English as `t('English text {name}', ['name' => $v])`
+(`app/i18n.php`; `tn()` for singular/plural, `num()` for numbers with a decimal comma in German). The
+German text for it goes into `app/lang/de.php` under the same English key. `php tools/i18n_keys.php
+--missing de` lists texts without a German version; `tests/test_95_i18n.php` fails on any, on wrong
+{placeholders}, and on English text left on a German page. A text without a German version shows in
+English, never as an error. Another language = another `app/lang/<code>.php` plus an entry in
+`I18n::LANGS`.
