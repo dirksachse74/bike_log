@@ -43,6 +43,11 @@ The part types, maintenance actions and default intervals are the same as in the
 - HTTPS for your domain (most hosts give a free Let's Encrypt certificate with one click).
 - An email account at your host or mail provider for sending (SMTP), e.g. `bikelog@your-domain`.
 
+## Try it on your own Windows PC first
+
+[LOCAL_TEST_WINDOWS.md](LOCAL_TEST_WINDOWS.md): XAMPP, one settings file, double-click `start-local.bat`.
+Emails go to `storage/mail.log` instead of being sent.
+
 ## Install on shared hosting (no command line)
 
 1. **Download the code:** on GitHub open the repository → green **Code** button → **Download ZIP**. Unpack
