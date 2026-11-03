@@ -22,7 +22,8 @@ MySQL for cheap shared hosting: accounts, admin page, no Strava, rides by hand. 
 Python app (no shared code at runtime); only the catalog is shared, via `scripts/export_php_catalog.py` →
 `php/app/catalog.json` (re-run it after changing `backend/bikelog/catalog.py`). Dirk wants a full feature
 match before it is released; since round 5b (2026-11-02) every desktop feature except Strava is ported
-(`php/README.md`, TASKS.md).
+(`php/README.md`, TASKS.md). Local test on Windows: `php/LOCAL_TEST_WINDOWS.md` + `php/start-local.bat`
+(XAMPP's php.exe built-in server on 127.0.0.1:8080, `config/config.local-sample.php`, mail transport `log`).
 Rules there: every bike query filters on `user_id`; every POST checks the CSRF token; no inline JS (CSP);
 schema changes are new files `php/sql/migrations/NNN_*.sql`; tests `php php/tests/run.php` need MySQL or
 MariaDB (CI: `.github/workflows/php-tests.yml`, MySQL 8, PHP 8.1 and 8.3). Domain modules: `domain.php`

@@ -20,6 +20,7 @@ Status key: ✅ done and tested · 🟡 done, not verified where it matters · �
 - [x] Round 5b: replace a part carrying what is mounted on it, group wheels into a wheelset, product fits
       which bike, brake overview, restore a voided maintenance entry, charge history. Feature match done
       (Strava left out on purpose).
+- [ ] Try it locally on Windows with XAMPP (Dirk, guide php/LOCAL_TEST_WINDOWS.md).
 - [ ] Try it on real shared hosting (Dirk): install page, SMTP, HTTPS.
 
 ## P1 Launch and persistence

@@ -54,6 +54,8 @@ UPDATING.md → "Making a release". New entries go under "Unreleased" as work is
   done), **symptom and work done** on maintenance entries that have them (bleed, repair, headset ...),
   **Restore** for an entry marked as wrong (with the supplies it used), and **Charging** on pedals,
   batteries and computers (km, ride time, rides and days since the last charge, per charge and on average).
+  Try it on your own Windows PC: php/LOCAL_TEST_WINDOWS.md (XAMPP, a ready settings file
+  `config.local-sample.php`, double-click `php/start-local.bat`; emails go to `storage/mail.log`).
 - **Bike Log on your own server with Google sign-in** (Dirk 2026-11-02). `--server` mode: only the Google
   accounts you list can sign in, HTTPS through Caddy, a backup every day while it runs, Strava connects
   through your own domain. Docker setup with a one-time install script and optional nightly updates:
