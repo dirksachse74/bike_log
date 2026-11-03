@@ -2,7 +2,7 @@
 <?php if ($rot['prompt']): ?>
 <div class="card"><p><?= status_badge('SOON') ?> <?= h($rot['prompt']['text']) ?></p>
   <?php if (in_array($rot['prompt']['kind'], ['SWAP', 'INSTALL'], true)): ?>
-    <?= post_button('chain_do', ['bike' => $bikeId], $rot['prompt']['kind'] === 'SWAP' ? 'Swap now' : 'Put it on', 'btn primary', null, ['do' => 'swap', 'to' => $rot['prompt']['to'], 'on' => today()]) ?>
+    <?= post_button('chain_do', ['bike' => $bikeId], $rot['prompt']['kind'] === 'SWAP' ? t('Swap now') : t('Put it on'), 'btn primary', null, ['do' => 'swap', 'to' => $rot['prompt']['to'], 'on' => today()]) ?>
   <?php endif; ?>
 </div>
 <?php endif; ?>
@@ -17,9 +17,9 @@
     <td class="num"><?= h(km($c['lifetime_km'])) ?></td><td class="num"><?= (int)$c['wax_cycles'] ?></td>
     <td class="muted"><?= $c['last_wear'] ? h($c['last_wear']['date'] . ' ' . ($c['last_wear']['value'] !== null ? (float)$c['last_wear']['value'] . ' ' . $c['last_wear']['unit'] : Catalog::label((string)$c['last_wear']['outcome']))) : '–' ?></td>
     <td><?php if ($c['state'] !== 'INSTALLED' && !in_array($c['state'], ['WORN', 'RETIRED'], true)): ?>
-        <?= post_button('chain_do', ['bike' => $bikeId], 'Put on', 'btn small', null, ['do' => 'swap', 'to' => $c['id'], 'on' => today()]) ?>
+        <?= post_button('chain_do', ['bike' => $bikeId], t('Put on'), 'btn small', null, ['do' => 'swap', 'to' => $c['id'], 'on' => today()]) ?>
       <?php endif; ?>
-      <?php if ($c['state'] !== 'INSTALLED'): ?><?= post_button('chain_do', ['bike' => $bikeId], 'Leave rotation', 'btn small link', null, ['do' => 'leave', 'id' => $c['id']]) ?><?php endif; ?></td></tr>
+      <?php if ($c['state'] !== 'INSTALLED'): ?><?= post_button('chain_do', ['bike' => $bikeId], t('Leave rotation'), 'btn small link', null, ['do' => 'leave', 'id' => $c['id']]) ?><?php endif; ?></td></tr>
   <?php endforeach; ?>
 </table>
 <?php if (!$chains): ?><p class="muted"><?= h(t('No chain on this bike yet.')) ?></p><?php endif; ?>
@@ -33,10 +33,10 @@
       <?php endforeach; ?>
     </fieldset>
     <div class="row">
-      <?= field('on', 'On', today(), 'date', ['required' => true]) ?>
-      <?php if ($waxes): ?><label><?= h(t('Wax')) ?><select name="consumable_id"><?= options(array_column($waxes, 'name', 'id'), '', true, 'Not tracked') ?></select></label>
-        <?= field('qty', 'Amount used', '', 'text', ['inputmode' => 'decimal']) ?><?php endif; ?>
-      <?php if ($rot['on']): ?><label><?= h(t('Swap first')) ?><select name="then_install"><?php $o = []; foreach ($chains as $c) { if ($c['state'] !== 'INSTALLED' && !in_array($c['state'], ['WORN', 'RETIRED'], true)) { $o[$c['id']] = 'Put ' . $c['label'] . ' on, so ' . $rot['on']['label'] . ' is waxed too'; } } ?><?= options($o, '', true, 'No swap') ?></select></label><?php endif; ?>
+      <?= field('on', t('On'), today(), 'date', ['required' => true]) ?>
+      <?php if ($waxes): ?><label><?= h(t('Wax')) ?><select name="consumable_id"><?= options(array_column($waxes, 'name', 'id'), '', true, t('Not tracked')) ?></select></label>
+        <?= field('qty', t('Amount used'), '', 'text', ['inputmode' => 'decimal']) ?><?php endif; ?>
+      <?php if ($rot['on']): ?><label><?= h(t('Swap first')) ?><select name="then_install"><?php $o = []; foreach ($chains as $c) { if ($c['state'] !== 'INSTALLED' && !in_array($c['state'], ['WORN', 'RETIRED'], true)) { $o[$c['id']] = t('Put {chain} on, so {current} is waxed too', ['chain' => $c['label'], 'current' => $rot['on']['label']]); } } ?><?= options($o, '', true, t('No swap')) ?></select></label><?php endif; ?>
     </div>
     <button class="btn primary"><?= h(t('Save hot wax')) ?></button>
   </form>
@@ -46,8 +46,8 @@
 <details><summary><?= h(t('Add a chain to this rotation')) ?></summary>
   <?php if ($rot['candidates']): ?>
   <form method="post" action="<?= h(url('chain_do', ['bike' => $bikeId])) ?>" class="row"><?= Csrf::field() ?><input type="hidden" name="do" value="add">
-    <label><?= h(t('Chain')) ?><select name="pick" required><?= options($rot['candidates'], '', true, 'Choose...') ?></select></label>
-    <?= field('on', 'On', today(), 'date', ['required' => true]) ?>
+    <label><?= h(t('Chain')) ?><select name="pick" required><?= options($rot['candidates'], '', true, t('Choose...')) ?></select></label>
+    <?= field('on', t('On'), today(), 'date', ['required' => true]) ?>
     <button class="btn small"><?= h(t('Add')) ?></button>
   </form>
   <?php else: ?><p class="muted"><?= h(t('No free chain.')) ?> <a href="<?= h(url('part_edit', ['type' => 'CHAIN'])) ?>"><?= h(t('Add a chain')) ?></a> <?= h(t('or counted chain stock first.')) ?></p><?php endif; ?>
@@ -56,6 +56,6 @@
 <details><summary><?= h(t('History')) ?></summary>
   <table class="list"><?php foreach ($rot['timeline'] as $t): ?>
     <tr><td><?= h($t['date']) ?></td><td><?= h($t['label']) ?></td>
-      <td><?= $t['kind'] === 'ON' ? 'on the bike until ' . h($t['until'] ?? 'now') . ' · ' . h(km($t['km'])) : ($t['kind'] === 'WAX' ? 'hot wax' : 'liquid wax top-up') ?></td></tr>
+      <td><?= $t['kind'] === 'ON' ? h(t('on the bike until {date}', ['date' => $t['until'] ?? t('now')])) . ' · ' . h(km($t['km'])) : ($t['kind'] === 'WAX' ? t('hot wax') : t('liquid wax top-up')) ?></td></tr>
   <?php endforeach; ?></table>
 </details>

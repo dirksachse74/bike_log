@@ -24,12 +24,12 @@ final class Workshop
 
     public static function setFit(int $uid, int $productId, int $bikeId, bool $verified, ?string $note): void
     {
-        $p = Db::one('SELECT * FROM products WHERE id = ? AND user_id = ?', [$productId, $uid]) ?? throw new NotFound('Product not found.');
+        $p = Db::one('SELECT * FROM products WHERE id = ? AND user_id = ?', [$productId, $uid]) ?? throw new NotFound(t('Product not found.'));
         $b = Domain::bike($uid, $bikeId);
         $note = $note !== null && $note !== '' ? mb_substr($note, 0, 255) : null;
         Db::run('INSERT INTO product_bike_fit (user_id, product_id, bike_id, verified, note, created_at) VALUES (?, ?, ?, ?, ?, ?)
             ON DUPLICATE KEY UPDATE verified = VALUES(verified), note = VALUES(note)', [$uid, $productId, $bikeId, $verified ? 1 : 0, $note, now_utc()]);
-        ChangeLog::note($uid, 'product', $productId, trim($p['maker'] . ' ' . $p['model']) . ' ' . ($verified ? 'fits' : 'should fit') . ' ' . $b['name']
+        ChangeLog::note($uid, 'product', $productId, trim($p['maker'] . ' ' . $p['model']) . ' ' . ($verified ? 'fits' : t('should fit')) . ' ' . $b['name']
             . ($note ? " ($note)" : ''), $bikeId);
     }
 
@@ -37,7 +37,7 @@ final class Workshop
     {
         $n = Db::run('DELETE FROM product_bike_fit WHERE user_id = ? AND product_id = ? AND bike_id = ?', [$uid, $productId, $bikeId])->rowCount();
         if ($n) {
-            ChangeLog::note($uid, 'product', $productId, 'Fit with ' . Domain::bike($uid, $bikeId)['name'] . ' removed', $bikeId);
+            ChangeLog::note($uid, 'product', $productId, t('Fit with {bike} removed', ['bike' => Domain::bike($uid, $bikeId)['name']]), $bikeId);
         }
     }
 
@@ -65,7 +65,7 @@ final class Workshop
     public static function replaceOptions(int $uid, int $componentId): array
     {
         $c = Domain::component($uid, $componentId);
-        $open = Domain::openInstallation($uid, $componentId) ?? throw new UserError(Domain::componentName($c) . ' is not installed, so there is nothing to replace.');
+        $open = Domain::openInstallation($uid, $componentId) ?? throw new UserError(t('{part} is not installed, so there is nothing to replace.', ['part' => Domain::componentName($c)]));
         $bike = Domain::currentBike($uid, $componentId);
         $bikeId = $bike ? (int)$bike['id'] : null;
         $cur = $c['product_id'] ? (int)$c['product_id'] : null;
@@ -129,13 +129,13 @@ final class Workshop
     {
         return Db::tx(function () use ($uid, $oldId, $on, $source, $new, $outcome, $carry, $reason) {
             $old = Domain::component($uid, $oldId);
-            $inst = Domain::openInstallation($uid, $oldId) ?? throw new UserError(Domain::componentName($old) . ' is not installed, so there is nothing to replace.');
+            $inst = Domain::openInstallation($uid, $oldId) ?? throw new UserError(t('{part} is not installed, so there is nothing to replace.', ['part' => Domain::componentName($old)]));
             $outcome = $outcome !== null && $outcome !== '' ? $outcome : Inventory::defaultOutcome($old['component_type']);
             if (!isset(Inventory::dispositions()[$outcome])) {
-                throw new UserError('Choose what happened to the old part.');
+                throw new UserError(t('Choose what happened to the old part.'));
             }
             if ($on <= $inst['installed_on']) {
-                throw new UserError(Domain::componentName($old) . ' was fitted on ' . $inst['installed_on'] . '; the change must be later.');
+                throw new UserError(t('{part} was fitted on {date}; the change must be later.', ['part' => Domain::componentName($old), 'date' => $inst['installed_on']]));
             }
             $children = [];
             foreach (self::openChildren($uid, $oldId) as $ch) {
@@ -144,26 +144,26 @@ final class Workshop
             $carry = array_values(array_unique(array_map('intval', $carry)));
             foreach ($carry as $cid) {
                 if (!isset($children[$cid])) {
-                    throw new UserError('Only parts mounted on the old part can move to the new one.');
+                    throw new UserError(t('Only parts mounted on the old part can move to the new one.'));
                 }
             }
             $left = [];
-            $ws = Inventory::startSession($uid, 'REPLACE', 'Replaced ' . Domain::componentName($old), $on);
+            $ws = Inventory::startSession($uid, 'REPLACE', t('Replaced {part}', ['part' => Domain::componentName($old)]), $on);
             $label = trim((string)($new['label'] ?? ''));
             if (str_starts_with($source, 'spare:')) {
                 $newComp = Domain::component($uid, (int)substr($source, 6));
                 if ((int)$newComp['id'] === $oldId) {
-                    throw new UserError('Pick a different part. To service the same part, use Log maintenance on it.');
+                    throw new UserError(t('Pick a different part. To service the same part, use Log maintenance on it.'));
                 }
                 if ($newComp['component_type'] !== $old['component_type']) {
-                    throw new UserError(Domain::componentName($newComp) . ' is a ' . Catalog::typeName($newComp['component_type']) . ', not a '
-                        . Catalog::typeName($old['component_type']) . '.');
+                    throw new UserError(t('{part} is a {type}, not a {wanted}.', ['part' => Domain::componentName($newComp),
+                        'type' => Catalog::typeName($newComp['component_type']), 'wanted' => Catalog::typeName($old['component_type'])]));
                 }
                 if (Domain::openInstallation($uid, (int)$newComp['id'])) {
-                    throw new UserError(Domain::componentName($newComp) . ' is fitted somewhere else. Use Move on it instead.');
+                    throw new UserError(t('{part} is fitted somewhere else. Use Move on it instead.', ['part' => Domain::componentName($newComp)]));
                 }
                 if ($newComp['disposition'] === 'AWAITING_SERVICE') {
-                    throw new UserError(Domain::componentName($newComp) . ' is waiting for repair. Log the repair first.');
+                    throw new UserError(t('{part} is waiting for repair. Log the repair first.', ['part' => Domain::componentName($newComp)]));
                 }
                 // a position the spare already fills (a spare wheelset with its own wheels): that part stays on the old one
                 $taken = array_column(self::openChildren($uid, (int)$newComp['id']), null, 'slot');
@@ -176,18 +176,18 @@ final class Workshop
                 $carry = array_values($carry);
                 $newId = (int)$newComp['id'];
             } elseif (str_starts_with($source, 'stock:')) {
-                $line = Db::one('SELECT * FROM consumables WHERE id = ? AND user_id = ?', [(int)substr($source, 6), $uid]) ?? throw new NotFound('Stock line not found.');
+                $line = Db::one('SELECT * FROM consumables WHERE id = ? AND user_id = ?', [(int)substr($source, 6), $uid]) ?? throw new NotFound(t('Stock line not found.'));
                 if ($line['component_type'] !== $old['component_type']) {
-                    throw new UserError($line['name'] . ' is not stock of ' . mb_strtolower(Catalog::typeName($old['component_type'])) . 's.');
+                    throw new UserError(t('{name} is not stock of {types}.', ['name' => $line['name'], 'types' => lc(Catalog::typePlural($old['component_type']))]));
                 }
                 $newId = Inventory::drawFromStock($uid, (int)$line['id'], $on, $ws, $label !== '' ? $label : null);
             } elseif ($source === 'same' || $source === 'new') {
                 $pid = $source === 'same' ? ($old['product_id'] ? (int)$old['product_id'] : null) : (!empty($new['product_id']) ? (int)$new['product_id'] : null);
                 $p = null;
                 if ($pid) {
-                    $p = Db::one('SELECT * FROM products WHERE id = ? AND user_id = ?', [$pid, $uid]) ?? throw new NotFound('Product not found.');
+                    $p = Db::one('SELECT * FROM products WHERE id = ? AND user_id = ?', [$pid, $uid]) ?? throw new NotFound(t('Product not found.'));
                     if ($p['component_type'] !== $old['component_type']) {
-                        throw new UserError('That product is a ' . Catalog::typeName($p['component_type']) . '.');
+                        throw new UserError(t('That product is a {type}.', ['type' => Catalog::typeName($p['component_type'])]));
                     }
                 }
                 $src = $source === 'same' ? $old : ($p ?? []);
@@ -200,7 +200,7 @@ final class Workshop
                     'purchase_date' => $new['purchase_date'] ?? $on, 'tire_setup' => $old['tire_setup'], 'work_session_id' => $ws,
                 ]);
             } else {
-                throw new UserError('Choose what goes on instead: a spare, one from stock, the same product or a new item.');
+                throw new UserError(t('Choose what goes on instead: a spare, one from stock, the same product or a new item.'));
             }
             // the carried parts come off the old part first, then the new part takes the position
             foreach ($carry as $cid) {
@@ -223,8 +223,8 @@ final class Workshop
                 }
             }
             $newC = Domain::component($uid, $newId);
-            ChangeLog::note($uid, 'part', $oldId, 'Replaced by ' . Domain::componentName($newC) . ' on ' . $on
-                . ' (' . (Inventory::dispositions()[$outcome] ?? $outcome) . ')' . ($carry ? ', ' . count($carry) . ' mounted part(s) moved over' : ''),
+            ChangeLog::note($uid, 'part', $oldId, t('Replaced by {part} on {date} ({what})', ['part' => Domain::componentName($newC), 'date' => $on, 'what' => Inventory::dispositions()[$outcome] ?? $outcome])
+                . ($carry ? t(', {n} mounted part(s) moved over', ['n' => count($carry)]) : ''),
                 $inst['bike_id'] ? (int)$inst['bike_id'] : null, $oldId);
             return ['work_session_id' => $ws, 'new_component_id' => $newId, 'installation_id' => $newInst, 'outcome' => $outcome, 'label' => Domain::componentName($newC),
                 'carried' => count($carry), 'left_on_old' => $left];
@@ -263,31 +263,31 @@ final class Workshop
             $bike = Domain::bike($uid, $bikeId);
             $wheels = self::looseWheels($uid, $bikeId);
             if (!$wheels) {
-                throw new UserError($bike['name'] . ' has no wheels fitted directly.');
+                throw new UserError(t('{bike} has no wheels fitted directly.', ['bike' => $bike['name']]));
             }
             foreach ($wheels as $w) {
                 if ($on <= $w['installed_on']) {
-                    throw new UserError(Domain::componentName($w) . ' was fitted on ' . $w['installed_on'] . '; pick a later date.');
+                    throw new UserError(t('{part} was fitted on {date}; pick a later date.', ['part' => Domain::componentName($w), 'date' => $w['installed_on']]));
                 }
             }
             if (Db::one("SELECT id FROM installations WHERE user_id = ? AND bike_id = ? AND slot = 'WHEELSET' AND removed_on IS NULL AND voided_at IS NULL", [$uid, $bikeId])) {
-                throw new UserError($bike['name'] . ' already has a wheelset.');
+                throw new UserError(t('{bike} already has a wheelset.', ['bike' => $bike['name']]));
             }
-            $ws = Inventory::startSession($uid, 'GROUP_WHEELS', 'Wheels of ' . $bike['name'] . ' put into a wheelset', $on);
+            $ws = Inventory::startSession($uid, 'GROUP_WHEELS', t('Wheels of {bike} put into a wheelset', ['bike' => $bike['name']]), $on);
             if ($wheelsetId) {
                 $set = Domain::component($uid, $wheelsetId);
                 if ($set['component_type'] !== 'WHEELSET') {
-                    throw new UserError(Domain::componentName($set) . ' is not a wheelset.');
+                    throw new UserError(t('{part} is not a wheelset.', ['part' => Domain::componentName($set)]));
                 }
                 if (!in_array((int)$set['id'], array_map('intval', array_column(self::wheelsetChoices($uid, $bikeId), 'id')), true)) {
-                    throw new UserError(Domain::componentName($set) . ' is fitted somewhere or already has wheels in those positions.');
+                    throw new UserError(t('{part} is fitted somewhere or already has wheels in those positions.', ['part' => Domain::componentName($set)]));
                 }
             } else {
-                $name = trim((string)$label) !== '' ? trim((string)$label) : 'Wheelset (' . $bike['name'] . ')';
+                $name = trim((string)$label) !== '' ? trim((string)$label) : t('Wheelset ({bike})', ['bike' => $bike['name']]);
                 $tire = $wheels[0]['tire_setup'];
                 $wheelsetId = Inventory::createComponent($uid, ['component_type' => 'WHEELSET', 'label' => Inventory::uniqueLabel($uid, 'WHEELSET', $name),
                     'prior_usage' => 'NEW', 'purchase_date' => $on, 'tire_setup' => $tire, 'work_session_id' => $ws,
-                    'notes' => 'Made from the wheels of ' . $bike['name']]);
+                    'notes' => t('Made from the wheels of {bike}', ['bike' => $bike['name']])]);
             }
             foreach ($wheels as $w) {
                 Db::run("UPDATE installations SET removed_on = ?, removal_reason = 'Put into a wheelset', removal_outcome = 'MOVED', removal_session_id = ? WHERE id = ?",
@@ -298,7 +298,7 @@ final class Workshop
                 Domain::install($uid, (int)$w['id'], null, $wheelsetId, $w['slot'], $on, null, false, $ws);
             }
             $set = Domain::component($uid, $wheelsetId);
-            ChangeLog::note($uid, 'part', $wheelsetId, count($wheels) . ' wheel(s) of ' . $bike['name'] . ' put into ' . Domain::componentName($set) . " on $on", $bikeId, $wheelsetId);
+            ChangeLog::note($uid, 'part', $wheelsetId, t('{n} wheel(s) of {bike} put into {set} on {date}', ['n' => count($wheels), 'bike' => $bike['name'], 'set' => Domain::componentName($set), 'date' => $on]), $bikeId, $wheelsetId);
             return ['wheelset_id' => $wheelsetId, 'work_session_id' => $ws, 'wheels' => array_map('intval', array_column($wheels, 'id'))];
         });
     }
@@ -319,7 +319,7 @@ final class Workshop
             foreach (Reminders::rulesFor($uid, $c) as $rule) {
                 if ($rule['action_code'] === 'BRAKE_FLUID_REPLACE') {
                     $fluid = $bike ? Reminders::evaluateComponent($uid, $rule, $c, $bike)
-                        : ['status' => 'UNKNOWN', 'text' => 'Not on a bike, so no km count.'];
+                        : ['status' => 'UNKNOWN', 'text' => t('Not on a bike, so no km count.')];
                 }
             }
             $last = fn(array $codes) => Db::one('SELECT * FROM maintenance_events WHERE user_id = ? AND component_id = ? AND voided_at IS NULL AND action_code IN ('

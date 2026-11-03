@@ -7,8 +7,8 @@
   <?php foreach ($items as $i): ?>
   <tr class="<?= $i['archived_at'] ? 'retired' : '' ?>">
     <td><a href="<?= h(url('supply', ['id' => $i['id']])) ?>"><?= h($i['name']) ?></a> <span class="muted"><?= h($i['maker'] ?? '') ?></span></td>
-    <td><?= $i['tracking_mode'] === 'COUNTED' ? h(Catalog::typeName((string)$i['component_type'])) . ' <span class="muted">counted</span>' : h(Catalog::CONSUMABLE_KINDS[$i['kind']] ?? $i['kind']) ?></td>
-    <td class="num"><?= (int)$i['track_stock'] ? h(rtrim(rtrim(number_format($i['stock'], 2, '.', ''), '0'), '.') . ' ' . $i['unit']) : '<span class="muted">not tracked</span>' ?></td>
+    <td><?= $i['tracking_mode'] === 'COUNTED' ? h(Catalog::typeName((string)$i['component_type'])) . ' <span class="muted">' . h(t('counted')) . '</span>' : h(Catalog::consumableKinds()[$i['kind']] ?? $i['kind']) ?></td>
+    <td class="num"><?= (int)$i['track_stock'] ? h(fmt_qty((float)$i['stock']) . ' ' . $i['unit']) : '<span class="muted">' . h(t('not tracked')) . '</span>' ?></td>
     <td><?= h($i['last_used'] ?? '–') ?></td>
   </tr>
   <?php endforeach; ?>

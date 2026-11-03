@@ -37,6 +37,21 @@ final class Catalog
     public static function raw(string $key): array
     {
         self::load();
+        $v = self::$data[$key] ?? [];
+        // label lists are shown on screen: translate them (the codes stay)
+        return match ($key) {
+            'dispositions', 'incident_types', 'tire_setups' => t_list($v),
+            'stock_units' => array_map(fn($u) => [t($u[0]), t($u[1])], $v),
+            'incident_options' => array_map(fn($opts) => array_map(fn($o) => ['label' => t($o['label'])] + $o, $opts), $v),
+            'product_spec_fields' => array_map(fn($fs) => array_map(fn($f) => ['description' => t((string)$f['description'])] + $f, $fs), $v),
+            default => $v,
+        };
+    }
+
+    /** The untranslated catalog data (imports, exports, tests). */
+    public static function rawData(string $key): array
+    {
+        self::load();
         return self::$data[$key] ?? [];
     }
 
@@ -55,9 +70,20 @@ final class Catalog
     public static function typeName(string $code): string
     {
         if ($code === 'BIKE') {
-            return 'Whole bike';
+            return t('Whole bike');
         }
-        return self::type($code)['name'] ?? $code;
+        $n = self::type($code)['name'] ?? null;
+        return $n === null ? $code : t($n);
+    }
+
+    /** Plural of a type name for sentences ("chains", "Ketten"). German plurals come from lang/de.php as 'plural:<name>'. */
+    public static function typePlural(string $code): string
+    {
+        $n = self::type($code)['name'] ?? ($code === 'part' ? 'Part' : $code);
+        if (I18n::lang() !== 'en') {
+            return I18n::dict(I18n::lang())['plural:' . $n] ?? t($n);
+        }
+        return str_ends_with($n, 's') ? $n : $n . 's';
     }
 
     /** Types grouped by category for a <select>. */
@@ -65,7 +91,7 @@ final class Catalog
     {
         $out = [];
         foreach (self::types() as $t) {
-            $out[$t['category']][$t['code']] = $t['name'];
+            $out[t($t['category'])][$t['code']] = t($t['name']);
         }
         return $out;
     }
@@ -95,7 +121,8 @@ final class Catalog
 
     public static function actionName(string $code): string
     {
-        return self::action($code)['name'] ?? $code;
+        $n = self::action($code)['name'] ?? null;
+        return $n === null ? $code : t($n);
     }
 
     /** Actions that can be logged for a part type ('BIKE' for the whole bike). */
@@ -133,11 +160,17 @@ final class Catalog
 
     public static function slotName(string $slot): string
     {
-        return ucfirst(strtolower(str_replace('_', ' ', $slot)));
+        return t(ucfirst(strtolower(str_replace('_', ' ', $slot))));
     }
 
     public static function label(string $code): string
     {
-        return ucfirst(strtolower(str_replace('_', ' ', $code)));
+        return t(ucfirst(strtolower(str_replace('_', ' ', $code))));
+    }
+
+    /** Consumable kinds with translated labels, for a <select>. */
+    public static function consumableKinds(): array
+    {
+        return t_list(self::CONSUMABLE_KINDS);
     }
 }

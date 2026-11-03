@@ -1,7 +1,7 @@
 <form method="post" class="card narrow" action="<?= h(url('login')) ?>">
   <?= Csrf::field() ?>
-  <?= field('email', 'Email', $email, 'email', ['required' => true, 'autocomplete' => 'username', 'autofocus' => true]) ?>
-  <?= field('password', 'Password', '', 'password', ['required' => true, 'autocomplete' => 'current-password']) ?>
+  <?= field('email', t('Email'), $email, 'email', ['required' => true, 'autocomplete' => 'username', 'autofocus' => true]) ?>
+  <?= field('password', t('Password'), '', 'password', ['required' => true, 'autocomplete' => 'current-password']) ?>
   <button class="btn primary wide"><?= h(t('Sign in')) ?></button>
   <p class="links">
     <a href="<?= h(url('forgot')) ?>"><?= h(t('Forgot your password?')) ?></a>

@@ -14,13 +14,13 @@ final class Rides
 
     public static function get(int $uid, int $id): array
     {
-        return Db::one('SELECT * FROM rides WHERE id = ? AND user_id = ?', [$id, $uid]) ?? throw new NotFound('Ride not found.');
+        return Db::one('SELECT * FROM rides WHERE id = ? AND user_id = ?', [$id, $uid]) ?? throw new NotFound(t('Ride not found.'));
     }
 
     public static function exclude(int $uid, int $id, string $reason): void
     {
         if (trim($reason) === '') {
-            throw new UserError('Say why it should not count (e.g. “rented bike”).');
+            throw new UserError(t('Say why it should not count (e.g. “rented bike”).'));
         }
         self::get($uid, $id);
         Db::updateOwned('rides', $id, $uid, ['excluded_reason' => mb_substr(trim($reason), 0, 255), 'updated_at' => now_utc()]);
@@ -79,24 +79,24 @@ final class Rides
     {
         $ride = self::get($uid, $rideId);
         if (!in_array($slot, self::EQUIPMENT_SLOTS, true) || !$ride['bike_id']) {
-            throw new UserError('Pick a wheel position of the ride’s bike.');
+            throw new UserError(t('Pick a wheel position of the ride’s bike.'));
         }
         Db::tx(function () use ($uid, $ride, $slot, $choice) {
             Db::run('DELETE FROM ride_equipment WHERE ride_id = ? AND slot = ? AND user_id = ?', [$ride['id'], $slot, $uid]);
             if ($choice === '') {
-                ChangeLog::note($uid, 'ride', (int)$ride['id'], Catalog::slotName($slot) . ': as fitted', (int)$ride['bike_id']);
+                ChangeLog::note($uid, 'ride', (int)$ride['id'], t('{slot}: as fitted', ['slot' => Catalog::slotName($slot)]), (int)$ride['bike_id']);
                 return;
             }
             $cid = null;
             if ($choice !== 'none') {
                 $c = Domain::component($uid, (int)$choice);
                 if (!in_array($slot, Catalog::slots($c['component_type']), true)) {
-                    throw new UserError(Catalog::typeName($c['component_type']) . ' does not go in that position.');
+                    throw new UserError(t('{type} does not go in that position.', ['type' => Catalog::typeName($c['component_type'])]));
                 }
                 $cid = (int)$c['id'];
             }
             Db::insert('ride_equipment', ['user_id' => $uid, 'ride_id' => $ride['id'], 'slot' => $slot, 'component_id' => $cid, 'created_at' => now_utc()]);
-            ChangeLog::note($uid, 'ride', (int)$ride['id'], Catalog::slotName($slot) . ' on this ride: ' . ($cid ? Domain::componentName($c) : 'none'),
+            ChangeLog::note($uid, 'ride', (int)$ride['id'], t('{slot} on this ride: {part}', ['slot' => Catalog::slotName($slot), 'part' => $cid ? Domain::componentName($c) : t('none')]),
                 (int)$ride['bike_id'], $cid);
         });
     }
@@ -106,19 +106,19 @@ final class Rides
     {
         $ids = array_values(array_unique(array_filter(array_map('intval', $ids))));
         if (!$ids) {
-            throw new UserError('Tick the rides first.');
+            throw new UserError(t('Tick the rides first.'));
         }
         if (count($ids) > 500) {
-            throw new UserError('At most 500 rides at once.');
+            throw new UserError(t('At most 500 rides at once.'));
         }
         if ($do === 'bike') {
             $b = Domain::bike($uid, (int)$bikeId);
             if ($b['status'] !== 'ACTIVE') {
-                throw new UserError('This bike is retired.');
+                throw new UserError(t('This bike is retired.'));
             }
         }
         if ($do === 'exclude' && trim($reason) === '') {
-            throw new UserError('Say why they should not count.');
+            throw new UserError(t('Say why they should not count.'));
         }
         return Db::tx(function () use ($uid, $ids, $do, $bikeId, $reason) {
             $n = 0;
@@ -133,7 +133,7 @@ final class Rides
                     'restore' => $r['removed_at'] ? ['removed_at' => null] : null,
                     'exclude' => ['excluded_reason' => mb_substr(trim($reason), 0, 255)],
                     'include' => $r['excluded_reason'] !== null ? ['excluded_reason' => null] : null,
-                    default => throw new UserError('Unknown action.'),
+                    default => throw new UserError(t('Unknown action.')),
                 };
                 if ($row === null) {
                     continue;
@@ -161,7 +161,7 @@ final class Rides
         $raw = trim($s);
         $t = $decimalComma ? str_replace(['.', ','], ['', '.'], $raw) : str_replace(',', '', $raw);
         if (!is_numeric($t)) {
-            throw new UserError("$field '$raw' is not a number");
+            throw new UserError(t("{field} '{value}' is not a number", ['field' => $field, 'value' => $raw]));
         }
         return (float)$t;
     }
@@ -176,7 +176,7 @@ final class Rides
         try {
             $d = $utc ? new DateTimeImmutable($s, new DateTimeZone('UTC')) : new DateTimeImmutable($s, $tz);
         } catch (Exception) {
-            throw new UserError("date '$s' is not a date (use 2026-05-01 or 2026-05-01 07:30)");
+            throw new UserError(t("date '{value}' is not a date (use 2026-05-01 or 2026-05-01 07:30)", ['value' => $s]));
         }
         $d = $d->setTimezone($tz);
         return [$d->format('Y-m-d'), $d->format('H:i:s')];
@@ -186,7 +186,7 @@ final class Rides
     public static function parseCsv(string $content, DateTimeZone $tz): array
     {
         if (strlen($content) > self::MAX_CSV) {
-            throw new UserError('The file is larger than 20 MB.');
+            throw new UserError(t('The file is larger than 20 MB.'));
         }
         if (str_starts_with($content, "\xEF\xBB\xBF")) {
             $content = substr($content, 3);
@@ -201,7 +201,7 @@ final class Rides
         rewind($fh);
         $header = fgetcsv($fh, 0, $delim, '"', '');
         if (!$header || $header === [null]) {
-            throw new UserError('The file is empty.');
+            throw new UserError(t('The file is empty.'));
         }
         $header = array_map(fn($h) => strtolower(trim((string)$h)), $header);
         $idx = [];
@@ -210,7 +210,7 @@ final class Rides
         }
         $strava = isset($idx['activity id'], $idx['activity date']);
         if (!$strava && (!isset($idx['source_id'], $idx['date']) || (!isset($idx['distance_km']) && !isset($idx['distance_mi'])))) {
-            throw new UserError('Unrecognised CSV. Required columns: source_id, date, distance_km (or distance_mi). Found: ' . implode(', ', $header));
+            throw new UserError(t('Unrecognised CSV. Required columns: source_id, date, distance_km (or distance_mi). Found: {cols}', ['cols' => implode(', ', $header)]));
         }
         $sports = Catalog::raw('ride_sport_types');
         $rows = [];
@@ -234,7 +234,7 @@ final class Rides
                     }
                     $d = DateTimeImmutable::createFromFormat('M j, Y, g:i:s A', (string)$get('activity date'), new DateTimeZone('UTC'));
                     if (!$d) {
-                        throw new UserError("Activity Date '" . $get('activity date') . "' is not a date");
+                        throw new UserError(t("Activity Date '{value}' is not a date", ['value' => $get('activity date')]));
                     }
                     $local = $d->setTimezone($tz);
                     $elapsed = $get('elapsed time');
@@ -243,8 +243,8 @@ final class Rides
                         'name' => $get('activity name'), 'bike' => $get('activity gear'), 'indoor' => $sport === 'VirtualRide']];
                     continue;
                 }
-                $ref = $get('source_id') ?? throw new UserError('source_id is empty');
-                [$date, $time] = self::when($get('date') ?? throw new UserError('date is empty'), $tz);
+                $ref = $get('source_id') ?? throw new UserError(t('source_id is empty'));
+                [$date, $time] = self::when($get('date') ?? throw new UserError(t('date is empty')), $tz);
                 $dc = $delim === ';';
                 $km = self::num($get('distance_km'), $dc, 'distance_km');
                 if ($km === null && $get('distance_mi') !== null) {
@@ -293,7 +293,7 @@ final class Rides
                 foreach ($rows as $r) {
                     if (isset($r['error'])) {
                         $counts['ERROR']++;
-                        $errors[] = "Row {$r['row']}: {$r['error']}";
+                        $errors[] = t('Row {row}: {error}', ['row' => $r['row'], 'error' => $r['error']]);
                         continue;
                     }
                     if (isset($r['skip'])) {
@@ -302,7 +302,7 @@ final class Rides
                     }
                     if ($r['ref'] === null || $r['ref'] === '') {
                         $counts['ERROR']++;
-                        $errors[] = "Row {$r['row']}: no id";
+                        $errors[] = t('Row {row}: no id', ['row' => $r['row']]);
                         continue;
                     }
                     if (Db::value('SELECT id FROM rides WHERE user_id = ? AND source_kind = ? AND source_ref = ?', [$uid, $kind, $r['ref']])) {
@@ -312,7 +312,7 @@ final class Rides
                     $v = $r['values'];
                     if ($v['km'] !== null && ($v['km'] < 0 || $v['km'] > 2000)) {
                         $counts['ERROR']++;
-                        $errors[] = "Row {$r['row']}: distance {$v['km']} km is not plausible";
+                        $errors[] = t('Row {row}: distance {km} km is not plausible', ['row' => $r['row'], 'km' => $v['km']]);
                         continue;
                     }
                     $bikeId = null;
@@ -332,7 +332,7 @@ final class Rides
                         'name' => $v['name'] !== null ? mb_substr($v['name'], 0, 200) : null, 'distance_km' => $v['km'] !== null ? round($v['km'], 2) : null,
                         'duration_s' => $v['duration'], 'elevation_m' => $v['elevation'] ?? null, 'kind' => $v['indoor'] ? 'INDOOR' : 'OUTDOOR',
                         'conditions' => !empty($v['wet']) ? 'WET' : null,
-                        'notes' => $bikeId === null && $v['bike'] !== null ? 'Bike in the file: ' . mb_substr($v['bike'], 0, 120) : null,
+                        'notes' => $bikeId === null && $v['bike'] !== null ? t('Bike in the file: {bike}', ['bike' => mb_substr($v['bike'], 0, 120)]) : null,
                         'source_kind' => $kind, 'source_ref' => $r['ref'], 'created_at' => now_utc(), 'updated_at' => now_utc()]);
                     if ($bikeId) {
                         $touched[$bikeId] = true;
@@ -347,7 +347,7 @@ final class Rides
         };
         $dryRun ? $run() : Db::tx($run);
         if (!$dryRun && $counts['CREATED']) {
-            ChangeLog::note($uid, 'ride', null, "CSV import: {$counts['CREATED']} rides added, {$counts['EXISTS']} were there already");
+            ChangeLog::note($uid, 'ride', null, t('CSV import: {added} rides added, {there} were there already', ['added' => $counts['CREATED'], 'there' => $counts['EXISTS']]));
         }
         return ['kind' => $kind, 'rows' => count($rows), 'counts' => $counts, 'errors' => array_slice($errors, 0, 100), 'unknown_bikes' => $unknown, 'dry_run' => $dryRun];
     }

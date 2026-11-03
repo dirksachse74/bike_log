@@ -13,19 +13,19 @@
 <section>
   <h2><?= h(t('Needs doing')) ?></h2>
   <?= View::partial('partials/reminders', ['reminders' => array_slice($reminders, 0, 12), 'back' => 'home']) ?>
-  <?php if (count($reminders) > 12): ?><p><a href="<?= h(url('reminders')) ?>"><?= h(t('All')) ?> <?= count($reminders) ?> <?= h(t('reminders')) ?></a></p><?php endif; ?>
-  <?php if ($unknown): ?><p class="muted"><?= $unknown ?> <?= h(t('reminder(s) lack information (for example no service logged yet).')) ?></p><?php endif; ?>
+  <?php if (count($reminders) > 12): ?><p><a href="<?= h(url('reminders')) ?>"><?= h(t('All {n} reminders', ['n' => count($reminders)])) ?></a></p><?php endif; ?>
+  <?php if ($unknown): ?><p class="muted"><?= h(t('{n} reminder(s) lack information (for example no service logged yet).', ['n' => $unknown])) ?></p><?php endif; ?>
   <p><a href="<?= h(url('reminders')) ?>"><?= h(t('All reminders, including OK and unknown ones')) ?></a></p>
 </section>
 <section>
-  <h2><?= h(t('Bikes')) ?> <small class="muted"><?= h(km($yearKm)) ?> <?= h(t('in')) ?> <?= h($year) ?></small></h2>
+  <h2><?= h(t('Bikes')) ?> <small class="muted"><?= h(t('{km} in {year}', ['km' => km($yearKm), 'year' => $year])) ?></small></h2>
   <div class="grid">
   <?php foreach ($bikes as $b): ?>
     <a class="card bike" href="<?= h(url('bike', ['id' => $b['id']])) ?>">
       <strong><?= h($b['name']) ?></strong>
       <span class="muted"><?= h(trim($b['maker'] . ' ' . $b['model'])) ?></span>
       <span class="big"><?= h(km((float)$b['stats']['km'])) ?></span>
-      <span class="muted"><?= (int)$b['stats']['rides'] ?> <?= h(t('rides')) ?><?= $b['stats']['missing'] ? ', ' . (int)$b['stats']['missing'] . ' without distance' : '' ?></span>
+      <span class="muted"><?= h(t('{n} rides', ['n' => (int)$b['stats']['rides']])) ?><?= $b['stats']['missing'] ? ', ' . h(t('{n} without distance', ['n' => (int)$b['stats']['missing']])) : '' ?></span>
     </a>
   <?php endforeach; ?>
   </div>
@@ -35,7 +35,7 @@
   <h2><?= h(t('Latest rides')) ?></h2>
   <table class="list">
   <?php foreach ($rides as $r): ?>
-    <tr><td><?= h($r['ride_date']) ?></td><td><a href="<?= h(url('ride', ['id' => $r['id']])) ?>"><?= h($r['name'] ?: 'Ride') ?></a></td>
+    <tr><td><?= h($r['ride_date']) ?></td><td><a href="<?= h(url('ride', ['id' => $r['id']])) ?>"><?= h($r['name'] ?: t('Ride')) ?></a></td>
       <td><?= h($r['bike_name'] ?? '–') ?></td><td class="num"><?= h(km($r['distance_km'] === null ? null : (float)$r['distance_km'], 1)) ?></td></tr>
   <?php endforeach; ?>
   </table>

@@ -1,7 +1,7 @@
 <?= View::partial('admin/_nav') ?>
 <form method="get" class="row inline-form">
   <input type="hidden" name="r" value="admin_audit">
-  <select name="event"><?= options(array_combine($events, $events), $event, true, 'All events') ?></select>
+  <select name="event"><?= options(array_combine($events, $events), $event, true, t('All events')) ?></select>
   <?php if ($userId): ?><input type="hidden" name="user" value="<?= (int)$userId ?>"><?php endif; ?>
   <button class="btn small"><?= h(t('Filter')) ?></button>
 </form>

@@ -35,14 +35,15 @@
     var symWrap = logForm.querySelector('[data-symptom-wrap]');
     var workWrap = logForm.querySelector('[data-work-wrap]');
     var unit = logForm.querySelector('[data-unit]');
-    var label = function (code) { return code.charAt(0) + code.slice(1).toLowerCase().replace(/_/g, ' '); };
+    var ui = data.ui || {};
+    var label = function (code, a) { return (a && a.labels && a.labels[code]) || code.charAt(0) + code.slice(1).toLowerCase().replace(/_/g, ' '); };
     var typeOf = function () { var v = target.value; return v.indexOf('b:') === 0 ? 'BIKE' : (data.types[v] || ''); };
     var fillActions = function () {
       var acts = data.actions[typeOf()] || {};
       var keep = action.value || data.pre;
       action.innerHTML = '';
       var first = document.createElement('option');
-      first.value = ''; first.textContent = target.value ? 'Choose...' : 'Choose the part first';
+      first.value = ''; first.textContent = target.value ? (ui.choose || 'Choose...') : (ui.first || 'Choose the part first');
       action.appendChild(first);
       Object.keys(acts).forEach(function (code) {
         var o = document.createElement('option');
@@ -62,10 +63,10 @@
       unit.textContent = a && a.unit ? '(' + a.unit + ')' : '';
       if (a && a.outcomes.length) {
         var blank = document.createElement('option');
-        blank.value = ''; blank.textContent = a.measure ? 'From the measurement' : 'Choose...';
+        blank.value = ''; blank.textContent = a.measure ? (ui.measure || 'From the measurement') : (ui.choose || 'Choose...');
         outcome.appendChild(blank);
         a.outcomes.forEach(function (c) {
-          var o = document.createElement('option'); o.value = c; o.textContent = label(c); outcome.appendChild(o);
+          var o = document.createElement('option'); o.value = c; o.textContent = label(c, a); outcome.appendChild(o);
         });
       }
     };

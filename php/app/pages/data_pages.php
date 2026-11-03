@@ -11,7 +11,7 @@ function page_backups(): void
         $do = post('do');
         if ($do === 'save') {
             UserBackups::save($uid, 'MANUAL');
-            Session::flash('ok', 'Copy stored. It is listed below.');
+            Session::flash('ok', t('Copy stored. It is listed below.'));
             redirect('backups');
         }
         if ($do === 'download') {
@@ -23,30 +23,30 @@ function page_backups(): void
             exit;
         }
         if (post('confirm') !== UserBackups::CONFIRM_RESTORE) {
-            throw new UserError('Type ' . UserBackups::CONFIRM_RESTORE . ' to confirm. Restoring replaces all your current data.');
+            throw new UserError(t('Type {word} to confirm. Restoring replaces all your current data.', ['word' => UserBackups::CONFIRM_RESTORE]));
         }
         if ($do === 'restore') {
             $id = get_int('id');
-            $b = Db::one('SELECT created_at FROM user_backups WHERE id = ? AND user_id = ?', [$id, $uid]) ?? throw new NotFound('Backup not found.');
-            $res = UserBackups::restore($uid, UserBackups::parse(UserBackups::content($uid, $id)), 'the copy of ' . local_time($b['created_at']));
+            $b = Db::one('SELECT created_at FROM user_backups WHERE id = ? AND user_id = ?', [$id, $uid]) ?? throw new NotFound(t('Backup not found.'));
+            $res = UserBackups::restore($uid, UserBackups::parse(UserBackups::content($uid, $id)), t('the copy of {when}', ['when' => local_time($b['created_at'])]));
         } elseif ($do === 'upload') {
             $f = $_FILES['file'] ?? null;
             if (!$f || !is_string($f['tmp_name'] ?? null) || $f['error'] !== UPLOAD_ERR_OK) {
-                throw new UserError('Choose the file you downloaded (Account → Download all my data).');
+                throw new UserError(t('Choose the file you downloaded (Account → Download all my data).'));
             }
             if ($f['size'] > UserBackups::MAX_UPLOAD) {
-                throw new UserError('The file is larger than 20 MB.');
+                throw new UserError(t('The file is larger than 20 MB.'));
             }
-            $res = UserBackups::restore($uid, UserBackups::parse((string)file_get_contents($f['tmp_name'])), 'the file ' . mb_substr(basename((string)$f['name']), 0, 80));
+            $res = UserBackups::restore($uid, UserBackups::parse((string)file_get_contents($f['tmp_name'])), t('the file {name}', ['name' => mb_substr(basename((string)$f['name']), 0, 80)]));
         } else {
-            throw new UserError('Unknown action.');
+            throw new UserError(t('Unknown action.'));
         }
         Audit::log('data_restored', $uid, $res['summary']);
-        Session::flash('ok', 'Restored: ' . $res['summary'] . '. Your data from before is stored as a copy below.'
-            . ($res['warnings'] ? ' Note: ' . implode('; ', $res['warnings']) : ''));
+        Session::flash('ok', t('Restored: {summary}. Your data from before is stored as a copy below.', ['summary' => $res['summary']])
+            . ($res['warnings'] ? ' ' . t('Note: {list}', ['list' => implode('; ', $res['warnings'])]) : ''));
         redirect('backups');
     }
-    View::render('account/backups', ['rows' => UserBackups::rows($uid)], 'Backups', 'account');
+    View::render('account/backups', ['rows' => UserBackups::rows($uid)], t('Backups'), 'account');
 }
 
 function page_fresh_start(): void
@@ -55,21 +55,21 @@ function page_fresh_start(): void
     $uid = (int)$u['id'];
     if (Request::isPost()) {
         if (post('confirm') !== UserBackups::CONFIRM_RESET) {
-            throw new UserError('Type ' . UserBackups::CONFIRM_RESET . ' to confirm.');
+            throw new UserError(t('Type {word} to confirm.', ['word' => UserBackups::CONFIRM_RESET]));
         }
         if (!password_verify(post('current'), (string)$u['password_hash'])) {
-            throw new UserError('That is not your password.');
+            throw new UserError(t('That is not your password.'));
         }
         UserBackups::freshStart($uid);
         Audit::log('fresh_start', $uid);
-        Session::flash('ok', 'Fresh start done. Your old data is stored under Backups; restore it there if you change your mind.');
+        Session::flash('ok', t('Fresh start done. Your old data is stored under Backups; restore it there if you change your mind.'));
         redirect('home');
     }
     $counts = [];
-    foreach (['bikes' => 'bikes', 'components' => 'parts', 'rides' => 'rides', 'maintenance_events' => 'maintenance entries'] as $t => $label) {
+    foreach (['bikes' => t('bikes'), 'components' => t('parts'), 'rides' => t('rides'), 'maintenance_events' => t('maintenance entries')] as $t => $label) {
         $counts[$label] = (int)Db::value("SELECT COUNT(*) FROM $t WHERE user_id = ?", [$uid]);
     }
-    View::render('account/fresh_start', ['counts' => $counts], 'Fresh start', 'account');
+    View::render('account/fresh_start', ['counts' => $counts], t('Fresh start'), 'account');
 }
 
 function page_diagnostics(): void
@@ -92,5 +92,5 @@ function page_diagnostics(): void
             AND i.removed_on IS NULL AND b.status <> 'ACTIVE'", [$uid]),
     ];
     View::render('account/diagnostics', ['counts' => $counts, 'applied' => $applied, 'pending' => array_keys(Migrator::pending()), 'checks' => $checks,
-        'php' => PHP_VERSION, 'db' => (string)Db::value('SELECT VERSION()')], 'Diagnostics', 'account');
+        'php' => PHP_VERSION, 'db' => (string)Db::value('SELECT VERSION()')], t('Diagnostics'), 'account');
 }

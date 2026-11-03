@@ -4,7 +4,7 @@ declare(strict_types=1);
 // Languages. The English text in the code is the key; app/lang/<code>.php maps it to the translation.
 // A text without a translation is shown in English, never as an error.
 //
-//   t('Bikes')                                    → "Fahrräder" in German
+//   t('Bikes')                                    → "Räder" in German
 //   t('Every {km} km', ['km' => '300'])           → placeholders in {braces}, filled after translating
 //
 // Which language: the signed-in user's choice (users.lang), else the switch on the sign-in pages
@@ -130,4 +130,28 @@ function t_list(array $labels): array
 function num(float $v, int $dec = 0): string
 {
     return number_format($v, $dec, I18n::lang() === 'de' ? ',' : '.', ' ');
+}
+
+/** Singular or plural, then translated: tn('{n} ride', '{n} rides', $n). {n} is filled in. */
+function tn(string $one, string $many, int|float $n, array $vars = []): string
+{
+    return t(abs($n) == 1 ? $one : $many, $vars + ['n' => $n]);
+}
+
+/** Lower-case a name used inside a sentence ("since last hot wax"). German nouns keep their capital letter. */
+function lc(string $s): string
+{
+    return I18n::lang() === 'de' ? $s : mb_strtolower($s);
+}
+
+/** An English noun with its plural for $n ("tube"/"tubes"), translated. German plurals come from 'plural:<word>' in lang/de.php. */
+function plural_word(string $en, int|float $n): string
+{
+    if (abs($n) == 1) {
+        return t($en);
+    }
+    if (I18n::lang() === 'en') {
+        return str_ends_with($en, 's') ? $en : $en . 's';
+    }
+    return I18n::dict(I18n::lang())['plural:' . $en] ?? t($en);
 }

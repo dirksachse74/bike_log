@@ -9,19 +9,19 @@ final class Bundles
 {
     public static function get(int $uid, int $id): array
     {
-        return Db::one('SELECT * FROM purchase_bundles WHERE id = ? AND user_id = ?', [$id, $uid]) ?? throw new NotFound('Bundle not found.');
+        return Db::one('SELECT * FROM purchase_bundles WHERE id = ? AND user_id = ?', [$id, $uid]) ?? throw new NotFound(t('Bundle not found.'));
     }
 
     private static function checkMember(int $uid, array $c, int $bundleId): void
     {
         if ($c['bundle_id'] && (int)$c['bundle_id'] !== $bundleId && Db::one('SELECT id FROM purchase_bundles WHERE id = ? AND voided_at IS NULL', [$c['bundle_id']])) {
-            throw new UserError($c['label'] . ' already belongs to another bundle.');
+            throw new UserError(t('{part} already belongs to another bundle.', ['part' => $c['label']]));
         }
         if ($c['price_cents'] !== null) {
-            throw new UserError($c['label'] . ' has its own price (' . money((int)$c['price_cents']) . '). A part is priced either on its own or in a bundle: remove its price first, or leave it out.');
+            throw new UserError(t('{part} has its own price ({price}). A part is priced either on its own or in a bundle: remove its price first, or leave it out.', ['part' => $c['label'], 'price' => money((int)$c['price_cents'])]));
         }
         if ($c['from_stock_txn_id']) {
-            throw new UserError($c['label'] . ' came from stock; its cost belongs to that stock purchase.');
+            throw new UserError(t('{part} came from stock; its cost belongs to that stock purchase.', ['part' => $c['label']]));
         }
     }
 
@@ -30,13 +30,13 @@ final class Bundles
         return Db::tx(function () use ($uid, $name, $componentIds, $merchant, $on, $priceCents, $notes, $ws) {
             $name = trim($name);
             if ($name === '') {
-                throw new UserError('Give the bundle a name, e.g. "Ultegra Di2 R8100 groupset".');
+                throw new UserError(t('Give the bundle a name, e.g. "Ultegra Di2 R8100 groupset".'));
             }
             if (!$componentIds) {
-                throw new UserError('Pick the parts that were bought together.');
+                throw new UserError(t('Pick the parts that were bought together.'));
             }
             if ($priceCents !== null && $priceCents < 0) {
-                throw new UserError('A price cannot be negative.');
+                throw new UserError(t('A price cannot be negative.'));
             }
             $id = Db::insert('purchase_bundles', ['user_id' => $uid, 'name' => mb_substr($name, 0, 160), 'merchant' => $merchant, 'purchased_on' => $on,
                 'price_cents' => $priceCents, 'notes' => $notes, 'work_session_id' => $ws, 'created_at' => now_utc()]);
@@ -49,7 +49,7 @@ final class Bundles
     {
         $b = self::get($uid, $id);
         if ($b['voided_at']) {
-            throw new UserError('This bundle was voided.');
+            throw new UserError(t('This bundle was voided.'));
         }
         foreach (array_unique(array_map('intval', $componentIds)) as $cid) {
             $c = Domain::component($uid, $cid);
@@ -63,14 +63,14 @@ final class Bundles
         self::get($uid, $id);
         $n = Db::run('UPDATE components SET bundle_id = NULL WHERE id = ? AND user_id = ? AND bundle_id = ?', [$cid, $uid, $id])->rowCount();
         if (!$n) {
-            throw new UserError('That part is not in this bundle.');
+            throw new UserError(t('That part is not in this bundle.'));
         }
     }
 
     public static function void(int $uid, int $id, string $reason): void
     {
         if (trim($reason) === '') {
-            throw new UserError('Say why this bundle is wrong.');
+            throw new UserError(t('Say why this bundle is wrong.'));
         }
         self::get($uid, $id);
         Db::run('UPDATE purchase_bundles SET voided_at = ?, void_reason = ? WHERE id = ? AND user_id = ? AND voided_at IS NULL', [now_utc(), $reason, $id, $uid]);
@@ -226,7 +226,7 @@ final class Costs
                 $unpricedBundles++;
                 continue;
             }
-            $items[] = ['kind' => 'BUNDLE', 'date' => $b['purchased_on'], 'text' => $b['name'] . ' (' . count($comps) . ' parts' . ($b['merchant'] ? ', ' . $b['merchant'] : '') . ')',
+            $items[] = ['kind' => 'BUNDLE', 'date' => $b['purchased_on'], 'text' => $b['name'] . ' (' . t('{n} parts', ['n' => count($comps)]) . ($b['merchant'] ? ', ' . $b['merchant'] : '') . ')',
                 'cents' => (int)$b['price_cents'], 'estimated' => false, 'bundle_id' => (int)$b['id'], 'component_id' => null];
         }
         foreach ($first as $cid => $bid) {
@@ -293,7 +293,7 @@ final class ServiceOrders
 
     public static function get(int $uid, int $id): array
     {
-        return Db::one('SELECT * FROM service_orders WHERE id = ? AND user_id = ?', [$id, $uid]) ?? throw new NotFound('Service order not found.');
+        return Db::one('SELECT * FROM service_orders WHERE id = ? AND user_id = ?', [$id, $uid]) ?? throw new NotFound(t('Service order not found.'));
     }
 
     public static function openFor(int $uid, int $cid): ?array
@@ -307,18 +307,18 @@ final class ServiceOrders
         return Db::tx(function () use ($uid, $cid, $on, $shop, $reason, $group) {
             $c = Domain::component($uid, $cid);
             if ($c['status'] === 'RETIRED') {
-                throw new UserError($c['label'] . ' is out of use; make it active first.');
+                throw new UserError(t('{part} is out of use; make it active first.', ['part' => $c['label']]));
             }
             if (self::openFor($uid, $cid)) {
-                throw new UserError($c['label'] . ' is already away for repair.');
+                throw new UserError(t('{part} is already away for repair.', ['part' => $c['label']]));
             }
             if ($group !== null && !Db::one('SELECT id FROM journal_entries WHERE user_id = ? AND incident_group = ? AND voided_at IS NULL', [$uid, $group])) {
-                throw new UserError('That incident does not exist.');
+                throw new UserError(t('That incident does not exist.'));
             }
             $bike = Domain::currentBike($uid, $cid);
             $inst = Domain::openInstallation($uid, $cid);
-            $ws = Inventory::startSession($uid, 'REPAIR', 'Sent away for repair: ' . Domain::componentName($c) . ($shop ? " ($shop)" : ''), $on);
-            $note = 'sent away for repair' . ($shop ? " to $shop" : '');
+            $ws = Inventory::startSession($uid, 'REPAIR', t('Sent away for repair: {part}', ['part' => Domain::componentName($c)]) . ($shop ? " ($shop)" : ''), $on);
+            $note = $shop ? t('sent away for repair to {shop}', ['shop' => $shop]) : t('sent away for repair');
             if ($inst) {
                 Inventory::removeWithOutcome($uid, (int)$inst['id'], $on, 'AWAITING_SERVICE', $note, $ws);
             } else {
@@ -337,39 +337,39 @@ final class ServiceOrders
         return Db::tx(function () use ($uid, $id, $on, $outcome, $costCents, $receipt, $notes, $putBack, $keepAs, $newLabel, $newSerial, $newWarranty) {
             $o = self::get($uid, $id);
             if ($o['status'] !== 'OUT') {
-                throw new UserError('This part is not away any more.');
+                throw new UserError(t('This part is not away any more.'));
             }
             if (!isset(self::OUTCOMES[$outcome])) {
-                throw new UserError('What came back? Choose one of: ' . implode(', ', self::OUTCOMES) . '.');
+                throw new UserError(t('What came back? Choose one of: {list}.', ['list' => implode(', ', t_list(self::OUTCOMES))]));
             }
             if ($costCents !== null && $costCents < 0) {
-                throw new UserError('The cost cannot be negative.');
+                throw new UserError(t('The cost cannot be negative.'));
             }
             if ($on <= $o['sent_on']) {
-                throw new UserError('It was sent away on ' . $o['sent_on'] . '; it must come back later.');
+                throw new UserError(t('It was sent away on {date}; it must come back later.', ['date' => $o['sent_on']]));
             }
             $c = Domain::component($uid, (int)$o['component_id']);
-            $ws = Inventory::startSession($uid, 'REPAIR', 'Back from repair: ' . Domain::componentName($c) . ' (' . mb_strtolower(self::OUTCOMES[$outcome]) . ')', $on);
-            $details = implode('; ', array_filter([self::OUTCOMES[$outcome], $o['shop'], $receipt ? "receipt $receipt" : null, $notes]));
+            $ws = Inventory::startSession($uid, 'REPAIR', t('Back from repair: {part} ({what})', ['part' => Domain::componentName($c), 'what' => lc(t(self::OUTCOMES[$outcome]))]), $on);
+            $details = implode('; ', array_filter([t(self::OUTCOMES[$outcome]), $o['shop'], $receipt ? t('receipt {no}', ['no' => $receipt]) : null, $notes]));
             $backId = (int)$c['id'];
             $replacement = null;
             if ($outcome === 'REPLACED_WARRANTY') {
                 $taken = [];
-                $label = trim((string)$newLabel) ?: Inventory::uniqueLabel($uid, $c['component_type'], $c['label'] . ' (warranty)', $taken);
+                $label = trim((string)$newLabel) ?: Inventory::uniqueLabel($uid, $c['component_type'], $c['label'] . ' ' . t('(warranty)'), $taken);
                 $replacement = Inventory::createComponent($uid, ['component_type' => $c['component_type'], 'label' => $label, 'product_id' => $c['product_id'],
                     'maker' => $c['maker'], 'model' => $c['model'], 'prior_usage' => 'NEW', 'purchase_date' => $on,
-                    'notes' => 'Warranty replacement for ' . $c['label'], 'work_session_id' => $ws]);
+                    'notes' => t('Warranty replacement for {part}', ['part' => $c['label']]), 'work_session_id' => $ws]);
                 Db::run('UPDATE components SET serial_number = ?, warranty_until = ? WHERE id = ?', [$newSerial ?: null, $newWarranty ?: null, $replacement]);
                 $backId = $replacement;
-                [$after, $work] = ['WARRANTY_RETURN', 'replaced under warranty by ' . $label];
+                [$after, $work] = ['WARRANTY_RETURN', t('replaced under warranty by {part}', ['part' => $label])];
             } elseif ($outcome === 'NOT_REPAIRED') {
                 if (!in_array($keepAs, ['STORED', 'DISCARDED'], true)) {
-                    throw new UserError('Keep it (stored) or discard it.');
+                    throw new UserError(t('Keep it (stored) or discard it.'));
                 }
-                [$after, $work] = [$keepAs, 'not repaired'];
+                [$after, $work] = [$keepAs, t('not repaired')];
                 $putBack = false;
             } else {
-                [$after, $work] = ['STORED', 'repaired' . ($outcome === 'REPAIRED_WARRANTY' ? ' under warranty' : '')];
+                [$after, $work] = ['STORED', $outcome === 'REPAIRED_WARRANTY' ? t('repaired under warranty') : t('repaired')];
             }
             $ev = Db::insert('maintenance_events', ['user_id' => $uid, 'action_code' => 'REPAIR', 'component_id' => $c['id'], 'bike_id' => $o['bike_id'],
                 'performed_on' => $on, 'outcome' => null, 'cost_cents' => $costCents ?: null, 'shop' => $o['shop'], 'notes' => mb_substr($work . '. ' . $details, 0, 1000),
@@ -391,20 +391,20 @@ final class ServiceOrders
         if ($o['from_bike_id']) {
             $b = Db::one('SELECT * FROM bikes WHERE id = ? AND user_id = ?', [$o['from_bike_id'], $uid]);
             if (!$b || $b['status'] !== 'ACTIVE') {
-                throw new UserError(($b['name'] ?? 'That bike') . ' is retired; untick "put it back".');
+                throw new UserError(t('{bike} is retired; untick "put it back".', ['bike' => $b['name'] ?? t('That bike')]));
             }
         } else {
             $p = Db::one('SELECT * FROM components WHERE id = ? AND user_id = ?', [$o['from_parent_id'], $uid]);
             if (!$p || $p['status'] !== 'ACTIVE') {
-                throw new UserError('The part it was mounted on is out of use; untick "put it back".');
+                throw new UserError(t('The part it was mounted on is out of use; untick "put it back".'));
             }
         }
         $col = $o['from_bike_id'] ? 'bike_id' : 'parent_component_id';
         $occ = Db::one("SELECT * FROM installations WHERE user_id = ? AND $col = ? AND slot = ? AND removed_on IS NULL AND voided_at IS NULL",
             [$uid, $o['from_bike_id'] ?: $o['from_parent_id'], $o['from_slot']]);
         Domain::install($uid, $cid, $o['from_bike_id'] ? (int)$o['from_bike_id'] : null, $o['from_parent_id'] ? (int)$o['from_parent_id'] : null,
-            $o['from_slot'], $on, 'back from repair', true, $ws, 'STORED');
-        return $occ ? 'back on, ' . Domain::componentName(Domain::component($uid, (int)$occ['component_id'])) . ' stored' : 'back on';
+            $o['from_slot'], $on, t('back from repair'), true, $ws, 'STORED');
+        return $occ ? t('back on, {part} stored', ['part' => Domain::componentName(Domain::component($uid, (int)$occ['component_id']))]) : t('back on');
     }
 
     private static function fixIncident(int $uid, array $o, int $cid, string $outcome, string $work, ?int $cost, string $on, int $ws): bool
@@ -414,7 +414,7 @@ final class ServiceOrders
         if (!$mine) {
             $mine = array_filter($rows, fn($e) => !$e['component_id'] && !$e['affected'] && !$e['repair']);
         }
-        $text = $work . ($o['shop'] ? ' by ' . $o['shop'] : '') . ($cost ? ', ' . money($cost) : '');
+        $text = $work . ($o['shop'] ? ' ' . t('by {shop}', ['shop' => $o['shop']]) : '') . ($cost ? ', ' . money($cost) : '');
         foreach ($mine as $e) {
             Db::run('UPDATE journal_entries SET repair = ?, repair_text = ?, repaired_on = ?, repair_session_id = ? WHERE id = ?',
                 [$outcome === 'REPLACED_WARRANTY' ? 'REPLACED' : 'REPAIRED', mb_substr($text, 0, 255), $on, $ws, $e['id']]);
@@ -455,7 +455,7 @@ final class ServiceOrders
         $out = [];
         $bike = Domain::currentBike($uid, (int)$c['id']);
         foreach (array_merge(Incidents::list($uid, ['component_id' => $c['id'], 'open' => 1]), $bike ? Incidents::list($uid, ['bike_id' => $bike['id'], 'open' => 1]) : []) as $i) {
-            $out[$i['group']] = $i['label'] . ' on ' . $i['on'] . ($i['bike_name'] ? ' (' . $i['bike_name'] . ')' : '');
+            $out[$i['group']] = t('{what} on {date}', ['what' => $i['label'], 'date' => $i['on']]) . ($i['bike_name'] ? ' (' . $i['bike_name'] . ')' : '');
         }
         return $out;
     }
@@ -541,7 +541,7 @@ final class PartLife
             $g += ['finished' => [], 'in_use' => []];
             $prods = [];
             foreach ($g['finished'] as $r) {
-                $prods[$r['product'] ?? 'No product recorded'][] = $r;
+                $prods[$r['product'] ?? t('No product recorded')][] = $r;
             }
             $products = [];
             foreach ($prods as $name => $rows) {

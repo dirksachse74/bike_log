@@ -4,7 +4,7 @@
   <a class="btn" href="<?= h(url('product_import')) ?>"><?= h(t('Import JSON')) ?></a>
   <form method="get" class="row inline-form">
     <input type="hidden" name="r" value="products">
-    <select name="type"><?= options(Catalog::typesByCategory(), $type, true, 'All types') ?></select>
+    <select name="type"><?= options(Catalog::typesByCategory(), $type, true, t('All types')) ?></select>
     <button class="btn small"><?= h(t('Filter')) ?></button>
   </form>
 </div>

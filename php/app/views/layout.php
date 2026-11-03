@@ -2,10 +2,10 @@
 $u = Auth::user();
 $flash = Session::takeFlash();
 unset($_SESSION['old']);
-$nav = [['home', 'Overview'], ['bikes', 'Bikes'], ['rides', 'Rides'], ['parts', 'Parts'], ['spares', 'Spares'], ['maintenance', 'Maintenance'], ['supplies', 'Supplies']];
+$nav = [['home', t('Overview')], ['bikes', t('Bikes')], ['rides', t('Rides')], ['parts', t('Parts')], ['spares', t('Spares')], ['maintenance', t('Maintenance')], ['supplies', t('Supplies')]];
 $site = Settings::get('site_name');
 ?><!doctype html>
-<html lang="en">
+<html lang="<?= h(I18n::lang()) ?>">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -27,9 +27,12 @@ $site = Settings::get('site_name');
   </nav>
   <div class="me">
     <a href="<?= h(url('account')) ?>" class="<?= View::$active === 'account' ? 'on' : '' ?>"><?= h($u['display_name']) ?></a>
-    <?= post_button('logout', [], 'Sign out', 'btn link') ?>
+    <?= post_button('logout', [], t('Sign out'), 'btn link') ?>
   </div>
   <?php endif; ?>
+  <?php $other = I18n::lang() === 'de' ? 'en' : 'de'; ?>
+  <form method="post" action="<?= h(url('set_lang')) ?>" class="lang"><?= Csrf::field() ?><input type="hidden" name="lang" value="<?= h($other) ?>">
+    <button class="btn link" lang="<?= h($other) ?>" title="<?= h(I18n::LANGS[$other]) ?>"><?= h(strtoupper($other)) ?></button></form>
 </header>
 <?php if ($u && Settings::get('notice') !== ''): ?><div class="notice"><?= h(Settings::get('notice')) ?></div><?php endif; ?>
 <?php if ($u && $u['role'] === 'ADMIN' && Migrator::pending()): ?>
@@ -51,6 +54,6 @@ $site = Settings::get('site_name');
   <a href="<?= h(url('log')) ?>" class="<?= View::$active === 'maintenance' ? 'on' : '' ?>"><?= h(t('Log work')) ?></a>
 </nav>
 <?php endif; ?>
-<footer><?= h(t('Bike Log')) ?> <?= h(BIKELOG_PHP_VERSION) ?> <?= h(t('· reminders help you plan; they never mean a part is safe.')) ?></footer>
+<footer>Bike Log <?= h(BIKELOG_PHP_VERSION) ?> · <?= h(t('reminders help you plan; they never mean a part is safe.')) ?></footer>
 </body>
 </html>

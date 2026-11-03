@@ -97,10 +97,10 @@ final class UserBackups
 
     public static function content(int $uid, int $id): string
     {
-        $b = Db::one('SELECT content FROM user_backups WHERE id = ? AND user_id = ?', [$id, $uid]) ?? throw new NotFound('Backup not found.');
+        $b = Db::one('SELECT content FROM user_backups WHERE id = ? AND user_id = ?', [$id, $uid]) ?? throw new NotFound(t('Backup not found.'));
         $json = gzdecode($b['content']);
         if ($json === false) {
-            throw new UserError('This backup is damaged.');
+            throw new UserError(t('This backup is damaged.'));
         }
         return $json;
     }
@@ -114,7 +114,7 @@ final class UserBackups
             $backup = self::save($uid, 'BEFORE_RESET');
             self::wipe($uid);
             Domain::seedUser($uid);
-            ChangeLog::note($uid, 'data', null, 'Fresh start (a copy of the data before it is under Backups)');
+            ChangeLog::note($uid, 'data', null, t('Fresh start (a copy of the data before it is under Backups)'));
             return $backup;
         });
     }
@@ -142,13 +142,13 @@ final class UserBackups
         try {
             $d = json_decode($content, true, 64, JSON_THROW_ON_ERROR);
         } catch (JsonException $e) {
-            throw new UserError('This is not a Bike Log data file (not valid JSON).');
+            throw new UserError(t('This is not a Bike Log data file (not valid JSON).'));
         }
         if (!is_array($d) || ($d['format'] ?? null) !== self::FORMAT) {
-            throw new UserError('This is not a Bike Log data file from the web version (Account → Download all my data).');
+            throw new UserError(t('This is not a Bike Log data file from the web version (Account → Download all my data).'));
         }
         if (!is_int($d['version'] ?? null) || $d['version'] > self::VERSION) {
-            throw new UserError('This file comes from a newer Bike Log. Update the app first.');
+            throw new UserError(t('This file comes from a newer Bike Log. Update the app first.'));
         }
         return $d;
     }
@@ -209,10 +209,10 @@ final class UserBackups
             }
         }
         if (isset($d['user_settings']) && !is_array($d['user_settings'])) {
-            $errors[] = 'user_settings: expected a list';
+            $errors[] = t('user_settings: expected a list');
         }
         if ($errors) {
-            throw new UserError('The file cannot be restored: ' . implode('; ', array_slice($errors, 0, 20)) . (count($errors) > 20 ? ' …' : ''));
+            throw new UserError(t('The file cannot be restored: {errors}', ['errors' => implode('; ', array_slice($errors, 0, 20)) . (count($errors) > 20 ? ' …' : '')]));
         }
         return [$ids, $warnings];
     }
@@ -263,7 +263,7 @@ final class UserBackups
                     }
                 }
                 ChangeLog::$off = false;
-                ChangeLog::note($uid, 'data', null, "Restored from $label (" . self::summary($d) . ')');
+                ChangeLog::note($uid, 'data', null, t('Restored from {label} ({summary})', ['label' => $label, 'summary' => self::summary($d)]));
                 return $backup;
             });
         } finally {

@@ -103,7 +103,7 @@ final class Inventory
     {
         $c = Domain::component($uid, $componentId);
         if (!isset(self::dispositions()[$disposition]) && !($disposition === 'IN_USE' && Domain::isRiderGear($c['component_type']))) {
-            throw new UserError('Unknown choice for what happened to the part.');
+            throw new UserError(t('Unknown choice for what happened to the part.'));
         }
         Db::insert('component_dispositions', ['user_id' => $uid, 'component_id' => $componentId, 'disposition' => $disposition,
             'previous_disposition' => $c['disposition'], 'effective_on' => $on, 'note' => $note, 'work_session_id' => $ws, 'created_at' => now_utc()]);
@@ -118,27 +118,27 @@ final class Inventory
     {
         $c = Domain::component($uid, $componentId);
         if (!Domain::isRiderGear($c['component_type'])) {
-            throw new UserError('Only gear worn by the rider (shoes) is "in use".');
+            throw new UserError(t('Only gear worn by the rider (shoes) is "in use".'));
         }
         if ($c['status'] !== 'ACTIVE') {
-            throw new UserError('This part is retired. Restore it first.');
+            throw new UserError(t('This part is retired. Restore it first.'));
         }
         if (($c['disposition'] === 'IN_USE') === $inUse) {
-            throw new UserError($inUse ? 'Already in use.' : 'Not in use.');
+            throw new UserError($inUse ? t('Already in use.') : t('Not in use.'));
         }
         $last = Db::value('SELECT MAX(effective_on) FROM component_dispositions WHERE user_id = ? AND component_id = ?', [$uid, $componentId]);
         if ($last && $on < $last) {
-            throw new UserError("The date must be on or after $last (the last change).");
+            throw new UserError(t('The date must be on or after {date} (the last change).', ['date' => $last]));
         }
-        self::setDisposition($uid, $componentId, $inUse ? 'IN_USE' : 'STORED', $on, $inUse ? 'in use' : 'put away');
-        ChangeLog::note($uid, 'part', $componentId, ($inUse ? 'In use from ' : 'Put away on ') . $on, null, $componentId);
+        self::setDisposition($uid, $componentId, $inUse ? 'IN_USE' : 'STORED', $on, $inUse ? t('in use') : t('put away'));
+        ChangeLog::note($uid, 'part', $componentId, ($inUse ? t('In use from ') : t('Put away on ')) . $on, null, $componentId);
     }
 
     /** Take a part off (on the date) and record what happened to it (stored, awaiting service, discarded ...). */
     public static function removeWithOutcome(int $uid, int $installationId, string $on, string $outcome, ?string $reason = null, ?int $ws = null): void
     {
         Db::tx(function () use ($uid, $installationId, $on, $outcome, $reason, $ws) {
-            $i = Db::one('SELECT * FROM installations WHERE id = ? AND user_id = ?', [$installationId, $uid]) ?? throw new NotFound('Record not found.');
+            $i = Db::one('SELECT * FROM installations WHERE id = ? AND user_id = ?', [$installationId, $uid]) ?? throw new NotFound(t('Record not found.'));
             Domain::remove($uid, $installationId, $on, $reason);
             Db::run('UPDATE installations SET removal_outcome = ?, removal_session_id = ? WHERE id = ?', [$outcome, $ws, $installationId]);
             self::setDisposition($uid, (int)$i['component_id'], $outcome, $on, $reason, $ws);
@@ -166,7 +166,7 @@ final class Inventory
     {
         Db::tx(function () use ($uid, $wsId) {
             $ws = Db::one('SELECT * FROM work_sessions WHERE id = ? AND user_id = ? AND undone_at IS NULL', [$wsId, $uid])
-                ?? throw new UserError('This was already undone.');
+                ?? throw new UserError(t('This was already undone.'));
             $now = now_utc();
             $created = array_map('intval', array_column(Db::all('SELECT id FROM components WHERE user_id = ? AND work_session_id = ?', [$uid, $wsId]), 'id'));
             foreach ($created as $cid) {
@@ -174,10 +174,10 @@ final class Inventory
                     + (SELECT COUNT(*) FROM maintenance_events WHERE component_id = ? AND (work_session_id IS NULL OR work_session_id <> ?) AND voided_at IS NULL)',
                     [$cid, $wsId, $cid, $wsId]);
                 if ($outside > 0) {
-                    throw new UserError('A part from this step has newer history; undo or correct that first.');
+                    throw new UserError(t('A part from this step has newer history; undo or correct that first.'));
                 }
             }
-            Db::run('UPDATE installations SET voided_at = ?, void_reason = ? WHERE user_id = ? AND work_session_id = ? AND voided_at IS NULL', [$now, 'undone: ' . $ws['title'], $uid, $wsId]);
+            Db::run('UPDATE installations SET voided_at = ?, void_reason = ? WHERE user_id = ? AND work_session_id = ? AND voided_at IS NULL', [$now, t('undone: {what}', ['what' => $ws['title']]), $uid, $wsId]);
             Db::run('UPDATE installations SET removed_on = NULL, removal_reason = NULL, removal_outcome = NULL, removal_session_id = NULL
                 WHERE user_id = ? AND removal_session_id = ?', [$uid, $wsId]);
             foreach (Db::all('SELECT * FROM component_dispositions WHERE user_id = ? AND work_session_id = ? ORDER BY id DESC', [$uid, $wsId]) as $d) {
@@ -203,7 +203,7 @@ final class Inventory
                 return_session_id = NULL, event_id = NULL, replacement_id = NULL WHERE user_id = ? AND return_session_id = ?", [$uid, $wsId]);
             Db::run('UPDATE purchase_bundles SET voided_at = ?, void_reason = ? WHERE user_id = ? AND work_session_id = ? AND voided_at IS NULL', [$now, 'undone', $uid, $wsId]);
             Db::run('UPDATE work_sessions SET undone_at = ? WHERE id = ?', [$now, $wsId]);
-            ChangeLog::note($uid, 'data', $wsId, 'Undone: ' . $ws['title'] . ($created ? ' (' . count($created) . ' parts it added are gone)' : ''));
+            ChangeLog::note($uid, 'data', $wsId, t('Undone: {what}', ['what' => $ws['title']]) . ($created ? ' ' . t('({n} parts it added are gone)', ['n' => count($created)]) : ''));
         });
     }
 
@@ -218,7 +218,7 @@ final class Inventory
         $firstRide = Db::value('SELECT MIN(ride_date) FROM rides WHERE user_id = ? AND bike_id = ? AND removed_at IS NULL', [$uid, $bikeId]);
         $start = min(array_filter([$bike['purchase_date'], $firstRide, today()]));
         if (!$has) {
-            $cid = self::createComponent($uid, ['component_type' => 'FRAME', 'label' => $bike['name'] . ' frame',
+            $cid = self::createComponent($uid, ['component_type' => 'FRAME', 'label' => t('{bike} frame', ['bike' => $bike['name']]),
                 'maker' => $bike['maker'], 'model' => $bike['model'], 'prior_usage' => 'NEW', 'purchase_date' => $bike['purchase_date'],
                 'notes' => self::AUTO_FRAME_NOTE]);
             Db::insert('installations', ['user_id' => $uid, 'component_id' => $cid, 'bike_id' => $bikeId, 'slot' => 'FRAME',
@@ -239,7 +239,7 @@ final class Inventory
         $first = Db::value('SELECT MIN(installed_on) FROM installations WHERE user_id = ? AND component_id = ? AND voided_at IS NULL', [$uid, $wheelsetId]);
         $from = min(array_filter([$from, $first, $set['purchase_date'], today()]));
         $added = 0;
-        foreach (['FRONT_WHEEL' => 'front wheel', 'REAR_WHEEL' => 'rear wheel'] as $type => $word) {
+        foreach (['FRONT_WHEEL' => t('front wheel'), 'REAR_WHEEL' => t('rear wheel')] as $type => $word) {
             if (Db::one('SELECT id FROM installations WHERE user_id = ? AND parent_component_id = ? AND slot = ? AND voided_at IS NULL', [$uid, $wheelsetId, $type])) {
                 continue;
             }
@@ -291,16 +291,16 @@ final class Inventory
     {
         return Db::tx(function () use ($uid, $consumableId, $on, $ws, $label) {
             $c = Db::one("SELECT * FROM consumables WHERE id = ? AND user_id = ? AND tracking_mode = 'COUNTED' AND component_type IS NOT NULL", [$consumableId, $uid])
-                ?? throw new NotFound('Stock line not found.');
+                ?? throw new NotFound(t('Stock line not found.'));
             if ((int)$c['track_stock'] && self::stockLevel($uid, $consumableId) < 1) {
-                throw new UserError('No ' . $c['name'] . ' left in stock.');
+                throw new UserError(t('No {name} left in stock.', ['name' => $c['name']]));
             }
             $p = $c['product_id'] ? Db::one('SELECT * FROM products WHERE id = ?', [$c['product_id']]) : null;
             $cid = self::createComponent($uid, ['component_type' => $c['component_type'], 'product_id' => $c['product_id'],
                 'label' => $label ?: $c['name'], 'maker' => $p['maker'] ?? $c['maker'], 'model' => $p['model'] ?? null,
-                'prior_usage' => 'NEW', 'purchase_date' => $on, 'notes' => 'Taken from stock: ' . $c['name'], 'work_session_id' => $ws]);
+                'prior_usage' => 'NEW', 'purchase_date' => $on, 'notes' => t('Taken from stock: {name}', ['name' => $c['name']]), 'work_session_id' => $ws]);
             $txn = Db::insert('consumable_txns', ['user_id' => $uid, 'consumable_id' => $consumableId, 'kind' => 'USE', 'qty' => 1, 'happened_on' => $on,
-                'note' => 'became part #' . $cid, 'work_session_id' => $ws, 'created_at' => now_utc()]);
+                'note' => t('became part #{id}', ['id' => $cid]), 'work_session_id' => $ws, 'created_at' => now_utc()]);
             Db::run('UPDATE components SET from_stock_txn_id = ? WHERE id = ?', [$txn, $cid]);
             return $cid;
         });
@@ -320,10 +320,12 @@ final class Inventory
             }
             $individual = count(self::individualSpares($uid, $type));
             $have = $inStock + $individual;
-            $unit = Catalog::raw('stock_units')[$type][0] ?? mb_strtolower(Catalog::typeName($type));
+            $unitEn = Catalog::rawData('stock_units')[$type][0] ?? null;
+            $unit = $unitEn !== null ? t($unitEn) : lc(Catalog::typeName($type));
+            $units = $unitEn !== null ? plural_word($unitEn, 2) : lc(Catalog::typePlural($type));
             $out[] = ['component_type' => $type, 'unit' => $unit, 'have' => $have, 'in_stock' => $inStock, 'individual' => $individual,
-                'minimum' => $min, 'low' => $have < $min,
-                'text' => "$have spare " . ($have === 1 ? $unit : $unit . 's') . ", keep at least $min"];
+                'minimum' => $min, 'low' => $have < $min, 'units' => $units,
+                'text' => t('{n} spare {units}, keep at least {min}', ['n' => $have, 'units' => $have === 1 ? $unit : $units, 'min' => $min])];
         }
         return $out;
     }
@@ -337,15 +339,15 @@ final class Inventory
             if ($lvl < (float)$c['min_stock']) {
                 $need = (float)$c['min_stock'] - $lvl;
                 $out[] = ['consumable_id' => (int)$c['id'], 'name' => $c['name'], 'unit' => $c['unit'],
-                    'text' => 'Buy ' . fmt_qty($c['tracking_mode'] === 'COUNTED' ? ceil($need) : $need) . ' ' . $c['unit'] . ' of ' . $c['name']
-                        . ': ' . fmt_qty($lvl) . ' left, minimum ' . fmt_qty((float)$c['min_stock'])];
+                    'text' => t('Buy {qty} {unit} of {name}: {left} left, minimum {min}', ['qty' => fmt_qty($c['tracking_mode'] === 'COUNTED' ? ceil($need) : $need),
+                        'unit' => $c['unit'], 'name' => $c['name'], 'left' => fmt_qty($lvl), 'min' => fmt_qty((float)$c['min_stock'])])];
             }
         }
         foreach (self::spareCheck($uid) as $s) {
             if ($s['low']) {
                 $need = $s['minimum'] - $s['have'];
-                $out[] = ['consumable_id' => null, 'name' => 'Spare ' . $s['unit'] . 's', 'unit' => $s['unit'],
-                    'text' => "Buy $need " . ($need === 1 ? $s['unit'] : $s['unit'] . 's') . ': ' . $s['text']];
+                $out[] = ['consumable_id' => null, 'name' => t('Spare {units}', ['units' => $s['units']]), 'unit' => $s['unit'],
+                    'text' => t('Buy {n} {units}: {why}', ['n' => $need, 'units' => $need === 1 ? $s['unit'] : $s['units'], 'why' => $s['text']])];
             }
         }
         return $out;
@@ -354,5 +356,6 @@ final class Inventory
 
 function fmt_qty(float $q): string
 {
-    return rtrim(rtrim(number_format($q, 2, '.', ''), '0'), '.');
+    $s = rtrim(rtrim(number_format($q, 2, '.', ''), '0'), '.');
+    return I18n::lang() === 'de' ? str_replace('.', ',', $s) : $s;
 }

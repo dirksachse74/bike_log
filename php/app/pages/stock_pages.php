@@ -10,7 +10,7 @@ function page_groupset(): void
     $templates = Groupsets::templates();
     $code = Request::isPost() ? post('tpl') : get_param('tpl');
     if ($code === '' || !isset($templates[$code])) {
-        View::render('groupsets/choose', ['templates' => $templates, 'bikes' => $bikes, 'bikeId' => get_int('bike')], 'Add a groupset', 'parts');
+        View::render('groupsets/choose', ['templates' => $templates, 'bikes' => $bikes, 'bikeId' => get_int('bike')], t('Add a groupset'), 'parts');
         return;
     }
     $t = $templates[$code];
@@ -34,13 +34,13 @@ function page_groupset(): void
     $prices = [];
     foreach ((array)($_POST['price'] ?? []) as $k => $v) {
         if (is_string($k) && is_string($v) && trim($v) !== '') {
-            $prices[$k] = parse_money_cents($v, 'Price');
+            $prices[$k] = parse_money_cents($v, t('Price'));
         }
     }
     if (Request::isPost() && post('do') === 'import') {
-        $bundlePrice = parse_money_cents($form['bundle_price'], 'Total price');
+        $bundlePrice = parse_money_cents($form['bundle_price'], t('Total price'));
         if ($bundlePrice !== null && $prices) {
-            throw new UserError('Give either a total price or prices per part, not both.');
+            throw new UserError(t('Give either a total price or prices per part, not both.'));
         }
         $res = Db::tx(function () use ($uid, $code, $form, $bikeId, $opts, $include, $prices, $spares, $bundlePrice, $t) {
             $res = Groupsets::import($uid, $code, parse_date($form['on'], true), $bikeId ?: null, $opts, $include, $form['prefix'],
@@ -52,7 +52,7 @@ function page_groupset(): void
             return $res;
         });
         $c = $res['plan']['counts'];
-        Session::flash('ok', 'Groupset added: ' . $c['INSTALL'] . ' installed, ' . $c['REPLACE'] . ' replaced, ' . $c['SPARE'] . ' as spares. You can undo it here.');
+        Session::flash('ok', t('Groupset added: {installed} installed, {replaced} replaced, {spare} as spares. You can undo it here.', ['installed' => $c['INSTALL'], 'replaced' => $c['REPLACE'], 'spare' => $c['SPARE']]));
         redirect('ws', ['id' => $res['work_session_id']]);
     }
     $plan = null;
@@ -63,13 +63,13 @@ function page_groupset(): void
         $error = $e->getMessage();
     }
     View::render('groupsets/plan', compact('t', 'code', 'bikes', 'bikeId', 'opts', 'form', 'plan', 'error', 'include', 'spares', 'prices'),
-        'Add a groupset', 'parts');
+        t('Add a groupset'), 'parts');
 }
 
 function page_ws(): void
 {
     $uid = (int)require_user()['id'];
-    $ws = Db::one('SELECT * FROM work_sessions WHERE id = ? AND user_id = ?', [get_int('id'), $uid]) ?? throw new NotFound('Not found.');
+    $ws = Db::one('SELECT * FROM work_sessions WHERE id = ? AND user_id = ?', [get_int('id'), $uid]) ?? throw new NotFound(t('Not found.'));
     $created = Db::all('SELECT * FROM components WHERE user_id = ? AND work_session_id = ? ORDER BY id', [$uid, $ws['id']]);
     $installs = Db::all('SELECT i.*, c.label, c.mark, b.name AS bike_name, p.label AS parent_label FROM installations i JOIN components c ON c.id = i.component_id
         LEFT JOIN bikes b ON b.id = i.bike_id LEFT JOIN components p ON p.id = i.parent_component_id
@@ -83,7 +83,7 @@ function page_ws_undo(): void
     $id = get_int('id');
     if (Request::isPost()) {
         Inventory::undoSession($uid, $id);
-        Session::flash('ok', 'Undone. Parts it added are gone and the old parts are back where they were.');
+        Session::flash('ok', t('Undone. Parts it added are gone and the old parts are back where they were.'));
     }
     redirect('ws', ['id' => $id]);
 }
@@ -108,7 +108,7 @@ function page_spares(): void
     $check = Inventory::spareCheck($uid);
     $shopping = Inventory::shoppingList($uid);
     $sessions = Db::all('SELECT * FROM work_sessions WHERE user_id = ? ORDER BY id DESC LIMIT 10', [$uid]);
-    View::render('spares/index', compact('spares', 'waiting', 'lines', 'check', 'shopping', 'sessions'), 'Spares and shopping list', 'parts');
+    View::render('spares/index', compact('spares', 'waiting', 'lines', 'check', 'shopping', 'sessions'), t('Spares and shopping list'), 'parts');
 }
 
 function page_stock_take(): void
@@ -118,7 +118,7 @@ function page_stock_take(): void
         redirect('spares');
     }
     $cid = Inventory::drawFromStock($uid, get_int('id'), parse_date(post('on', today()), true), null, nullable(post('label')));
-    Session::flash('ok', 'Taken out of stock. It is a part of its own now; install it where it goes.');
+    Session::flash('ok', t('Taken out of stock. It is a part of its own now; install it where it goes.'));
     redirect('part_install', ['id' => $cid]);
 }
 
@@ -131,7 +131,7 @@ function page_my_settings(): void
         foreach ($types as $t) {
             $v = (string)($_POST['min'][$t] ?? '');
             if ($v !== '' && (!ctype_digit($v) || (int)$v > 99)) {
-                throw new UserError('Spares to keep: whole numbers from 0 to 99.');
+                throw new UserError(t('Spares to keep: whole numbers from 0 to 99.'));
             }
             if ((int)$v > 0) {
                 $min[$t] = (int)$v;
@@ -139,14 +139,19 @@ function page_my_settings(): void
         }
         $spokes = post('spoke_relace_after');
         if (!ctype_digit($spokes) || (int)$spokes > 50) {
-            throw new UserError('Broken spokes before a re-lace: a whole number (0 turns it off).');
+            throw new UserError(t('Broken spokes before a re-lace: a whole number (0 turns it off).'));
         }
         UserSettings::set($uid, 'spare_minimums', json_encode($min ?: new stdClass()));
         UserSettings::set($uid, 'spoke_relace_after', (string)(int)$spokes);
         UserSettings::set($uid, 'default_tire_setup', isset(Catalog::raw('tire_setups')[post('default_tire_setup')]) ? post('default_tire_setup') : 'TUBE');
-        Session::flash('ok', 'Settings saved.');
+        if (I18n::valid(post('lang'))) {
+            Db::run('UPDATE users SET lang = ? WHERE id = ?', [post('lang'), $uid]);
+            I18n::rememberInCookie(post('lang'));
+            I18n::set(post('lang'));
+        }
+        Session::flash('ok', t('Settings saved.'));
         redirect('my_settings');
     }
     View::render('account/settings', ['types' => $types, 'min' => UserSettings::spareMinimums($uid),
-        'spokes' => UserSettings::get($uid, 'spoke_relace_after'), 'tire' => UserSettings::get($uid, 'default_tire_setup')], 'My settings', 'account');
+        'spokes' => UserSettings::get($uid, 'spoke_relace_after'), 'tire' => UserSettings::get($uid, 'default_tire_setup')], t('My settings'), 'account');
 }

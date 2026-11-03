@@ -9,7 +9,7 @@
 
 <section><h2><?= h(t('Shopping list')) ?></h2>
   <?php if (!$shopping): ?><p class="muted"><?= h(t('Nothing below what you want to keep.')) ?></p><?php endif; ?>
-  <ul><?php foreach ($shopping as $s): ?><li><?= h($s['text']) ?><?= $s['consumable_id'] ? ' <a class="small" href="' . h(url('supply', ['id' => $s['consumable_id']])) . '">record a purchase</a>' : '' ?></li><?php endforeach; ?></ul>
+  <ul><?php foreach ($shopping as $s): ?><li><?= h($s['text']) ?><?= $s['consumable_id'] ? ' <a class="small" href="' . h(url('supply', ['id' => $s['consumable_id']])) . '">' . h(t('record a purchase')) . '</a>' : '' ?></li><?php endforeach; ?></ul>
   <p class="muted"><?= h(t('Suggestions only; nothing is ordered.')) ?></p>
 </section>
 
@@ -23,8 +23,8 @@
   <?php if (!$lines): ?><p class="muted"><?= h(t('No counted stock yet. Use it for things you buy several of, like tubes or pad sets. Taking one out makes it a part of its own.')) ?></p><?php endif; ?>
   <table class="list"><?php foreach ($lines as $l): ?>
     <tr><td><a href="<?= h(url('supply', ['id' => $l['id']])) ?>"><?= h($l['name']) ?></a> <span class="muted"><?= h(Catalog::typeName((string)$l['component_type'])) ?></span></td>
-      <td class="num"><?= h(fmt_qty($l['stock'])) ?> <?= h($l['unit']) ?><?= $l['min_stock'] !== null ? ' <span class="muted">(keep ' . h(fmt_qty((float)$l['min_stock'])) . ')</span>' : '' ?></td>
-      <td><?= $l['stock'] >= 1 || !(int)$l['track_stock'] ? post_button('stock_take', ['id' => $l['id']], 'Take one out', 'btn small') : '' ?></td></tr>
+      <td class="num"><?= h(fmt_qty($l['stock'])) ?> <?= h($l['unit']) ?><?= $l['min_stock'] !== null ? ' <span class="muted">' . h(t('(keep {n})', ['n' => fmt_qty((float)$l['min_stock'])])) . '</span>' : '' ?></td>
+      <td><?= $l['stock'] >= 1 || !(int)$l['track_stock'] ? post_button('stock_take', ['id' => $l['id']], t('Take one out'), 'btn small') : '' ?></td></tr>
   <?php endforeach; ?></table>
 </section>
 
@@ -40,7 +40,7 @@
 <?php if ($waiting): ?>
 <section><h2><?= h(t('Waiting for inspection or repair')) ?></h2>
   <table class="list"><?php foreach ($waiting as $s): ?>
-    <tr><td><a href="<?= h(url('part', ['id' => $s['id']])) ?>"><?= h(Domain::componentName($s)) ?></a></td><td class="muted"><?= h(Catalog::typeName($s['component_type'])) ?> <?= h(t('since')) ?> <?= h($s['disposition_on'] ?? '') ?></td></tr>
+    <tr><td><a href="<?= h(url('part', ['id' => $s['id']])) ?>"><?= h(Domain::componentName($s)) ?></a></td><td class="muted"><?= h(Catalog::typeName($s['component_type'])) ?> <?= h(t('since {date}', ['date' => $s['disposition_on'] ?? ''])) ?></td></tr>
   <?php endforeach; ?></table>
 </section>
 <?php endif; ?>
@@ -48,7 +48,7 @@
 <?php if ($sessions): ?>
 <details><summary><?= h(t('Recent steps (groupset imports, replacements, fixes) you can undo')) ?></summary>
   <table class="list"><?php foreach ($sessions as $w): ?>
-    <tr class="<?= $w['undone_at'] ? 'voided' : '' ?>"><td><?= h($w['happened_on']) ?></td><td><a href="<?= h(url('ws', ['id' => $w['id']])) ?>"><?= h($w['title']) ?></a></td><td class="muted"><?= $w['undone_at'] ? 'undone' : '' ?></td></tr>
+    <tr class="<?= $w['undone_at'] ? 'voided' : '' ?>"><td><?= h($w['happened_on']) ?></td><td><a href="<?= h(url('ws', ['id' => $w['id']])) ?>"><?= h($w['title']) ?></a></td><td class="muted"><?= $w['undone_at'] ? h(t('undone')) : '' ?></td></tr>
   <?php endforeach; ?></table>
 </details>
 <?php endif; ?>

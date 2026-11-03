@@ -12,12 +12,12 @@ function page_chains(): void
         if (count($bikes) === 1) {
             redirect('chains', ['bike' => $bikes[0]['id']]);
         }
-        View::render('chains/choose', compact('bikes'), 'Chain rotation', 'parts');
+        View::render('chains/choose', compact('bikes'), t('Chain rotation'), 'parts');
         return;
     }
     $rot = Chains::rotation($uid, $bikeId);
     $waxes = Db::all("SELECT id, name, unit FROM consumables WHERE user_id = ? AND kind = 'WAX' AND archived_at IS NULL ORDER BY name", [$uid]);
-    View::render('chains/rotation', compact('rot', 'waxes'), 'Chains of ' . $rot['bike']['name'], 'parts');
+    View::render('chains/rotation', compact('rot', 'waxes'), t('Chains of {bike}', ['bike' => $rot['bike']['name']]), 'parts');
 }
 
 function page_chain_do(): void
@@ -29,13 +29,13 @@ function page_chain_do(): void
         $msg = match (post('do')) {
             'swap' => Chains::swap($uid, $bikeId, (int)post('to'), $on),
             'wax' => Chains::wax($uid, $bikeId, array_map('intval', post_list('chains')), $on, (int)post('consumable_id') ?: null,
-                parse_number(post('qty'), 'Amount'), (int)post('then_install') ?: null),
+                parse_number(post('qty'), t('Amount')), (int)post('then_install') ?: null),
             'add' => Chains::add($uid, $bikeId, post('pick'), $on)['text'],
             'leave' => (function () use ($uid) {
                 Chains::leave($uid, (int)post('id'));
-                return 'Taken out of the rotation (the chain itself stays).';
+                return t('Taken out of the rotation (the chain itself stays).');
             })(),
-            default => throw new UserError('Unknown action.'),
+            default => throw new UserError(t('Unknown action.')),
         };
         Session::flash('ok', $msg);
     }

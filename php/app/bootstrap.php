@@ -7,6 +7,7 @@ ini_set('log_errors', '1');
 mb_internal_encoding('UTF-8');
 
 require __DIR__ . '/core.php';
+require __DIR__ . '/i18n.php';
 require __DIR__ . '/catalog.php';
 require __DIR__ . '/mailer.php';
 require __DIR__ . '/auth.php';

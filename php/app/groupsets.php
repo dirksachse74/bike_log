@@ -22,7 +22,7 @@ final class Groupsets
 
     public static function template(string $code): array
     {
-        return self::templates()[$code] ?? throw new UserError('Unknown groupset.');
+        return self::templates()[$code] ?? throw new UserError(t('Unknown groupset.'));
     }
 
     /** @return array{0: array, 1: array} chosen values and placeholder variables */
@@ -39,7 +39,7 @@ final class Groupsets
                 }
             }
             if (!$choice) {
-                throw new UserError($o['label'] . ': that choice is not offered.');
+                throw new UserError(t('{option}: that choice is not offered.', ['option' => $o['label']]));
             }
             $chosen[$o['key']] = $v;
             $vars += $choice['vars'];
@@ -86,18 +86,18 @@ final class Groupsets
     {
         $t = self::template($code);
         if (!isset(self::OCCUPIED[$occupied])) {
-            throw new UserError('Unknown choice for taken positions.');
+            throw new UserError(t('Unknown choice for taken positions.'));
         }
         $bike = $bikeId ? Domain::bike($uid, $bikeId) : null;
         if ($bike && $bike['status'] !== 'ACTIVE') {
-            throw new UserError($bike['name'] . ' is retired.');
+            throw new UserError(t('{name} is retired.', ['name' => $bike['name']]));
         }
         [$chosen, $vars] = self::choose($t, $options);
         $all = self::items($t, $chosen, $vars);
         $keys = array_column($all, 'key');
         $selected = $include === null ? array_values(array_filter($all, fn($i) => $i['default'])) : array_values(array_filter($all, fn($i) => in_array($i['key'], $include, true)));
         if (!$selected) {
-            throw new UserError('Pick at least one part to add.');
+            throw new UserError(t('Pick at least one part to add.'));
         }
         $selKeys = array_column($selected, 'key');
         $prefix = trim($prefix) ?: ($t['label_prefix'] ?? $t['series']);
@@ -107,14 +107,14 @@ final class Groupsets
             $m = $it['mount'];
             $row = $it + ['type_name' => Catalog::typeName($it['type']), 'label' => Inventory::uniqueLabel($uid, $it['type'], $prefix . ' ' . $it['name'], $taken),
                 'action' => 'SPARE', 'slot' => $m['slot'], 'bike_id' => null, 'parent_key' => null, 'parent_component_id' => null,
-                'replaces' => null, 'text' => 'Added as a spare'];
+                'replaces' => null, 'text' => t('Added as a spare')];
             if (!$bike) {
-                $row['text'] = 'Added as a spare (no bike chosen)';
+                $row['text'] = t('Added as a spare (no bike chosen)');
             } elseif (in_array($it['key'], $toSpares, true)) {
-                $row['text'] = 'Kept as a spare, not installed (your choice)';
+                $row['text'] = t('Kept as a spare, not installed (your choice)');
             } elseif (isset($m['parent'])) {
                 if (!in_array($m['parent'], $selKeys, true)) {
-                    $row['text'] = in_array($m['parent'], $keys, true) ? 'Added as a spare: it goes on a part that is not in this import' : 'Added as a spare';
+                    $row['text'] = in_array($m['parent'], $keys, true) ? t('Added as a spare: it goes on a part that is not in this import') : t('Added as a spare');
                 } else {
                     $parentLabel = '';
                     foreach ($rows as $r) {
@@ -122,7 +122,7 @@ final class Groupsets
                             $parentLabel = $r['label'];
                         }
                     }
-                    $row = array_merge($row, ['action' => 'INSTALL', 'parent_key' => $m['parent'], 'text' => 'Mounted on ' . $parentLabel]);
+                    $row = array_merge($row, ['action' => 'INSTALL', 'parent_key' => $m['parent'], 'text' => t('Mounted on {part}', ['part' => $parentLabel])]);
                 }
             } else {
                 $occ = null;
@@ -130,7 +130,7 @@ final class Groupsets
                 if (isset($m['wheel'])) {
                     $wheel = Inventory::wheelOnBike($uid, (int)$bike['id'], $m['wheel']);
                     if (!$wheel) {
-                        $row['text'] = 'Added as a spare: ' . $bike['name'] . ' has no ' . mb_strtolower(Catalog::typeName($m['wheel'])) . ' recorded. Install it on the wheel later.';
+                        $row['text'] = t('Added as a spare: {bike} has no {wheel} recorded. Install it on the wheel later.', ['bike' => $bike['name'], 'wheel' => lc(Catalog::typeName($m['wheel']))]);
                         $rows[] = $row;
                         continue;
                     }
@@ -141,17 +141,17 @@ final class Groupsets
                     $row['bike_id'] = (int)$bike['id'];
                     $occ = self::occupant($uid, 'bike_id', (int)$bike['id'], $m['slot']);
                 }
-                $slotText = mb_strtolower(Catalog::slotName($m['slot']));
+                $slotText = lc(Catalog::slotName($m['slot']));
                 if (!$occ) {
-                    $row = array_merge($row, ['action' => 'INSTALL', 'text' => "Installed on $where ($slotText)"]);
+                    $row = array_merge($row, ['action' => 'INSTALL', 'text' => t('Installed on {where} ({slot})', ['where' => $where, 'slot' => $slotText])]);
                 } else {
                     $old = Domain::component($uid, (int)$occ['component_id']);
                     if ($occupied === 'REPLACE') {
                         $out = Inventory::defaultOutcome($old['component_type']);
                         $row = array_merge($row, ['action' => 'REPLACE', 'replaces' => (int)$old['id'], 'old_outcome' => $out,
-                            'text' => 'Replaces ' . $old['label'] . " on $where; " . $old['label'] . ' → ' . mb_strtolower(Inventory::dispositions()[$out] ?? $out)]);
+                            'text' => t('Replaces {old} on {where}; {old} → {what}', ['old' => $old['label'], 'where' => $where, 'what' => lc(Inventory::dispositions()[$out] ?? $out)])]);
                     } else {
-                        $row['text'] = "Added as a spare: $where ($slotText) already has " . $old['label'];
+                        $row['text'] = t('Added as a spare: {where} ({slot}) already has {old}', ['where' => $where, 'slot' => $slotText, 'old' => $old['label']]);
                     }
                 }
             }
@@ -171,13 +171,13 @@ final class Groupsets
         return Db::tx(function () use ($uid, $code, $on, $bikeId, $options, $include, $prefix, $occupied, $prior, $purchaseDate, $prices, $toSpares) {
             $p = self::plan($uid, $code, $bikeId, $options, $include, $prefix, $occupied, $toSpares);
             $t = $p['template'];
-            $ws = Inventory::startSession($uid, 'GROUPSET', 'Groupset import: ' . $t['name'], $on);
+            $ws = Inventory::startSession($uid, 'GROUPSET', t('Groupset import: {name}', ['name' => $t['name']]), $on);
             $created = [];
-            $note = 'Added with the groupset import: ' . $t['name'];
+            $note = t('Added with the groupset import: {name}', ['name' => $t['name']]);
             foreach ($p['items'] as $row) {
                 $pid = Inventory::productFor($uid, $row['type'], $t['maker'], $row['model'], $row['specs'], $t['source'],
                     'groupset template ' . $t['code'] . ($t['checked_on'] ? ', ' . $t['checked_on'] : ''),
-                    $t['verified'] ? null : "Specs from the groupset template, not verified against the maker's documentation");
+                    $t['verified'] ? null : t("Specs from the groupset template, not verified against the maker's documentation"));
                 $cid = Inventory::createComponent($uid, ['component_type' => $row['type'], 'label' => $row['label'], 'product_id' => $pid,
                     'maker' => $t['maker'], 'model' => $row['model'], 'prior_usage' => in_array($prior, ['NEW', 'UNKNOWN'], true) ? $prior : 'NEW',
                     'purchase_date' => $purchaseDate ?: $on, 'price_cents' => $prices[$row['key']] ?? null, 'notes' => $note, 'work_session_id' => $ws]);

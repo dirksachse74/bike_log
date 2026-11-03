@@ -10,7 +10,7 @@ final class Routes
             // public
             'install' => 'page_install', 'login' => 'page_login', 'logout' => 'page_logout', 'register' => 'page_register',
             'verify' => 'page_verify', 'resend' => 'page_resend', 'forgot' => 'page_forgot', 'reset' => 'page_reset',
-            'confirm_email' => 'page_confirm_email_change', 'notfound' => 'page_notfound',
+            'confirm_email' => 'page_confirm_email_change', 'notfound' => 'page_notfound', 'set_lang' => 'page_set_lang',
             // signed in
             'home' => 'page_home', 'reminders' => 'page_reminders', 'snooze' => 'page_snooze',
             'bikes' => 'page_bikes', 'bike' => 'page_bike', 'bike_edit' => 'page_bike_edit', 'bike_status' => 'page_bike_status',

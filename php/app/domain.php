@@ -37,7 +37,7 @@ final class Domain
     {
         $b = Db::one('SELECT * FROM bikes WHERE id = ? AND user_id = ?', [$id, $uid]);
         if (!$b) {
-            throw new NotFound('Bike not found.');
+            throw new NotFound(t('Bike not found.'));
         }
         return $b;
     }
@@ -46,7 +46,7 @@ final class Domain
     {
         $c = Db::one('SELECT * FROM components WHERE id = ? AND user_id = ?', [$id, $uid]);
         if (!$c) {
-            throw new NotFound('Part not found.');
+            throw new NotFound(t('Part not found.'));
         }
         return $c;
     }
@@ -309,7 +309,7 @@ final class Domain
     {
         $s = km($t['total_km']);
         return match ($t['status']) {
-            'at_least' => 'at least ' . $s,
+            'at_least' => t('at least {km}', ['km' => $s]),
             'estimated' => '≈ ' . $s,
             default => $s,
         };
@@ -345,34 +345,34 @@ final class Domain
         return Db::tx(function () use ($uid, $componentId, $bikeId, $parentId, $slot, $date, $note, $replaceOccupant, $ws, $occupantOutcome) {
             $c = self::component($uid, $componentId);
             if ($c['status'] !== 'ACTIVE') {
-                throw new UserError('This part is retired. Restore it before installing it.');
+                throw new UserError(t('This part is retired. Restore it before installing it.'));
             }
             if (($bikeId === null) === ($parentId === null)) {
-                throw new UserError('Choose a bike or a part to install it on.');
+                throw new UserError(t('Choose a bike or a part to install it on.'));
             }
             if ($bikeId !== null) {
                 $b = self::bike($uid, $bikeId);
                 if ($b['status'] !== 'ACTIVE') {
-                    throw new UserError('This bike is retired.');
+                    throw new UserError(t('This bike is retired.'));
                 }
             } else {
                 $p = self::component($uid, $parentId);
                 if (!in_array($p['component_type'], Catalog::parentTypes($c['component_type']), true)) {
-                    throw new UserError(Catalog::typeName($c['component_type']) . ' cannot go on a ' . Catalog::typeName($p['component_type']) . '.');
+                    throw new UserError(t('{part} cannot go on a {parent}.', ['part' => Catalog::typeName($c['component_type']), 'parent' => Catalog::typeName($p['component_type'])]));
                 }
                 if (self::isDescendant($uid, $parentId, $componentId)) {
-                    throw new UserError('A part cannot be mounted on itself or on a part that hangs on it.');
+                    throw new UserError(t('A part cannot be mounted on itself or on a part that hangs on it.'));
                 }
             }
             if (!in_array($slot, Catalog::slots($c['component_type']), true)) {
-                throw new UserError('That position does not fit this part type.');
+                throw new UserError(t('That position does not fit this part type.'));
             }
             // no back-dating into existing history: that is a correction (void the wrong record first)
             $later = Db::one('SELECT id FROM installations WHERE user_id = ? AND component_id = ? AND voided_at IS NULL
                 AND (installed_on >= ? OR (removed_on IS NOT NULL AND removed_on > ?))', [$uid, $componentId, $date, $date]);
             $open = self::openInstallation($uid, $componentId);
             if ($later && (!$open || (int)$later['id'] !== (int)$open['id'] || $open['installed_on'] >= $date)) {
-                throw new UserError('This part already has history on or after ' . $date . '. Correct that record first (Void) or pick a later date.');
+                throw new UserError(t('This part already has history on or after {date}. Correct that record first (Void) or pick a later date.', ['date' => $date]));
             }
             if ($open) {
                 Db::run("UPDATE installations SET removed_on = ?, removal_reason = 'Moved', removal_outcome = 'MOVED', removal_session_id = ? WHERE id = ?",
@@ -384,13 +384,13 @@ final class Domain
                 [$uid, $target, $slot]);
             if ($occupant) {
                 if (!$replaceOccupant || $occupant['installed_on'] >= $date) {
-                    throw new UserError('That position is taken since ' . $occupant['installed_on'] . '. Remove the part there first.');
+                    throw new UserError(t('That position is taken since {date}. Remove the part there first.', ['date' => $occupant['installed_on']]));
                 }
                 $old = self::component($uid, (int)$occupant['component_id']);
                 $outcome = $occupantOutcome ?? Inventory::defaultOutcome($old['component_type']);
                 Db::run("UPDATE installations SET removed_on = ?, removal_reason = 'Replaced', removal_outcome = ?, removal_session_id = ? WHERE id = ?",
                     [$date, $outcome, $ws, $occupant['id']]);
-                Inventory::setDisposition($uid, (int)$old['id'], $outcome, $date, 'replaced by ' . self::componentName($c), $ws);
+                Inventory::setDisposition($uid, (int)$old['id'], $outcome, $date, t('replaced by {part}', ['part' => self::componentName($c)]), $ws);
             }
             if ($c['disposition'] !== 'STORED') {
                 Db::updateOwned('components', $componentId, $uid, ['disposition' => 'STORED', 'updated_at' => now_utc()]);
@@ -424,13 +424,13 @@ final class Domain
     {
         $i = Db::one('SELECT * FROM installations WHERE id = ? AND user_id = ? AND voided_at IS NULL', [$installationId, $uid]);
         if (!$i || $i['removed_on'] !== null) {
-            throw new UserError('This part is not installed there any more.');
+            throw new UserError(t('This part is not installed there any more.'));
         }
         if ($date <= $i['installed_on']) {
-            throw new UserError('The removal date must be after the install date (' . $i['installed_on'] . ').');
+            throw new UserError(t('The removal date must be after the install date ({date}).', ['date' => $i['installed_on']]));
         }
         Db::run('UPDATE installations SET removed_on = ?, removal_reason = ? WHERE id = ?', [$date, $reason, $installationId]);
-        ChangeLog::note($uid, 'installation', $installationId, 'Taken off on ' . $date . ($reason ? ": $reason" : ''),
+        ChangeLog::note($uid, 'installation', $installationId, t('Taken off on {date}', ['date' => $date]) . ($reason ? ": $reason" : ''),
             $i['bike_id'] ? (int)$i['bike_id'] : null, (int)$i['component_id']);
     }
 
@@ -438,15 +438,15 @@ final class Domain
     public static function voidInstallation(int $uid, int $installationId, string $reason): void
     {
         if ($reason === '') {
-            throw new UserError('Please say why this record is wrong.');
+            throw new UserError(t('Please say why this record is wrong.'));
         }
         $n = Db::run('UPDATE installations SET voided_at = ?, void_reason = ? WHERE id = ? AND user_id = ? AND voided_at IS NULL',
             [now_utc(), $reason, $installationId, $uid])->rowCount();
         if ($n !== 1) {
-            throw new NotFound('Record not found.');
+            throw new NotFound(t('Record not found.'));
         }
         $i = Db::one('SELECT bike_id, component_id FROM installations WHERE id = ?', [$installationId]);
-        ChangeLog::note($uid, 'installation', $installationId, "Fitting record voided: $reason", $i['bike_id'] ? (int)$i['bike_id'] : null, (int)$i['component_id']);
+        ChangeLog::note($uid, 'installation', $installationId, t('Fitting record voided: {reason}', ['reason' => $reason]), $i['bike_id'] ? (int)$i['bike_id'] : null, (int)$i['component_id']);
     }
 
     public static function retire(int $uid, int $componentId, string $date, ?string $reason): void
@@ -455,7 +455,7 @@ final class Domain
             self::component($uid, $componentId);
             $open = self::openInstallation($uid, $componentId);
             if ($open) {
-                self::remove($uid, (int)$open['id'], $date, $reason ?: 'Retired');
+                self::remove($uid, (int)$open['id'], $date, $reason ?: t('Retired'));
             }
             Db::updateOwned('components', $componentId, $uid, ['status' => 'RETIRED', 'retired_on' => $date, 'retire_reason' => $reason, 'updated_at' => now_utc()]);
         });
@@ -492,7 +492,7 @@ final class Domain
         return Db::tx(function () use ($uid, $e) {
             $action = Catalog::action($e['action_code']);
             if (!$action) {
-                throw new UserError('Please choose what was done.');
+                throw new UserError(t('Please choose what was done.'));
             }
             $type = 'BIKE';
             $bikeId = $e['bike_id'];
@@ -503,17 +503,17 @@ final class Domain
             } elseif ($bikeId) {
                 self::bike($uid, $bikeId);
             } else {
-                throw new UserError('Choose a part or a bike.');
+                throw new UserError(t('Choose a part or a bike.'));
             }
             if (!isset(Catalog::actionsFor($type)[$action['code']])) {
-                throw new UserError($action['name'] . ' does not apply to ' . Catalog::typeName($type) . '.');
+                throw new UserError(t('{action} does not apply to {part}.', ['action' => Catalog::actionName($action['code']), 'part' => Catalog::typeName($type)]));
             }
             $outcome = $e['outcome'] ?: Catalog::outcomeFromMeasurement($action, $e['measurement_value']);
             if ($outcome !== null && $action['outcomes'] && !in_array($outcome, $action['outcomes'], true)) {
-                throw new UserError('Unknown result for this action.');
+                throw new UserError(t('Unknown result for this action.'));
             }
             if ($e['consumable_id']) {
-                Db::one('SELECT id FROM consumables WHERE id = ? AND user_id = ?', [$e['consumable_id'], $uid]) ?? throw new NotFound('Supply not found.');
+                Db::one('SELECT id FROM consumables WHERE id = ? AND user_id = ?', [$e['consumable_id'], $uid]) ?? throw new NotFound(t('Supply not found.'));
             }
             $id = Db::insert('maintenance_events', [
                 'user_id' => $uid, 'action_code' => $action['code'], 'component_id' => $e['component_id'] ?: null, 'bike_id' => $bikeId,
@@ -535,18 +535,18 @@ final class Domain
     public static function voidMaintenance(int $uid, int $eventId, string $reason): void
     {
         if ($reason === '') {
-            throw new UserError('Please say why this entry is wrong.');
+            throw new UserError(t('Please say why this entry is wrong.'));
         }
         Db::tx(function () use ($uid, $eventId, $reason) {
             $now = now_utc();   // the same moment on the entry and its supplies, so a restore brings back exactly these
             $n = Db::run('UPDATE maintenance_events SET voided_at = ?, void_reason = ? WHERE id = ? AND user_id = ? AND voided_at IS NULL',
                 [$now, $reason, $eventId, $uid])->rowCount();
             if ($n !== 1) {
-                throw new NotFound('Entry not found.');
+                throw new NotFound(t('Entry not found.'));
             }
             Db::run('UPDATE consumable_txns SET voided_at = ? WHERE maintenance_event_id = ? AND user_id = ? AND voided_at IS NULL', [$now, $eventId, $uid]);
             $e = Db::one('SELECT bike_id, component_id, action_code FROM maintenance_events WHERE id = ?', [$eventId]);
-            ChangeLog::note($uid, 'work', $eventId, Catalog::actionName($e['action_code']) . " voided: $reason",
+            ChangeLog::note($uid, 'work', $eventId, t('{action} voided: {reason}', ['action' => Catalog::actionName($e['action_code']), 'reason' => $reason]),
                 $e['bike_id'] ? (int)$e['bike_id'] : null, $e['component_id'] ? (int)$e['component_id'] : null);
         });
     }
@@ -555,16 +555,16 @@ final class Domain
     public static function restoreMaintenance(int $uid, int $eventId): void
     {
         Db::tx(function () use ($uid, $eventId) {
-            $e = Db::one('SELECT * FROM maintenance_events WHERE id = ? AND user_id = ?', [$eventId, $uid]) ?? throw new NotFound('Entry not found.');
+            $e = Db::one('SELECT * FROM maintenance_events WHERE id = ? AND user_id = ?', [$eventId, $uid]) ?? throw new NotFound(t('Entry not found.'));
             if ($e['voided_at'] === null) {
                 return;
             }
             if (str_starts_with((string)$e['void_reason'], 'undone')) {
-                throw new UserError('This entry was taken back with Undo of its whole step. Record the work again instead.');
+                throw new UserError(t('This entry was taken back with Undo of its whole step. Record the work again instead.'));
             }
             Db::run('UPDATE consumable_txns SET voided_at = NULL WHERE maintenance_event_id = ? AND user_id = ? AND voided_at = ?', [$eventId, $uid, $e['voided_at']]);
             Db::run('UPDATE maintenance_events SET voided_at = NULL, void_reason = NULL WHERE id = ?', [$eventId]);
-            ChangeLog::note($uid, 'work', $eventId, Catalog::actionName($e['action_code']) . ' restored',
+            ChangeLog::note($uid, 'work', $eventId, t('{action} restored', ['action' => Catalog::actionName($e['action_code'])]),
                 $e['bike_id'] ? (int)$e['bike_id'] : null, $e['component_id'] ? (int)$e['component_id'] : null);
         });
     }

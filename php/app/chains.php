@@ -31,21 +31,21 @@ final class Chains
         $wear = self::lastEvent($uid, (int)$c['id'], 'CHAIN_MEASURE_WEAR');
         $worn = $wear && $wear['outcome'] === 'AT_LIMIT';
         if ($c['status'] === 'RETIRED') {
-            [$state, $text] = ['RETIRED', 'Retired' . ($c['retired_on'] ? ' on ' . $c['retired_on'] : '')];
+            [$state, $text] = ['RETIRED', $c['retired_on'] ? t('Retired on {date}', ['date' => $c['retired_on']]) : t('Retired')];
         } elseif ($open) {
-            [$state, $text] = ['INSTALLED', 'On ' . ($bike['name'] ?? 'a part')];
+            [$state, $text] = ['INSTALLED', t('On {where}', ['where' => $bike['name'] ?? t('a part')])];
         } elseif ($worn) {
-            [$state, $text] = ['WORN', "Wear at limit on {$wear['performed_on']}; do not install"];
+            [$state, $text] = ['WORN', t('Wear at limit on {date}; do not install', ['date' => $wear['performed_on']])];
         } elseif ($c['disposition'] === 'AWAITING_SERVICE') {
-            [$state, $text] = ['AWAITING_SERVICE', 'Awaiting preparation or repair'];
+            [$state, $text] = ['AWAITING_SERVICE', t('Awaiting preparation or repair')];
         } elseif ($hot && $sinceHot == 0.0) {
-            [$state, $text] = [self::READY, "Hot waxed on {$hot['performed_on']}, 0 km since"];
+            [$state, $text] = [self::READY, t('Hot waxed on {date}, 0 km since', ['date' => $hot['performed_on']])];
         } elseif ($hot) {
-            [$state, $text] = ['NEEDS_HOT_WAX', km($sinceHot) . " since hot wax on {$hot['performed_on']}"];
+            [$state, $text] = ['NEEDS_HOT_WAX', t('{km} since hot wax on {date}', ['km' => km($sinceHot), 'date' => $hot['performed_on']])];
         } elseif ($c['prior_usage'] === 'NEW') {
-            [$state, $text] = ['NEW_UNWAXED', 'New chain, not hot waxed yet (factory grease)'];
+            [$state, $text] = ['NEW_UNWAXED', t('New chain, not hot waxed yet (factory grease)')];
         } else {
-            [$state, $text] = ['UNKNOWN', 'No hot wax recorded'];
+            [$state, $text] = ['UNKNOWN', t('No hot wax recorded')];
         }
         $waxes = (int)Db::value("SELECT COUNT(*) FROM maintenance_events WHERE user_id = ? AND component_id = ? AND action_code = 'WAX_HOT' AND voided_at IS NULL", [$uid, $c['id']]);
         return ['component' => $c, 'id' => (int)$c['id'], 'label' => Domain::componentName($c), 'state' => $state, 'text' => $text,
@@ -99,15 +99,15 @@ final class Chains
         }
         $prompt = null;
         if ($on && $wax && in_array($wax['status'], ['SOON', 'OVERDUE'], true)) {
-            $kmTxt = $on['km_since_hot_wax'] !== null ? km($on['km_since_hot_wax']) . ' since hot wax' : 'no hot wax recorded';
+            $kmTxt = $on['km_since_hot_wax'] !== null ? t('{km} since hot wax', ['km' => km($on['km_since_hot_wax'])]) : t('no hot wax recorded');
             if ($ready) {
-                $prompt = ['kind' => 'SWAP', 'to' => $ready[0]['id'], 'text' => "{$on['label']} has $kmTxt. Swap to {$ready[0]['label']} (waxed, ready)."];
+                $prompt = ['kind' => 'SWAP', 'to' => $ready[0]['id'], 'text' => t('{chain} has {km}. Swap to {ready} (waxed, ready).', ['chain' => $on['label'], 'km' => $kmTxt, 'ready' => $ready[0]['label']])];
             } else {
                 $names = array_merge(array_column($dirty, 'label'), [$on['label']]);
-                $prompt = ['kind' => 'WAX', 'text' => "{$on['label']} has $kmTxt and no waxed chain is ready. Wax " . implode(', ', $names) . ', then put one on.'];
+                $prompt = ['kind' => 'WAX', 'text' => t('{chain} has {km} and no waxed chain is ready. Wax {names}, then put one on.', ['chain' => $on['label'], 'km' => $kmTxt, 'names' => implode(', ', $names)])];
             }
         } elseif (!$on && $ready) {
-            $prompt = ['kind' => 'INSTALL', 'to' => $ready[0]['id'], 'text' => "No chain on {$bike['name']}. Put {$ready[0]['label']} on (waxed, ready)."];
+            $prompt = ['kind' => 'INSTALL', 'to' => $ready[0]['id'], 'text' => t('No chain on {bike}. Put {ready} on (waxed, ready).', ['bike' => $bike['name'], 'ready' => $ready[0]['label']])];
         }
         $dirtyIds = array_column($dirty, 'id');
         if ($on && $on['km_since_hot_wax'] !== 0.0) {
@@ -126,12 +126,12 @@ final class Chains
             if (Domain::openInstallation($uid, (int)$c['id'])) {
                 continue;
             }
-            $out['c:' . $c['id']] = Domain::componentName($c) . ($c['rot_bike'] ? ' (in the rotation of ' . $c['rot_bike'] . ', moves here)' : '');
+            $out['c:' . $c['id']] = Domain::componentName($c) . ($c['rot_bike'] ? ' ' . t('(in the rotation of {bike}, moves here)', ['bike' => $c['rot_bike']]) : '');
         }
         foreach (Db::all("SELECT * FROM consumables WHERE user_id = ? AND component_type = 'CHAIN' AND tracking_mode = 'COUNTED' AND archived_at IS NULL ORDER BY name", [$uid]) as $l) {
             $left = Inventory::stockLevel($uid, (int)$l['id']);
             if ($left >= 1) {
-                $out['s:' . $l['id']] = $l['name'] . ' (from stock, ' . fmt_qty($left) . ' left)';
+                $out['s:' . $l['id']] = $l['name'] . ' ' . t('(from stock, {n} left)', ['n' => fmt_qty($left)]);
             }
         }
         return $out;
@@ -142,30 +142,30 @@ final class Chains
         return Db::tx(function () use ($uid, $bikeId, $pick, $on) {
             $bike = Domain::bike($uid, $bikeId);
             if (preg_match('/^s:(\d+)$/', $pick, $m)) {
-                $line = Db::one('SELECT * FROM consumables WHERE id = ? AND user_id = ?', [(int)$m[1], $uid]) ?? throw new NotFound('Stock line not found.');
+                $line = Db::one('SELECT * FROM consumables WHERE id = ? AND user_id = ?', [(int)$m[1], $uid]) ?? throw new NotFound(t('Stock line not found.'));
                 if ($line['component_type'] !== 'CHAIN') {
-                    throw new UserError($line['name'] . ' is not a chain.');
+                    throw new UserError(t('{name} is not a chain.', ['name' => $line['name']]));
                 }
                 $cid = Inventory::drawFromStock($uid, (int)$line['id'], $on);
             } elseif (preg_match('/^c:(\d+)$/', $pick, $m)) {
                 $c = Domain::component($uid, (int)$m[1]);
                 if ($c['component_type'] !== 'CHAIN') {
-                    throw new UserError($c['label'] . ' is not a chain.');
+                    throw new UserError(t('{name} is not a chain.', ['name' => $c['label']]));
                 }
                 if ($c['status'] !== 'ACTIVE') {
-                    throw new UserError($c['label'] . ' is retired.');
+                    throw new UserError(t('{name} is retired.', ['name' => $c['label']]));
                 }
                 $i = Domain::openInstallation($uid, (int)$c['id']);
                 if ($i && (int)$i['bike_id'] !== $bikeId) {
-                    throw new UserError($c['label'] . ' is on another bike. Take it off first.');
+                    throw new UserError(t('{name} is on another bike. Take it off first.', ['name' => $c['label']]));
                 }
                 $cid = (int)$c['id'];
             } else {
-                throw new UserError('Pick one chain.');
+                throw new UserError(t('Pick one chain.'));
             }
             Db::updateOwned('components', $cid, $uid, ['rotation_bike_id' => $bikeId, 'updated_at' => now_utc()]);
             $c = Domain::component($uid, $cid);
-            return ['id' => $cid, 'text' => Domain::componentName($c) . ' joined the chain rotation of ' . $bike['name'] . '.'];
+            return ['id' => $cid, 'text' => t('{chain} joined the chain rotation of {bike}.', ['chain' => Domain::componentName($c), 'bike' => $bike['name']])];
         });
     }
 
@@ -182,12 +182,12 @@ final class Chains
             $rot = self::rotation($uid, $bikeId);
             $new = Domain::component($uid, $toId);
             if ($new['component_type'] !== 'CHAIN') {
-                throw new UserError($new['label'] . ' is not a chain.');
+                throw new UserError(t('{name} is not a chain.', ['name' => $new['label']]));
             }
             if ($rot['on'] && $rot['on']['id'] === $toId) {
-                throw new UserError(Domain::componentName($new) . ' is already on the bike.');
+                throw new UserError(t('{name} is already on the bike.', ['name' => Domain::componentName($new)]));
             }
-            Domain::install($uid, $toId, $bikeId, null, 'CHAIN', $on, 'Chain rotation', true, $ws, 'STORED');
+            Domain::install($uid, $toId, $bikeId, null, 'CHAIN', $on, t('Chain rotation'), true, $ws, 'STORED');
             if ($new['rotation_bike_id'] === null) {
                 Db::updateOwned('components', $toId, $uid, ['rotation_bike_id' => $bikeId]);
             }
@@ -199,7 +199,7 @@ final class Chains
                     Db::updateOwned('components', $old['id'], $uid, ['rotation_bike_id' => $bikeId]);
                 }
             }
-            return ($old ? $old['label'] . ' off, ' : '') . Domain::componentName($new) . ' on.';
+            return ($old ? t('{old} off, ', ['old' => $old['label']]) : '') . t('{new} on.', ['new' => Domain::componentName($new)]);
         });
     }
 
@@ -209,13 +209,13 @@ final class Chains
         return Db::tx(function () use ($uid, $bikeId, $ids, $on, $consumableId, $qty, $thenInstall) {
             $ids = array_values(array_unique(array_map('intval', $ids)));
             if (!$ids) {
-                throw new UserError('Tick the chains you waxed.');
+                throw new UserError(t('Tick the chains you waxed.'));
             }
             $names = [];
             foreach ($ids as $cid) {
                 $c = Domain::component($uid, $cid);
                 if ($c['component_type'] !== 'CHAIN') {
-                    throw new UserError('Only chains are hot waxed here.');
+                    throw new UserError(t('Only chains are hot waxed here.'));
                 }
                 $names[] = Domain::componentName($c);
             }
@@ -223,9 +223,9 @@ final class Chains
             foreach ($ids as $n => $cid) {
                 Domain::logMaintenance($uid, ['action_code' => 'WAX_HOT', 'component_id' => $cid, 'bike_id' => null, 'performed_on' => $on, 'outcome' => null,
                     'measurement_value' => null, 'consumable_id' => $consumableId, 'consumable_qty' => $n === 0 ? $qty : null, 'cost_cents' => null, 'shop' => null,
-                    'notes' => count($ids) > 1 ? 'waxed together with ' . (count($ids) - 1) . ' other chain(s)' : null]);
+                    'notes' => count($ids) > 1 ? t('waxed together with {n} other chain(s)', ['n' => count($ids) - 1]) : null]);
             }
-            return 'Hot waxed ' . implode(', ', $names) . '.' . ($swap ? ' ' . $swap : '');
+            return t('Hot waxed {names}.', ['names' => implode(', ', $names)]) . ($swap ? ' ' . $swap : '');
         });
     }
 
@@ -264,7 +264,7 @@ final class Chains
     {
         $events = Db::all("SELECT e.*, s.name AS product FROM maintenance_events e LEFT JOIN consumables s ON s.id = e.consumable_id
             WHERE e.user_id = ? AND e.component_id = ? AND e.action_code IN ('WAX_HOT','WAX_LIQUID') AND e.voided_at IS NULL ORDER BY e.performed_on, e.id", [$uid, $c['id']]);
-        $kind = ['WAX_HOT' => 'Hot wax', 'WAX_LIQUID' => 'Liquid wax top-up'];
+        $kind = ['WAX_HOT' => t('Hot wax'), 'WAX_LIQUID' => t('Liquid wax top-up')];
         $since = fn(string $d) => Domain::rideUsage($uid, $c, $d)['km'];
         $rows = [];
         $lastHot = null;
@@ -287,7 +287,7 @@ final class Chains
             $parts = [];
             foreach (Reminders::rulesFor($uid, $c) as $r) {
                 if ($r['action_code'] === 'WAX_LIQUID' && $r['trigger_kind'] === 'CYCLE_WINDOW' && $act['action_code'] === 'WAX_HOT') {
-                    $parts[] = 'Top-up at ' . km((float)$r['window_min_km']) . '–' . km((float)$r['window_max_km']);
+                    $parts[] = t('Top-up at {from}–{to}', ['from' => km((float)$r['window_min_km']), 'to' => km((float)$r['window_max_km'])]);
                 }
             }
             if ($lastHot !== null) {
@@ -295,7 +295,7 @@ final class Chains
                     if (($rem['rule']['action_code'] ?? '') === 'WAX_HOT' && $rem['rule']['interval_km'] !== null) {
                         $due = $rem['top_up'] ? $rem['top_up']['at_km'] + (float)$rem['rule']['after_top_up_km'] : (float)$rem['rule']['interval_km'];
                         $left = $due - (float)$rem['used_km'];
-                        $parts[] = 'Hot wax at ' . km($due) . ' (' . ($left >= 0 ? km($left) . ' left' : km(-$left) . ' over') . ')';
+                        $parts[] = t('Hot wax at {km} ({rest})', ['km' => km($due), 'rest' => $left >= 0 ? t('{km} left', ['km' => km($left)]) : t('{km} over', ['km' => km(-$left)])]);
                     }
                 }
             }

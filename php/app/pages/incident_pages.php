@@ -13,7 +13,7 @@ function page_ride(): void
     $incidents = Incidents::list($uid, ['ride_id' => $ride['id']]);
     $equipment = Rides::equipment($uid, $ride);
     View::render('rides/show', compact('ride', 'bike', 'type', 'choices', 'incidents', 'equipment') + ['fixData' => fix_data($uid, $incidents)],
-        ($ride['name'] ?: 'Ride') . ' · ' . $ride['ride_date'], 'rides');
+        ($ride['name'] ?: t('Ride')) . ' · ' . $ride['ride_date'], 'rides');
 }
 
 function page_incident_log(): void
@@ -23,7 +23,7 @@ function page_incident_log(): void
     if (Request::isPost()) {
         $solved = post('solved') === '1' ? parse_date(post('solved_on') ?: Incidents::ride($uid, $rideId)['ride_date'], true) : null;
         Incidents::log($uid, $rideId, post('type'), post_list('affected'), nullable(post('text')), $solved);
-        Session::flash('ok', 'Incident logged. Say what you did about it below, per part.');
+        Session::flash('ok', t('Incident logged. Say what you did about it below, per part.'));
     }
     redirect('ride', ['id' => $rideId]);
 }
@@ -37,7 +37,7 @@ function page_incidents(): void
         $f['bike_id'] = get_int('bike');
     }
     $incidents = Incidents::list($uid, $f);
-    View::render('incidents/list', ['incidents' => $incidents, 'show' => $show, 'fixData' => fix_data($uid, $incidents)], 'Incidents', 'rides');
+    View::render('incidents/list', ['incidents' => $incidents, 'show' => $show, 'fixData' => fix_data($uid, $incidents)], t('Incidents'), 'rides');
 }
 
 function page_incident(): void
@@ -50,10 +50,10 @@ function page_incident(): void
             'reopen' => Incidents::setSolved($uid, $group, null),
             'remove' => Incidents::remove($uid, $group),
             'restore' => Incidents::restore($uid, $group),
-            default => throw new UserError('Unknown action.'),
+            default => throw new UserError(t('Unknown action.')),
         };
-        Session::flash('ok', ['solve' => 'Marked as solved.', 'reopen' => 'Open again.', 'remove' => 'Incident removed. You can restore it from "Removed".',
-            'restore' => 'Incident restored.'][post('do')]);
+        Session::flash('ok', ['solve' => t('Marked as solved.'), 'reopen' => t('Open again.'), 'remove' => t('Incident removed. You can restore it from "Removed".'),
+            'restore' => t('Incident restored.')][post('do')]);
     }
     back_to(post('back'));
 }
@@ -65,7 +65,7 @@ function page_incident_fix(): void
         $entry = (int)post('entry');
         if (post('do') === 'undo') {
             Incidents::undoFix($uid, $entry);
-            Session::flash('ok', 'Fix undone; parts and stock are back as before.');
+            Session::flash('ok', t('Fix undone; parts and stock are back as before.'));
         } else {
             $src = [];
             $s = post('source', 'new');
@@ -75,10 +75,10 @@ function page_incident_fix(): void
                 $src = ['kind' => 'new', 'label' => post('new_label')];
             }
             if (post('outcome') !== '') {
-                $src['outcome'] = isset(Inventory::dispositions()[post('outcome')]) ? post('outcome') : throw new UserError('Unknown choice for the old part.');
+                $src['outcome'] = isset(Inventory::dispositions()[post('outcome')]) ? post('outcome') : throw new UserError(t('Unknown choice for the old part.'));
             }
             Incidents::fix($uid, $entry, post('action'), parse_date(post('on'), true), $src, nullable(post('text')));
-            Session::flash('ok', 'Fix saved.');
+            Session::flash('ok', t('Fix saved.'));
         }
     }
     back_to(post('back'));
@@ -100,16 +100,16 @@ function fix_data(int $uid, array $incidents): array
             $src = [];
             if ($type) {
                 if ($a['component_id'] && $inc['type'] !== 'SPOKE') {
-                    $src['new'] = 'A new ' . mb_strtolower(Catalog::typeName($type)) . ' (not in my records yet)';
+                    $src['new'] = t('A new {type} (not in my records yet)', ['type' => lc(Catalog::typeName($type))]);
                     foreach (Inventory::individualSpares($uid, $type) as $s) {
-                        $src['spare:' . $s['id']] = 'Spare: ' . Domain::componentName($s);
+                        $src['spare:' . $s['id']] = t('Spare: {part}', ['part' => Domain::componentName($s)]);
                     }
                 } else {
-                    $src['new'] = 'Not tracked';
+                    $src['new'] = t('Not tracked');
                 }
                 foreach ($stock as $l) {
                     if ($l['component_type'] === $type) {
-                        $src['stock:' . $l['id']] = 'From stock: ' . $l['name'] . ' (' . fmt_qty(Inventory::stockLevel($uid, (int)$l['id'])) . ' left)';
+                        $src['stock:' . $l['id']] = t('From stock: {name} ({n} left)', ['name' => $l['name'], 'n' => fmt_qty(Inventory::stockLevel($uid, (int)$l['id']))]);
                     }
                 }
             }
@@ -142,7 +142,7 @@ function back_to(string $back): never
 function page_punctures(): void
 {
     $uid = (int)require_user()['id'];
-    View::render('incidents/punctures', ['p' => Incidents::punctures($uid)], 'Punctures', 'rides');
+    View::render('incidents/punctures', ['p' => Incidents::punctures($uid)], t('Punctures'), 'rides');
 }
 
 function page_spoke(): void
@@ -153,7 +153,7 @@ function page_spoke(): void
         $replaced = post('replaced') === '1' ? parse_date(post('replaced_on') ?: post('broke_on'), true) : null;
         $stock = preg_match('/^stock:(\d+)$/', post('source'), $m) ? (int)$m[1] : null;
         Incidents::logSpoke($uid, (int)$wheel['id'], parse_date(post('broke_on'), true), nullable(post('note')), $replaced, $stock);
-        Session::flash('ok', 'Broken spoke logged' . ($replaced ? ' and replaced.' : '. Log the new spoke when it is in.'));
+        Session::flash('ok', $replaced ? t('Broken spoke logged and replaced.') : t('Broken spoke logged. Log the new spoke when it is in.'));
     }
     redirect('part', ['id' => $wheel['id']]);
 }
@@ -174,23 +174,23 @@ function page_journal(): void
                 $bikeId = $bikeId ?? (Domain::currentBike($uid, $cid)['id'] ?? null);
             }
             if (mb_strlen(post('text')) > 5000) {
-                throw new UserError('That note is too long (5000 characters at most).');
+                throw new UserError(t('That note is too long (5000 characters at most).'));
             }
             Journal::add($uid, ['bike_id' => $bikeId, 'component_id' => $cid, 'entry_on' => parse_date(post('entry_on'), true),
                 'kind' => post('kind') === 'ISSUE' ? 'ISSUE' : 'NOTE', 'text' => post('text')]);
-            Session::flash('ok', 'Saved.');
+            Session::flash('ok', t('Saved.'));
         } else {
             $e = Db::one('SELECT * FROM journal_entries WHERE id = ? AND user_id = ? AND incident_group IS NULL', [(int)post('id'), $uid])
-                ?? throw new NotFound('Entry not found.');
+                ?? throw new NotFound(t('Entry not found.'));
             $row = match ($do) {
                 'void' => ['voided_at' => now_utc(), 'void_reason' => post('reason') ?: 'removed'],
                 'restore' => ['voided_at' => null, 'void_reason' => null],
                 'resolve' => ['resolved_on' => parse_date(post('on', today()), true)],
                 'reopen' => ['resolved_on' => null],
-                default => throw new UserError('Unknown action.'),
+                default => throw new UserError(t('Unknown action.')),
             };
             Db::updateOwned('journal_entries', (int)$e['id'], $uid, $row + ['updated_at' => now_utc()]);
-            Session::flash('ok', 'Saved.');
+            Session::flash('ok', t('Saved.'));
         }
     }
     back_to(post('back'));

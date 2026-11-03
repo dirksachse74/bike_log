@@ -5,8 +5,8 @@
 <ul class="reminders">
 <?php foreach ($reminders as $r):
     $c = $r['component']; $b = $r['bike']; $rule = $r['rule'];
-    $what = $c ? Domain::componentName($c) : 'Whole bike';
-    $title = $r['kind'] === 'attention' ? 'Check result' : $rule['name'];
+    $what = $c ? Domain::componentName($c) : t('Whole bike');
+    $title = $r['kind'] === 'attention' ? t('Check result') : t($rule['name']);
     $logParams = $c ? ['part' => $c['id']] : ['bike' => $b['id']];
     if ($rule) { $logParams['action'] = $rule['action_code']; }
 ?>
