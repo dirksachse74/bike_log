@@ -1,6 +1,6 @@
 <?php /** @var array $reminders  @var string $back  @var int $backId */ ?>
 <?php if (!$reminders): ?>
-  <p class="muted">Nothing due right now. Reminders appear for parts that are installed on a bike.</p>
+  <p class="muted"><?= h(t('Nothing due right now. Reminders appear for parts that are installed on a bike.')) ?></p>
 <?php else: ?>
 <ul class="reminders">
 <?php foreach ($reminders as $r):
@@ -15,14 +15,14 @@
       <?= status_badge($r['status']) ?>
       <strong><?= h($title) ?></strong>
       <span class="muted">· <?php if ($c): ?><a href="<?= h(url('part', ['id' => $c['id']])) ?>"><?= h($what) ?></a><?php else: ?><?= h($what) ?><?php endif; ?>
-        <?php if (!empty($b['rider'])): ?>worn by you<?php else: ?>on <a href="<?= h(url('bike', ['id' => $b['id']])) ?>"><?= h($b['name']) ?></a><?php endif; ?></span>
+        <?php if (!empty($b['rider'])): ?><?= h(t('worn by you')) ?><?php else: ?><?= h(t('on')) ?> <a href="<?= h(url('bike', ['id' => $b['id']])) ?>"><?= h($b['name']) ?></a><?php endif; ?></span>
     </div>
     <p class="why"><?= h($r['text']) ?></p>
     <?php if (!empty($r['forecast']) && $r['status'] !== 'SNOOZED'): ?><p class="muted small"><?= h($r['forecast']) ?></p><?php endif; ?>
     <div class="rem-actions">
-      <a class="btn small primary" href="<?= h(url('log', $logParams)) ?>">Log it</a>
+      <a class="btn small primary" href="<?= h(url('log', $logParams)) ?>"><?= h(t('Log it')) ?></a>
       <?php if ($rule && $r['status'] !== 'OK'): ?>
-        <details class="inline"><summary class="btn small">Snooze</summary>
+        <details class="inline"><summary class="btn small"><?= h(t('Snooze')) ?></summary>
           <form method="post" action="<?= h(url('snooze')) ?>" class="row">
             <?= Csrf::field() ?>
             <input type="hidden" name="rule_code" value="<?= h($rule['rule_code']) ?>">
@@ -30,14 +30,14 @@
             <input type="hidden" name="bike_id" value="<?= h($b['id']) ?>">
             <input type="hidden" name="back" value="<?= h($back ?? 'reminders') ?>"><input type="hidden" name="back_id" value="<?= h($backId ?? '') ?>">
             <?php if ($r['status'] === 'SNOOZED'): ?>
-              <button class="btn small" name="do" value="clear">End snooze</button>
+              <button class="btn small" name="do" value="clear"><?= h(t('End snooze')) ?></button>
             <?php else:
               preg_match('/^([\d ]+) km/', $r['text'], $m); $used = isset($m[1]) ? str_replace(' ', '', $m[1]) : '0'; ?>
               <input type="hidden" name="used_km" value="<?= h($used) ?>">
-              <label>Days <input type="number" name="days" min="0" max="365" value="7"></label>
-              <label>or km <input type="number" name="km" min="0" step="10"></label>
-              <button class="btn small">Snooze</button>
-              <small>Snoozing records no maintenance.</small>
+              <label><?= h(t('Days')) ?> <input type="number" name="days" min="0" max="365" value="7"></label>
+              <label><?= h(t('or km')) ?> <input type="number" name="km" min="0" step="10"></label>
+              <button class="btn small"><?= h(t('Snooze')) ?></button>
+              <small><?= h(t('Snoozing records no maintenance.')) ?></small>
             <?php endif; ?>
           </form>
         </details>

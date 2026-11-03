@@ -1,14 +1,14 @@
 <p class="muted"><?= h(Catalog::CONSUMABLE_KINDS[$item['kind']] ?? $item['kind']) ?> <?= h($item['maker'] ?? '') ?></p>
-<div class="stats"><div><span class="big"><?= h(rtrim(rtrim(number_format($stock, 2, '.', ''), '0'), '.') . ' ' . $item['unit']) ?></span><span class="muted">in stock</span></div></div>
-<div class="actions"><a class="btn" href="<?= h(url('supply_edit', ['id' => $item['id']])) ?>">Edit</a></div>
+<div class="stats"><div><span class="big"><?= h(rtrim(rtrim(number_format($stock, 2, '.', ''), '0'), '.') . ' ' . $item['unit']) ?></span><span class="muted"><?= h(t('in stock')) ?></span></div></div>
+<div class="actions"><a class="btn" href="<?= h(url('supply_edit', ['id' => $item['id']])) ?>"><?= h(t('Edit')) ?></a></div>
 <form method="post" class="card row" action="<?= h(url('supply', ['id' => $item['id']])) ?>">
   <?= Csrf::field() ?>
-  <label>Entry<select name="kind"><?= options(['BUY' => 'Bought', 'USE' => 'Used', 'ADJUST' => 'Correction (+/−)'], 'BUY') ?></select></label>
+  <label><?= h(t('Entry')) ?><select name="kind"><?= options(['BUY' => 'Bought', 'USE' => 'Used', 'ADJUST' => 'Correction (+/−)'], 'BUY') ?></select></label>
   <?= field('qty', 'Amount (' . $item['unit'] . ')', '', 'text', ['inputmode' => 'decimal', 'required' => true]) ?>
   <?= field('happened_on', 'Date', today(), 'date', ['required' => true]) ?>
   <?= field('cost', 'Cost', '', 'text', ['inputmode' => 'decimal']) ?>
   <?= field('note', 'Note', '') ?>
-  <button class="btn primary">Add</button>
+  <button class="btn primary"><?= h(t('Add')) ?></button>
 </form>
 <table class="list">
   <?php foreach ($txns as $t): ?>

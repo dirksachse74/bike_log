@@ -3,9 +3,9 @@
   <input type="hidden" name="do" value="add"><input type="hidden" name="back" value="<?= h($back) ?>">
   <input type="hidden" name="bike_id" value="<?= (int)$bikeId ?>"><input type="hidden" name="component_id" value="<?= (int)$componentId ?>">
   <?= field('entry_on', 'On', today(), 'date', ['required' => true]) ?>
-  <label>Kind<select name="kind"><?= options(['NOTE' => 'Note', 'ISSUE' => 'Issue (to solve)'], 'NOTE') ?></select></label>
+  <label><?= h(t('Kind')) ?><select name="kind"><?= options(['NOTE' => 'Note', 'ISSUE' => 'Issue (to solve)'], 'NOTE') ?></select></label>
   <?= field('text', 'Text', '', 'text', ['required' => true, 'maxlength' => 5000]) ?>
-  <button class="btn small">Add</button>
+  <button class="btn small"><?= h(t('Add')) ?></button>
 </form>
 <table class="list">
 <?php foreach ($entries as $e): ?>

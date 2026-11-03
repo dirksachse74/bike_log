@@ -1,4 +1,4 @@
-<?php if (!$away): ?><p class="muted">Nothing is away. Send a part away from its page ("Send away for repair").</p><?php endif; ?>
+<?php if (!$away): ?><p class="muted"><?= h(t('Nothing is away. Send a part away from its page ("Send away for repair").')) ?></p><?php endif; ?>
 <table class="list">
 <?php foreach ($all as $o): ?>
   <tr><td><a href="<?= h(url('part', ['id' => $o['component_id']])) ?>"><?= h(Domain::componentName($o)) ?></a> <span class="muted"><?= h(Catalog::typeName($o['component_type'])) ?></span></td>

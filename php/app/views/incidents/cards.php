@@ -14,21 +14,21 @@
           <?= h(ucfirst((string)$a['repair_text'])) ?> <span class="muted"><?= h($a['repaired_on']) ?></span>
           <?= post_button('incident_fix', [], 'Undo fix', 'btn small', 'Undo this fix? Parts and stock go back to how they were.', ['do' => 'undo', 'entry' => $a['id'], 'back' => $back]) ?>
         <?php elseif (!$a['voided_at']): ?>
-          <details class="inline"><summary class="btn small">What did you do?</summary>
+          <details class="inline"><summary class="btn small"><?= h(t('What did you do?')) ?></summary>
             <form method="post" action="<?= h(url('incident_fix')) ?>" class="card" data-fix><?= Csrf::field() ?>
               <input type="hidden" name="entry" value="<?= (int)$a['id'] ?>"><input type="hidden" name="back" value="<?= h($back) ?>">
-              <label>What was done<select name="action" data-fix-action>
+              <label><?= h(t('What was done')) ?><select name="action" data-fix-action>
                 <?= options(($fd && $fd['replaceable'] ? ['REPLACED' => 'Replaced it'] : []) + ['REPAIRED' => 'Repaired / adjusted it', 'NONE' => 'Nothing needed'], '') ?></select></label>
               <?php if ($fd && $fd['sources']): ?>
-                <label data-fix-for="REPLACED">Replaced with<select name="source"><?= options($fd['sources'], '') ?></select></label>
+                <label data-fix-for="REPLACED"><?= h(t('Replaced with')) ?><select name="source"><?= options($fd['sources'], '') ?></select></label>
                 <?php if ($fd['old_part']): ?>
                   <?= field('new_label', 'Name of the new part (if new)', '', 'text', ['maxlength' => 160, 'data-fix-for' => 'REPLACED']) ?>
-                  <label data-fix-for="REPLACED">The old part<select name="outcome"><?= options(Inventory::dispositions(), $fd['default_outcome']) ?></select></label>
+                  <label data-fix-for="REPLACED"><?= h(t('The old part')) ?><select name="outcome"><?= options(Inventory::dispositions(), $fd['default_outcome']) ?></select></label>
                 <?php endif; ?>
               <?php endif; ?>
               <?= field('on', 'On', $inc['on'] > today() ? $inc['on'] : max($inc['on'], today()), 'date', ['required' => true]) ?>
               <?= field('text', 'Note', '', 'text', ['maxlength' => 255]) ?>
-              <button class="btn small primary">Save</button>
+              <button class="btn small primary"><?= h(t('Save')) ?></button>
             </form>
           </details>
         <?php endif; ?></td></tr>

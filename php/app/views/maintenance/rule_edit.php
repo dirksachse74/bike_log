@@ -1,10 +1,10 @@
 <form method="post" class="card" action="<?= h(url('rule_edit', $rule['id'] ? ['id' => $rule['id']] : ['part' => $rule['component_id'], 'code' => $rule['rule_code']])) ?>">
   <?= Csrf::field() ?>
-  <p><strong><?= h($rule['name']) ?></strong> · logged as "<?= h(Catalog::actionName($rule['action_code'])) ?>"
+  <p><strong><?= h($rule['name']) ?></strong> <?= h(t('· logged as "')) ?><?= h(Catalog::actionName($rule['action_code'])) ?>"
     <?= $rule['component_id'] ? '<br><span class="badge b-ok">only for this part</span>' : '' ?></p>
-  <?php if ($rule['trigger_kind'] === 'ONCE_AFTER_INSTALL'): ?><p class="muted">Due once after the part is fitted.</p><?php endif; ?>
+  <?php if ($rule['trigger_kind'] === 'ONCE_AFTER_INSTALL'): ?><p class="muted"><?= h(t('Due once after the part is fitted.')) ?></p><?php endif; ?>
   <?php if ($rule['trigger_kind'] === 'CYCLE_WINDOW'): ?>
-  <p class="muted">Once per cycle, inside a km window after the <?= h(mb_strtolower(Catalog::actionName((string)$rule['cycle_action_code']))) ?>. A wet ride asks for it at once.</p>
+  <p class="muted"><?= h(t('Once per cycle, inside a km window after the')) ?> <?= h(mb_strtolower(Catalog::actionName((string)$rule['cycle_action_code']))) ?><?= h(t('. A wet ride asks for it at once.')) ?></p>
   <div class="row">
     <?= field('window_min_km', 'From ... km', (string)$rule['window_min_km'], 'text', ['inputmode' => 'decimal', 'required' => true]) ?>
     <?= field('window_max_km', 'To ... km', (string)$rule['window_max_km'], 'text', ['inputmode' => 'decimal', 'required' => true]) ?>
@@ -29,8 +29,8 @@
     <?= field('after_top_up_km', 'After a liquid-wax top-up, hot wax ... km later', (string)$rule['after_top_up_km'], 'text', ['inputmode' => 'decimal', 'data-help' => 'Top-up at 70 km and 200 here: hot wax due at 270 km. Empty: always the interval above.']) ?>
   <?php endif; ?>
   <?php endif; ?>
-  <label>Where the number comes from<select name="origin"><?= options(['MANUFACTURER' => 'Manufacturer', 'PERSONAL' => 'My own value', 'DEFAULT' => 'App default'], $rule['origin']) ?></select></label>
-  <label class="check"><input type="checkbox" name="active" value="1" <?= (int)$rule['active'] ? 'checked' : '' ?>> Remind me</label>
+  <label><?= h(t('Where the number comes from')) ?><select name="origin"><?= options(['MANUFACTURER' => 'Manufacturer', 'PERSONAL' => 'My own value', 'DEFAULT' => 'App default'], $rule['origin']) ?></select></label>
+  <label class="check"><input type="checkbox" name="active" value="1" <?= (int)$rule['active'] ? 'checked' : '' ?>> <?= h(t('Remind me')) ?></label>
   <?= field('notes', 'Notes', (string)$rule['notes'], 'textarea') ?>
-  <button class="btn primary">Save</button>
+  <button class="btn primary"><?= h(t('Save')) ?></button>
 </form>
