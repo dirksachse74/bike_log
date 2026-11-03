@@ -1,0 +1,109 @@
+<p class="muted"><?= h(trim($bike['maker'] . ' ' . $bike['model'] . ' ' . $bike['year'])) ?>
+  <?= $bike['status'] !== 'ACTIVE' ? status_badge($bike['status']) : '' ?></p>
+<div class="stats">
+  <div><span class="big"><?= h(km((float)$stats['km'])) ?></span><span class="muted"><?= h(t('logged')) ?></span></div>
+  <div><span class="big"><?= (int)$stats['rides'] ?></span><span class="muted"><?= h(t('rides')) ?></span></div>
+  <div><span class="big"><?= h(duration((int)$stats['s'])) ?></span><span class="muted"><?= h(t('ride time')) ?></span></div>
+</div>
+<?php if ($stats['missing']): ?><p class="muted"><?= h(t('{n} ride(s) have no distance; they are not in the km.', ['n' => (int)$stats['missing']])) ?></p><?php endif; ?>
+<div class="actions">
+  <a class="btn primary" href="<?= h(url('ride_edit', ['bike' => $bike['id']])) ?>"><?= h(t('+ Ride')) ?></a>
+  <a class="btn" href="<?= h(url('log', ['bike' => $bike['id']])) ?>"><?= h(t('Log maintenance')) ?></a>
+  <a class="btn" href="<?= h(url('part_edit', ['bike' => $bike['id']])) ?>"><?= h(t('Add part to this bike')) ?></a>
+  <a class="btn" href="<?= h(url('groupset', ['bike' => $bike['id']])) ?>"><?= h(t('Add a groupset')) ?></a>
+  <a class="btn" href="<?= h(url('chains', ['bike' => $bike['id']])) ?>"><?= h(t('Chains')) ?></a>
+  <a class="btn" href="<?= h(url('brakes', ['bike' => $bike['id']])) ?>"><?= h(t('Brakes')) ?></a>
+  <a class="btn" href="<?= h(url('costs', ['bike' => $bike['id']])) ?>"><?= h(t('Costs')) ?></a>
+  <a class="btn" href="<?= h(url('bike_edit', ['id' => $bike['id']])) ?>"><?= h(t('Edit')) ?></a>
+  <a class="btn link" href="<?= h(url('changes', ['bike' => $bike['id']])) ?>"><?= h(t('Change log')) ?></a>
+</div>
+
+<?php if ($bike['status'] === 'ACTIVE'): ?>
+<section>
+  <h2><?= h(t('Needs doing')) ?></h2>
+  <?= View::partial('partials/reminders', ['reminders' => array_values(array_filter($reminders, fn($r) => $r['status'] !== 'OK')), 'back' => 'bike', 'backId' => $bike['id']]) ?>
+</section>
+<?php endif; ?>
+
+<section>
+  <h2><?= h($date !== today() ? t('Installed on {date}', ['date' => $date]) : t('Installed now')) ?></h2>
+  <form method="get" class="row inline-form">
+    <input type="hidden" name="r" value="bike"><input type="hidden" name="id" value="<?= (int)$bike['id'] ?>">
+    <label><?= h(t('What was on it on')) ?> <input type="date" name="on" value="<?= h($date) ?>"></label><button class="btn small"><?= h(t('Show')) ?></button>
+  </form>
+  <?php if (!$parts): ?><p class="muted"><?= h($date !== today() ? t('No parts recorded on that date.') : t('No parts recorded.')) ?></p><?php endif; ?>
+  <table class="list">
+    <thead><tr><th><?= h(t('Part')) ?></th><th><?= h(t('Position')) ?></th><th><?= h(t('Since')) ?></th><th class="num"><?= h(t('Km (lifetime)')) ?></th></tr></thead>
+    <?php foreach ($parts as $p): ?>
+    <tr>
+      <td class="depth-<?= (int)$p['depth'] ?>"><span class="muted"><?= h(Catalog::typeName($p['component_type'])) ?>:</span>
+        <a href="<?= h(url('part', ['id' => $p['id']])) ?>"><?= h(Domain::componentName($p)) ?></a></td>
+      <td><?= h(Catalog::slotName($p['slot'])) ?></td><td><?= h($p['installed_on']) ?></td>
+      <td class="num"><?= h(Domain::totalsLabel($p['totals'])) ?></td>
+    </tr>
+    <?php endforeach; ?>
+  </table>
+  <?php if ($date === today() && $bike['status'] === 'ACTIVE' && array_filter($parts, fn($p) => (int)$p['depth'] === 0 && in_array($p['slot'], ['FRONT_WHEEL', 'REAR_WHEEL'], true))): ?>
+  <p class="muted"><?= h(t('The wheels sit directly on the bike.')) ?> <a href="<?= h(url('group_wheels', ['bike' => $bike['id']])) ?>"><?= h(t('Put them into a wheelset')) ?></a> <?= h(t('if you swap wheel pairs.')) ?></p>
+  <?php endif; ?>
+</section>
+
+<?php if ($away): ?>
+<p><?= status_badge('SOON') ?> <?= h(t('Away for repair:')) ?> <?php foreach ($away as $i => $o): ?><?= $i ? ', ' : '' ?><a href="<?= h(url('part', ['id' => $o['component_id']])) ?>"><?= h(Domain::componentName($o)) ?></a> (<?= h(t('since {date}', ['date' => $o['sent_on']])) ?><?= $o['shop'] ? ', ' . h($o['shop']) : '' ?>)<?php endforeach; ?></p>
+<?php endif; ?>
+<?php if ($incidents): ?>
+<section>
+  <h2><?= h(t('Open incidents')) ?></h2>
+  <?= View::partial('incidents/cards', ['incidents' => $incidents, 'fixData' => $fixData, 'back' => 'r=bike&id=' . $bike['id']]) ?>
+</section>
+<?php endif; ?>
+
+<section>
+  <h2><?= h(t('Recent rides')) ?></h2>
+  <?php if (!$rides): ?><p class="muted"><?= h(t('No rides yet.')) ?></p><?php endif; ?>
+  <table class="list">
+  <?php foreach ($rides as $r): ?>
+    <tr><td><?= h($r['ride_date']) ?><?php if (isset($changeDays[$r['ride_date']])): ?> <span class="badge b-soon" title="<?= h(t('A part was fitted or removed that day. The ride counts for the part fitted that day.')) ?>"><?= h(t('part change')) ?></span><?php endif; ?></td>
+      <td><a href="<?= h(url('ride', ['id' => $r['id']])) ?>"><?= h($r['name'] ?: t('Ride')) ?></a><?= $r['kind'] === 'INDOOR' ? ' <span class="muted">' . h(t('(indoor)')) . '</span>' : '' ?></td>
+      <td class="num"><?= h(km($r['distance_km'] === null ? null : (float)$r['distance_km'], 1)) ?></td></tr>
+  <?php endforeach; ?>
+  </table>
+  <p><a href="<?= h(url('rides', ['bike' => $bike['id']])) ?>"><?= h(t('All rides of this bike')) ?></a></p>
+</section>
+
+<details>
+  <summary><?= h(t('Maintenance on this bike')) ?></summary>
+  <table class="list">
+  <?php foreach ($events as $e): ?>
+    <tr><td><?= h($e['performed_on']) ?></td><td><?= h(Catalog::actionName($e['action_code'])) ?></td>
+      <td><?= $e['component_id'] ? '<a href="' . h(url('part', ['id' => $e['component_id']])) . '">' . h($e['label']) . '</a>' : t('Whole bike') ?></td>
+      <td><?= h($e['outcome'] ? Catalog::label($e['outcome']) : '') ?></td></tr>
+  <?php endforeach; ?>
+  </table>
+</details>
+
+<details>
+  <summary><?= h(t('Part changes (history)')) ?></summary>
+  <table class="list">
+  <?php foreach ($history as $i): ?>
+    <tr class="<?= $i['voided_at'] ? 'voided' : '' ?>"><td><a href="<?= h(url('part', ['id' => $i['component_id']])) ?>"><?= h($i['label']) ?></a></td>
+      <td><?= h(Catalog::slotName($i['slot'])) ?></td><td><?= h($i['installed_on']) ?> → <?= h($i['removed_on'] ?? t('now')) ?></td>
+      <td class="muted"><?= h($i['removal_reason'] ?? '') ?><?= $i['voided_at'] ? ' ' . h(t('(wrong record: {why})', ['why' => $i['void_reason']])) : '' ?></td></tr>
+  <?php endforeach; ?>
+  </table>
+</details>
+
+<details>
+  <summary><?= h(t('Notes and issues ({n})', ['n' => count(array_filter($journal, fn($e) => !$e['voided_at']))])) ?></summary>
+  <?= View::partial('partials/journal', ['entries' => $journal, 'bikeId' => $bike['id'], 'componentId' => null, 'back' => 'r=bike&id=' . $bike['id']]) ?>
+</details>
+
+<details>
+  <summary><?= h(t('Retire or delete this bike')) ?></summary>
+  <?php if ($bike['status'] === 'ACTIVE'): ?>
+    <?= post_button('bike_status', ['id' => $bike['id']], t('Retire bike'), 'btn', t('Retire this bike? Its history stays.'), ['do' => 'retire']) ?>
+  <?php else: ?>
+    <?= post_button('bike_status', ['id' => $bike['id']], t('Make active again'), 'btn', null, ['do' => 'restore']) ?>
+  <?php endif; ?>
+  <?= post_button('bike_status', ['id' => $bike['id']], t('Delete (only without history)'), 'btn danger', t('Delete this bike for good?'), ['do' => 'delete']) ?>
+</details>

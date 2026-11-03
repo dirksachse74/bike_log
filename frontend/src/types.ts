@@ -401,6 +401,8 @@ export interface Meta {
   demo: boolean
   sample?: boolean
   safety_note: string
+  /** Set when Bike Log runs on a server with Google sign-in; null in the desktop app. */
+  server: { user: string } | null
   settings: Record<string, string>
   component_types: ComponentType[]
   actions: ActionDef[]

@@ -47,6 +47,10 @@ async function request<T>(method: string, path: string, body?: unknown, opts: { 
   } catch {
     data = text
   }
+  if (res.status === 401) {
+    // server mode only: the sign-in expired or was ended; the page reload goes through Google sign-in again
+    window.location.href = '/auth/login'
+  }
   if (!res.ok) {
     const d = data as { detail?: unknown } | null
     let msg = `Request failed (${res.status})`

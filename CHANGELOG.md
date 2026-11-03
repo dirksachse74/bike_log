@@ -7,7 +7,72 @@ UPDATING.md → "Making a release". New entries go under "Unreleased" as work is
 
 ## Unreleased
 
+### Added
+- **Bike Log for the web in PHP + MySQL, for several users** (Dirk 2026-11-02, work in progress, not
+  released). New folder `php/`, independent of the desktop app: accounts with email confirmation, password
+  reset by email, admin page (users, invitations, audit log, site settings, backups, database updates),
+  bikes, parts with install history and per-part km, rides by hand (no Strava), maintenance, reminders that
+  explain their numbers, supplies. Install steps for shared hosting: php/README.md. The remaining desktop
+  features follow before it counts as ready.
+  Round 2 (2026-11-02): groupset import with preview and one-step undo, every bike gets its frame part and
+  every wheelset its two wheels, "what happens to the old part" when removing or replacing, Spares page
+  (stored spares, counted stock such as tubes or pad sets, "take one out", spares to keep, shopping list),
+  incidents on a ride (flat, dropped chain ...) with a fix per affected part, punctures report, broken
+  spokes per wheel with a re-lace reminder, notes and issues on bikes and parts, My settings.
+  Round 3a: chain rotation per bike (which chain is on, which are waxed and ready, swap in one click, hot wax
+  several chains at once, chains from stock), the liquid-wax window (250–300 km after the hot wax) as its own
+  reminder, hot wax 200 km after a top-up, wet rides ask for a top-up, a wax table on each chain, and the
+  quick link reminder (replace after 2 chains).
+  Round 3b: Costs per bike (purchase price, parts, parts bought together, stock used, services; per km),
+  "Bought together" bundles (also straight from the groupset import with one total price), send a part away
+  for repair and record what came back (repaired, warranty repair or replacement, not repaired; it can go
+  straight back on, and a linked incident is solved), the Part life report, and a "due around" forecast at
+  your recent pace on km and hour reminders.
+  Round 4a: Products (maker, model, specs, list price; Parts → Products), the JSON product import with the
+  desktop app's file format (check first, every error with its place, nothing imported from a file with an
+  error, same file twice changes nothing, items become spares), schema/example downloads per part type and
+  the instructions for a scraper script, a Shops list (pick instead of typing; rename, merge, hide; names
+  in other upper/lower case are stored in the list spelling), and a Change log (Account → Change log, and
+  on each bike and part).
+  Round 4b: Backups (Account → Backups and restore): a copy of your data is stored before every fresh start
+  and restore, you can store one yourself, download it, or restore it; restoring from a downloaded file
+  works across accounts and servers (every record gets a new number, references follow). Fresh start
+  (password and the word RESET; a copy is stored first). Diagnostics (version, database updates, simple
+  data checks). Indoor rides now follow the desktop app's direct-drive trainer: the cassette does not wear
+  either.
+  Round 5a: leave a ride out of the km (with a reason; it stays in the list) and count it again; pick
+  other wheels for one ride (race wheels: the km go to them and the tires on them); tick several rides
+  to assign a bike, leave out, count again, remove or restore; import rides from a CSV file (own columns
+  or Strava's "Download your data" activities.csv; check first, the same file again adds nothing, your
+  edits stay); shoes "in use" count every ride on any bike, and so do the cleats on them.
+  Round 5b, which completes the feature match: **Replace** on an installed part (a stored spare, one from
+  counted stock, a new one of the same product or a new item; what happens to the old part; parts on it
+  such as the quick link or the tire move over when ticked, a quick link due for replacement stays behind;
+  one step you can undo), **put the wheels into a wheelset** (bike page, when the wheels sit directly on
+  the bike), **which bikes a product fits** (checked or not, with a note; product page; shown in the
+  Replace form), a **Brakes** page (fluid reminder, last fluid change, last bleed with symptom and work
+  done), **symptom and work done** on maintenance entries that have them (bleed, repair, headset ...),
+  **Restore** for an entry marked as wrong (with the supplies it used), and **Charging** on pedals,
+  batteries and computers (km, ride time, rides and days since the last charge, per charge and on average).
+  Try it on your own Windows PC: php/LOCAL_TEST_WINDOWS.md (XAMPP, a ready settings file
+  `config.local-sample.php`, double-click `php/start-local.bat`; emails go to `storage/mail.log`).
+  **English and German** (2026-11-03): every screen, message and email of the web version is in German
+  too. Switch with **DE / EN** in the top bar (saved on your account, also under My settings); admins set
+  the language for visitors under Admin → Settings. Numbers show with a decimal comma in German.
+  Needs the database update 008 (Admin → System).
+- **Bike Log on your own server with Google sign-in** (Dirk 2026-11-02). `--server` mode: only the Google
+  accounts you list can sign in, HTTPS through Caddy, a backup every day while it runs, Strava connects
+  through your own domain. Docker setup with a one-time install script and optional nightly updates:
+  step by step in deploy/README.md. The desktop app is unchanged.
+- Settings → Backups: **Download** next to each backup, and **Bring data from another computer** (upload a
+  backup file, then Restore it). This is how your data moves from the PC to the server.
+- Settings → **Account** (server only): who is signed in, and Sign out.
+
+## 0.3.0 (2026-11-02)
+
 ### Changed
+- Release workflow: a test build (Publish unticked) works on an already released version; a published
+  release also marks the version (tag) in the code repository (Dirk 2026-11-02, first run).
 - The installer and BikeLog.exe name "Bike Log" as publisher instead of a person's name (Windows Installed apps,
   file properties), so a shared installer does not show who built it (Dirk 2026-11-02).
 

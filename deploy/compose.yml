@@ -1,0 +1,40 @@
+# Bike Log on a server: the app plus Caddy, which gets the HTTPS certificate (Let's Encrypt) by itself.
+# Settings live in deploy/.env (made by install.sh; never committed). Data lives in the volume bikelog-data.
+name: bikelog
+
+services:
+  bikelog:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+      args:
+        BIKELOG_COMMIT: ${BIKELOG_COMMIT:-unknown}
+        BIKELOG_VERSION: ${BIKELOG_VERSION:-}
+    image: bikelog:latest
+    restart: unless-stopped
+    env_file: .env
+    volumes:
+      - bikelog-data:/data
+    expose:
+      - "8765"          # only Caddy can reach it; nothing is published to the internet directly
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    depends_on:
+      - bikelog
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      BIKELOG_DOMAIN: ${BIKELOG_DOMAIN:?set BIKELOG_DOMAIN in deploy/.env}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+
+volumes:
+  bikelog-data:
+  caddy-data:
+  caddy-config:

@@ -17,6 +17,36 @@ BMC Roadmachine, Cannondale Synapse Di2, Cube SL Road SL, Cannondale Synapse HiM
 It runs on his Windows PC: one program starts a local web server on `127.0.0.1` and opens the browser.
 Nothing is hosted or deployed. Data stays in his user folder.
 
+**Second codebase: `php/` (2026-11-02, DECISIONS 139).** A multi-user web version in plain PHP 8.1+ and
+MySQL for cheap shared hosting: accounts, admin page, no Strava, rides by hand. It is independent of the
+Python app (no shared code at runtime); only the catalog is shared, via `scripts/export_php_catalog.py` →
+`php/app/catalog.json` (re-run it after changing `backend/bikelog/catalog.py`). Dirk wants a full feature
+match before it is released; since round 5b (2026-11-02) every desktop feature except Strava is ported
+(`php/README.md`, TASKS.md). Local test on Windows: `php/LOCAL_TEST_WINDOWS.md` + `php/start-local.bat`
+(XAMPP's php.exe built-in server on 127.0.0.1:8080, `config/config.local-sample.php`, mail transport `log`).
+Rules there: every bike query filters on `user_id`; every POST checks the CSRF token; no inline JS (CSP);
+schema changes are new files `php/sql/migrations/NNN_*.sql`; tests `php php/tests/run.php` need MySQL or
+MariaDB (CI: `.github/workflows/php-tests.yml`, MySQL 8, PHP 8.1 and 8.3). Domain modules: `domain.php`
+(installations, km), `reminders.php`, `inventory.php` (dispositions, work sessions/undo, frame and wheels,
+counted stock, spares, shopping list), `groupsets.php`, `incidents.php` (journal, incidents and fixes,
+punctures, spokes), `chains.php` (rotation, wax applications), `money.php` (costs, bundles,
+service orders, part life), `products.php` (products, JSON product import, templates), `records.php`
+(shop pick list, change log; hooked into `Db::insert`/`Db::updateOwned`), `rides.php` (ride left out, wheels per ride, bulk, CSV import; km of a part come from
+`Domain::usagePeriods` + `periodWhere`, never sum rides per bike for a part by hand), `backups.php` (per-user
+export, stored copies, restore with new ids, fresh start; a new table with user data must be added to
+`UserBackups::TABLES` with its reference columns), `workshop.php` (replace a part with carry-over, wheels
+into a wheelset, product–bike fits, brake overview, charge history). A multi-step change (groupset import, fix) runs inside one work session so it can be
+undone as a whole.
+**PHP UI texts are bilingual (English/German, DECISIONS 140).** Never echo a bare English UI string in
+`php/`: write `t('English text {name}', ['name' => $v])` (placeholders, never string concatenation of
+sentence fragments), `tn()` for singular/plural, `num()`/`km()`/`money()` for numbers, `lc()` instead of
+`strtolower` for a name inside a sentence, and add the German text (informal "du") to
+`php/app/lang/de.php` under the same English key. Check with `php php/tools/i18n_keys.php --missing de`;
+`php/tests/test_95_i18n.php` fails on a missing German text, wrong placeholders, an unused German entry,
+or English text left on a German page. A text in a PHP constant is translated where it is shown. Emails
+are built with `t()` too. Not translated: user input, the product-JSON field messages, script templates,
+CSV column names.
+
 ### Product principles (from Dirk's brief; do not break them)
 
 1. **Start with incomplete data.** Every number says whether it is known, estimated (≈) or a minimum (≥).
@@ -50,6 +80,13 @@ Runtime shape:
 - `backend/bikelog/api/app.py`: all HTTP endpoints under `/api`, serves the built frontend.
 - Security (`api/security.py`): only Host `127.0.0.1`/`localhost` (DNS-rebinding guard), every mutation
   needs the per-launch `X-BikeLog-Token` (injected into `index.html`), no CORS.
+- **Server mode** (`--server` / `BIKELOG_SERVER=1`, DECISIONS 138, deploy/README.md): the same app on a
+  rented server behind Caddy (HTTPS). `server_auth.py` replaces the local middleware: Google sign-in
+  (`/auth/login|google|callback|logout`), allowlist `BIKELOG_ALLOWED_EMAILS`, signed session cookie, CSRF token
+  derived from the session and injected into `index.html` per request, Host = public domain. Strava's
+  redirect URI and the post-callback page use `BIKELOG_PUBLIC_URL`. A backup thread runs daily. Single user:
+  one database for everyone on the allowlist. `/api/meta` has `server: {user}` (null on the desktop).
+  Docker files in `deploy/` (Dockerfile, compose.yml, Caddyfile, install.sh, update.sh).
 - Mutating endpoints take `X-Client-Op-Id` so a double click/retry is applied once (`operations.run_once`),
   and many accept `?dry_run=true` to preview the change (`with_change`).
 - Data folder: `%LOCALAPPDATA%\BikeLog` on Windows, `~/.local/share/bikelog` elsewhere, or
@@ -85,6 +122,9 @@ e2e/smoke.cjs            browser test against the real running app; e2e/fixtures
 docs/                    ui-style.md (look and feel), strava.md, groupsets.md, product-import.md, csv-import.md,
                          product-templates/ (generated JSON schemas/examples + AGENT_INSTRUCTIONS.md)
 packaging/               bikelog.spec (PyInstaller), entry.py, bikelog.iss (Inno Setup), README.md
+php/                     PHP + MySQL multi-user web version (separate codebase, see section 1 and php/README.md)
+scripts/export_php_catalog.py  writes php/app/catalog.json from catalog.py
+.github/workflows/php-tests.yml  PHP tests on MySQL 8
 .github/workflows/release.yml  Windows build + install/update test + GitHub Release (tag vX.Y.Z or Run workflow)
 scripts/release_notes.py text of a release page: docs/INSTALL.md + the version's CHANGELOG part
 ```
@@ -392,7 +432,7 @@ warns, npm 12 blocks): run `npm install-scripts approve <pkg>`.
 Checks that must pass before every push:
 
 ```bash
-.venv/bin/python -m pytest -q backend/tests             # currently 264 passed
+.venv/bin/python -m pytest -q backend/tests             # currently 272 passed
 cd frontend && npx tsc -b && npx eslint . && npx vite build
 # browser test: start the app on a fresh data dir, then
 node e2e/smoke.cjs http://127.0.0.1:8790/ <screenshot-dir>   # currently 186/186 (the ride-form step can flake once; rerun)
@@ -442,7 +482,8 @@ described for Dirk in `UPDATING.md`. Every change you push must keep that file c
 
 `--data-dir PATH`, `--port N`, `--no-browser`, `--no-sample` (a new database starts empty), `--demo`, `--backup`, `--export [FILE]`, `--restore FILE`,
 `--strava-connect`, `--strava-sync`, `--strava-rescan`, `--strava-disconnect`,
-`--import-products FILE... [--dry-run]`, `--write-product-templates DIR`, `--version`.
+`--import-products FILE... [--dry-run]`, `--write-product-templates DIR`, `--version`,
+`--server` (server mode; settings from `BIKELOG_*` environment variables, see deploy/env.example).
 Dirk prefers doing everything in the app UI; keep UI paths for every feature.
 
 ---
@@ -468,7 +509,8 @@ Work sessions: `work-sessions`, `/{id}`, `/{id}/undo`. Journal: `journal` (GET/P
 `imports`, `imports/template`, `imports/products`, `product-templates`, `product-templates/{type}/schema|example`,
 `product-templates/instructions.md`. Strava: `strava/status`, `credentials` (PUT/DELETE), `connect`,
 `callback`, `sync`, `disconnect`. History/diagnostics: `changes?bike_id=|component_id=`, `logs?lines=&level=`,
-`logs/download`. Data: `backups` (GET/POST; rows carry `kept`), `backups/{name}/restore` (POST), `exports` (POST, GET file),
+`logs/download`. Data: `backups` (GET/POST; rows carry `kept`), `backups/{name}/restore` (POST), `backups/{name}/download` (GET),
+`backups/upload` (POST raw .db body, `?file_name=`; checked, stored as `…-uploaded.db`, not restored), `exports` (POST, GET file),
 `admin/rebuild`, `admin/reset` (POST `{confirm: "RESET", clear_strava}`).
 (*DELETE of a component is refused once it has installations, usage or maintenance; such parts are retired instead.)
 
@@ -521,7 +563,9 @@ Open work (TASKS.md): editing stock line details and product compatibility/refer
 (APIs exist), possible-duplicate ride merge helper, more groupset templates, a cost report across bikes
 per year, app icon and code signing.
 
-Out of scope until asked: barcode scanning, automatic ordering, any cloud hosting or multi-user use.
+Out of scope until asked: barcode scanning, automatic ordering, multi-user use (separate data per account).
+Server mode (DECISIONS 138) is single-user self-hosting; it was never run on a real server or against the real
+Google from the cloud environment (Docker Hub and Google are not reachable there), only with a fake Google.
 
 ---
 

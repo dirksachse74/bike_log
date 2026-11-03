@@ -605,6 +605,97 @@ you disagree. Dates are 2026-10-24 unless noted.
     only sorts at 23:59:59 that day (`_event_sort`), so the wet ride's km stay before it and the hot wax falls
     due after_top_up_km after the top-up, not after the start of the day.
 
+138. **Self-hosted server mode, single user, Google sign-in** (Dirk 2026-11-02: "i want to host it online, as
+    cheap as possible. but with a google account login"; reverses "desktop-only for now"). Same app and
+    SQLite database started with `--server`: Google OpenID Connect (scope `openid email`, no Google API
+    access), allowlist `BIKELOG_ALLOWED_EMAILS` checked again on every request, HMAC-signed session cookie
+    (30 days), CSRF token derived from the session, Host check against the public domain. Everyone on the
+    allowlist shares one database; the multi-user design of the 2026-10-26 assessment is NOT built.
+    Deployment: Docker Compose (bikelog + Caddy for Let's Encrypt), cloned from the private repo with a
+    read-only fine-grained token, nightly `bikelog-update` from main (opt-in). Off-server backups = Hetzner
+    server backups + Download in Settings. Location: Germany (Hetzner). Dirk asked about hosting outside the
+    EU "so i dont get into trouble with strava": server location changes neither the Strava API terms (they
+    bind the developer) nor GDPR (household exemption for own data; and it follows the EU resident anyway),
+    so the choice is cost and latency. New databases on a server start empty (no sample); data moves by
+    uploading a desktop backup (Settings → Backups → Bring data from another computer → Restore).
+
+139. **PHP + MySQL multi-user web version, separate from the Python app** (Dirk 2026-11-02: "make a php
+    version of the software. and remove the strava stuff for now. we add rides manually via a form. and add
+    user management ... it needs to be secure. and i need an admin page"; then "we need to use mysql"; on the
+    decision card he chose "Full feature match" over a lean first release). Built in `php/` of the same
+    repository: plain PHP 8.1+ without framework or Composer (runs on cheap shared hosting, upload by FTP),
+    MySQL/MariaDB through PDO prepared statements, server-rendered forms, `?r=<route>` URLs (no rewrite
+    rules needed). Every bike table has `user_id` and every query filters on it. Accounts: Argon2id,
+    email confirmation, reset links (SHA-256 stored, single use, 1 h), invitations, rate limits in MySQL,
+    audit log, admin role; deleting an account is a real delete (GDPR), everything else is voided, not
+    deleted. Catalog shared with Python through `scripts/export_php_catalog.py` → `php/app/catalog.json`.
+    Simplifications in the base (to be closed by the full port): date-only installations and rides (no
+    times), no usage profiles (indoor rides skip wheels/tires/tubes/rotors/pads), CYCLE_WINDOW rules become
+    an interval at the window end with the window as warning, PARENT_COUNT rules not yet, no cached totals.
+    Rides on a maintenance day count as after it (reminder slightly early, never late). The Python desktop
+    app and its server mode (138) stay unchanged.
+    Round 2 (migration 002) follows the desktop rules: work sessions make a groupset import or an incident
+    fix undoable in one step (parts it created are deleted, installs voided, removals reopened); removed
+    parts get a disposition (STORED, AWAITING_SERVICE, DISCARDED ...; discarded/sold/retired retire the
+    part); counted stock is a consumable line with `tracking_mode = COUNTED` and a part type, and taking one
+    out creates an individual part in the same transaction; spare minimums, spoke limit and default tire
+    setup are per-user settings (`user_settings`); incidents are journal entries sharing `incident_group`,
+    one per affected part or position; punctures list each tire or tube with its own km, never summed per
+    model. The auto frame part does not stop a bike without other history from being deleted.
+    Round 3a (migration 003) adds the rule kinds CYCLE_WINDOW and PARENT_COUNT and the hot-wax
+    after_top_up_km, and converts the base release's stand-in (liquid wax as "interval 300, warn 50") into
+    the 250–300 km window. With dates only, a wet ride counts against a wax from the next day on (a wax
+    logged on a day was done after that day's ride), as in the desktop app.
+    Round 3b (migration 004): costs follow costs.py (a part counts for the bike it was first fitted to, a
+    bundle once for the bike most of its parts went on, stock at its average purchase price as an estimate,
+    services from maintenance cost; a part drawn from stock is linked by `from_stock_txn_id` and has no own
+    price). Sending away and the return are work sessions, so Undo voids the order or reopens it. The pace
+    forecast uses the last 28 days (at least 3 rides over 7 days) and is planning help only.
+    Round 4a (migration 005): the product import is a port of product_import.py with the same format and
+    rules; spec fields come from product_specs.py through catalog.json (scripts/export_php_catalog.py).
+    Checked files wait up to an hour in `storage_dir/imports` under a random token, so "Import" needs no
+    second upload. Shop names and the change log hang on two hooks in `Db::insert` / `Db::updateOwned`
+    (`Db::$beforeWrite`, `Db::$afterWrite`, set by `ChangeLog::register()`); raw `Db::run` statements
+    bypass them, so removals, voids and undo write an explicit `ChangeLog::note`. The change log is
+    information only, never used for totals.
+    Round 4b: per-user backups are gzipped exports in `user_backups` (newest 20 kept). A restore checks the
+    whole file first (every reference must point to a row in the file, required fields present), then in
+    one transaction stores a copy, deletes the user's rows and inserts the file's rows with new ids above
+    each table's current maximum (`UserBackups::TABLES` lists every reference column; change_log.entity_id
+    follows its entity). It never re-adds default rules, so a rule the user deleted stays deleted. Fresh
+    start = copy, delete, default rules. "Indoor" is the desktop app's DIRECT_DRIVE_TRAINER usage profile
+    (wheels, cassette, tires, rotors, pads excluded); ride start times were already there.
+    Round 5a (migration 006): a part's km come from "usage periods" (Domain::usagePeriods): fitted on a bike
+    (minus rides that set that wheel position to something else in ride_equipment), worn by the rider
+    (shoes with disposition IN_USE, as allocation.py's rider index), or picked for a ride; parts hanging on
+    another part inherit its periods. All periods are OR-ed into one query, so a ride counts once. A ride
+    left out of the km (rides.excluded_reason) counts nowhere (Domain::COUNTED). CSV import identity is
+    (source_kind, source_ref); a ride imported before is never touched again (local edits win, removed
+    stays removed), a simplification of imports.py which updates source values under local overrides.
+    Round 5b (migration 007): `Workshop` (php/app/workshop.php) ports inventory.replace, group_wheels,
+    spares.replace_options/compatibility and maintenance.brake_overview/charge_history. A replace is one work
+    session: carried children are taken off the old part and refitted on the new one; a carried child whose
+    position the chosen spare already fills stays on the old part (the desktop app refuses instead; the web
+    form says which ones stayed). ensureWheels runs after a wheelset replace, so a new wheelset only gets
+    wheel records when the wheels did not move over. Fits live in `product_bike_fit` (VERIFIED/UNVERIFIED,
+    SAME_PRODUCT and UNKNOWN are derived). Charge gaps use Domain::rideUsage with an until date (rides on
+    the day of a charge count after it). A voided entry and its supply use get the same voided_at so a
+    restore brings back exactly those; an entry voided by an undo cannot be restored.
+140. **English and German in the PHP web version** (Dirk 2026-11-03: "we also need to be able to switch
+    languages. we need the whole app in german aswell"). The English text in the code is the translation
+    key: `t('English {placeholder}', [...])`, German in `php/app/lang/de.php` (informal "du"); a missing
+    German text falls back to English instead of failing. Language order: users.lang (migration 008, set by
+    the DE/EN switch in the top bar or My settings) → cookie `bikelog_lang` (visitors) → Admin setting
+    `default_language` → Accept-Language → English. The command line (tests, tools) is always English, so
+    existing tests keep checking English texts. Catalog names (part types, actions, slots, labels) are
+    translated where they are shown; German noun plurals come from `plural:<English>` keys. What users type
+    is stored and shown as typed; rule names created by the app in English are translated on display. Kept
+    in English on purpose: the per-field messages of the product JSON check, the script instructions
+    (AGENT_INSTRUCTIONS.md, schemas, examples) and the CSV column names, because they are read by scripts
+    and developers. `php/tools/i18n_keys.php` lists every key; test_95 fails on a missing German text, wrong
+    placeholders, an unused German entry or English UI text left on a German page. Numbers on screen use a
+    decimal comma in German; number fields accept both. The Python desktop app stays English only for now.
+
 ## Repository
 27. Pushed only to the feature branch `claude/project-thread-6y3mmh` of the private repository. Demo
     data uses fictional Strava gear ids.

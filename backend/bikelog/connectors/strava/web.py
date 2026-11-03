@@ -3,7 +3,8 @@
 The same files and code paths as the command-line commands: credentials and tokens live only in
 <data dir>/strava.env (owner-only file), never in the database, logs or API responses (the secret is
 write-only). OAuth uses a callback on this app (http://localhost:<port>/api/strava/callback, so the
-Strava app's "Authorization Callback Domain" must be ``localhost``); a one-time ``state`` ties the
+Strava app's "Authorization Callback Domain" must be ``localhost``; in server mode it is the public
+address, https://<your domain>/api/strava/callback, and the callback domain is that domain); a one-time ``state`` ties the
 callback to a connect request made from this page. Syncs run in a background thread, one at a time,
 after a database backup. Disconnecting keeps all rides.
 """
@@ -83,10 +84,11 @@ class StravaWeb:
 
     # -- OAuth ---------------------------------------------------------------
     @staticmethod
-    def redirect_uri(port: int) -> str:
-        return f"http://localhost:{port}/api/strava/callback"
+    def redirect_uri(base_url: str) -> str:
+        """base_url: http://localhost:<port> on the desktop, the public https address on a server."""
+        return f"{base_url.rstrip('/')}/api/strava/callback"
 
-    def start_connect(self, port: int) -> str:
+    def start_connect(self, base_url: str) -> str:
         env = self._env()
         if not (env.get("STRAVA_CLIENT_ID") and env.get("STRAVA_CLIENT_SECRET")):
             raise DomainError("Save the Client ID and Client Secret first")
@@ -95,7 +97,7 @@ class StravaWeb:
         with self._lock:
             self._states = {s: t for s, t in self._states.items() if now - t < STATE_TTL_S}
             self._states[state] = now
-        return self.client().authorize_url(self.redirect_uri(port), state)
+        return self.client().authorize_url(self.redirect_uri(base_url), state)
 
     def finish_connect(self, *, state: str | None, code: str | None, scope: str | None, error: str | None) -> dict:
         with self._lock:

@@ -2,6 +2,29 @@
 
 Status key: ✅ done and tested · 🟡 done, not verified where it matters · ⏳ pending · 💡 later
 
+## PHP multi-user web version (php/, DECISIONS 139) — full feature match before release
+
+- [x] Base: accounts (sign-up, email confirmation, reset, invitations), admin page, bikes, parts, install
+      history and per-part km, rides form, maintenance, reminders, supplies, tests on MySQL (php/tests).
+- [x] Round 2: groupset import, wheels/tire setup, spokes, punctures and incidents, spares and counted
+      stock, spare minimums and shopping list, frame and fork as one part, notes and issues (journal).
+- [x] Round 3a: chain rotation and wax cycle (liquid top-up window, after_top_up_km, wet rides), PARENT_COUNT
+      (quick link).
+- [x] Round 3b: purchase bundles and costs, repairs (send away), service orders, part life report and
+      forecast.
+- [x] Round 4a: product records and JSON product import (templates, instructions), pick list SHOP, change log.
+- [x] Round 4b: fresh start, per-user backup and restore (JSON import), diagnostics, indoor = direct-drive
+      trainer profile, ride start times (already in the base release).
+- [x] Parity check against the desktop app (2026-11-02): gaps listed for round 5.
+- [x] Round 5a: ride left out of the km, wheels picked per ride, bulk ride actions, CSV ride import, shoes in use.
+- [x] Round 5b: replace a part carrying what is mounted on it, group wheels into a wheelset, product fits
+      which bike, brake overview, restore a voided maintenance entry, charge history. Feature match done
+      (Strava left out on purpose).
+- [x] English and German for the whole web version (Dirk 2026-11-03), switch in the top bar, saved per user,
+      DECISIONS 140. The Python desktop app is still English only.
+- [ ] Try it locally on Windows with XAMPP (Dirk, guide php/LOCAL_TEST_WINDOWS.md).
+- [ ] Try it on real shared hosting (Dirk): install page, SMTP, HTTPS.
+
 ## P1 Launch and persistence
 - ✅ Single launcher on 127.0.0.1, single instance, data folder outside install folder.
 - ✅ Migrations at start with pre-upgrade backup; refuses a newer database.

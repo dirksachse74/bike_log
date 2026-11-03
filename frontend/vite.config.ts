@@ -6,6 +6,7 @@ import react from '@vitejs/plugin-react'
 // The git commit the screens were built from. Settings compares it with the running backend's commit,
 // so a stale frontend/dist (forgot `npm run build`) or an old app still running is visible.
 function gitCommit(): string {
+  if (process.env.BIKELOG_COMMIT) return process.env.BIKELOG_COMMIT // Docker build: no .git inside (deploy/Dockerfile)
   try {
     return execSync('git rev-parse --short=7 HEAD', { stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim() || 'unknown'
   } catch {

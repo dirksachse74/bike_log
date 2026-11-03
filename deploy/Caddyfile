@@ -1,0 +1,8 @@
+# Caddy answers on your domain, fetches and renews the HTTPS certificate, and passes requests to Bike Log.
+{$BIKELOG_DOMAIN} {
+	encode zstd gzip
+	request_body {
+		max_size 1GB
+	}
+	reverse_proxy bikelog:8765
+}

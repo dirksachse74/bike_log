@@ -65,6 +65,16 @@ def _daily_backup(paths: DataPaths) -> None:
         backup_database(paths, "daily")
 
 
+def _backup_loop(paths: DataPaths) -> None:
+    """Server mode runs for weeks: check every hour whether today's backup is due."""
+    while True:
+        time.sleep(3600)
+        try:
+            _daily_backup(paths)
+        except Exception:  # noqa: BLE001 - a failed backup must not stop the server; it is in the log
+            log.exception("daily backup failed")
+
+
 def prepare(paths: DataPaths, *, demo: bool = False, sample: bool = False):
     """Open (and if needed migrate) the database. Returns (engine, session factory, migration info).
     ``sample``: add the made-up sample data, but only when this call creates the database file."""
@@ -98,6 +108,9 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--data-dir", type=Path, help="data directory (default: per-user app data)")
     ap.add_argument("--port", type=int, default=int(os.environ.get("BIKELOG_PORT", DEFAULT_PORT)))
     ap.add_argument("--no-browser", action="store_true", help="do not open the browser")
+    ap.add_argument("--server", action="store_true", default=os.environ.get("BIKELOG_SERVER", "").lower() in ("1", "true", "yes"),
+                    help="server mode: Google sign-in, public HTTPS address (behind Caddy), daily backups while "
+                         "running; settings come from BIKELOG_* environment variables (see deploy/README.md)")
     ap.add_argument("--demo", action="store_true", help="start with sample data in a separate demo data directory")
     ap.add_argument("--no-sample", action="store_true",
                     help="a new database starts empty instead of with the made-up sample data")
@@ -153,7 +166,18 @@ def main(argv: list[str] | None = None) -> int:
                   f"{paths.backups}.")
             return 0
         only_cmd = bool(args.backup or args.export is not None or _strava_cmd(args) or args.import_products)
-        engine, factory, info = prepare(paths, demo=args.demo, sample=not (args.no_sample or only_cmd))
+        server_cfg = None
+        if args.server and not only_cmd:
+            from bikelog.server_auth import ConfigError, ServerConfig
+            try:
+                server_cfg = ServerConfig.from_env(paths.root)
+            except ConfigError as e:
+                print(f"Bike Log server: {e}", file=sys.stderr)
+                log.error("server mode not started: %s", e)
+                return 2
+        # a server starts empty: you bring your own data with Settings → Backups → Upload (no made-up sample)
+        engine, factory, info = prepare(paths, demo=args.demo,
+                                        sample=not (args.no_sample or only_cmd or server_cfg is not None))
         if info["backup"]:
             log.info("Upgraded schema %s -> %s; pre-upgrade backup %s", info["from"], info["to"], info["backup"])
         if args.backup:
@@ -174,12 +198,21 @@ def main(argv: list[str] | None = None) -> int:
 
         from bikelog.api.app import create_app
         token = os.environ.get("BIKELOG_DEV_TOKEN") or None
-        app = create_app(factory, paths, token=token)
-        port = _free_port(args.port)
-        url = f"http://127.0.0.1:{port}/"
+        app = create_app(factory, paths, token=token, server=server_cfg)
+        if server_cfg is None:
+            host, port = "127.0.0.1", _free_port(args.port)
+            url = f"http://127.0.0.1:{port}/"
+        else:
+            # inside the container 0.0.0.0 so Caddy can reach it; the port is never published to the internet
+            host, port, url = os.environ.get("BIKELOG_HOST", "127.0.0.1"), args.port, server_cfg.public_url + "/"
+            threading.Thread(target=_backup_loop, args=(paths,), daemon=True, name="daily-backup").start()
+            log.info("server mode: %s, %d allowed Google account(s), listening on %s:%d", server_cfg.public_url,
+                     len(server_cfg.allowed_emails), host, port)
         lock.publish(url, version=buildinfo.full_version(), commit=buildinfo.commit())
-        threading.Thread(target=_wait_and_open, args=(url, not args.no_browser), daemon=True).start()
-        config = uvicorn.Config(app, host="127.0.0.1", port=port, loop="asyncio", http="h11", log_config=None,
+        threading.Thread(target=_wait_and_open, args=(f"http://127.0.0.1:{port}/",
+                                                      not (args.no_browser or server_cfg is not None)),
+                         daemon=True).start()
+        config = uvicorn.Config(app, host=host, port=port, loop="asyncio", http="h11", log_config=None,
                                 access_log=False)
         uvicorn.Server(config).run()
         engine.dispose()

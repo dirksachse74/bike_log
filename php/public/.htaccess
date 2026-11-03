@@ -1,0 +1,9 @@
+# Bike Log public folder (Apache). Only index.php and assets/ are served.
+Options -Indexes
+DirectoryIndex index.php
+<IfModule mod_headers.c>
+  Header always set X-Content-Type-Options "nosniff"
+</IfModule>
+<FilesMatch "\.(sql|log|json|md|lock|ini|env)$">
+  Require all denied
+</FilesMatch>

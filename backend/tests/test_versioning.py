@@ -57,13 +57,14 @@ def test_release_notes_have_install_note_and_the_right_changes(tmp_path):
     (tmp_path / "docs").mkdir()
     (tmp_path / "docs" / "INSTALL.md").write_text("# Installing\n\nClick **More info** → Run anyway.\n", encoding="utf-8")
     (tmp_path / "CHANGELOG.md").write_text(
-        "# Changelog\n\n## Unreleased\n\n- new thing\n\n## 0.2.0 (2026-10-25)\n\n- old thing\n", encoding="utf-8")
+        "# Changelog\n\n## Unreleased\n\n- new thing (Dirk 2026-11-02). Covers Dirk's cases\n\n## 0.2.0 (2026-10-25)\n\n- old thing\n", encoding="utf-8")
     notes = release_notes.build("0.2.0", "ab12", "BikeLog-0.2.0-setup.exe", root=tmp_path)
     assert "More info" in notes and "# Installing" not in notes
     assert "old thing" in notes and "new thing" not in notes
     assert "`ab12`" in notes and "BikeLog-0.2.0-setup.exe" in notes
     # a version without its own section yet (test build) shows the Unreleased entries
-    assert "new thing" in release_notes.build("0.3.0", root=tmp_path)
+    later = release_notes.build("0.3.0", root=tmp_path)
+    assert "new thing. Covers your cases" in later and "Dirk" not in later
 
 
 def test_release_workflow_matches_the_build_files():
