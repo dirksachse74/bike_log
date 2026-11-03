@@ -8,7 +8,7 @@ function page_products(): void
     $uid = (int)require_user()['id'];
     $type = get_param('type');
     $type = Catalog::type($type) ? $type : '';
-    View::render('products/list', ['products' => Products::rows($uid, $type), 'type' => $type], 'Products', 'parts');
+    View::render('products/list', ['products' => Products::rows($uid, $type), 'type' => $type], t('Products'), 'parts');
 }
 
 function page_product(): void
@@ -18,23 +18,23 @@ function page_product(): void
     if (Request::isPost() && post('do') === 'spare') {
         $label = post('label');
         if ($label === '') {
-            throw new UserError('Please name the part, e.g. “Spare chain 2”.');
+            throw new UserError(t('Please name the part, e.g. “Spare chain 2”.'));
         }
         $cid = Inventory::createComponent($uid, ['component_type' => $p['component_type'], 'label' => $label, 'product_id' => (int)$p['id'],
             'maker' => $p['maker'], 'model' => $p['model'], 'prior_usage' => post('prior') === 'UNKNOWN' ? 'UNKNOWN' : 'NEW',
             'price_cents' => parse_money_cents(post('price')), 'purchase_date' => parse_date(post('purchase_date')), 'shop' => nullable(post('shop')),
             'storage_location' => nullable(mb_substr(post('storage_location'), 0, 160))]);
-        Session::flash('ok', 'Added as a spare.');
+        Session::flash('ok', t('Added as a spare.'));
         redirect('part', ['id' => $cid]);
     }
     if (Request::isPost() && post('do') === 'fit') {
         Workshop::setFit($uid, (int)$p['id'], (int)post('bike_id'), post('verified') === '1', nullable(post('note')));
-        Session::flash('ok', 'Saved. The Replace form shows this when you change a part on that bike.');
+        Session::flash('ok', t('Saved. The Replace form shows this when you change a part on that bike.'));
         redirect('product', ['id' => $p['id']]);
     }
     if (Request::isPost() && post('do') === 'unfit') {
         Workshop::removeFit($uid, (int)$p['id'], (int)post('bike_id'));
-        Session::flash('ok', 'Removed.');
+        Session::flash('ok', t('Removed.'));
         redirect('product', ['id' => $p['id']]);
     }
     $fits = Workshop::fits($uid, (int)$p['id']);
@@ -61,12 +61,12 @@ function page_product_edit(): void
     if (Request::isPost()) {
         $type = post('component_type');
         $newId = Products::save($uid, $id ?: null, ['component_type' => $type, 'maker' => post('maker'), 'model' => post('model'),
-            'list_price_cents' => parse_money_cents(post('list_price'), 'List price'), 'notes' => post('notes'), 'spec_source' => post('spec_source'),
+            'list_price_cents' => parse_money_cents(post('list_price'), t('List price')), 'notes' => post('notes'), 'spec_source' => post('spec_source'),
             'specs' => Catalog::type($type) ? Products::parseSpecLines($type, post('specs')) : []]);
-        Session::flash('ok', 'Product saved.');
+        Session::flash('ok', t('Product saved.'));
         redirect('product', ['id' => $newId]);
     }
-    View::render('products/edit', ['p' => $p, 'id' => $id, 'specText' => Products::specLines($p['specs_json'])], $id ? 'Edit product' : 'Add a product', 'parts');
+    View::render('products/edit', ['p' => $p, 'id' => $id, 'specText' => Products::specLines($p['specs_json'])], $id ? t('Edit product') : t('Add a product'), 'parts');
 }
 
 /** Where checked files wait for "Import" (one hour at most). */
@@ -74,7 +74,7 @@ function import_dir(): string
 {
     $d = rtrim((string)Config::get('storage_dir', __DIR__ . '/../../storage'), '/') . '/imports';
     if (!is_dir($d) && !@mkdir($d, 0700, true)) {
-        throw new UserError('The server cannot store the files for the check (storage folder not writable).');
+        throw new UserError(t('The server cannot store the files for the check (storage folder not writable).'));
     }
     foreach (glob("$d/*.json") ?: [] as $f) {
         if (filemtime($f) < time() - 3600) {
@@ -98,7 +98,7 @@ function page_product_import(): void
                 }
                 $file = "$dir/u$uid-$tok.json";
                 if (!is_file($file)) {
-                    throw new UserError('The checked files are gone (older than an hour?). Choose them again and check them.');
+                    throw new UserError(t('The checked files are gone (older than an hour?). Choose them again and check them.'));
                 }
                 $meta = json_decode((string)file_get_contents("$file.name"), true) ?: ['name' => 'file'];
                 try {
@@ -112,20 +112,20 @@ function page_product_import(): void
             }
             $done = true;
             $n = count(array_filter($results, fn($r) => $r['report']['ok']));
-            ChangeLog::note($uid, 'product', null, "JSON import: $n of " . count($results) . ' files imported');
-            Session::flash($n === count($results) ? 'ok' : 'error', "$n of " . count($results) . ' files imported.');
+            ChangeLog::note($uid, 'product', null, t('JSON import: {n} of {total} files imported', ['n' => $n, 'total' => count($results)]));
+            Session::flash($n === count($results) ? 'ok' : 'error', t('{n} of {total} files imported.', ['n' => $n, 'total' => count($results)]));
         } else {
             $files = $_FILES['files'] ?? null;
             if (!$files || !is_array($files['name'])) {
-                throw new UserError('Choose one or more JSON files.');
+                throw new UserError(t('Choose one or more JSON files.'));
             }
             if (count($files['name']) > 50) {
-                throw new UserError('At most 50 files at once.');
+                throw new UserError(t('At most 50 files at once.'));
             }
             foreach ($files['name'] as $i => $name) {
                 $name = mb_substr(basename((string)$name), 0, 120);
                 if ($files['error'][$i] !== UPLOAD_ERR_OK) {
-                    $results[] = ['name' => $name, 'report' => ['ok' => false, 'errors' => [$files['error'][$i] === UPLOAD_ERR_NO_FILE ? 'No file chosen.' : 'Upload failed (too large?).'],
+                    $results[] = ['name' => $name, 'report' => ['ok' => false, 'errors' => [$files['error'][$i] === UPLOAD_ERR_NO_FILE ? t('No file chosen.') : t('Upload failed (too large?).')],
                         'warnings' => [], 'products' => [], 'counts' => []]];
                     continue;
                 }
@@ -145,7 +145,7 @@ function page_product_import(): void
             }
         }
     }
-    View::render('products/import', ['results' => $results, 'done' => $done, 'types' => Catalog::typesByCategory()], 'Import products (JSON)', 'parts');
+    View::render('products/import', ['results' => $results, 'done' => $done, 'types' => Catalog::typesByCategory()], t('Import products (JSON)'), 'parts');
 }
 
 function page_product_template(): void
@@ -160,7 +160,7 @@ function page_product_template(): void
     }
     $type = get_param('type');
     if (!Catalog::type($type) || !in_array($kind, ['schema', 'example'], true)) {
-        throw new NotFound('No such template.');
+        throw new NotFound(t('No such template.'));
     }
     header('Content-Type: application/json; charset=utf-8');
     header('Content-Disposition: attachment; filename="' . strtolower($type) . ".$kind.json\"");
@@ -179,16 +179,16 @@ function page_lists(): void
         $id = get_int('id');
         match ($do) {
             'add' => PickLists::add($uid, $code, post('name')),
-            'rename' => Session::flash('ok', 'Renamed; ' . PickLists::rename($uid, $id, post('name')) . ' records follow.'),
-            'merge' => Session::flash('ok', 'Merged; ' . PickLists::merge($uid, $id, (int)post('into')) . ' records moved.'),
+            'rename' => Session::flash('ok', t('Renamed; {n} records follow.', ['n' => PickLists::rename($uid, $id, post('name'))])),
+            'merge' => Session::flash('ok', t('Merged; {n} records moved.', ['n' => PickLists::merge($uid, $id, (int)post('into'))])),
             'hide' => PickLists::hide($uid, $id, true),
             'show' => PickLists::hide($uid, $id, false),
-            default => throw new UserError('Unknown action.'),
+            default => throw new UserError(t('Unknown action.')),
         };
         redirect('lists');
     }
     $rows = PickLists::rows($uid, $code);
-    View::render('products/lists', ['rows' => $rows, 'list' => PickLists::LISTS[$code]], 'Shops', 'account');
+    View::render('products/lists', ['rows' => $rows, 'list' => PickLists::LISTS[$code]], t('Shops'), 'account');
 }
 
 // ------------------------------------------------------------------ change log
@@ -204,5 +204,5 @@ function page_changes(): void
     $rows = ChangeLog::entries($uid, $bikeId ?: null, $partId ?: null, $entity ?: null, 200, $before);
     $bike = $bikeId ? Domain::bike($uid, $bikeId) : null;
     $part = $partId ? Domain::component($uid, $partId) : null;
-    View::render('account/changes', compact('rows', 'bike', 'part', 'entity', 'bikeId', 'partId'), 'Change log', 'account');
+    View::render('account/changes', compact('rows', 'bike', 'part', 'entity', 'bikeId', 'partId'), t('Change log'), 'account');
 }

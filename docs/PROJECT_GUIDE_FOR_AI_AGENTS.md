@@ -37,6 +37,15 @@ export, stored copies, restore with new ids, fresh start; a new table with user 
 `UserBackups::TABLES` with its reference columns), `workshop.php` (replace a part with carry-over, wheels
 into a wheelset, product–bike fits, brake overview, charge history). A multi-step change (groupset import, fix) runs inside one work session so it can be
 undone as a whole.
+**PHP UI texts are bilingual (English/German, DECISIONS 140).** Never echo a bare English UI string in
+`php/`: write `t('English text {name}', ['name' => $v])` (placeholders, never string concatenation of
+sentence fragments), `tn()` for singular/plural, `num()`/`km()`/`money()` for numbers, `lc()` instead of
+`strtolower` for a name inside a sentence, and add the German text (informal "du") to
+`php/app/lang/de.php` under the same English key. Check with `php php/tools/i18n_keys.php --missing de`;
+`php/tests/test_95_i18n.php` fails on a missing German text, wrong placeholders, an unused German entry,
+or English text left on a German page. A text in a PHP constant is translated where it is shown. Emails
+are built with `t()` too. Not translated: user input, the product-JSON field messages, script templates,
+CSV column names.
 
 ### Product principles (from Dirk's brief; do not break them)
 

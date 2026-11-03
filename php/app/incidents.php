@@ -10,14 +10,14 @@ final class Journal
     public static function add(int $uid, array $f): int
     {
         if (empty($f['bike_id']) && empty($f['component_id'])) {
-            throw new UserError('A note belongs to a bike or a part.');
+            throw new UserError(t('A note belongs to a bike or a part.'));
         }
         $text = trim((string)($f['text'] ?? ''));
         if ($text === '') {
             if (empty($f['incident_type'])) {
-                throw new UserError('Please write something.');
+                throw new UserError(t('Please write something.'));
             }
-            $text = Catalog::raw('incident_types')[$f['incident_type']] ?? 'Incident';
+            $text = Catalog::raw('incident_types')[$f['incident_type']] ?? t('Incident');
         }
         return Db::insert('journal_entries', [
             'user_id' => $uid, 'bike_id' => $f['bike_id'] ?? null, 'component_id' => $f['component_id'] ?? null, 'ride_id' => $f['ride_id'] ?? null,
@@ -59,7 +59,7 @@ final class Incidents
 
     public static function ride(int $uid, int $rideId): array
     {
-        return Db::one('SELECT * FROM rides WHERE id = ? AND user_id = ?', [$rideId, $uid]) ?? throw new NotFound('Ride not found.');
+        return Db::one('SELECT * FROM rides WHERE id = ? AND user_id = ?', [$rideId, $uid]) ?? throw new NotFound(t('Ride not found.'));
     }
 
     /** Parts on the ride's bike that day with the slot path from the bike down. */
@@ -98,10 +98,10 @@ final class Incidents
     public static function choices(int $uid, array $ride, string $type): array
     {
         if (!isset(self::types()[$type])) {
-            throw new UserError('Unknown kind of incident.');
+            throw new UserError(t('Unknown kind of incident.'));
         }
         $parts = self::partsOnRide($uid, $ride);
-        $bike = ['key' => 'BIKE', 'label' => 'Whole bike', 'component_id' => null, 'affected' => null];
+        $bike = ['key' => 'BIKE', 'label' => t('Whole bike'), 'component_id' => null, 'affected' => null];
         $opts = Catalog::raw('incident_options')[$type] ?? null;
         if ($opts === null) {
             $out = [$bike];
@@ -144,7 +144,7 @@ final class Incidents
                 }
             }
             if (!$found) {   // not recorded: the position itself can still be picked
-                $out[] = ['key' => $o['key'], 'label' => $o['label'] . ' (not recorded)', 'component_id' => null, 'affected' => $o['label']];
+                $out[] = ['key' => $o['key'], 'label' => t('{part} (not recorded)', ['part' => $o['label']]), 'component_id' => null, 'affected' => $o['label']];
             }
         }
         return $out;
@@ -162,9 +162,9 @@ final class Incidents
             $keys = array_values(array_unique($keys ?: ['BIKE']));
             $group = bin2hex(random_bytes(16));
             foreach ($keys as $k) {
-                $o = $opts[$k] ?? throw new UserError('That cannot be affected on this ride.');
+                $o = $opts[$k] ?? throw new UserError(t('That cannot be affected on this ride.'));
                 if ($o['component_id'] === null && !$ride['bike_id']) {
-                    throw new UserError('This ride has no bike; set the bike first.');
+                    throw new UserError(t('This ride has no bike; set the bike first.'));
                 }
                 Journal::add($uid, ['ride_id' => $rideId, 'incident_type' => $type, 'incident_group' => $group, 'component_id' => $o['component_id'],
                     'affected' => $o['affected'], 'bike_id' => $ride['bike_id'], 'entry_on' => $ride['ride_date'], 'text' => $text, 'resolved_on' => $resolvedOn]);
@@ -178,7 +178,7 @@ final class Incidents
         $rows = Db::all('SELECT j.*, c.label AS part_label, c.component_type FROM journal_entries j LEFT JOIN components c ON c.id = j.component_id
             WHERE j.user_id = ? AND j.incident_group = ?' . ($live ? ' AND j.voided_at IS NULL' : '') . ' ORDER BY j.id', [$uid, $group]);
         if (!$rows) {
-            throw new NotFound('Incident not found.');
+            throw new NotFound(t('Incident not found.'));
         }
         return $rows;
     }
@@ -227,7 +227,7 @@ final class Incidents
     {
         foreach (self::entries($uid, $group) as $e) {
             if ($e['repair_session_id']) {
-                throw new UserError('Undo the fix first (it changed parts or stock).');
+                throw new UserError(t('Undo the fix first (it changed parts or stock).'));
             }
         }
         Db::run('UPDATE journal_entries SET voided_at = ?, void_reason = ? WHERE user_id = ? AND incident_group = ? AND voided_at IS NULL', [now_utc(), self::REMOVED, $uid, $group]);
@@ -237,7 +237,7 @@ final class Incidents
     {
         $n = Db::run('UPDATE journal_entries SET voided_at = NULL, void_reason = NULL WHERE user_id = ? AND incident_group = ? AND void_reason = ?', [$uid, $group, self::REMOVED])->rowCount();
         if (!$n) {
-            throw new UserError('Nothing to restore.');
+            throw new UserError(t('Nothing to restore.'));
         }
     }
 
@@ -250,62 +250,62 @@ final class Incidents
     {
         Db::tx(function () use ($uid, $entryId, $action, $on, $src, $text) {
             $e = Db::one('SELECT * FROM journal_entries WHERE id = ? AND user_id = ? AND voided_at IS NULL AND incident_group IS NOT NULL', [$entryId, $uid])
-                ?? throw new NotFound('Entry not found.');
+                ?? throw new NotFound(t('Entry not found.'));
             if ($e['repair']) {
-                throw new UserError('This already has a fix. Undo it first.');
+                throw new UserError(t('This already has a fix. Undo it first.'));
             }
             if ($on < $e['entry_on']) {
-                throw new UserError('A fix cannot be before the incident (' . $e['entry_on'] . ').');
+                throw new UserError(t('A fix cannot be before the incident ({date}).', ['date' => $e['entry_on']]));
             }
             $ws = null;
             $label = $text;
             if ($action === 'REPLACED') {
                 $old = $e['component_id'] ? Domain::component($uid, (int)$e['component_id']) : null;
-                $ws = Inventory::startSession($uid, 'FIX', 'Fix: ' . (self::types()[$e['incident_type']] ?? 'incident'), $on);
+                $ws = Inventory::startSession($uid, 'FIX', t('Fix: {what}', ['what' => self::types()[$e['incident_type']] ?? t('incident')]), $on);
                 if ($e['incident_type'] === 'SPOKE') {
-                    $wheel = $old ?? throw new UserError('Pick the wheel.');
+                    $wheel = $old ?? throw new UserError(t('Pick the wheel.'));
                     if (($src['kind'] ?? '') === 'stock') {
-                        Db::one("SELECT id FROM consumables WHERE id = ? AND user_id = ?", [(int)$src['id'], $uid]) ?? throw new NotFound('Stock line not found.');
+                        Db::one("SELECT id FROM consumables WHERE id = ? AND user_id = ?", [(int)$src['id'], $uid]) ?? throw new NotFound(t('Stock line not found.'));
                         Db::insert('consumable_txns', ['user_id' => $uid, 'consumable_id' => (int)$src['id'], 'kind' => 'USE', 'qty' => 1, 'happened_on' => $on,
-                            'note' => 'broken spoke', 'work_session_id' => $ws, 'created_at' => now_utc()]);
+                            'note' => t('broken spoke'), 'work_session_id' => $ws, 'created_at' => now_utc()]);
                     }
                     $ev = Domain::logMaintenance($uid, ['action_code' => 'SPOKE_REPLACE', 'component_id' => (int)$wheel['id'], 'bike_id' => null, 'performed_on' => $on,
-                        'outcome' => null, 'measurement_value' => null, 'consumable_id' => null, 'consumable_qty' => null, 'cost_cents' => null, 'shop' => null, 'notes' => 'broken spoke']);
+                        'outcome' => null, 'measurement_value' => null, 'consumable_id' => null, 'consumable_qty' => null, 'cost_cents' => null, 'shop' => null, 'notes' => t('broken spoke')]);
                     Db::run('UPDATE maintenance_events SET work_session_id = ? WHERE id = ?', [$ws, $ev]);
-                    $label = $label ?: 'spoke replaced';
+                    $label = $label ?: t('spoke replaced');
                 } elseif ($old) {
                     $inst = Domain::openInstallation($uid, (int)$old['id']);
                     if (!$inst) {
-                        throw new UserError(Domain::componentName($old) . ' is not installed any more; nothing to replace.');
+                        throw new UserError(t('{part} is not installed any more; nothing to replace.', ['part' => Domain::componentName($old)]));
                     }
                     $newId = self::newPart($uid, $old['component_type'], $src, $on, $ws);
                     $outcome = $src['outcome'] ?? Inventory::defaultOutcome($old['component_type']);
                     Domain::install($uid, $newId, $inst['bike_id'] ? (int)$inst['bike_id'] : null, $inst['parent_component_id'] ? (int)$inst['parent_component_id'] : null,
-                        $inst['slot'], $on, 'after: ' . (self::types()[$e['incident_type']] ?? 'incident'), true, $ws, $outcome);
-                    $label = $label ?: 'replaced by ' . Domain::componentName(Domain::component($uid, $newId));
+                        $inst['slot'], $on, t('after: {what}', ['what' => self::types()[$e['incident_type']] ?? t('incident')]), true, $ws, $outcome);
+                    $label = $label ?: t('replaced by {part}', ['part' => Domain::componentName(Domain::component($uid, $newId))]);
                 } else {
                     // a position without a recorded part (e.g. "Rear tube"): a stock tube or nothing tracked
                     if (($src['kind'] ?? '') === 'stock') {
-                        $line = Db::one('SELECT * FROM consumables WHERE id = ? AND user_id = ?', [(int)$src['id'], $uid]) ?? throw new NotFound('Stock line not found.');
+                        $line = Db::one('SELECT * FROM consumables WHERE id = ? AND user_id = ?', [(int)$src['id'], $uid]) ?? throw new NotFound(t('Stock line not found.'));
                         Db::insert('consumable_txns', ['user_id' => $uid, 'consumable_id' => $line['id'], 'kind' => 'USE', 'qty' => 1, 'happened_on' => $on,
-                            'note' => 'fix: ' . $e['affected'], 'work_session_id' => $ws, 'created_at' => now_utc()]);
-                        $label = $label ?: 'replaced with ' . $line['name'] . ' from stock';
+                            'note' => t('fix: {what}', ['what' => $e['affected']]), 'work_session_id' => $ws, 'created_at' => now_utc()]);
+                        $label = $label ?: t('replaced with {name} from stock', ['name' => $line['name']]);
                     } else {
                         $label = $label ?: 'replaced';
                     }
                 }
             } elseif ($action === 'REPAIRED') {
                 if ($e['component_id'] && Domain::component($uid, (int)$e['component_id'])['component_type'] === 'INNER_TUBE') {
-                    $ws = Inventory::startSession($uid, 'FIX', 'Fix: patched tube', $on);
+                    $ws = Inventory::startSession($uid, 'FIX', t('Fix: patched tube'), $on);
                     $ev = Domain::logMaintenance($uid, ['action_code' => 'TUBE_PATCH', 'component_id' => (int)$e['component_id'], 'bike_id' => null, 'performed_on' => $on,
                         'outcome' => 'REPAIRED', 'measurement_value' => null, 'consumable_id' => null, 'consumable_qty' => null, 'cost_cents' => null, 'shop' => null, 'notes' => $text]);
                     Db::run('UPDATE maintenance_events SET work_session_id = ? WHERE id = ?', [$ws, $ev]);
                 }
                 $label = $label ?: 'repaired';
             } elseif ($action !== 'NONE') {
-                throw new UserError('Unknown fix.');
+                throw new UserError(t('Unknown fix.'));
             } else {
-                $label = $label ?: 'nothing needed';
+                $label = $label ?: t('nothing needed');
             }
             Db::run('UPDATE journal_entries SET repair = ?, repair_text = ?, repaired_on = ?, repair_session_id = ?, updated_at = ? WHERE id = ?',
                 [$action, mb_substr((string)$label, 0, 255), $on, $ws, now_utc(), $entryId]);
@@ -322,7 +322,7 @@ final class Incidents
             case 'spare':
                 $c = Domain::component($uid, (int)$src['id']);
                 if ($c['component_type'] !== $type || $c['status'] !== 'ACTIVE' || Domain::openInstallation($uid, (int)$c['id'])) {
-                    throw new UserError('That spare does not fit or is in use.');
+                    throw new UserError(t('That spare does not fit or is in use.'));
                 }
                 return (int)$c['id'];
             case 'stock':
@@ -336,7 +336,7 @@ final class Incidents
     public static function undoFix(int $uid, int $entryId): void
     {
         Db::tx(function () use ($uid, $entryId) {
-            $e = Db::one('SELECT * FROM journal_entries WHERE id = ? AND user_id = ? AND repair IS NOT NULL', [$entryId, $uid]) ?? throw new NotFound('No fix to undo.');
+            $e = Db::one('SELECT * FROM journal_entries WHERE id = ? AND user_id = ? AND repair IS NOT NULL', [$entryId, $uid]) ?? throw new NotFound(t('No fix to undo.'));
             if ($e['repair_session_id']) {
                 Inventory::undoSession($uid, (int)$e['repair_session_id']);
             }
@@ -365,7 +365,7 @@ final class Incidents
         return Db::tx(function () use ($uid, $wheelId, $brokeOn, $note, $replacedOn, $stockId) {
             $w = Domain::component($uid, $wheelId);
             if (!in_array($w['component_type'], ['FRONT_WHEEL', 'REAR_WHEEL'], true)) {
-                throw new UserError('A broken spoke is logged on a front or rear wheel.');
+                throw new UserError(t('A broken spoke is logged on a front or rear wheel.'));
             }
             $group = bin2hex(random_bytes(16));
             $bike = Domain::currentBike($uid, $wheelId);
@@ -396,11 +396,11 @@ final class Incidents
                     $kind = $part['component_type'];
                     foreach ($parts as $p) {
                         if ((int)$p['id'] === (int)$part['id']) {
-                            $wheel = in_array('REAR_WHEEL', $p['slots'], true) ? 'Rear' : (in_array('FRONT_WHEEL', $p['slots'], true) ? 'Front' : null);
+                            $wheel = in_array('REAR_WHEEL', $p['slots'], true) ? t('Rear') : (in_array('FRONT_WHEEL', $p['slots'], true) ? t('Front') : null);
                         }
                     }
                 } else {
-                    $wheel = str_starts_with((string)$a['affected'], 'Front') ? 'Front' : (str_starts_with((string)$a['affected'], 'Rear') ? 'Rear' : null);
+                    $wheel = str_starts_with((string)$a['affected'], 'Front') ? t('Front') : (str_starts_with((string)$a['affected'], 'Rear') ? t('Rear') : null);
                     $kind = str_contains(mb_strtolower((string)$a['affected']), 'tube') ? 'INNER_TUBE' : 'TIRE';
                 }
                 // the tire on that wheel that day (a tube flat still tells which tire it was in)
@@ -412,8 +412,8 @@ final class Incidents
                         }
                     }
                 }
-                $rows[] = ['on' => $inc['on'], 'group' => $inc['group'], 'bike' => $inc['bike_name'], 'ride_id' => $inc['ride_id'], 'wheel' => $wheel ?? 'Unknown',
-                    'damage' => $kind === 'INNER_TUBE' ? 'Tube' : 'Tire', 'part' => $part, 'tire' => $tire, 'conditions' => $inc['conditions'],
+                $rows[] = ['on' => $inc['on'], 'group' => $inc['group'], 'bike' => $inc['bike_name'], 'ride_id' => $inc['ride_id'], 'wheel' => $wheel ?? t('Unknown'),
+                    'damage' => $kind === 'INNER_TUBE' ? t('Tube') : t('Tire'), 'part' => $part, 'tire' => $tire, 'conditions' => $inc['conditions'],
                     'fixed' => $a['repair_text']];
             }
         }

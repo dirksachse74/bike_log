@@ -78,17 +78,17 @@ final class Auth
     public static function validatePassword(string $pw, string $email = ''): void
     {
         if (mb_strlen($pw) < self::MIN_PASSWORD) {
-            throw new UserError('The password needs at least ' . self::MIN_PASSWORD . ' characters.');
+            throw new UserError(t('The password needs at least {n} characters.', ['n' => self::MIN_PASSWORD]));
         }
         if (strlen($pw) > 1024) {
-            throw new UserError('The password is too long.');
+            throw new UserError(t('The password is too long.'));
         }
         if ($email !== '' && mb_strtolower($pw) === mb_strtolower($email)) {
-            throw new UserError('The password must not be your email address.');
+            throw new UserError(t('The password must not be your email address.'));
         }
         $common = ['password123', '1234567890', 'qwertyuiop', 'passwort123', 'letmein1234', 'bikelog123'];
         if (in_array(mb_strtolower($pw), $common, true)) {
-            throw new UserError('That password is too common.');
+            throw new UserError(t('That password is too common.'));
         }
     }
 
@@ -101,7 +101,7 @@ final class Auth
         $ip = Request::ip();
         if (!RateLimit::allowed('login-email', $email, 5, 900) || !RateLimit::allowed('login-ip', $ip, 30, 900)) {
             Audit::log('login_throttled', null, $email);
-            throw new UserError('Too many sign-in attempts. Please wait 15 minutes and try again.');
+            throw new UserError(t('Too many sign-in attempts. Please wait 15 minutes and try again.'));
         }
         $u = Db::one('SELECT * FROM users WHERE email = ?', [$email]);
         // same work whether or not the account exists (no timing hint)
@@ -111,17 +111,17 @@ final class Auth
             RateLimit::hit('login-email', $email);
             RateLimit::hit('login-ip', $ip);
             Audit::log('login_failed', $u['id'] ?? null, $email, 0);
-            throw new UserError('Email or password is wrong.');
+            throw new UserError(t('Email or password is wrong.'));
         }
         if ($u['status'] !== 'ACTIVE') {
             Audit::log('login_blocked', (int)$u['id'], null, 0);
-            throw new UserError('This account is blocked. Please contact the site admin.');
+            throw new UserError(t('This account is blocked. Please contact the site admin.'));
         }
         if (Settings::get('require_verification') === '1' && $u['email_verified_at'] === null) {
-            throw new UserError('Please confirm your email address first. We can send the link again below.');
+            throw new UserError(t('Please confirm your email address first. We can send the link again below.'));
         }
         if (Settings::get('maintenance_mode') === '1' && $u['role'] !== 'ADMIN') {
-            throw new UserError('The site is in maintenance mode. Please try again later.');
+            throw new UserError(t('The site is in maintenance mode. Please try again later.'));
         }
         if (password_needs_rehash($u['password_hash'], self::algo())) {
             Db::run('UPDATE users SET password_hash = ? WHERE id = ?', [self::hash($password), $u['id']]);
@@ -183,22 +183,21 @@ final class Auth
     {
         $email = self::normalizeEmail($email);
         if (!filter_var($email, FILTER_VALIDATE_EMAIL) || strlen($email) > 190) {
-            throw new UserError('Please enter a valid email address.');
+            throw new UserError(t('Please enter a valid email address.'));
         }
         $name = trim($name);
         if ($name === '' || mb_strlen($name) > 100) {
-            throw new UserError('Please enter your name (up to 100 characters).');
+            throw new UserError(t('Please enter your name (up to 100 characters).'));
         }
         self::validatePassword($password, $email);
         if ($invite === null && !self::emailDomainAllowed($email)) {
-            throw new UserError('Sign-up is limited to certain email domains on this site.');
+            throw new UserError(t('Sign-up is limited to certain email domains on this site.'));
         }
         $existing = Db::one('SELECT id FROM users WHERE email = ?', [$email]);
         if ($existing) {
-            Mailer::send($email, 'Someone tried to sign up with your email',
-                "Hello,\n\nsomeone tried to create a Bike Log account with this email address, but you already have one.\n"
-                . "If it was you, sign in here: " . abs_url('login') . "\nForgot the password? " . abs_url('forgot') . "\n\n"
-                . "If it was not you, you can ignore this email.\n");
+            Mailer::send($email, t('Someone tried to sign up with your email'),
+                t("Hello,\n\nsomeone tried to create a Bike Log account with this email address, but you already have one.\nIf it was you, sign in here: {login}\nForgot the password? {forgot}\n\nIf it was not you, you can ignore this email.\n",
+                ['login' => abs_url('login'), 'forgot' => abs_url('forgot')]));
             Audit::log('register_existing', (int)$existing['id'], null, 0);
             return null;
         }
@@ -207,7 +206,7 @@ final class Auth
         $id = Db::insert('users', [
             'email' => $email, 'display_name' => $name, 'password_hash' => self::hash($password),
             'role' => 'USER', 'status' => 'ACTIVE', 'email_verified_at' => $verified,
-            'timezone' => Config::get('default_timezone', 'Europe/Berlin'), 'created_at' => $now, 'updated_at' => $now,
+            'timezone' => Config::get('default_timezone', 'Europe/Berlin'), 'lang' => I18n::lang(), 'created_at' => $now, 'updated_at' => $now,
         ]);
         Domain::seedUser($id);
         Audit::log('register', $id, $invite ? 'invited' : null, $id);
@@ -249,10 +248,9 @@ final class Auth
     {
         Db::run("UPDATE user_tokens SET used_at = ? WHERE user_id = ? AND purpose = 'VERIFY' AND used_at IS NULL", [now_utc(), $userId]);
         $t = self::createToken($userId, 'VERIFY', self::VERIFY_TTL);
-        Mailer::send($email, 'Confirm your email for ' . Settings::get('site_name'),
-            "Hello,\n\nplease confirm your email address to finish setting up your account:\n\n"
-            . abs_url('verify', ['t' => $t]) . "\n\nThe link works once and expires in 48 hours.\n"
-            . "If you did not sign up, ignore this email.\n");
+        Mailer::send($email, t('Confirm your email for {site}', ['site' => Settings::get('site_name')]),
+            t("Hello,\n\nplease confirm your email address to finish setting up your account:\n\n{link}\n\nThe link works once and expires in 48 hours.\nIf you did not sign up, ignore this email.\n",
+            ['link' => abs_url('verify', ['t' => $t])]));
     }
 
     public static function verify(string $token): bool
@@ -291,42 +289,40 @@ final class Auth
         // only the newest link works
         Db::run("UPDATE user_tokens SET used_at = ? WHERE user_id = ? AND purpose = 'RESET' AND used_at IS NULL", [now_utc(), $userId]);
         $t = self::createToken($userId, 'RESET', self::RESET_TTL);
-        Mailer::send($email, 'Reset your ' . Settings::get('site_name') . ' password',
-            "Hello,\n\nsomeone (hopefully you) asked to reset the password for this account.\n"
-            . "Choose a new password here:\n\n" . abs_url('reset', ['t' => $t])
-            . "\n\nThe link works once and expires in 1 hour. If you did not ask for it, ignore this email;"
-            . " your password stays the same.\n");
+        Mailer::send($email, t('Reset your {site} password', ['site' => Settings::get('site_name')]),
+            t("Hello,\n\nsomeone (hopefully you) asked to reset the password for this account.\nChoose a new password here:\n\n{link}\n\nThe link works once and expires in 1 hour. If you did not ask for it, ignore this email; your password stays the same.\n",
+            ['link' => abs_url('reset', ['t' => $t])]));
     }
 
     public static function resetPassword(string $token, string $password): void
     {
         $row = self::findToken($token, 'RESET');
         if (!$row) {
-            throw new UserError('This reset link is invalid or has expired. Please ask for a new one.');
+            throw new UserError(t('This reset link is invalid or has expired. Please ask for a new one.'));
         }
         $u = Db::one('SELECT * FROM users WHERE id = ?', [$row['user_id']]);
         self::validatePassword($password, $u['email']);
         if (!self::consumeToken((int)$row['id'])) {
-            throw new UserError('This reset link was already used.');
+            throw new UserError(t('This reset link was already used.'));
         }
         Db::run('UPDATE users SET password_hash = ?, session_version = session_version + 1, email_verified_at = COALESCE(email_verified_at, ?), updated_at = ? WHERE id = ?',
             [self::hash($password), now_utc(), now_utc(), $u['id']]);
         RateLimit::clear('login-email', $u['email']);
         Audit::log('password_reset', (int)$u['id'], null, (int)$u['id']);
-        Mailer::send($u['email'], 'Your password was changed',
-            "Hello,\n\nthe password of your " . Settings::get('site_name') . " account was just changed.\n"
-            . "If this was not you, reset it now: " . abs_url('forgot') . " and tell the site admin.\n");
+        Mailer::send($u['email'], t('Your password was changed'),
+            t("Hello,\n\nthe password of your {site} account was just changed.\nIf this was not you, reset it now: {link} and tell the site admin.\n",
+            ['site' => Settings::get('site_name'), 'link' => abs_url('forgot')]));
     }
 
     public static function changePassword(int $userId, string $current, string $new): void
     {
         $u = Db::one('SELECT * FROM users WHERE id = ?', [$userId]);
         if (!RateLimit::allowed('pwchange', (string)$userId, 5, 900)) {
-            throw new UserError('Too many attempts. Please wait 15 minutes.');
+            throw new UserError(t('Too many attempts. Please wait 15 minutes.'));
         }
         if (!password_verify($current, $u['password_hash'])) {
             RateLimit::hit('pwchange', (string)$userId);
-            throw new UserError('Your current password is wrong.');
+            throw new UserError(t('Your current password is wrong.'));
         }
         self::validatePassword($new, $u['email']);
         Db::run('UPDATE users SET password_hash = ?, session_version = session_version + 1, updated_at = ? WHERE id = ?',
@@ -342,16 +338,15 @@ final class Auth
     {
         $email = self::normalizeEmail($email);
         if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-            throw new UserError('Please enter a valid email address.');
+            throw new UserError(t('Please enter a valid email address.'));
         }
         if (Db::one('SELECT id FROM users WHERE email = ?', [$email])) {
-            throw new UserError('This address already has an account.');
+            throw new UserError(t('This address already has an account.'));
         }
         $t = self::createToken(null, 'INVITE', self::INVITE_TTL, $email);
-        Mailer::send($email, 'You are invited to ' . Settings::get('site_name'),
-            "Hello,\n\n" . (self::user()['display_name'] ?? 'The admin') . " invited you to " . Settings::get('site_name')
-            . ", a log for your bikes, parts, rides and maintenance.\n\nCreate your account here:\n\n"
-            . abs_url('register', ['invite' => $t]) . "\n\nThe link works once and expires in 7 days.\n");
+        Mailer::send($email, t('You are invited to {site}', ['site' => Settings::get('site_name')]),
+            t("Hello,\n\n{who} invited you to {site}, a log for your bikes, parts, rides and maintenance.\n\nCreate your account here:\n\n{link}\n\nThe link works once and expires in 7 days.\n",
+            ['who' => self::user()['display_name'] ?? t('The admin'), 'site' => Settings::get('site_name'), 'link' => abs_url('register', ['invite' => $t])]));
         Audit::log('invite_sent', null, $email);
     }
 }

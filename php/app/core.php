@@ -247,13 +247,13 @@ function parse_date(string $s, bool $required = false): ?string
 {
     if ($s === '') {
         if ($required) {
-            throw new UserError('Please enter a date.');
+            throw new UserError(t('Please enter a date.'));
         }
         return null;
     }
     $d = DateTimeImmutable::createFromFormat('!Y-m-d', $s);
     if (!$d || $d->format('Y-m-d') !== $s) {
-        throw new UserError("'$s' is not a valid date (use YYYY-MM-DD).");
+        throw new UserError(t("'{value}' is not a valid date (use YYYY-MM-DD).", ['value' => $s]));
     }
     return $s;
 }
@@ -263,13 +263,13 @@ function parse_number(string $s, string $label, bool $allowNegative = false): ?f
     if ($s === '') {
         return null;
     }
-    $s = str_replace(',', '.', $s);
+    $s = str_replace([',', ' ', "\u{00A0}"], ['.', '', ''], $s);
     if (!is_numeric($s)) {
-        throw new UserError("$label must be a number.");
+        throw new UserError(t('{field} must be a number.', ['field' => t($label)]));
     }
     $f = (float)$s;
     if (!$allowNegative && $f < 0) {
-        throw new UserError("$label cannot be negative.");
+        throw new UserError(t('{field} cannot be negative.', ['field' => t($label)]));
     }
     return $f;
 }
@@ -282,12 +282,12 @@ function parse_money_cents(string $s, string $label = 'Price'): ?int
 
 function money(?int $cents): string
 {
-    return $cents === null ? '' : number_format($cents / 100, 2, '.', ' ');
+    return $cents === null ? '' : num($cents / 100, 2);
 }
 
 function km(?float $v, int $dec = 0): string
 {
-    return $v === null ? '–' : number_format($v, $dec, '.', ' ') . ' km';
+    return $v === null ? '–' : num($v, $dec) . ' km';
 }
 
 function duration(?int $s): string
@@ -310,7 +310,7 @@ function parse_duration(string $s): ?int
     if (ctype_digit($s)) {
         return (int)$s * 60;
     }
-    throw new UserError('Duration: use h:mm (for example 2:15) or minutes.');
+    throw new UserError(t('Duration: use h:mm (for example 2:15) or minutes.'));
 }
 
 final class UserError extends RuntimeException
@@ -415,7 +415,7 @@ final class Csrf
         $sent = $_POST['_csrf'] ?? '';
         if (!is_string($sent) || empty($_SESSION['csrf']) || !hash_equals($_SESSION['csrf'], $sent)) {
             http_response_code(400);
-            throw new UserError('The form expired or was sent from another site. Please try again.');
+            throw new UserError(t('The form expired or was sent from another site. Please try again.'));
         }
     }
 }
@@ -489,6 +489,7 @@ final class Settings
         'allowed_email_domains' => '',     // comma list; empty = any
         'maintenance_mode' => '0',          // 1: only admins can sign in
         'notice' => '',                     // banner shown to everyone signed in
+        'default_language' => '',           // en | de; empty = the browser's language
     ];
     private static ?array $cache = null;
 

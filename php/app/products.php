@@ -33,7 +33,7 @@ final class Products
 
     public static function schema(string $type): array
     {
-        $t = Catalog::type($type) ?? throw new NotFound('Unknown part type.');
+        $t = Catalog::type($type) ?? throw new NotFound(t('Unknown part type.'));
         $props = [];
         foreach (self::specFields($type) as $f) {
             $p = ['type' => self::KIND_TYPES[$f['kind']], 'description' => $f['description'] . ($f['unit'] ? " ({$f['unit']})" : '')];
@@ -78,7 +78,7 @@ final class Products
 
     public static function example(string $type): array
     {
-        $t = Catalog::type($type) ?? throw new NotFound('Unknown part type.');
+        $t = Catalog::type($type) ?? throw new NotFound(t('Unknown part type.'));
         $specs = [];
         foreach (self::specFields($type) as $f) {
             if ($f['example'] !== null) {
@@ -105,18 +105,18 @@ final class Products
     public static function parse(string $content): mixed
     {
         if (strlen($content) > self::MAX_BYTES) {
-            throw new UserError('The file is larger than 5 MB.');
+            throw new UserError(t('The file is larger than 5 MB.'));
         }
         if (str_starts_with($content, "\xEF\xBB\xBF")) {
             $content = substr($content, 3);
         }
         if (!mb_check_encoding($content, 'UTF-8')) {
-            throw new UserError('The file is not UTF-8 text.');
+            throw new UserError(t('The file is not UTF-8 text.'));
         }
         try {
             return json_decode($content, false, 64, JSON_THROW_ON_ERROR | JSON_BIGINT_AS_STRING);
         } catch (JsonException $e) {
-            throw new UserError('Not valid JSON: ' . $e->getMessage() . '.');
+            throw new UserError(t('Not valid JSON: {error}.', ['error' => $e->getMessage()]));
         }
     }
 
@@ -233,13 +233,13 @@ final class Products
                 return ['products' => [], 'errors' => ['Unsupported format ' . self::repr($top['format']) . '; expected "' . self::LIST_FORMAT . '"'], 'warnings' => []];
             }
             if (!is_array($top['products'])) {
-                return ['products' => [], 'errors' => ["'products' must be a list"], 'warnings' => []];
+                return ['products' => [], 'errors' => [t("'products' must be a list")], 'warnings' => []];
             }
             $raw = $top['products'];
         } elseif ($top !== null) {
             $raw = [$doc];
         } else {
-            return ['products' => [], 'errors' => ['The file must contain a JSON object or a list of objects'], 'warnings' => []];
+            return ['products' => [], 'errors' => [t('The file must contain a JSON object or a list of objects')], 'warnings' => []];
         }
         if (count($raw) > self::MAX_PRODUCTS) {
             return ['products' => [], 'errors' => ['Too many products in one file (max ' . self::MAX_PRODUCTS . ')'], 'warnings' => []];
@@ -421,7 +421,7 @@ final class Products
                 foreach ($v['products'] as $p) {
                     $prod = Inventory::findProduct($uid, $p['component_type'], $p['maker'], $p['model']);
                     $row = ['at' => $p['at'], 'component_type' => $p['component_type'], 'maker' => $p['maker'], 'model' => $p['model'], 'changed' => [], 'items' => []];
-                    $specSource = $p['source']['url'] ?? 'JSON import';
+                    $specSource = $p['source']['url'] ?? t('JSON import');
                     if ($prod === null) {
                         $row['status'] = 'CREATED';
                         if (!$dryRun) {
@@ -472,7 +472,7 @@ final class Products
                             [$uid, $p['component_type'], $it['label']]);
                         if ($existing) {
                             if ($prod !== null && $existing['product_id'] !== null && (int)$existing['product_id'] !== (int)$prod['id']) {
-                                throw new UserError("{$p['at']}: a part labelled “{$it['label']}” already exists for another product; choose a different label.");
+                                throw new UserError(t('{at}: a part labelled “{label}” already exists for another product; choose a different label.', ['at' => $p['at'], 'label' => $it['label']]));
                             }
                             $row['items'][] = ['label' => $it['label'], 'status' => 'EXISTS', 'component_id' => (int)$existing['id']];
                             $report['counts']['ITEMS_EXISTING']++;
@@ -509,7 +509,7 @@ final class Products
 
     public static function get(int $uid, int $id): array
     {
-        return Db::one('SELECT * FROM products WHERE id = ? AND user_id = ?', [$id, $uid]) ?? throw new NotFound('Product not found.');
+        return Db::one('SELECT * FROM products WHERE id = ? AND user_id = ?', [$id, $uid]) ?? throw new NotFound(t('Product not found.'));
     }
 
     public static function name(array $p): string
@@ -544,7 +544,7 @@ final class Products
                 continue;
             }
             if (!str_contains($line, ':')) {
-                throw new UserError('Specs line ' . ($n + 1) . ': write it as “key: value”.');
+                throw new UserError(t('Specs line {n}: write it as “key: value”.', ['n' => $n + 1]));
             }
             [$k, $v] = array_map('trim', explode(':', $line, 2));
             $k = strtolower(preg_replace('/[^a-z0-9_]+/i', '_', $k));
@@ -566,7 +566,7 @@ final class Products
             }
         }
         if ($errors) {
-            throw new UserError('Specs: ' . implode('; ', $errors));
+            throw new UserError(t('Specs: {errors}', ['errors' => implode('; ', $errors)]));
         }
         return $specs;
     }
@@ -583,14 +583,14 @@ final class Products
     public static function save(int $uid, ?int $id, array $f): int
     {
         if (!Catalog::type($f['component_type'])) {
-            throw new UserError('Pick a part type.');
+            throw new UserError(t('Pick a part type.'));
         }
         if ($f['model'] === '') {
-            throw new UserError('Please enter the model.');
+            throw new UserError(t('Please enter the model.'));
         }
         $dup = Inventory::findProduct($uid, $f['component_type'], $f['maker'], $f['model']);
         if ($dup && (int)$dup['id'] !== $id) {
-            throw new UserError('This product exists already.');
+            throw new UserError(t('This product exists already.'));
         }
         $row = ['component_type' => $f['component_type'], 'maker' => nullable($f['maker']), 'model' => mb_substr($f['model'], 0, 200),
             'list_price_cents' => $f['list_price_cents'], 'notes' => nullable($f['notes']), 'spec_source' => nullable(mb_substr($f['spec_source'], 0, 500)),
@@ -598,7 +598,7 @@ final class Products
         if ($id) {
             $old = self::get($uid, $id);
             if ($old['component_type'] !== $f['component_type'] && (int)Db::value('SELECT COUNT(*) FROM components WHERE product_id = ? AND user_id = ?', [$id, $uid])) {
-                throw new UserError('Parts use this product, so its part type stays.');
+                throw new UserError(t('Parts use this product, so its part type stays.'));
             }
             if ($row['specs_json'] !== $old['specs_json']) {
                 $row['spec_version'] = 'edited ' . today();

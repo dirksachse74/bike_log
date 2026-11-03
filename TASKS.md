@@ -20,6 +20,8 @@ Status key: ✅ done and tested · 🟡 done, not verified where it matters · �
 - [x] Round 5b: replace a part carrying what is mounted on it, group wheels into a wheelset, product fits
       which bike, brake overview, restore a voided maintenance entry, charge history. Feature match done
       (Strava left out on purpose).
+- [x] English and German for the whole web version (Dirk 2026-11-03), switch in the top bar, saved per user,
+      DECISIONS 140. The Python desktop app is still English only.
 - [ ] Try it locally on Windows with XAMPP (Dirk, guide php/LOCAL_TEST_WINDOWS.md).
 - [ ] Try it on real shared hosting (Dirk): install page, SMTP, HTTPS.
 

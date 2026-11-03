@@ -118,21 +118,21 @@ final class Reminders
         $last = self::lastEvent($uid, 'component_id', (int)$c['id'], $actions);
         $periods = Domain::bikePeriods($uid, (int)$c['id']);
         $firstInstall = $periods ? $periods[0]['from'] : null;
-        $actName = mb_strtolower(Catalog::actionName($rule['action_code']));
+        $actName = lc(Catalog::actionName($rule['action_code']));
         $base = ['kind' => 'rule', 'rule' => $rule, 'component' => $c, 'bike' => $bike, 'last' => $last];
 
         if ($rule['trigger_kind'] === 'ONCE_AFTER_INSTALL') {
             $open = Domain::openInstallation($uid, (int)$c['id']);
             $since = $open['installed_on'] ?? $firstInstall;
             if ($last && $since && $last['performed_on'] >= $since) {
-                return $base + ['status' => 'OK', 'progress' => 0, 'snooze' => null, 'text' => "Done on {$last['performed_on']} after fitting on $since."];
+                return $base + ['status' => 'OK', 'progress' => 0, 'snooze' => null, 'text' => t('Done on {date} after fitting on {fitted}.', ['date' => $last['performed_on'], 'fitted' => $since])];
             }
             $used = $since ? Domain::rideUsage($uid, $c, $since)['km'] : 0.0;
             if ($rule['window_max_km'] !== null && $used > (float)$rule['window_max_km']) {
-                return $base + ['status' => 'OK', 'progress' => 0, 'snooze' => null, 'text' => 'Fitted on ' . $since . ', ' . km($used)
-                    . ' since: taken as done (asked for up to ' . km((float)$rule['window_max_km']) . ' after fitting).'];
+                return $base + ['status' => 'OK', 'progress' => 0, 'snooze' => null, 'text' => t('Fitted on {date}, {km} since: taken as done (asked for up to {max} after fitting).',
+                    ['date' => $since, 'km' => km($used), 'max' => km((float)$rule['window_max_km'])])];
             }
-            return $base + ['status' => 'OVERDUE', 'progress' => 1, 'snooze' => null, 'text' => 'Fitted on ' . ($since ?? '?') . ' (' . km($used) . " since): $actName once before riding hard."
+            return $base + ['status' => 'OVERDUE', 'progress' => 1, 'snooze' => null, 'text' => t('Fitted on {date} ({km} since): {action} once before riding hard.', ['date' => $since ?? '?', 'km' => km($used), 'action' => $actName])
                 . ($rule['notes'] ? ' ' . $rule['notes'] : '')];
         }
         if ($rule['trigger_kind'] === 'PARENT_COUNT') {
@@ -147,22 +147,23 @@ final class Reminders
             $since = $last['performed_on'];
             $usage = Domain::rideUsage($uid, $c, $since);
             $usedKm = $usage['km'];
-            $sinceText = "since last $actName on $since";
+            $sinceText = t('since last {action} on {date}', ['action' => $actName, 'date' => $since]);
             $known = true;
         } else {
             $usage = Domain::rideUsage($uid, $c);
             $usedKm = $usage['km'];
             $since = $firstInstall;
             if ($c['prior_usage'] === 'NEW') {
-                $sinceText = 'since new (fitted ' . ($firstInstall ?? '?') . "), no $actName logged yet";
+                $sinceText = t('since new (fitted {date}), no {action} logged yet', ['date' => $firstInstall ?? '?', 'action' => $actName]);
                 $known = true;
             } elseif ($c['prior_usage'] === 'RECORDED') {
                 $usedKm += (float)$c['starting_km'];
-                $sinceText = 'in total incl. ' . km((float)$c['starting_km']) . ($c['starting_km_estimate'] ? ' (estimated)' : '') . " from before; no $actName logged yet";
+                $sinceText = t('in total incl. {km}{estimated} from before; no {action} logged yet', ['km' => km((float)$c['starting_km']),
+                    'estimated' => $c['starting_km_estimate'] ? t(' (estimated)') : '', 'action' => $actName]);
                 $known = true;
                 $since = null;   // calendar start unknown
             } else {
-                $sinceText = "counted since tracking began; earlier use unknown and no $actName logged yet";
+                $sinceText = t('counted since tracking began; earlier use unknown and no {action} logged yet', ['action' => $actName]);
                 $known = false;
             }
         }
@@ -175,7 +176,7 @@ final class Reminders
             if ($tu) {
                 $topAt = $usedKm - Domain::rideUsage($uid, $c, $tu['performed_on'])['km'];
                 $rule['interval_km'] = $topAt + (float)$rule['after_top_up_km'];
-                $sinceText .= '; liquid wax top-up on ' . $tu['performed_on'] . ' at ' . km($topAt) . ', hot wax ' . km((float)$rule['after_top_up_km']) . ' after it';
+                $sinceText .= t('; liquid wax top-up on {date} at {km}, hot wax {after} after it', ['date' => $tu['performed_on'], 'km' => km($topAt), 'after' => km((float)$rule['after_top_up_km'])]);
                 $topUp = ['on' => $tu['performed_on'], 'at_km' => $topAt];
             }
         }
@@ -195,7 +196,7 @@ final class Reminders
     {
         $actions = self::resetActions($rule);
         $last = self::lastEvent($uid, 'bike_id', (int)$b['id'], $actions);
-        $actName = mb_strtolower(Catalog::actionName($rule['action_code']));
+        $actName = lc(Catalog::actionName($rule['action_code']));
         $since = $last['performed_on'] ?? null;
         $sql = 'SELECT COALESCE(SUM(distance_km),0) km, COALESCE(SUM(duration_s),0) seconds, COUNT(*) rides, SUM(distance_km IS NULL) missing_distance,
             SUM(duration_s IS NULL) missing_duration, MIN(ride_date) first FROM rides r WHERE r.user_id = ? AND r.bike_id = ? AND ' . Domain::COUNTED;
@@ -209,7 +210,7 @@ final class Reminders
         $u['seconds'] = (int)$u['seconds'];
         $u['missing_distance'] = (int)$u['missing_distance'];
         $u['missing_duration'] = (int)$u['missing_duration'];
-        $sinceText = $since ? "since last $actName on $since" : "of all logged rides; no $actName logged yet";
+        $sinceText = $since ? t('since last {action} on {date}', ['action' => $actName, 'date' => $since]) : t('of all logged rides; no {action} logged yet', ['action' => $actName]);
         // without a logged action, count the calendar from the purchase date or the first ride (an estimate)
         $calendarFrom = $since ?? ($b['purchase_date'] ?: $u['first']);
         $r = self::judge($rule, $u['km'], $u, $calendarFrom, $since !== null, $sinceText);
@@ -232,7 +233,7 @@ final class Reminders
         if ($rule['interval_km'] !== null) {
             $iv = (float)$rule['interval_km'];
             $warn = $rule['warn_km'] !== null ? (float)$rule['warn_km'] : $iv * 0.1;
-            $parts[] = number_format($usedKm, 0, '.', ' ') . " km $sinceText (interval " . number_format($iv, 0, '.', ' ') . ' km)';
+            $parts[] = t('{km} km {since} (interval {interval} km)', ['km' => num($usedKm), 'since' => $sinceText, 'interval' => num($iv)]);
             $progress = max($progress, $iv > 0 ? $usedKm / $iv : 0);
             if ($usedKm >= $iv) {
                 $worse('OVERDUE');
@@ -240,20 +241,20 @@ final class Reminders
                 $worse('SOON');
             }
             if ($usage['missing_distance'] > 0) {
-                $parts[] = $usage['missing_distance'] . ' ride(s) without distance are not counted';
+                $parts[] = t('{n} ride(s) without distance are not counted', ['n' => $usage['missing_distance']]);
             }
         }
         if ($rule['interval_months'] !== null) {
             $m = (int)$rule['interval_months'];
             if ($since === null) {
-                $parts[] = "every $m months: start date unknown";
+                $parts[] = t('every {m} months: start date unknown', ['m' => $m]);
                 $worse('UNKNOWN');
             } else {
                 $due = (new DateTimeImmutable($since))->modify("+$m months")->format('Y-m-d');
                 $warnDays = $rule['warn_days'] !== null ? (int)$rule['warn_days'] : 14;
                 $soon = (new DateTimeImmutable($due))->modify("-$warnDays days")->format('Y-m-d');
                 $days = (int)(new DateTimeImmutable($since))->diff(new DateTimeImmutable($today))->format('%a');
-                $parts[] = "$days days since $since (every $m months, due $due)";
+                $parts[] = t('{days} days since {date} (every {m} months, due {due})', ['days' => $days, 'date' => $since, 'm' => $m, 'due' => $due]);
                 $progress = max($progress, $days / max(1, $m * 30.44));
                 if ($today >= $due) {
                     $worse('OVERDUE');
@@ -266,7 +267,7 @@ final class Reminders
             $iv = (float)$rule['interval_hours'];
             $h = $usage['seconds'] / 3600;
             $warn = $rule['warn_hours'] !== null ? (float)$rule['warn_hours'] : $iv * 0.1;
-            $parts[] = number_format($h, 1) . ' h ride time (every ' . number_format($iv, 0) . ' h)';
+            $parts[] = t('{h} h ride time (every {interval} h)', ['h' => num($h, 1), 'interval' => num($iv)]);
             $progress = max($progress, $iv > 0 ? $h / $iv : 0);
             if ($h >= $iv) {
                 $worse('OVERDUE');
@@ -274,7 +275,7 @@ final class Reminders
                 $worse('SOON');
             }
             if ($usage['missing_duration'] > 0) {
-                $parts[] = $usage['missing_duration'] . ' ride(s) without a duration are not counted';
+                $parts[] = t('{n} ride(s) without a duration are not counted', ['n' => $usage['missing_duration']]);
             }
         }
         if (!$known && $status === 'OK') {
@@ -282,7 +283,7 @@ final class Reminders
         }
         $text = implode('; ', $parts) . '.';
         if (!$known) {
-            $text = 'Insufficient information: ' . $text;
+            $text = t('Insufficient information: {text}', ['text' => $text]);
         }
         return ['status' => $status, 'progress' => $progress, 'text' => $text];
     }
@@ -297,7 +298,8 @@ final class Reminders
         if ($byDate || $byKm) {
             $r['snoozed_status'] = $r['status'];
             $r['status'] = 'SNOOZED';
-            $r['text'] .= ' Snoozed' . ($byDate ? ' until ' . $sn['until_date'] : '') . ($byKm ? ' until ' . number_format((float)$sn['until_km'], 0) . ' km' : '') . '.';
+            $r['text'] .= ' ' . t('Snoozed{date}{km}.', ['date' => $byDate ? t(' until {date}', ['date' => $sn['until_date']]) : '',
+                'km' => $byKm ? t(' until {km} km', ['km' => num((float)$sn['until_km'])]) : '']);
         }
         return $r + ['snooze' => $sn];
     }
@@ -321,27 +323,30 @@ final class Reminders
         }
         $days = min(self::PACE_DAYS, max(1, (int)(new DateTimeImmutable($start))->diff($today)->format('%a') + 1));
         $u = Domain::rideUsage($uid, $c, $start);
-        $basis = $days < self::PACE_DAYS ? "the last $days day" . ($days !== 1 ? 's' : '') : 'the last 4 weeks';
+        $basis = $days < self::PACE_DAYS ? tn('the last {n} day', 'the last {n} days', $days) : t('the last 4 weeks');
         if ($u['rides'] < self::PACE_MIN_RIDES || $days < self::PACE_MIN_DAYS) {
-            $why = $u['rides'] < self::PACE_MIN_RIDES ? 'only ' . $u['rides'] . ' ride' . ($u['rides'] !== 1 ? 's' : '') . " in $basis" : "only $days days of riding to go by";
-            return "No forecast yet: $why (needs at least " . self::PACE_MIN_RIDES . ' rides over ' . self::PACE_MIN_DAYS . ' days).';
+            $why = $u['rides'] < self::PACE_MIN_RIDES ? tn('only {n} ride in {basis}', 'only {n} rides in {basis}', (int)$u['rides'], ['basis' => $basis])
+                : t('only {days} days of riding to go by', ['days' => $days]);
+            return t('No forecast yet: {why} (needs at least {rides} rides over {days} days).', ['why' => $why, 'rides' => self::PACE_MIN_RIDES, 'days' => self::PACE_MIN_DAYS]);
         }
         $cands = [];
         if ($kmLeft !== null && $u['km'] > 0) {
             $perDay = $u['km'] / $days;
-            $cands[] = [$kmLeft / $perDay, km($u['km']) . " in {$u['rides']} rides over $basis ≈ " . km($perDay * 7) . '/week; ' . km($kmLeft) . ' left'];
+            $cands[] = [$kmLeft / $perDay, t('{km} in {rides} rides over {basis} ≈ {week}/week; {left} left', ['km' => km($u['km']), 'rides' => $u['rides'],
+                'basis' => $basis, 'week' => km($perDay * 7), 'left' => km($kmLeft)])];
         }
         $hours = $u['seconds'] / 3600;
         if ($hLeft !== null && $hours > 0) {
             $perDay = $hours / $days;
-            $cands[] = [$hLeft / $perDay, number_format($hours, 1) . " h in {$u['rides']} rides over $basis ≈ " . number_format($perDay * 7, 1) . ' h/week; ' . number_format($hLeft, 1) . ' h left'];
+            $cands[] = [$hLeft / $perDay, t('{h} h in {rides} rides over {basis} ≈ {week} h/week; {left} h left', ['h' => num($hours, 1), 'rides' => $u['rides'],
+                'basis' => $basis, 'week' => num($perDay * 7, 1), 'left' => num($hLeft, 1)])];
         }
         if (!$cands) {
-            return "No forecast yet: the rides in $basis have no distance or time.";
+            return t('No forecast yet: the rides in {basis} have no distance or time.', ['basis' => $basis]);
         }
         usort($cands, fn($a, $b) => $a[0] <=> $b[0]);
         $on = $today->modify('+' . (int)round($cands[0][0]) . ' days')->format('Y-m-d');
-        return "Due around $on at your pace of $basis ({$cands[0][1]}). A planning estimate, not a safety check.";
+        return t('Due around {date} at your pace of {basis} ({detail}). A planning estimate, not a safety check.', ['date' => $on, 'basis' => $basis, 'detail' => $cands[0][1]]);
     }
 
     /** Dates of wet rides that counted for the part after a day (a wax logged on a day covers that day's rides). */
@@ -392,20 +397,22 @@ final class Reminders
         }
         $n = count($wet);
         $r['wet_rides'] = $n;
-        $r['text'] .= " $n wet ride" . ($n !== 1 ? 's' : '') . ' since then (last ' . end($wet) . '): ' . mb_strtolower($a['name']) . ' after riding in the wet.';
+        $r['text'] .= ' ' . tn('{n} wet ride since then (last {date}): {action} after riding in the wet.', '{n} wet rides since then (last {date}): {action} after riding in the wet.', $n,
+            ['date' => end($wet), 'action' => lc(Catalog::actionName($a['code']))]);
     }
 
     /** One action inside a cycle that starts with another (liquid wax 250–300 km after the hot wax). */
     private static function cycleWindow(int $uid, array $rule, array $c, string $actName): array
     {
-        $cycleAct = mb_strtolower(Catalog::actionName((string)$rule['cycle_action_code']));
+        $cycleAct = lc(Catalog::actionName((string)$rule['cycle_action_code']));
         $lo = (float)$rule['window_min_km'];
         $hi = (float)$rule['window_max_km'];
-        $window = km($lo) . '–' . km($hi) . " after $cycleAct";
+        $window = t('{from}–{to} after {action}', ['from' => km($lo), 'to' => km($hi), 'action' => $cycleAct]);
         $start = self::lastEvent($uid, 'component_id', (int)$c['id'], [(string)$rule['cycle_action_code']]);
         if (!$start) {
             return ['status' => 'UNKNOWN', 'progress' => 0, 'used_km' => null,
-                'text' => "Insufficient information: no $cycleAct recorded for " . Domain::componentName($c) . ", so the $actName window ($window) cannot be placed."];
+                'text' => t('Insufficient information: no {cycle} recorded for {part}, so the {action} window ({window}) cannot be placed.',
+                    ['cycle' => $cycleAct, 'part' => Domain::componentName($c), 'action' => $actName, 'window' => $window])];
         }
         $used = Domain::rideUsage($uid, $c, $start['performed_on'])['km'];
         $acts = self::resetActions($rule);
@@ -420,27 +427,28 @@ final class Reminders
             if ($wet) {
                 $n = count($wet);
                 return ['status' => 'OVERDUE', 'progress' => 1, 'used_km' => $used, 'wet_rides' => $n,
-                    'text' => 'Top-up recommended: wet ride on ' . end($wet) . ($n > 1 ? " ($n wet rides since the last wax)" : '')
-                        . ". Wax washes off in the rain; a $actName after a wet ride keeps the chain running smoothly (" . km($used)
-                        . " since $cycleAct on {$start['performed_on']})."];
+                    'text' => t('Top-up recommended: wet ride on {date}{more}. Wax washes off in the rain; a {action} after a wet ride keeps the chain running smoothly ({km} since {cycle} on {start}).',
+                        ['date' => end($wet), 'more' => $n > 1 ? t(' ({n} wet rides since the last wax)', ['n' => $n]) : '', 'action' => $actName,
+                        'km' => km($used), 'cycle' => $cycleAct, 'start' => $start['performed_on']])];
             }
         }
         if ($done) {
             $d = $done[0];
             $at = $used - Domain::rideUsage($uid, $c, $d['performed_on'])['km'];
             return ['status' => 'OK', 'progress' => 0, 'used_km' => $used,
-                'text' => ucfirst($actName) . " done on {$d['performed_on']} (about " . km($at) . " into the cycle that began with $cycleAct on {$start['performed_on']}). Next one in the next cycle."];
+                'text' => t('{action} done on {date} (about {km} into the cycle that began with {cycle} on {start}). Next one in the next cycle.',
+                    ['action' => ucfirst($actName), 'date' => $d['performed_on'], 'km' => km($at), 'cycle' => $cycleAct, 'start' => $start['performed_on']])];
         }
-        $head = km($used) . " since $cycleAct on {$start['performed_on']}; one $actName is due $window";
+        $head = t('{km} since {cycle} on {start}; one {action} is due {window}', ['km' => km($used), 'cycle' => $cycleAct, 'start' => $start['performed_on'], 'action' => $actName, 'window' => $window]);
         $warn = $rule['warn_km'] !== null ? (float)$rule['warn_km'] : 0.0;
         if ($used > $hi) {
-            [$st, $tail] = ['OVERDUE', ': window passed by ' . km($used - $hi)];
+            [$st, $tail] = ['OVERDUE', t(': window passed by {km}', ['km' => km($used - $hi)])];
         } elseif ($used >= $lo) {
-            [$st, $tail] = ['OVERDUE', ': window is open'];
+            [$st, $tail] = ['OVERDUE', t(': window is open')];
         } elseif ($used >= $lo - $warn) {
-            [$st, $tail] = ['SOON', ': window opens in ' . km($lo - $used)];
+            [$st, $tail] = ['SOON', t(': window opens in {km}', ['km' => km($lo - $used)])];
         } else {
-            [$st, $tail] = ['OK', ': window opens in ' . km($lo - $used)];
+            [$st, $tail] = ['OK', t(': window opens in {km}', ['km' => km($lo - $used)])];
         }
         return ['status' => $st, 'progress' => $hi > 0 ? $used / $hi : 0, 'used_km' => $used, 'text' => $head . $tail . '.'];
     }
@@ -458,18 +466,20 @@ final class Reminders
         $parents = self::parentsServed($uid, (int)$c['id']);
         $n = count($parents);
         $limit = max(1, (int)$rule['interval_count']);
-        $kind = mb_strtolower(Catalog::typeName(Catalog::parentTypes($c['component_type'])[0] ?? 'part'));
-        $names = implode(', ', array_map([Domain::class, 'componentName'], $parents)) ?: 'none yet';
+        $parentType = Catalog::parentTypes($c['component_type'])[0] ?? 'part';
+        $kind = lc(Catalog::typeName($parentType));
+        $kinds = lc(Catalog::typePlural($parentType));
+        $names = implode(', ', array_map([Domain::class, 'componentName'], $parents)) ?: t('none yet');
         if ($n > $limit) {
-            [$st, $tail] = ['OVERDUE', "replace it (limit $limit)"];
+            [$st, $tail] = ['OVERDUE', t('replace it (limit {limit})', ['limit' => $limit])];
         } elseif ($n === $limit) {
-            [$st, $tail] = ['SOON', "replace it at the next $kind change instead of moving it on (limit $limit)"];
+            [$st, $tail] = ['SOON', t('replace it at the next {kind} change instead of moving it on (limit {limit})', ['kind' => $kind, 'limit' => $limit])];
         } else {
             $left = $limit - $n;
-            [$st, $tail] = ['OK', "can move on to $left more $kind" . ($left !== 1 ? 's' : '')];
+            [$st, $tail] = ['OK', t('can move on to {n} more {kind}', ['n' => $left, 'kind' => $left !== 1 ? $kinds : $kind])];
         }
         return ['status' => $st, 'progress' => $n / $limit, 'used_count' => $n,
-            'text' => "Has been on $n $kind" . ($n !== 1 ? 's' : '') . " ($names): $tail." . ($rule['notes'] ? ' ' . $rule['notes'] : '')];
+            'text' => t('Has been on {n} {kind} ({names}): {tail}.', ['n' => $n, 'kind' => $n !== 1 ? $kinds : $kind, 'names' => $names, 'tail' => $tail]) . ($rule['notes'] ? ' ' . $rule['notes'] : '')];
     }
 
     /** The latest check of an action came out bad (e.g. chain wear AT_LIMIT) and nothing newer replaced it. */
@@ -486,16 +496,17 @@ final class Reminders
                 $m = $e['measurement_value'] !== null ? ' (' . rtrim(rtrim((string)$e['measurement_value'], '0'), '.') . ' ' . $e['measurement_unit'] . ')' : '';
                 $out[] = ['kind' => 'attention', 'status' => 'ATTENTION', 'progress' => 1, 'rule' => null, 'component' => $c, 'bike' => $bike,
                     'last' => $e, 'snooze' => null,
-                    'text' => $a['name'] . ' on ' . $e['performed_on'] . ': ' . Catalog::label($e['outcome']) . $m . '. Stays here until a newer check.'];
+                    'text' => t('{action} on {date}: {outcome}{measure}. Stays here until a newer check.', ['action' => Catalog::actionName($a['code']), 'date' => $e['performed_on'],
+                        'outcome' => Catalog::label($e['outcome']), 'measure' => $m])];
             }
         }
         if (in_array($c['component_type'], ['FRONT_WHEEL', 'REAR_WHEEL'], true)) {
             $s = Incidents::spokeInfo($uid, $c);
             if ($s['due']) {
                 $out[] = ['kind' => 'attention', 'status' => 'ATTENTION', 'progress' => 1, 'rule' => null, 'component' => $c, 'bike' => $bike,
-                    'last' => null, 'snooze' => null, 'name' => 'Broken spokes',
-                    'text' => $s['count'] . ' broken spokes since ' . ($s['since'] ? 'the last re-lace (' . $s['since'] . ')' : 'tracking began')
-                        . '; from ' . $s['limit'] . ' on, a re-lace is worth considering. Stays here until you log a re-lace or new spokes.'];
+                    'last' => null, 'snooze' => null, 'name' => t('Broken spokes'),
+                    'text' => t('{n} broken spokes since {since}; from {limit} on, a re-lace is worth considering. Stays here until you log a re-lace or new spokes.',
+                        ['n' => $s['count'], 'since' => $s['since'] ? t('the last re-lace ({date})', ['date' => $s['since']]) : t('tracking began'), 'limit' => $s['limit']])];
             }
         }
         return $out;

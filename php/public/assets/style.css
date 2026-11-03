@@ -24,6 +24,9 @@ nav.main a, .me a { color: var(--ink); padding: 16px 10px; border-bottom: 3px so
 nav.main a.on, .me a.on { border-bottom-color: var(--accent); }
 nav.main a:hover, .me a:hover { text-decoration: none; border-bottom-color: var(--line); }
 .me { display: flex; align-items: center; gap: 4px; margin-left: auto; }
+.lang { margin-left: auto; }
+.me + .lang { margin-left: 0; }
+.lang .btn { font-weight: 600; letter-spacing: .03em; }
 main { max-width: 1040px; margin: 0 auto; padding: 16px; }
 footer { text-align: center; color: var(--muted); font-size: 12px; padding: 24px 16px; }
 

@@ -29,31 +29,31 @@ final class Installer
     {
         $expected = (string)Config::get('install_key', '');
         if (strlen($expected) < 16) {
-            throw new UserError('Set install_key in config/config.php (at least 16 characters) first.');
+            throw new UserError(t('Set install_key in config/config.php (at least 16 characters) first.'));
         }
         if (!RateLimit::allowedSafe('install', Request::ip(), 10, 3600)) {
-            throw new UserError('Too many attempts. Wait an hour.');
+            throw new UserError(t('Too many attempts. Wait an hour.'));
         }
         if (!hash_equals($expected, $key)) {
             RateLimit::hitSafe('install', Request::ip());
-            throw new UserError('The install key is wrong.');
+            throw new UserError(t('The install key is wrong.'));
         }
         Migrator::migrate();
         if (self::isInstalledFresh()) {
-            throw new UserError('Bike Log is already installed.');
+            throw new UserError(t('Bike Log is already installed.'));
         }
         $email = Auth::normalizeEmail($email);
         if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-            throw new UserError('Please enter a valid email address.');
+            throw new UserError(t('Please enter a valid email address.'));
         }
         if (trim($name) === '') {
-            throw new UserError('Please enter your name.');
+            throw new UserError(t('Please enter your name.'));
         }
         Auth::validatePassword($password, $email);
         $now = now_utc();
         $id = Db::insert('users', ['email' => $email, 'display_name' => trim($name), 'password_hash' => Auth::hash($password),
             'role' => 'ADMIN', 'status' => 'ACTIVE', 'email_verified_at' => $now,
-            'timezone' => Config::get('default_timezone', 'Europe/Berlin'), 'created_at' => $now, 'updated_at' => $now]);
+            'timezone' => Config::get('default_timezone', 'Europe/Berlin'), 'lang' => I18n::lang(), 'created_at' => $now, 'updated_at' => $now]);
         Domain::seedUser($id);
         Audit::log('installed', $id, 'first admin', $id);
         self::$installed = true;

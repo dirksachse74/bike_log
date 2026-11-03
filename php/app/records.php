@@ -15,7 +15,7 @@ final class PickLists
 
     private static function check(string $code): array
     {
-        return self::LISTS[$code] ?? throw new NotFound('No such list.');
+        return self::LISTS[$code] ?? throw new NotFound(t('No such list.'));
     }
 
     private static function clean(?string $name): ?string
@@ -106,15 +106,15 @@ final class PickLists
 
     private static function item(int $uid, int $id): array
     {
-        return Db::one('SELECT * FROM pick_list_items WHERE id = ? AND user_id = ?', [$id, $uid]) ?? throw new NotFound('Not found.');
+        return Db::one('SELECT * FROM pick_list_items WHERE id = ? AND user_id = ?', [$id, $uid]) ?? throw new NotFound(t('Not found.'));
     }
 
     public static function add(int $uid, string $code, string $name): void
     {
         self::check($code);
-        $name = self::clean($name) ?? throw new UserError('Please type a name.');
+        $name = self::clean($name) ?? throw new UserError(t('Please type a name.'));
         if (self::find($uid, $code, $name)) {
-            throw new UserError("“{$name}” is on the list already.");
+            throw new UserError(t('“{name}” is on the list already.', ['name' => $name]));
         }
         Db::insert('pick_list_items', ['user_id' => $uid, 'list_code' => $code, 'name' => $name, 'created_at' => now_utc()]);
     }
@@ -124,14 +124,14 @@ final class PickLists
     {
         return Db::tx(function () use ($uid, $id, $name) {
             $it = self::item($uid, $id);
-            $name = self::clean($name) ?? throw new UserError('Please type a name.');
+            $name = self::clean($name) ?? throw new UserError(t('Please type a name.'));
             $other = self::find($uid, $it['list_code'], $name);
             if ($other && (int)$other['id'] !== $id) {
-                throw new UserError("“{$name}” is on the list already. Use Merge to put the two together.");
+                throw new UserError(t('“{name}” is on the list already. Use Merge to put the two together.', ['name' => $name]));
             }
             $n = self::moveRecords($uid, $it['list_code'], $it['name'], $name);
             Db::run('UPDATE pick_list_items SET name = ? WHERE id = ?', [$name, $id]);
-            ChangeLog::note($uid, 'list', $id, "Renamed “{$it['name']}” to “{$name}” ($n records)");
+            ChangeLog::note($uid, 'list', $id, t('Renamed “{old}” to “{new}” ({n} records)', ['old' => $it['name'], 'new' => $name, 'n' => $n]));
             return $n;
         });
     }
@@ -143,12 +143,12 @@ final class PickLists
             $it = self::item($uid, $id);
             $into = self::final($uid, self::item($uid, $intoId));
             if ((int)$into['id'] === $id || $into['list_code'] !== $it['list_code']) {
-                throw new UserError('Pick another name to merge into.');
+                throw new UserError(t('Pick another name to merge into.'));
             }
             $n = self::moveRecords($uid, $it['list_code'], $it['name'], $into['name']);
             Db::run('UPDATE pick_list_items SET merged_into_id = ?, hidden_at = COALESCE(hidden_at, ?) WHERE id = ?', [$into['id'], now_utc(), $id]);
             Db::run('UPDATE pick_list_items SET merged_into_id = ? WHERE merged_into_id = ? AND user_id = ?', [$into['id'], $id, $uid]);
-            ChangeLog::note($uid, 'list', $id, "Merged “{$it['name']}” into “{$into['name']}” ($n records)");
+            ChangeLog::note($uid, 'list', $id, t('Merged “{old}” into “{new}” ({n} records)', ['old' => $it['name'], 'new' => $into['name'], 'n' => $n]));
             return $n;
         });
     }
@@ -157,7 +157,7 @@ final class PickLists
     {
         $it = self::item($uid, $id);
         if (!$hide && $it['merged_into_id']) {
-            throw new UserError('A merged name stays hidden. Rename the kept name instead.');
+            throw new UserError(t('A merged name stays hidden. Rename the kept name instead.'));
         }
         Db::run('UPDATE pick_list_items SET hidden_at = ? WHERE id = ?', [$hide ? now_utc() : null, $id]);
     }
@@ -249,8 +249,8 @@ final class ChangeLog
             'components' => $row['label'] ?? null,
             'products' => trim(($row['maker'] ?? '') . ' ' . ($row['model'] ?? '')),
             'rides' => trim(($row['ride_date'] ?? '') . ' ' . (isset($row['distance_km']) && $row['distance_km'] !== null ? km((float)$row['distance_km'], 1) : '')),
-            'installations' => self::where($uid, $row) . ' from ' . ($row['installed_on'] ?? ''),
-            'maintenance_events' => Catalog::actionName((string)($row['action_code'] ?? '')) . ' on ' . ($row['performed_on'] ?? ''),
+            'installations' => t('{where} from {date}', ['where' => self::where($uid, $row), 'date' => $row['installed_on'] ?? '']),
+            'maintenance_events' => t('{what} on {date}', ['what' => Catalog::actionName((string)($row['action_code'] ?? '')), 'date' => $row['performed_on'] ?? '']),
             'journal_entries' => mb_substr((string)($row['text'] ?? ''), 0, 120),
             default => null,
         };
@@ -261,10 +261,10 @@ final class ChangeLog
     {
         if (!empty($row['bike_id'])) {
             $n = Db::value('SELECT name FROM bikes WHERE id = ? AND user_id = ?', [$row['bike_id'], $uid]);
-            return 'On ' . ($n ?? 'a bike') . ' (' . ($row['slot'] ?? '') . ')';
+            return t('On {where}', ['where' => $n ?? t('a bike')]) . ' (' . ($row['slot'] ?? '') . ')';
         }
         $n = Db::value('SELECT label FROM components WHERE id = ? AND user_id = ?', [$row['parent_component_id'] ?? 0, $uid]);
-        return 'On ' . ($n ?? 'a part') . ' (' . ($row['slot'] ?? '') . ')';
+        return t('On {where}', ['where' => $n ?? t('a part')]) . ' (' . ($row['slot'] ?? '') . ')';
     }
 
     private static function changed(string $t, int $id, int $uid, array $row, array $old): void
@@ -291,11 +291,11 @@ final class ChangeLog
             return money((int)$v);
         }
         if ($field === 'bike_id' || $field === 'rotation_bike_id') {
-            return (string)(Db::value('SELECT name FROM bikes WHERE id = ? AND user_id = ?', [$v, $uid]) ?? "bike $v");
+            return (string)(Db::value('SELECT name FROM bikes WHERE id = ? AND user_id = ?', [$v, $uid]) ?? t('bike {id}', ['id' => $v]));
         }
         if ($field === 'product_id') {
             $p = Db::one('SELECT maker, model FROM products WHERE id = ? AND user_id = ?', [$v, $uid]);
-            return $p ? trim($p['maker'] . ' ' . $p['model']) : "product $v";
+            return $p ? trim($p['maker'] . ' ' . $p['model']) : t('product {id}', ['id' => $v]);
         }
         if (is_numeric($v) && str_contains((string)$v, '.')) {
             return rtrim(rtrim((string)$v, '0'), '.');   // 12.50 and 12.5 are the same value
@@ -309,7 +309,7 @@ final class ChangeLog
             return '';
         }
         $f = preg_replace('/_(cents|id|json)$/', '', $f);
-        return ucfirst(str_replace('_', ' ', $f));
+        return t(ucfirst(str_replace('_', ' ', $f)));
     }
 
     public static function entries(int $uid, ?int $bikeId = null, ?int $componentId = null, ?string $entity = null, int $limit = 200, int $beforeId = 0): array
